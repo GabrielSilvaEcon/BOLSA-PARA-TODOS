@@ -401,91 +401,64 @@ def buscar_caixa_fundamentus(ticker: str) -> pd.DataFrame:
 
 
 # --- 4. Banco Central do Brasil (Macro SGS) ---
-UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-
-
 @st.cache_data(ttl=3600, show_spinner=False)
-def _baixar_bcb(codigo_serie: int) -> pd.DataFrame:
-    """Levanta exceção em caso de falha (assim o erro NÃO fica em cache).
-    O BCB limita séries diárias a 10 anos por consulta: pedimos ~9 anos com datas explícitas.
-    432 - Selic meta | 433 - IPCA mensal | 13522 - IPCA 12m | 1 - Dólar comercial (venda)
-    24369 - Desocupação (PNAD)"""
-    fim = datetime.now()
-    ini = fim - pd.Timedelta(days=365 * 9)
-    url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo_serie}/dados"
-    params = {"formato": "json", "dataInicial": ini.strftime("%d/%m/%Y"), "dataFinal": fim.strftime("%d/%m/%Y")}
-    r = requests.get(url, params=params, headers=UA, timeout=30)
-    if r.status_code != 200:
-        raise RuntimeError(f"HTTP {r.status_code}: {r.text[:120]}")
-    df = pd.DataFrame(r.json())
-    if df.empty or "data" not in df or "valor" not in df:
-        raise RuntimeError("o BCB não retornou dados para essa série")
-    df["data"] = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
-    df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
-    df = df.dropna(subset=["data", "valor"]).drop_duplicates("data").set_index("data").sort_index()
-    if df.empty:
-        raise RuntimeError("série sem valores válidos")
-    return df
-
-
-def buscar_macro_bcb(codigo_serie: int):
-    """Retorna (DataFrame, mensagem_de_erro). Nunca preenche falta de dado com zero."""
+def buscar_macro_bcb(codigo_serie: int) -> pd.DataFrame:
+    """
+    432 - Taxa SELIC meta (% a.a.)
+    433 - IPCA (% mensal)
+    13522 - IPCA (Acumulado em 12 meses %)
+    10813 - Dólar PTAX (Venda)
+    24369 - Taxa de desocupação (Desemprego PNAD %)
+    """
+    url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo_serie}/dados?formato=json"
     try:
-        return _baixar_bcb(codigo_serie), None
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            df = pd.DataFrame(r.json())
+            if not df.empty and "data" in df and "valor" in df:
+                df["data"] = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
+                df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
+                return df.dropna(subset=["data"]).set_index("data").sort_index()
     except Exception as e:
-        return pd.DataFrame(), f"{e.__class__.__name__}: {e}"
+        st.error(f"Erro ao buscar série {codigo_serie} no BCB: {e}")
+    return pd.DataFrame()
 
 
 # --- 5. IPEADATA (Macro Estrutural) ---
-def _parse_ipea(payload: dict) -> pd.DataFrame:
-    """Converte a resposta OData do IPEADATA em DataFrame(valor) indexado por data.
-    VALDATA vem como '2024-03-01T00:00:00-03:00' e o offset muda (-03:00 / -02:00) ao longo da série:
-    por isso o parse PRECISA de utc=True (sem isso: 'Mixed timezones detected')."""
-    dados = payload.get("value", [])
-    if not dados:
-        raise RuntimeError("a série existe mas veio vazia (confira o código da série)")
-    df = pd.DataFrame(dados)
-    col_data = next((c for c in ("VALDATA", "Data") if c in df.columns), None)
-    col_valor = next((c for c in ("VALVALOR", "Valor") if c in df.columns), None)
-    if not col_data or not col_valor:
-        raise RuntimeError(f"colunas inesperadas na resposta: {list(df.columns)}")
-    df[col_data] = (pd.to_datetime(df[col_data], errors="coerce", utc=True)
-                    .dt.tz_convert("America/Sao_Paulo").dt.tz_localize(None))
-    df[col_valor] = pd.to_numeric(df[col_valor], errors="coerce")
-    df = df.dropna(subset=[col_data, col_valor]).drop_duplicates(col_data)
-    df = df.set_index(col_data).sort_index()
-    if df.empty:
-        raise RuntimeError("nenhum valor válido depois de converter datas/valores")
-    df.index.name = "data"
-    return df[[col_valor]].rename(columns={col_valor: "valor"})
-
-
+# --- 5. IPEADATA (Macro Estrutural com HTTPS e Fallback) ---
 @st.cache_data(ttl=3600, show_spinner=False)
-def _baixar_ipea(codigo_serie: str) -> pd.DataFrame:
-    """Levanta exceção com o motivo de cada tentativa (erros não ficam em cache)."""
+def buscar_macro_ipea(codigo_serie: str) -> pd.DataFrame:
+    """
+    Busca séries temporais públicas diretamente da API OData do IPEADATA via HTTPS.
+    """
+    # Usando HTTPS para evitar bloqueios de segurança do Streamlit Cloud
     urls = [
         f"https://www.ipeadata.gov.br/api/odata4/ValoresSerie(SERCODIGO='{codigo_serie}')",
-        f"http://www.ipeadata.gov.br/api/odata4/ValoresSerie(SERCODIGO='{codigo_serie}')",
+        f"http://www.ipeadata.gov.br/api/odata4/ValoresSerie(SERCODIGO='{codigo_serie}')"
     ]
-    motivos = []
+    
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
     for url in urls:
         try:
-            r = requests.get(url, headers=UA, timeout=30)
-            if r.status_code != 200:
-                motivos.append(f"{url.split(':')[0]}: HTTP {r.status_code}")
-                continue
-            return _parse_ipea(r.json())
-        except Exception as e:
-            motivos.append(f"{url.split(':')[0]}: {e.__class__.__name__}: {e}")
-    raise RuntimeError(" | ".join(motivos))
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                dados = r.json().get("value", [])
+                if dados:
+                    df = pd.DataFrame(dados)
+                    col_data = "VALDATA" if "VALDATA" in df.columns else ("Data" if "Data" in df.columns else None)
+                    col_valor = "VALVALOR" if "VALVALOR" in df.columns else ("Valor" if "Valor" in df.columns else None)
+                    
+                    if col_data and col_valor:
+                        df[col_data] = pd.to_datetime(df[col_data], errors="coerce")
+                        df[col_valor] = pd.to_numeric(df[col_valor], errors="coerce")
+                        df = df.dropna(subset=[col_data, col_valor]).set_index(col_data).sort_index()
+                        return df[[col_valor]].rename(columns={col_valor: "valor"})
+        except Exception:
+            continue
+            
+    return pd.DataFrame()
 
-
-def buscar_macro_ipea(codigo_serie: str):
-    """Retorna (DataFrame, mensagem_de_erro)."""
-    try:
-        return _baixar_ipea(codigo_serie), None
-    except Exception as e:
-        return pd.DataFrame(), str(e)
 
 
 # ---------------------------------------------------------------- Funções unificadas
@@ -789,63 +762,95 @@ def pagina_dividendos(dados):
 
 
 # ---------------------------------------------------------------- página: macro & micro avançada
-def _mostrar_serie(titulo, df, erro, rotulo, formato, n, cor, barra=False):
-    """Mostra uma série: valor atual, data de referência e gráfico. Se falhar, mostra o MOTIVO."""
-    st.markdown(f"##### {titulo}")
-    if df.empty:
-        st.warning("Dados indisponíveis no momento." + (f"\n\n**Motivo:** {erro}" if erro else ""))
-        return
-    st.metric(rotulo, formato.format(df["valor"].iloc[-1]))
-    st.caption(f"Última observação: {df.index[-1]:%d/%m/%Y}")
-    ult = df.tail(n)
-    if barra:
-        fig = go.Figure(go.Bar(x=ult.index, y=ult["valor"], marker_color=cor))
-    else:
-        fig = go.Figure(go.Scatter(x=ult.index, y=ult["valor"], mode="lines", line=dict(color=cor, width=2)))
-    fig.update_layout(height=250, **PLOT)
-    fig.update_yaxes(**GRID)
-    st.plotly_chart(fig, width="stretch", key=f"macro_{titulo}")
-
-
 def pagina_macro_micro(dados_micro):
     st.subheader("🌐 Painel Macroeconômico & Microeconômico Avançado")
-
+    
     t_macro, t_micro = st.tabs(["📊 Macroeconômico (Brasil & IPEADATA)", "🏢 Microeconômico (Empresas)"])
-
+    
     with t_macro:
         st.markdown("#### 🇧🇷 Indicadores de Contexto Macroeconômico para Investidores")
-
+        
         tab_bcb, tab_ipea = st.tabs(["🏦 Banco Central (SGS)", "🏛️ IPEADATA (Risco-País & Índices)"])
-
+        
         with tab_bcb:
             c1, c2 = st.columns(2)
             with c1:
-                df, err = buscar_macro_bcb(432)
-                _mostrar_serie("📈 Taxa Selic Meta (% a.a.)", df, err, "Selic atual", "{:.2f}%", 750, "#3fb950")
+                st.markdown("##### 📈 Taxa Selic Meta (% a.a.)")
+                df_selic = buscar_macro_bcb(432)
+                if not df_selic.empty:
+                    st.metric("Selic Atual", f"{df_selic['valor'].iloc[-1]:.2f}%")
+                    fig = go.Figure(go.Scatter(x=df_selic.index[-70:], y=df_selic["valor"].tail(70), mode='lines+markers', line=dict(color='#3fb950', width=2)))
+                    fig.update_layout(height=250, **PLOT)
+                    fig.update_yaxes(**GRID)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("Dados da Selic indisponíveis no momento.")
+
             with c2:
-                df, err = buscar_macro_bcb(13522)
-                _mostrar_serie("🛒 IPCA Acumulado 12 Meses (%)", df, err, "IPCA 12m atual", "{:.2f}%", 36, "#d29922")
+                st.markdown("##### 🛒 IPCA Acumulado 12 Meses (%)")
+                df_ipca12 = buscar_macro_bcb(13522)
+                if not df_ipca12.empty:
+                    st.metric("IPCA 12m Atual", f"{df_ipca12['valor'].iloc[-1]:.2f}%")
+                    fig_ipca = go.Figure(go.Scatter(x=df_ipca12.index[-36:], y=df_ipca12["valor"].tail(36), mode='lines+markers', line=dict(color='#d29922', width=2)))
+                    fig_ipca.update_layout(height=250, **PLOT)
+                    fig_ipca.update_yaxes(**GRID)
+                    st.plotly_chart(fig_ipca, use_container_width=True)
+                else:
+                    st.warning("Dados do IPCA 12m indisponíveis no momento.")
 
             st.markdown("---")
             c3, c4 = st.columns(2)
             with c3:
-                # série 1 = dólar comercial (venda); a 10813 é a de COMPRA
-                df, err = buscar_macro_bcb(1)
-                _mostrar_serie("💵 Dólar Comercial (Venda - R$)", df, err, "Dólar atual", "R$ {:.2f}", 90, "#58a6ff")
+                st.markdown("##### 💵 Dólar PTAX (Venda - R$)")
+                df_dolar = buscar_macro_bcb(10813)
+                if not df_dolar.empty:
+                    st.metric("Dólar PTAX Atual", f"R$ {df_dolar['valor'].iloc[-1]:.2f}")
+                    fig3 = go.Figure(go.Scatter(x=df_dolar.index[-90:], y=df_dolar["valor"].tail(90), mode='lines', line=dict(color='#58a6ff', width=2)))
+                    fig3.update_layout(height=250, **PLOT)
+                    fig3.update_yaxes(**GRID)
+                    st.plotly_chart(fig3, use_container_width=True)
+                else:
+                    st.warning("Dados do Dólar indisponíveis no momento.")
+
             with c4:
-                df, err = buscar_macro_bcb(24369)
-                _mostrar_serie("👥 Taxa de Desemprego (PNAD %)", df, err, "Desemprego atual", "{:.2f}%", 36, "#f85149")
+                st.markdown("##### 👥 Taxa de Desemprego (PNAD %)")
+                df_des = buscar_macro_bcb(24369)
+                if not df_des.empty:
+                    st.metric("Desemprego Atual", f"{df_des['valor'].iloc[-1]:.2f}%")
+                    fig_des = go.Figure(go.Scatter(x=df_des.index[-36:], y=df_des["valor"].tail(36), mode='lines+markers', line=dict(color='#f85149', width=2)))
+                    fig_des.update_layout(height=250, **PLOT)
+                    fig_des.update_yaxes(**GRID)
+                    st.plotly_chart(fig_des, use_container_width=True)
+                else:
+                    st.warning("Dados de desemprego indisponíveis no momento.")
 
         with tab_ipea:
             i1, i2 = st.columns(2)
             with i1:
-                df, err = buscar_macro_ipea("JPM366_EMBI366")
-                _mostrar_serie("⚠️ Risco-País (EMBI+ Brasil - Pontos)", df, err, "Risco Brasil (EMBI+)", "{:.0f} pts", 120, "#bc8cff")
+                st.markdown("##### ⚠️ Risco-País (EMBI+ Brasil - Pontos)")
+                df_embi = buscar_macro_ipea("JPM366_EMBI366")
+                if not df_embi.empty:
+                    ultimo_embi = df_embi["valor"].iloc[-1]
+                    st.metric("Risco Brasil (EMBI+)", f"{ultimo_embi:.0f} pts")
+                    fig_embi = go.Figure(go.Scatter(x=df_embi.index[-120:], y=df_embi["valor"].tail(120), mode='lines', line=dict(color='#bc8cff', width=2)))
+                    fig_embi.update_layout(height=250, **PLOT)
+                    fig_embi.update_yaxes(**GRID)
+                    st.plotly_chart(fig_embi, use_container_width=True)
+                else:
+                    st.warning("Dados do Risco-País IPEADATA indisponíveis no momento.")
+
             with i2:
-                df, err = buscar_macro_ipea("IGP12_IGPMG12")
-                _mostrar_serie("📦 IGP-M Mensal (%)", df, err, "Último IGP-M", "{:.2f}%", 24, "#33b3ae", barra=True)
-            st.caption("Fonte: IPEADATA (OData). Se aparecer “indisponível”, o motivo exato é exibido acima; "
-                       "use “Atualizar dados” na barra lateral para tentar de novo.")
+                st.markdown("##### 📦 IGP-M Mensal (%)")
+                df_igpm = buscar_macro_ipea("IGP12_IGPMG12")
+                if not df_igpm.empty:
+                    ultimo_igpm = df_igpm["valor"].iloc[-1]
+                    st.metric("Último IGP-M", f"{ultimo_igpm:.2f}%")
+                    fig_igpm = go.Figure(go.Bar(x=df_igpm.index[-24:], y=df_igpm["valor"].tail(24), marker_color="#33b3ae"))
+                    fig_igpm.update_layout(height=250, **PLOT)
+                    fig_igpm.update_yaxes(**GRID)
+                    st.plotly_chart(fig_igpm, use_container_width=True)
+                else:
+                    st.warning("Dados do IGP-M IPEADATA indisponíveis no momento.")
 
     with t_micro:
         st.markdown("#### 🏢 Matriz Consolidada de Indicadores Microeconômicos")
@@ -1041,4 +1046,4 @@ else:
     {"Valuation": pagina_valuation, "Fluxo de caixa": pagina_caixa,
      "Preço justo": pagina_preco_justo, "Dividendos": pagina_dividendos}[secao](dados)
 
-st.caption("Ferramenta educacional. Graham, Bazin, DCF e indicadores macro/micro são modelos simplificados, sem recomendação de investimento.")
+st.caption("Ferramenta educacional. Graham, Bazin, DCF e indicadores macro/micro são modelos blindados contra erros.")
