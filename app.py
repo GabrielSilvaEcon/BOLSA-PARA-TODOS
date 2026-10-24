@@ -11,9 +11,7 @@ Token da Brapi (NUNCA coloque o token direto no código):
 """
 import json
 import os
-import unicodedata
 from datetime import datetime
-from io import StringIO
 from math import sqrt
 
 import pandas as pd
@@ -157,337 +155,7 @@ def _proventos(lista):
     return por_ano, float(base.mean()), div_12m
 
 
-# ---------------------------------------------------------------- fontes de reserva
-# Ordem: Brapi (principal) -> Fundamentus -> Yahoo Finance. Só se busca fora da Brapi o que
-# ela não trouxe. LPA e VPA são sempre adotados em par, da mesma fonte, para não misturar moedas.
-_UA = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-    "Accept-Language": "pt-BR,pt;q=0.9",
-}
-
-
-def _f(x):
-    """float ou None (trata NaN e texto)."""
-    try:
-        v = float(x)
-    except (TypeError, ValueError):
-        return None
-    return None if pd.isna(v) else v
-
-
-def _pt_num(x):
-    """Número no formato brasileiro ('1.234,56', '12,3%', '-') -> float ou None."""
-    if x is None:
-        return None
-    if isinstance(x, (int, float)):
-        return _f(x)
-    s = str(x).strip().replace("%", "").replace("\xa0", "").replace(" ", "")
-    if s in ("", "-", "—", "nan", "None"):
-        return None
-    try:
-        return float(s.replace(".", "").replace(",", "."))
-    except ValueError:
-        return None
-
-
-def _norm_cab(c) -> str:
-    s = unicodedata.normalize("NFKD", str(c)).encode("ascii", "ignore").decode().lower()
-    return "".join(ch for ch in s if not ch.isspace())
-
-
-def _parse_fundamentus(html: str):
-    """Lê a tabela do resultado.php (todas as ações). Colunas casadas pelo nome do
-    cabeçalho, não pela posição. Retorna (DataFrame indexado por papel, erro)."""
-    vazio = pd.DataFrame()
-    try:
-        from lxml import html as lxml_html
-    except ImportError:
-        return vazio, "biblioteca lxml não instalada (pip install lxml)"
-    try:
-        tabelas = lxml_html.fromstring(html).xpath("//table")
-    except Exception as e:
-        return vazio, f"não consegui ler a página ({e.__class__.__name__})"
-    if not tabelas:
-        return vazio, "tabela não encontrada"
-    # lê o texto cru das células (o pandas "adivinharia" os números e confundiria a vírgula decimal)
-    titulos, linhas = None, []
-    for tr in tabelas[0].xpath(".//tr"):
-        ths = [c.text_content().strip() for c in tr.xpath("./th")]
-        tds = [c.text_content().strip() for c in tr.xpath("./td")]
-        if ths and titulos is None:
-            titulos = ths
-        elif tds:
-            linhas.append(tds)
-    if not titulos or not linhas:
-        return vazio, "tabela vazia"
-    linhas = [ln for ln in linhas if len(ln) == len(titulos)]
-    if not linhas:
-        return vazio, "layout da tabela mudou (nº de colunas diferente)"
-    t = pd.DataFrame(linhas, columns=titulos)
-    cab = {_norm_cab(c): c for c in t.columns}
-
-    def col(*prefixos):
-        for k, orig in cab.items():
-            if any(k.startswith(p) for p in prefixos):
-                return orig
-        return None
-
-    mapa = {"papel": col("papel"), "preco": col("cotacao"), "pl": col("p/l"), "pvp": col("p/vp"),
-            "dy": col("div.yield", "divyield"), "ev_ebitda": col("ev/ebitda"),
-            "mrg_liq": col("mrg.liq", "mrg.l"), "roe": col("roe"), "div_pat": col("div.brut", "divbrut")}
-    if mapa["papel"] is None or mapa["preco"] is None:
-        return vazio, "layout da tabela mudou (colunas Papel/Cotação não encontradas)"
-
-    out = pd.DataFrame({"papel": t[mapa["papel"]].astype(str).str.strip().str.upper()})
-    for k, c in mapa.items():
-        if k != "papel":
-            out[k] = pd.to_numeric(t[c].map(_pt_num), errors="coerce") if c is not None else float("nan")
-    for k in ("dy", "mrg_liq", "roe"):  # vêm em %, guardamos como fração
-        out[k] = out[k] / 100
-    out = out.set_index("papel")
-    return out[~out.index.duplicated(keep="first")], None
-
-
-@st.cache_data(ttl=900, show_spinner=False)
-def _fundamentus_tabela():
-    try:
-        r = requests.get("https://www.fundamentus.com.br/resultado.php", headers=_UA, timeout=20)
-    except requests.RequestException as e:
-        return pd.DataFrame(), f"falha de conexão ({e.__class__.__name__})"
-    if r.status_code != 200:
-        return pd.DataFrame(), f"HTTP {r.status_code}"
-    return _parse_fundamentus(r.content.decode("latin-1"))  # o site usa ISO-8859-1
-
-
-def fonte_fundamentus(tk: str):
-    """Dados do Fundamentus para um papel. Retorna (dict | None, erro).
-    LPA = cotação ÷ P/L e VPA = cotação ÷ P/VP: como o preço está em R$, saem sempre em R$."""
-    tab, err = _fundamentus_tabela()
-    if tab.empty:
-        return None, err
-    if tk not in tab.index:
-        return None, "papel não encontrado"
-    r = tab.loc[tk]
-    preco, pl, pvp, dy = _f(r["preco"]), _f(r["pl"]), _f(r["pvp"]), _f(r["dy"])
-    dpat = _f(r["div_pat"])
-    return {
-        "preco": preco,
-        "lpa": preco / pl if preco and pl else None,
-        "vpa": preco / pvp if preco and pvp else None,
-        "ev_ebitda": _f(r["ev_ebitda"]), "roe": _f(r["roe"]), "margem_liq": _f(r["mrg_liq"]),
-        "div_pl": dpat * 100 if dpat is not None else None,  # razão -> %
-        "div_12m": dy * preco if dy is not None and preco else None,
-        "moeda_api": "BRL",
-    }, None
-
-
-def _yf():
-    try:
-        import yfinance as yf
-        return yf
-    except ImportError:
-        return None
-
-
-@st.cache_data(ttl=900, show_spinner=False)
-def yahoo_info(ticker: str):
-    """Cotação e indicadores do Yahoo. Retorna (dict | None, erro)."""
-    yf = _yf()
-    if yf is None:
-        return None, "Yahoo: biblioteca yfinance não instalada (pip install yfinance)"
-    try:
-        info = yf.Ticker(f"{ticker}.SA").info or {}
-    except Exception as e:
-        return None, f"Yahoo: {e.__class__.__name__}"
-    preco = _f(info.get("currentPrice")) or _f(info.get("regularMarketPrice"))
-    if preco is None and _f(info.get("trailingEps")) is None:
-        return None, "Yahoo: sem dados para o ativo"
-    td, tc = _f(info.get("totalDebt")), _f(info.get("totalCash"))
-    moeda = info.get("financialCurrency")
-    return {
-        "nome": info.get("longName") or info.get("shortName"),
-        "preco": preco, "lpa": _f(info.get("trailingEps")), "vpa": _f(info.get("bookValue")),
-        "ev_ebitda": _f(info.get("enterpriseToEbitda")), "roe": _f(info.get("returnOnEquity")),
-        "margem_liq": _f(info.get("profitMargins")),
-        "div_pl": _f(info.get("debtToEquity")),  # o Yahoo já entrega em %
-        "acoes": _f(info.get("sharesOutstanding")), "mcap": _f(info.get("marketCap")),
-        "divida_liq": td - tc if td is not None and tc is not None else None,
-        "moeda_api": str(moeda).upper() if moeda else None,
-    }, None
-
-
-@st.cache_data(ttl=900, show_spinner=False)
-def yahoo_dividendos(ticker: str):
-    """Proventos do Yahoo (data ex) no mesmo formato da Brapi. Retorna (lista, erro)."""
-    yf = _yf()
-    if yf is None:
-        return [], None
-    try:
-        s = yf.Ticker(f"{ticker}.SA").dividends
-    except Exception as e:
-        return [], f"Yahoo (dividendos): {e.__class__.__name__}"
-    if s is None or len(s) == 0:
-        return [], None
-    return [{"paymentDate": ts.isoformat(), "rate": float(v)} for ts, v in s.items()], None
-
-
-@st.cache_data(ttl=900, show_spinner=False)
-def yahoo_caixa(ticker: str):
-    """Fluxo de caixa anual do Yahoo. Retorna (DataFrame, moeda do balanço)."""
-    vazio = (pd.DataFrame(), None)
-    yf = _yf()
-    if yf is None:
-        return vazio
-    try:
-        cf = yf.Ticker(f"{ticker}.SA").cashflow
-    except Exception:
-        return vazio
-    if cf is None or cf.empty:
-        return vazio
-    nomes = {"Operating Cash Flow": "Caixa operacional", "Investing Cash Flow": "Caixa de investimento",
-             "Free Cash Flow": "Fluxo de caixa livre"}
-    cols = {pt: cf.loc[k] for k, pt in nomes.items() if k in cf.index}
-    if "Fluxo de caixa livre" not in cols and {"Operating Cash Flow", "Capital Expenditure"} <= set(cf.index):
-        cols["Fluxo de caixa livre"] = cf.loc["Operating Cash Flow"] + cf.loc["Capital Expenditure"]
-    if not cols:
-        return vazio
-    out = pd.DataFrame(cols).apply(pd.to_numeric, errors="coerce")
-    anos = pd.to_datetime(out.index, errors="coerce").year
-    out = out[~pd.isna(anos)]
-    out.index = [int(a) for a in anos[~pd.isna(anos)]]
-    out = out[~out.index.duplicated(keep="first")].dropna(how="all").sort_index()
-    info, _ = yahoo_info(ticker)
-    return out, (info or {}).get("moeda_api")
-
-
-@st.cache_data(ttl=900, show_spinner=False)
-def yahoo_historico(ticker: str, periodo: str, intervalo: str):
-    """Histórico OHLCV do Yahoo. Retorna (DataFrame, erro)."""
-    yf = _yf()
-    if yf is None:
-        return pd.DataFrame(), "Yahoo: biblioteca yfinance não instalada"
-    try:
-        df = yf.Ticker(f"{ticker}.SA").history(period=periodo, interval=intervalo)
-    except Exception as e:
-        return pd.DataFrame(), f"Yahoo: {e.__class__.__name__}"
-    if df is None or df.empty:
-        return pd.DataFrame(), "Yahoo: sem histórico"
-    df = df[["Open", "High", "Low", "Close", "Volume"]].apply(pd.to_numeric, errors="coerce")
-    idx = pd.DatetimeIndex(df.index)
-    if idx.tz is not None:
-        idx = idx.tz_localize(None)  # já está no horário de São Paulo
-    df.index = idx.normalize()
-    df.index.name = "Date"
-    df = df[~df.index.duplicated(keep="first")].sort_index()
-    return df.dropna(subset=["Open", "High", "Low", "Close"]), None
-
-
-def _completar(d: dict, tk: str, erros: list) -> None:
-    """Preenche com Fundamentus e Yahoo o que a Brapi não trouxe (altera d no lugar)."""
-    razoes = ("ev_ebitda", "roe", "margem_liq", "div_pl")
-    notas = []
-    estado = {"yi": None, "buscou": False}
-
-    def nucleo_ok():
-        return d["lpa"] is not None and d["vpa"] is not None
-
-    def yahoo():
-        if not estado["buscou"]:
-            estado["buscou"] = True
-            estado["yi"], err = yahoo_info(tk)
-            if err:
-                erros.append(err)
-        return estado["yi"]
-
-    precisa = (d["preco"] is None or not nucleo_ok() or len(d["div_ano"]) == 0
-               or any(d[k] is None for k in razoes))
-    if not precisa:
-        return
-    fund, err = fonte_fundamentus(tk)
-    if err:
-        erros.append(f"Fundamentus: {err}")
-
-    # cotação
-    if d["preco"] is None:
-        if fund and fund.get("preco"):
-            d["preco"] = fund["preco"]
-            notas.append("Cotação via Fundamentus (Brapi sem dados).")
-        else:
-            y = yahoo()
-            if y and y.get("preco"):
-                d["preco"] = y["preco"]
-                notas.append("Cotação via Yahoo Finance (Brapi sem dados).")
-
-    # LPA e VPA: sempre o par inteiro de uma única fonte
-    def adotar(f, nome):
-        d["lpa"], d["vpa"] = f["lpa"], f["vpa"]
-        d["moeda_api"] = f.get("moeda_api")
-        d["divida_liq"] = f.get("divida_liq")  # a dívida da Brapi pode estar em outra moeda
-        for k in razoes + ("acoes", "mcap"):
-            if d[k] is None and f.get(k) is not None:
-                d[k] = f[k]
-        notas.append(f"LPA e VPA via {nome} (Brapi sem esses dados).")
-
-    if not nucleo_ok():
-        if fund and fund.get("lpa") is not None and fund.get("vpa") is not None:
-            adotar(fund, "Fundamentus")
-        else:
-            y = yahoo()
-            if y and y.get("lpa") is not None and y.get("vpa") is not None:
-                adotar(y, "Yahoo Finance")
-
-    # indicadores em razão (ROE, margens...) não dependem de moeda
-    faltavam = [k for k in razoes if d[k] is None]
-    for k in faltavam:
-        for f in (fund, estado["yi"]):
-            if f and f.get(k) is not None:
-                d[k] = f[k]
-                break
-    if any(d[k] is not None for k in faltavam):
-        notas.append("Alguns indicadores (ROE, margem, Dív./PL, EV/EBITDA) completados por Fundamentus/Yahoo.")
-
-    # ações, valor de mercado, dívida líquida e nome (Yahoo, se já consultado)
-    yi = estado["yi"]
-    if yi:
-        for k in ("acoes", "mcap"):
-            if d[k] is None and yi.get(k) is not None:
-                d[k] = yi[k]
-        if (d["divida_liq"] is None and yi.get("divida_liq") is not None and yi.get("moeda_api")
-                and yi["moeda_api"] == str(d["moeda_api"] or "").upper()):
-            d["divida_liq"] = yi["divida_liq"]
-        if d["nome"] == tk and yi.get("nome"):
-            d["nome"] = yi["nome"]
-
-    # dividendos
-    if len(d["div_ano"]) == 0:
-        lista, err = yahoo_dividendos(tk)
-        if err:
-            erros.append(err)
-        por_ano, medio, d12 = _proventos(lista)
-        if len(por_ano):
-            d["div_ano"], d["div_medio"], d["div_12m"] = por_ano, medio, d12
-            notas.append("Dividendos via Yahoo Finance (agrupados pela data ex, não a de pagamento).")
-        elif d["div_12m"] is None and fund and fund.get("div_12m") is not None:
-            d["div_12m"] = fund["div_12m"]
-            notas.append("DY 12m via Fundamentus (sem histórico por ano: Bazin indisponível).")
-
-    d["fontes_aviso"] = notas
-
-
 # ---------------------------------------------------------------- dados
-@st.cache_data(ttl=900, show_spinner=False)
-def buscar_cambio():
-    """Dólar comercial (USD→BRL): média de compra e venda. None se indisponível."""
-    js, _ = _get("/v2/currency", {"currency": "USD-BRL"})
-    try:
-        c = js["currency"][0]
-        vals = [v for v in (_num(c.get("bidPrice")), _num(c.get("askPrice"))) if v]
-        return sum(vals) / len(vals) if vals else None
-    except (TypeError, KeyError, IndexError):
-        return None
-
-
 @st.cache_data(ttl=900, show_spinner=False)
 def buscar(ticker: str) -> dict:
     """Cotação, LPA/VPA, múltiplos e proventos de um ativo via Brapi."""
@@ -496,8 +164,7 @@ def buscar(ticker: str) -> dict:
         "ticker": tk, "nome": tk, "preco": None, "lpa": None, "vpa": None,
         "div_ano": pd.Series(dtype=float), "div_medio": None, "div_12m": None,
         "ev_ebitda": None, "roe": None, "margem_liq": None, "div_pl": None,
-        "acoes": None, "mcap": None, "divida_liq": None, "pl_api": None,
-        "moeda_api": None, "moeda": "BRL", "erro": None, "fontes_aviso": [],
+        "acoes": None, "moeda": "BRL", "erro": None,
     }
     erros = []
 
@@ -511,8 +178,7 @@ def buscar(ticker: str) -> dict:
         d["nome"] = q.get("longName") or q.get("shortName") or tk
         d["preco"] = _num(q.get("regularMarketPrice"))
         d["lpa"] = _num(q.get("earningsPerShare"))
-        d["mcap"] = _num(q.get("marketCap"))
-        d["pl_api"] = _num(q.get("priceEarnings"))
+        d["moeda"] = q.get("currency") or "BRL"
         lista_div = (q.get("dividendsData") or {}).get("cashDividends")
 
     if lista_div is None:  # fallback: endpoint v2 de dividendos
@@ -548,32 +214,16 @@ def buscar(ticker: str) -> dict:
         d["margem_liq"] = _num(fin.get("profitMargins")) if _num(fin.get("profitMargins")) is not None else d["margem_liq"]
         dpl = _num(fin.get("debtToEquity"))
         d["div_pl"] = dpl * 100 if dpl is not None else None  # vem como razão (0,55) -> %
-        d["moeda_api"] = fin.get("financialCurrency") or None
-        divida, caixa_total = _num(fin.get("totalDebt")), _num(fin.get("totalCash"))
-        if divida is not None and caixa_total is not None:
-            d["divida_liq"] = divida - caixa_total
-
-    _completar(d, tk, erros)  # Fundamentus e Yahoo preenchem o que faltou
+        if fin.get("financialCurrency"):
+            d["moeda"] = fin["financialCurrency"]
 
     d["erro"] = "; ".join(erros) or None
     return d
 
 
 @st.cache_data(ttl=900, show_spinner=False)
-def buscar_caixa(ticker: str):
-    """Fluxo de caixa anual. Brapi primeiro, Yahoo como reserva.
-    Retorna (DataFrame, fonte, moeda do dado, ou None se for a mesma do balanço)."""
-    df = _caixa_brapi(ticker)
-    if not df.empty:
-        return df, "Brapi", None
-    df, moeda = yahoo_caixa(ticker)
-    if not df.empty:
-        return df, "Yahoo Finance", moeda
-    return pd.DataFrame(), None, None
-
-
-def _caixa_brapi(ticker: str) -> pd.DataFrame:
-    """Fluxo de caixa anual da Brapi (operacional, investimento, livre), na moeda do balanço."""
+def buscar_caixa(ticker: str) -> pd.DataFrame:
+    """Fluxo de caixa anual (operacional, investimento, livre) por ano, em R$."""
     js, _ = _get("/v2/stocks/cash-flow", {"symbols": normaliza(ticker), "period": "annual"})
     item = _primeiro(js)
     linhas = (item or {}).get("data")
@@ -600,20 +250,6 @@ def _caixa_brapi(ticker: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=900, show_spinner=False)
 def historico(ticker: str, periodo: str, intervalo: str):
-    """Histórico OHLCV: Brapi primeiro; se vier vazio ou curto, tenta o Yahoo.
-    Retorna (DataFrame, mensagem_de_erro, fonte)."""
-    df, err = _historico_brapi(ticker, periodo, intervalo)
-    fonte = "Brapi"
-    if len(df) < 30:
-        dy, err_y = yahoo_historico(normaliza(ticker), periodo, intervalo)
-        if len(dy) > len(df):
-            df, fonte, err = dy, "Yahoo Finance", None
-        else:
-            err = err or err_y
-    return df, (err if df.empty else None), fonte
-
-
-def _historico_brapi(ticker: str, periodo: str, intervalo: str):
     """Histórico OHLCV da Brapi. Retorna (DataFrame, mensagem_de_erro)."""
     js, err = _get(f"/quote/{normaliza(ticker)}", {"range": periodo, "interval": intervalo})
     item = _primeiro(js)
@@ -631,78 +267,9 @@ def _historico_brapi(ticker: str, periodo: str, intervalo: str):
     return df.dropna(subset=["Open", "High", "Low", "Close"]), None
 
 
-def _mi(x):
-    """Número em milhões, no formato brasileiro (ex.: 13.200)."""
-    return f"{x / 1e6:,.0f}".replace(",", ".")
-
-
-def normalizar(d: dict, moeda_forcada: str, fx) -> dict:
-    """Leva LPA, VPA e dívida líquida para R$ quando o balanço está em dólar,
-    define o nº de ações e reúne os avisos de qualidade dos dados.
-    Preço e dividendos já vêm em R$ (B3); múltiplos/margens/ROE são razões e não mudam."""
-    d = dict(d)
-    avisos = list(d.get("fontes_aviso", []))
-    d["moeda_forcada"], d["fx_cambio"] = moeda_forcada, fx
-
-    # 1) moeda do balanço: escolha do usuário > informada pela API > detectada > R$
-    if moeda_forcada in ("BRL", "USD"):
-        moeda, origem = moeda_forcada, "definida por você"
-    elif d.get("moeda_api"):
-        moeda, origem = str(d["moeda_api"]).upper(), "informada pela API"
-    else:
-        moeda, origem = "BRL", "assumida"
-        p, lpa, pl_api = d["preco"], d["lpa"], d["pl_api"]
-        if fx and p and lpa and lpa > 0 and pl_api and pl_api > 0:
-            # se o P/L da API já considera o câmbio, preço/LPA fica ~fx vezes menor que ele
-            razao = (p / lpa) / pl_api
-            if 0.8 * fx <= razao <= 1.2 * fx:
-                moeda, origem = "USD", "detectada pelo P/L da API"
-    d["moeda"], d["fx"] = moeda, None
-
-    # 2) conversão para R$
-    if moeda == "USD":
-        if fx:
-            d["fx"] = fx
-            for k in ("lpa", "vpa", "divida_liq"):
-                if d[k] is not None:
-                    d[k] *= fx
-            avisos.append(f"Balanço em US$ ({origem}): convertido a R$ {fx:.2f}/US$ (câmbio atual).")
-        else:
-            d["lpa"] = d["vpa"] = d["divida_liq"] = None
-            avisos.append("Balanço em US$ e câmbio indisponível: Graham e DCF omitidos.")
-    elif moeda != "BRL":
-        d["lpa"] = d["vpa"] = d["divida_liq"] = None
-        avisos.append(f"Balanço em {moeda}: conversão não suportada; Graham e DCF omitidos.")
-
-    # 3) nº de ações: valor de mercado ÷ preço costuma cobrir todas as classes (ON+PN)
-    acoes_cap = d["mcap"] / d["preco"] if d["mcap"] and d["preco"] else None
-    acoes_api = d["acoes"]
-    if acoes_cap and acoes_api and abs(acoes_cap / acoes_api - 1) > 0.10:
-        avisos.append(f"Nº de ações diverge (valor de mercado ÷ preço: {_mi(acoes_cap)} mi; "
-                      f"API: {_mi(acoes_api)} mi). Usei o primeiro.")
-    d["acoes"] = acoes_cap or acoes_api
-    d["avisos"] = avisos
-    return d
-
-
-def caixa_ajustada(d: dict):
-    """Fluxo de caixa em R$ (converte do dólar quando preciso). Retorna (DataFrame, fonte)."""
-    c, fonte, moeda_cx = buscar_caixa(d["ticker"])
-    if c.empty:
-        return c, None
-    forcada = d.get("moeda_forcada")
-    moeda = forcada if forcada in ("BRL", "USD") else (moeda_cx or d["moeda"])
-    if moeda == "BRL":
-        return c, fonte
-    if moeda == "USD" and d.get("fx_cambio"):
-        return c * d["fx_cambio"], fonte
-    return pd.DataFrame(), None
-
-
 def carregar(ativos):
     out = {}
     with st.spinner("Buscando dados..."):
-        fx = buscar_cambio()
         for tk in ativos:
             try:
                 d = buscar(tk)
@@ -711,7 +278,7 @@ def carregar(ativos):
                 continue
             if d["preco"] is None and d["erro"]:
                 st.warning(f"{tk}: {d['erro']}")
-            out[tk] = normalizar(d, st.session_state.get(f"moeda_{tk}", "Auto"), fx)
+            out[tk] = d
     return out
 
 
@@ -746,12 +313,8 @@ def analisar(d: dict, metodo: str, yield_alvo: float, margem_alvo: float) -> dic
     else:
         status, cls = "Acima do justo", "bad"
 
-    avisos = list(d.get("avisos", []))
-    if justo and d["preco"] and not (0.25 <= justo / d["preco"] <= 4):
-        avisos.append("Preço justo muito distante do preço atual: confira moeda e unidades dos dados.")
-
     return {**d, "graham": graham, "bazin": bazin, "justo": justo,
-            "margem": margem, "status": status, "cls": cls, "avisos": avisos}
+            "margem": margem, "status": status, "cls": cls}
 
 
 def multiplos(d: dict) -> dict:
@@ -765,23 +328,16 @@ def multiplos(d: dict) -> dict:
     }
 
 
-def dcf(caixa: pd.DataFrame, acoes, divida_liq, taxa: float, g: float, gp: float,
-        descontar_divida: bool = True):
-    """Valor por ação: FCL médio de 3 anos projetado 5 anos + perpetuidade, a valor presente.
-    O resultado é o valor da empresa; com descontar_divida, subtrai a dívida líquida antes de
-    dividir pelas ações. Tudo em R$. Retorna (valor_por_acao, fcl_base, valor_da_empresa)."""
-    if not acoes or caixa.empty or "Fluxo de caixa livre" not in caixa or taxa <= gp:
-        return None, None, None
+def dcf(caixa: pd.DataFrame, acoes, moeda: str, taxa: float, g: float, gp: float):
+    """Valor por ação a partir da média do FCL dos últimos 3 anos (aproximação)."""
+    if moeda != "BRL" or not acoes or caixa.empty or "Fluxo de caixa livre" not in caixa:
+        return None, None
     base = caixa["Fluxo de caixa livre"].dropna().tail(3).mean()
     if pd.isna(base) or base <= 0:
-        return None, base, None
+        return None, base
     pv = sum(base * (1 + g) ** t / (1 + taxa) ** t for t in range(1, 6))
     vt = base * (1 + g) ** 5 * (1 + gp) / (taxa - gp)
-    empresa = pv + vt / (1 + taxa) ** 5
-    patrimonio = empresa - (divida_liq if descontar_divida and divida_liq is not None else 0)
-    if patrimonio <= 0:
-        return None, base, empresa
-    return patrimonio / acoes, base, empresa
+    return (pv + vt / (1 + taxa) ** 5) / acoes, base
 
 
 def brl(v):
@@ -826,7 +382,8 @@ def pagina_preco_justo(dados):
             cols = st.columns(por_linha)
             for col, r in zip(cols, resultados[i:i + por_linha]):
                 with col:
-                    aviso = "".join(f'<div class="aviso">{m}</div>' for m in r["avisos"])
+                    aviso = (f'<div class="aviso">Balanço em {r["moeda"]}: LPA/VPA podem não estar em R$</div>'
+                             if r["moeda"] != "BRL" else "")
                     st.markdown(
                         f"""<div class="card">
                         <span class="badge {r['cls']}">{r['status']}</span>
@@ -899,17 +456,16 @@ def pagina_valuation(dados):
 
     st.dataframe(df.style.format({c: "{:.2f}" for c in df.columns if c != "Ticker"}, na_rep="—"),
                  width="stretch", hide_index=True)
-    st.caption("P/L = preço ÷ LPA · P/VP = preço ÷ VPA (LPA/VPA em R$, convertidos do dólar quando o balanço "
-               "é em US$) · DY 12m = proventos dos últimos 12 meses ÷ preço · Dív./PL = dívida bruta ÷ "
-               "patrimônio líquido, em %. Indicadores de balanço vêm da Brapi (CVM) e podem estar defasados.")
+    st.caption("P/L = preço ÷ LPA · P/VP = preço ÷ VPA · DY 12m = proventos dos últimos 12 meses ÷ preço. "
+               "Indicadores de balanço vêm da Brapi (CVM) e podem estar defasados.")
 
 
 def pagina_caixa(dados):
     st.markdown("#### Fluxo de caixa histórico")
     tk = st.selectbox("Ativo", list(dados), key="cx_ativo")
-    caixa, fonte_cx = caixa_ajustada(dados[tk])
+    caixa = buscar_caixa(tk)
     if caixa.empty:
-        st.info(f"Sem dados de fluxo de caixa em R$ para {tk}.")
+        st.info(f"Sem dados de fluxo de caixa para {tk}.")
     else:
         cores = {"Caixa operacional": "#6b7a8f", "Caixa de investimento": "#c08580",
                  "Fluxo de caixa livre": "#7fae93"}
@@ -922,10 +478,8 @@ def pagina_caixa(dados):
         fig.update_yaxes(**GRID)
         st.plotly_chart(fig, width="stretch")
         st.dataframe((caixa / 1e6).T.style.format("{:,.0f}", na_rep="—"), width="stretch")
-        st.caption(f"Fonte: {fonte_cx}. Na Brapi, fluxo livre = caixa operacional + caixa de investimento; "
-                   "no Yahoo, fluxo livre = caixa operacional − capex.")
-        if dados[tk]["fx_cambio"] and dados[tk]["moeda"] == "USD":
-            st.caption(f"Valores convertidos de US$ para R$ ao câmbio atual (R$ {dados[tk]['fx_cambio']:.2f}).")
+        if dados[tk]["moeda"] != "BRL":
+            st.caption(f"Valores na moeda do balanço ({dados[tk]['moeda']}).")
 
     st.markdown("#### Valor estimado por fluxo de caixa descontado (DCF)")
     c1, c2, c3 = st.columns(3)
@@ -933,32 +487,18 @@ def pagina_caixa(dados):
     g = c2.slider("Crescimento do FCL (5 anos)", -5.0, 15.0, 4.0, 0.5, format="%.1f%%") / 100
     gp = c3.slider("Crescimento na perpetuidade", 0.0, 5.0, 3.0, 0.5, format="%.1f%%") / 100
 
-    descontar = st.checkbox("Descontar dívida líquida (recomendado)", value=True)
-
     linhas = []
     for t, d in dados.items():
-        cx, _ = caixa_ajustada(d)
-        valor, base, _ = dcf(cx, d["acoes"], d["divida_liq"], taxa, g, gp, descontar)
+        valor, base = dcf(buscar_caixa(t), d["acoes"], d["moeda"], taxa, g, gp)
         margem = (valor - d["preco"]) / valor * 100 if valor and d["preco"] else None
-        alerta = ""
-        if valor and d["preco"] and not (0.25 <= valor / d["preco"] <= 4):
-            alerta = "Valor muito distante do preço: confira moeda/unidades"
-        elif descontar and d["divida_liq"] is None and valor:
-            alerta = "Sem dívida líquida na API: não descontada"
-        linhas.append({
-            "Ticker": t,
-            "FCL médio 3a (R$ mi)": base / 1e6 if base is not None and not pd.isna(base) else None,
-            "Dív. líquida (R$ mi)": d["divida_liq"] / 1e6 if d["divida_liq"] is not None else None,
-            "Valor DCF": valor, "Preço": d["preco"], "Margem (%)": margem, "Alerta": alerta})
+        linhas.append({"Ticker": t, "FCL médio 3a (R$ mi)": base / 1e6 if base is not None and not pd.isna(base) else None,
+                       "Valor DCF": valor, "Preço": d["preco"], "Margem (%)": margem})
     st.dataframe(pd.DataFrame(linhas).style.format({
-        "FCL médio 3a (R$ mi)": "{:,.0f}", "Dív. líquida (R$ mi)": "{:,.0f}",
-        "Valor DCF": "R$ {:.2f}", "Preço": "R$ {:.2f}", "Margem (%)": "{:.1f}%"}, na_rep="—"),
-        width="stretch", hide_index=True)
-    st.caption("Aproximação: FCL = caixa operacional + caixa de investimento (média dos últimos 3 anos), "
-               "projetado por 5 anos + perpetuidade, descontado à taxa escolhida. Com a opção marcada, "
-               "subtrai a dívida líquida (dívida total − caixa) e divide pelo nº de ações. "
-               "Não é adequado para bancos e holdings financeiras, e fica em branco quando o FCL é negativo "
-               "ou quando a taxa de desconto é menor ou igual à da perpetuidade.")
+        "FCL médio 3a (R$ mi)": "{:,.0f}", "Valor DCF": "R$ {:.2f}", "Preço": "R$ {:.2f}",
+        "Margem (%)": "{:.1f}%"}, na_rep="—"), width="stretch", hide_index=True)
+    st.caption("Aproximação: usa a média do fluxo de caixa livre dos últimos 3 anos como fluxo ao acionista, "
+               "sem ajustar dívida líquida. Não é adequado para bancos e holdings financeiras, e fica em branco "
+               "quando o FCL é negativo ou o balanço não está em reais.")
 
 
 def pagina_dividendos(dados):
@@ -1023,7 +563,7 @@ def pagina_tecnica(ativos):
 
     intervalo, tv_int = {"Diário": ("1d", "D"), "Semanal": ("1wk", "W")}[tf]
     periodo = {"6 meses": "6mo", "1 ano": "1y", "2 anos": "2y", "5 anos": "5y"}[periodo_lbl]
-    df, erro, fonte_precos = historico(ticker, periodo, intervalo)
+    df, erro = historico(ticker, periodo, intervalo)
     if df.empty or len(df) < 30:
         msg = "Histórico insuficiente para esse ativo/período. Tente um período maior."
         if erro:
@@ -1089,9 +629,9 @@ def pagina_tecnica(ativos):
     if niveis:
         st.caption("Níveis detectados: " + " · ".join(
             f"{n['tipo']} R$ {n['preco']:.2f} ({n['toques']} toques)" for n in niveis))
-    st.caption(f"O gráfico limpo é o widget oficial do TradingView. Os sinais são detectados pelo app com regras "
-               f"simples sobre os preços de {fonte_precos} (o TradingView não permite buscar os desenhos ou "
-               f"sinais de volta), então podem divergir do que você marcaria à mão.")
+    st.caption("O gráfico limpo é o widget oficial do TradingView. Os sinais são detectados pelo app com regras "
+               "simples sobre os dados da Brapi (o TradingView não permite buscar os desenhos ou sinais "
+               "de volta), então podem divergir do que você marcaria à mão.")
 
 
 # ---------------------------------------------------------------- sidebar
@@ -1111,19 +651,10 @@ with st.sidebar:
     if st.button("Atualizar dados", width="stretch"):
         st.cache_data.clear()
         st.rerun()
-    with st.expander("Moeda do balanço (avançado)"):
-        st.caption("Auto usa a moeda informada pela API (ou detecta). Force US$ se o LPA/VPA de um ativo "
-                   "vier em dólar, como em empresas que reportam em dólar (ex.: Vale). "
-                   "Preço e dividendos já são em R$.")
-        for t in st.session_state.ativos:
-            st.selectbox(t, ["Auto", "BRL", "USD"], key=f"moeda_{t}")
     if not _token():
         st.warning("Token da Brapi não configurado: só funcionam os tickers de teste "
                    "(PETR4, VALE3, MGLU3, ITUB4). Veja o topo do app.py.")
-    if _yf() is None:
-        st.info("Yahoo Finance como reserva está desligado: instale com pip install yfinance.")
-    st.caption("Fonte principal: Brapi (B3/CVM). Reserva: Fundamentus e Yahoo Finance, só para o que a "
-               "Brapi não trouxer (os cards avisam). Gráfico: TradingView.")
+    st.caption("Fonte: Brapi (B3/CVM) e TradingView (gráfico).")
 
 # ---------------------------------------------------------------- cabeçalho
 st.markdown(
