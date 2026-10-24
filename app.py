@@ -1,5 +1,5 @@
 """
-Painel B3 - Análise Fundamentalista + Técnica
+Painel B3 - Análise Fundamentalista + Técnica + Macro & Micro
 
 Rodar com: streamlit run app.py
 
@@ -268,7 +268,6 @@ def buscar_yahoo(ticker: str) -> dict:
         d["ev_ebitda"] = _num(info.get("enterpriseToEbitda"))
         d["roe"] = _num(info.get("returnOnEquity"))
         d["margem_liq"] = _num(info.get("profitMargins"))
-        
         debt_to_equity = _num(info.get("debtToEquity"))
         d["div_pl"] = debt_to_equity if debt_to_equity is not None else None
         d["acoes"] = _num(info.get("sharesOutstanding"))
@@ -280,11 +279,9 @@ def buscar_yahoo(ticker: str) -> dict:
             por_ano = divs.groupby(divs.index.year).sum()
             por_ano.index = por_ano.index.astype(int)
             por_ano.index.name = "ano"
-            
             hoje = pd.Timestamp.now()
             mask12 = (divs.index >= hoje - pd.Timedelta(days=365)) & (divs.index <= hoje)
             div_12m = float(divs.loc[mask12].sum())
-            
             completos = por_ano[por_ano.index < hoje.year].tail(5)
             base = completos if len(completos) else por_ano
             d["div_ano"] = por_ano
@@ -302,7 +299,6 @@ def buscar_caixa_yahoo(ticker: str) -> pd.DataFrame:
         cf = t.cashflow
         if cf.empty:
             return pd.DataFrame()
-        
         cf = cf.T
         nomes = {
             "Operating Cash Flow": "Caixa operacional",
@@ -353,8 +349,6 @@ def buscar_fundamentus(ticker: str) -> dict:
         if df is None or df.empty:
             d["erro"] = "Ativo não encontrado no Fundamentus."
             return d
-        
-        # O fundamentus costuma retornar um DataFrame onde as colunas são as chaves do papel
         if tk in df.index:
             row = df.loc[tk]
         else:
@@ -365,7 +359,6 @@ def buscar_fundamentus(ticker: str) -> dict:
                 return None
             if isinstance(val, (int, float)):
                 return float(val)
-            # Tenta converter strings formatadas (ex: '12,34' ou '12.34%')
             try:
                 clean = str(val).replace(".", "").replace(",", ".").replace("%", "").strip()
                 return float(clean)
@@ -376,7 +369,6 @@ def buscar_fundamentus(ticker: str) -> dict:
         d["lpa"] = _conv(row.get("LPA"))
         d["vpa"] = _conv(row.get("VPA"))
         d["ev_ebitda"] = _conv(row.get("EV_EBITDA"))
-        
         roe = _conv(row.get("ROE"))
         d["roe"] = roe / 100.0 if roe is not None else None
 
@@ -389,18 +381,37 @@ def buscar_fundamentus(ticker: str) -> dict:
         dy = _conv(row.get("Div_Yield"))
         if dy is not None and d["preco"]:
             d["div_12m"] = (dy / 100.0) * d["preco"]
-            d["div_medio"] = d["div_12m"]  # Aproximação se histórico detalhado não vier
+            d["div_medio"] = d["div_12m"]
     except Exception as e:
         d["erro"] = f"Erro Fundamentus: {e}"
     return d
 
 def buscar_caixa_fundamentus(ticker: str) -> pd.DataFrame:
-    # Fundamentus foca em indicadores resumidos, sem fluxo de caixa histórico profundo padrão.
+    return pd.DataFrame()
+
+
+# --- 4. Banco Central do Brasil (Macro) ---
+@st.cache_data(ttl=3600, show_spinner=False)
+def buscar_macro_bcb(codigo_serie: int) -> pd.DataFrame:
+    """
+    432 - Taxa SELIC meta (% a.a.)
+    433 - IPCA (% mensal)
+    10813 - Dólar PTAX (Venda)
+    """
+    url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo_serie}/dados?formato=json"
+    try:
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            df = pd.DataFrame(r.json())
+            df["data"] = pd.to_datetime(df["data"], format="%d/%m/%Y")
+            df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
+            return df.set_index("data").sort_index()
+    except Exception as e:
+        st.error(f"Erro ao buscar série {codigo_serie} no BCB: {e}")
     return pd.DataFrame()
 
 
 # ---------------------------------------------------------------- Funções unificadas
-
 def buscar(ticker: str) -> dict:
     fonte = st.session_state.get("fonte_dados", "Yahoo Finance")
     if fonte == "Brapi":
@@ -421,7 +432,6 @@ def buscar_caixa(ticker: str) -> pd.DataFrame:
 
 def historico(ticker: str, periodo: str, intervalo: str):
     fonte = st.session_state.get("fonte_dados", "Yahoo Finance")
-    # Para dados históricos e técnicos, o Yahoo Finance é o mais estável por padrão
     if fonte == "Brapi":
         df, err = historico_brapi(ticker, periodo, intervalo)
         if not df.empty:
@@ -443,7 +453,7 @@ def carregar(ativos):
     return out
 
 
-# ---------------------------------------------------------------- cálculos (Mantidos idênticos)
+# ---------------------------------------------------------------- cálculos
 def analisar(d: dict, metodo: str, yield_alvo: float, margem_alvo: float) -> dict:
     graham = None
     if d["lpa"] and d["vpa"] and d["lpa"] > 0 and d["vpa"] > 0:
@@ -612,7 +622,6 @@ def pagina_valuation(dados):
 
     st.dataframe(df.style.format({c: "{:.2f}" for c in df.columns if c != "Ticker"}, na_rep="—"),
                  width="stretch", hide_index=True)
-    st.caption("P/L = preço ÷ LPA · P/VP = preço ÷ VPA · DY 12m = proventos dos últimos 12 meses ÷ preço.")
 
 
 def pagina_caixa(dados):
@@ -671,6 +680,83 @@ def pagina_dividendos(dados):
         "Proventos 12m": "R$ {:.2f}", "Média 5 anos": "R$ {:.2f}",
         "DY 12m (%)": "{:.2f}%", "DY s/ média 5a (%)": "{:.2f}%"}, na_rep="—"),
         width="stretch", hide_index=True)
+
+
+# ---------------------------------------------------------------- página: macro & micro
+def pagina_macro_micro(dados_micro):
+    st.subheader("🌐 Painel Macroeconômico & Microeconômico")
+    
+    t_macro, t_micro = st.tabs(["📊 Macroeconômico (Brasil)", "🏢 Microeconômico (Empresas)"])
+    
+    with t_macro:
+        st.markdown("#### Indicadores Oficiais - Banco Central do Brasil (SGS)")
+        
+        c1, c2 = st.columns(2)
+        
+        with c1:
+            st.markdown("##### Taxa Selic Meta (% a.a.)")
+            df_selic = buscar_macro_bcb(432)
+            if not df_selic.empty:
+                ultimo_val = df_selic["valor"].iloc[-1]
+                st.metric("Selic Atual", f"{ultimo_val:.2f}%")
+                
+                fig = go.Figure(go.Scatter(x=df_selic.index[-60:], y=df_selic["valor"].tail(60), mode='lines', name='Selic', line=dict(color='#7fae93')))
+                fig.update_layout(height=280, **PLOT)
+                fig.update_yaxes(**GRID)
+                st.plotly_chart(fig, use_container_width=True)
+
+        with c2:
+            st.markdown("##### IPCA Mensal (%)")
+            df_ipca = buscar_macro_bcb(433)
+            if not df_ipca.empty:
+                ultimo_ipca = df_ipca["valor"].iloc[-1]
+                st.metric("Último IPCA registrado", f"{ultimo_ipca:.2f}%")
+                
+                fig2 = go.Figure(go.Bar(x=df_ipca.index[-24:], y=df_ipca["valor"].tail(24), marker_color="#8aa0b8"))
+                fig2.update_layout(height=280, **PLOT)
+                fig2.update_yaxes(**GRID)
+                st.plotly_chart(fig2, use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("##### Dólar PTAX (Venda - R$)")
+        df_dolar = buscar_macro_bcb(10813)
+        if not df_dolar.empty:
+            ultimo_dolar = df_dolar["valor"].iloc[-1]
+            st.metric("Dólar PTAX Atual", f"R$ {ultimo_dolar:.2f}")
+            
+            fig3 = go.Figure(go.Scatter(x=df_dolar.index[-120:], y=df_dolar["valor"].tail(120), mode='lines', line=dict(color='#c2ad7e')))
+            fig3.update_layout(height=250, **PLOT)
+            fig3.update_yaxes(**GRID)
+            st.plotly_chart(fig3, use_container_width=True)
+
+    with t_micro:
+        st.markdown("#### Indicadores Microeconômicos das Empresas do Painel")
+        
+        linhas = []
+        for tk, d in dados_micro.items():
+            linhas.append({
+                "Ativo": tk,
+                "Preço": d.get("preco"),
+                "LPA (Lucro por Ação)": d.get("lpa"),
+                "VPA (Valor Patrimonial)": d.get("vpa"),
+                "ROE (%)": (d.get("roe") * 100) if d.get("roe") is not None else None,
+                "Margem Líquida (%)": (d.get("margem_liq") * 100) if d.get("margem_liq") is not None else None,
+                "Endividamento (Dív/PL %)": d.get("div_pl"),
+            })
+            
+        df_micro = pd.DataFrame(linhas)
+        st.dataframe(
+            df_micro.style.format({
+                "Preço": "R$ {:.2f}",
+                "LPA (Lucro por Ação)": "R$ {:.2f}",
+                "VPA (Valor Patrimonial)": "R$ {:.2f}",
+                "ROE (%)": "{:.2f}%",
+                "Margem Líquida (%)": "{:.2f}%",
+                "Endividamento (Dív/PL %)": "{:.2f}%"
+            }, na_rep="—"),
+            width="stretch",
+            hide_index=True
+        )
 
 
 # ---------------------------------------------------------------- página: técnica
@@ -758,20 +844,6 @@ def pagina_tecnica(ativos):
         bloco_limpo()
         bloco_sinais()
 
-    st.markdown("#### Sinais recentes")
-    linhas = [{"Data": s["data"], "Categoria": s["categoria"], "Sinal": s["sinal"],
-               "Viés": s["tipo"].capitalize(), "Preço": s["preco"]} for s in sinais]
-    linhas += [{"Data": p["data"], "Categoria": p["categoria"], "Sinal": p["nome"],
-                "Viés": p["tipo"].capitalize(), "Preço": p["preco"]} for p in padroes]
-    if linhas:
-        tabela = pd.DataFrame(linhas).sort_values("Data", ascending=False).head(30)
-        st.dataframe(tabela, width="stretch", hide_index=True, column_config={
-            "Data": st.column_config.DatetimeColumn(format="DD/MM/YYYY"),
-            "Preço": st.column_config.NumberColumn(format="R$ %.2f"),
-        })
-    else:
-        st.caption("Nenhum sinal detectado com os filtros atuais.")
-
 
 # ---------------------------------------------------------------- sidebar
 with st.sidebar:
@@ -811,7 +883,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-CATS = ["Fundamentalista", "Técnica"]
+CATS = ["Fundamentalista", "Técnica", "Macro & Micro"]
 SECOES = ["Valuation", "Fluxo de caixa", "Preço justo", "Dividendos"]
 
 categoria = st.segmented_control("Categoria", CATS, default=CATS[0], key="cat",
@@ -825,7 +897,10 @@ if not st.session_state.ativos:
     st.info("Adicione um ticker na barra lateral para começar.")
     st.stop()
 
-if categoria == "Técnica":
+if categoria == "Macro & Micro":
+    dados = carregar(st.session_state.ativos)
+    pagina_macro_micro(dados)
+elif categoria == "Técnica":
     pagina_tecnica(st.session_state.ativos)
 else:
     dados = carregar(st.session_state.ativos)
@@ -834,4 +909,4 @@ else:
     {"Valuation": pagina_valuation, "Fluxo de caixa": pagina_caixa,
      "Preço justo": pagina_preco_justo, "Dividendos": pagina_dividendos}[secao](dados)
 
-st.caption("Ferramenta educacional. Graham, Bazin, DCF e sinais técnicos são modelos simplificados.")
+st.caption("Ferramenta educacional. Graham, Bazin, DCF e indicadores macro/micro são modelos simplificados.")
