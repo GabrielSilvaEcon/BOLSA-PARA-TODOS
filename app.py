@@ -157,6 +157,18 @@ def _proventos(lista):
 
 # ---------------------------------------------------------------- dados
 @st.cache_data(ttl=900, show_spinner=False)
+def buscar_cambio():
+    """Dólar comercial (USD→BRL): média de compra e venda. None se indisponível."""
+    js, _ = _get("/v2/currency", {"currency": "USD-BRL"})
+    try:
+        c = js["currency"][0]
+        vals = [v for v in (_num(c.get("bidPrice")), _num(c.get("askPrice"))) if v]
+        return sum(vals) / len(vals) if vals else None
+    except (TypeError, KeyError, IndexError):
+        return None
+
+
+@st.cache_data(ttl=900, show_spinner=False)
 def buscar(ticker: str) -> dict:
     """Cotação, LPA/VPA, múltiplos e proventos de um ativo via Brapi."""
     tk = normaliza(ticker)
@@ -164,7 +176,8 @@ def buscar(ticker: str) -> dict:
         "ticker": tk, "nome": tk, "preco": None, "lpa": None, "vpa": None,
         "div_ano": pd.Series(dtype=float), "div_medio": None, "div_12m": None,
         "ev_ebitda": None, "roe": None, "margem_liq": None, "div_pl": None,
-        "acoes": None, "moeda": "BRL", "erro": None,
+        "acoes": None, "mcap": None, "divida_liq": None, "pl_api": None,
+        "moeda_api": None, "moeda": "BRL", "erro": None,
     }
     erros = []
 
@@ -178,7 +191,8 @@ def buscar(ticker: str) -> dict:
         d["nome"] = q.get("longName") or q.get("shortName") or tk
         d["preco"] = _num(q.get("regularMarketPrice"))
         d["lpa"] = _num(q.get("earningsPerShare"))
-        d["moeda"] = q.get("currency") or "BRL"
+        d["mcap"] = _num(q.get("marketCap"))
+        d["pl_api"] = _num(q.get("priceEarnings"))
         lista_div = (q.get("dividendsData") or {}).get("cashDividends")
 
     if lista_div is None:  # fallback: endpoint v2 de dividendos
@@ -214,8 +228,10 @@ def buscar(ticker: str) -> dict:
         d["margem_liq"] = _num(fin.get("profitMargins")) if _num(fin.get("profitMargins")) is not None else d["margem_liq"]
         dpl = _num(fin.get("debtToEquity"))
         d["div_pl"] = dpl * 100 if dpl is not None else None  # vem como razão (0,55) -> %
-        if fin.get("financialCurrency"):
-            d["moeda"] = fin["financialCurrency"]
+        d["moeda_api"] = fin.get("financialCurrency") or None
+        divida, caixa_total = _num(fin.get("totalDebt")), _num(fin.get("totalCash"))
+        if divida is not None and caixa_total is not None:
+            d["divida_liq"] = divida - caixa_total
 
     d["erro"] = "; ".join(erros) or None
     return d
