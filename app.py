@@ -425,26 +425,40 @@ def buscar_macro_bcb(codigo_serie: int) -> pd.DataFrame:
 
 
 # --- 5. IPEADATA (Macro Estrutural) ---
+# --- 5. IPEADATA (Macro Estrutural com HTTPS e Fallback) ---
 @st.cache_data(ttl=3600, show_spinner=False)
 def buscar_macro_ipea(codigo_serie: str) -> pd.DataFrame:
     """
-    Busca séries temporais públicas diretamente da API OData do IPEADATA.
-    - 'JPM366_EMBI366' : Risco-País (EMBI+ Brasil)
-    - 'IGP12_IGPMG12'  : IGP-M Mensal
+    Busca séries temporais públicas diretamente da API OData do IPEADATA via HTTPS.
     """
-    url = f"http://www.ipeadata.gov.br/api/odata4/Valores(SERCODIGO='{codigo_serie}')"
-    try:
-        r = requests.get(url, timeout=12)
-        if r.status_code == 200:
-            dados = r.json().get("value", [])
-            if dados:
-                df = pd.DataFrame(dados)
-                df["VALDATA"] = pd.to_datetime(df["VALDATA"], errors="coerce")
-                df["VALVALOR"] = pd.to_numeric(df["VALVALOR"], errors="coerce")
-                return df.dropna(subset=["VALDATA", "VALVALOR"]).set_index("VALDATA").sort_index()[["VALVALOR"]].rename(columns={"VALVALOR": "valor"})
-    except Exception as e:
-        st.error(f"Erro ao buscar série {codigo_serie} no IPEADATA: {e}")
+    # Usando HTTPS para evitar bloqueios de segurança do Streamlit Cloud
+    urls = [
+        f"https://www.ipeadata.gov.br/api/odata4/ValoresSerie(SERCODIGO='{codigo_serie}')",
+        f"http://www.ipeadata.gov.br/api/odata4/ValoresSerie(SERCODIGO='{codigo_serie}')"
+    ]
+    
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+    for url in urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                dados = r.json().get("value", [])
+                if dados:
+                    df = pd.DataFrame(dados)
+                    col_data = "VALDATA" if "VALDATA" in df.columns else ("Data" if "Data" in df.columns else None)
+                    col_valor = "VALVALOR" if "VALVALOR" in df.columns else ("Valor" if "Valor" in df.columns else None)
+                    
+                    if col_data and col_valor:
+                        df[col_data] = pd.to_datetime(df[col_data], errors="coerce")
+                        df[col_valor] = pd.to_numeric(df[col_valor], errors="coerce")
+                        df = df.dropna(subset=[col_data, col_valor]).set_index(col_data).sort_index()
+                        return df[[col_valor]].rename(columns={col_valor: "valor"})
+        except Exception:
+            continue
+            
     return pd.DataFrame()
+
 
 
 # ---------------------------------------------------------------- Funções unificadas
