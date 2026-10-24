@@ -425,26 +425,33 @@ def buscar_macro_bcb(codigo_serie: int) -> pd.DataFrame:
 
 
 # --- 5. IPEADATA (Macro Estrutural) ---
+# --- 5. IPEADATA (Macro Estrutural corrigido) ---
 @st.cache_data(ttl=3600, show_spinner=False)
 def buscar_macro_ipea(codigo_serie: str) -> pd.DataFrame:
     """
-    Busca séries temporais públicas diretamente da API OData do IPEADATA.
-    - 'JPM366_EMBI366' : Risco-País (EMBI+ Brasil)
-    - 'IGP12_IGPMG12'  : IGP-M Mensal
+    Busca séries temporais públicas diretamente da API OData do IPEADATA
+    usando a rota correta do serviço.
     """
-    url = f"http://www.ipeadata.gov.br/api/odata4/Valores(SERCODIGO='{codigo_serie}')"
+    url = f"http://www.ipeadata.gov.br/api/odata4/ValoresSerie(SERCODIGO='{codigo_serie}')"
     try:
         r = requests.get(url, timeout=12)
         if r.status_code == 200:
             dados = r.json().get("value", [])
             if dados:
                 df = pd.DataFrame(dados)
-                df["VALDATA"] = pd.to_datetime(df["VALDATA"], errors="coerce")
-                df["VALVALOR"] = pd.to_numeric(df["VALVALOR"], errors="coerce")
-                return df.dropna(subset=["VALDATA", "VALVALOR"]).set_index("VALDATA").sort_index()[["VALVALOR"]].rename(columns={"VALVALOR": "valor"})
+                # Normaliza os nomes das colunas que a API devolve
+                col_data = "VALDATA" if "VALDATA" in df.columns else "Data"
+                col_valor = "VALVALOR" if "VALVALOR" in df.columns else "Valor"
+                
+                df[col_data] = pd.to_datetime(df[col_data], errors="coerce")
+                df[col_valor] = pd.to_numeric(df[col_valor], errors="coerce")
+                
+                df = df.dropna(subset=[col_data, col_valor]).set_index(col_data).sort_index()
+                return df[[col_valor]].rename(columns={col_valor: "valor"})
     except Exception as e:
         st.error(f"Erro ao buscar série {codigo_serie} no IPEADATA: {e}")
     return pd.DataFrame()
+
 
 
 # ---------------------------------------------------------------- Funções unificadas
