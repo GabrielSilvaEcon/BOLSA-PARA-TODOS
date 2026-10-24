@@ -1,13 +1,7 @@
 """
-Painel B3 - Análise Fundamentalista + Técnica + Macro & Micro
+Painel B3 - Análise Fundamentalista + Técnica + Macro & Micro (Versão Completa & IPEADATA)
 
 Rodar com: streamlit run app.py
-
-Dependências: pip install -r requirements.txt (streamlit>=1.49, pandas, plotly, requests, yfinance, fundamentus)
-
-Token da Brapi (NUNCA coloque o token direto no código):
-- Local: crie o arquivo .streamlit/secrets.toml com a linha BRAPI_TOKEN = "seu_token_aqui"
-- Ou defina a variável de ambiente BRAPI_TOKEN.
 """
 
 import json
@@ -27,11 +21,11 @@ import tecnica as tec
 
 st.set_page_config(page_title="Painel B3", page_icon="📈", layout="wide")
 
-# ---------------------------------------------------------------- paleta neutra
-BG, SURFACE, BORDER = "#15171c", "#1b1e25", "#2a2e37"
-TEXT, MUTED = "#cfd3da", "#8b919c"
-ACCENT = "#8aa0b8"
-GOOD, FAIR, BAD = "#7fae93", "#c2ad7e", "#c08580"
+# ---------------------------------------------------------------- paleta neutra e confortável
+BG, SURFACE, BORDER = "#0e1117", "#161b22", "#30363d"
+TEXT, MUTED = "#e6edf3", "#8b949e"
+ACCENT = "#58a6ff"
+GOOD, FAIR, BAD = "#3fb950", "#d29922", "#f85149"
 
 st.markdown(
     f"""
@@ -42,22 +36,23 @@ section[data-testid="stSidebar"] {{background:{SURFACE}; border-right:1px solid 
 .block-container {{padding-top:2.2rem; max-width:1400px;}}
 .topo {{display:flex; align-items:baseline; gap:14px; padding-bottom:10px;
 border-bottom:1px solid {BORDER}; margin-bottom:14px;}}
-.hero {{font-size:1.45rem; font-weight:700; color:#d9dce2; letter-spacing:.2px;}}
+.hero {{font-size:1.45rem; font-weight:700; color:{TEXT}; letter-spacing:.2px;}}
 .sub {{font-size:.78rem; color:{MUTED};}}
 .card {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:14px;
 padding:16px 18px; margin-bottom:10px;}}
-.tk {{font-size:1.3rem; font-weight:700; letter-spacing:.4px;}}
+.tk {{font-size:1.3rem; font-weight:700; color:{TEXT}; letter-spacing:.4px;}}
 .nm {{font-size:.78rem; color:{MUTED}; margin-bottom:8px;}}
 .aviso {{font-size:.72rem; color:{FAIR}; margin-top:6px;}}
 .badge {{display:inline-block; padding:3px 11px; border-radius:999px;
 font-size:.72rem; font-weight:600; float:right;}}
-.good {{background:rgba(127,174,147,.14); color:{GOOD};}}
-.fair {{background:rgba(194,173,126,.14); color:{FAIR};}}
-.bad {{background:rgba(192,133,128,.14); color:{BAD};}}
-.na {{background:rgba(139,145,156,.14); color:{MUTED};}}
+.good {{background:rgba(63,185,80,.15); color:{GOOD};}}
+.fair {{background:rgba(210,153,34,.15); color:{FAIR};}}
+.bad {{background:rgba(248,81,73,.15); color:{BAD};}}
+.na {{background:rgba(139,148,158,.15); color:{MUTED};}}
 .lbl {{font-size:.68rem; color:{MUTED}; text-transform:uppercase; letter-spacing:.8px;}}
-.val {{font-size:1.15rem; font-weight:600;}}
-h4 {{font-weight:600; color:#d9dce2;}}
+.val {{font-size:1.15rem; font-weight:600; color:{TEXT};}}
+h4 {{font-weight:600; color:{TEXT};}}
+p, span, label, div {{color: {TEXT};}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -65,7 +60,7 @@ h4 {{font-weight:600; color:#d9dce2;}}
 
 PLOT = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font={"color": TEXT}, margin=dict(l=10, r=10, t=40, b=10))
-GRID = dict(gridcolor="#262a33", zeroline=False)
+GRID = dict(gridcolor="#30363d", zeroline=False)
 
 # ---------------------------------------------------------------- estado
 if "ativos" not in st.session_state:
@@ -116,7 +111,10 @@ def _primeiro(js):
 
 def _num(x):
     try:
-        return None if x is None else float(x)
+        if x is None or pd.isna(x):
+            return None
+        val = float(x)
+        return None if pd.isna(val) else val
     except (TypeError, ValueError):
         return None
 
@@ -124,31 +122,34 @@ def _proventos(lista):
     vazio = pd.Series(dtype=float)
     if not lista:
         return vazio, None, None
-    df = pd.DataFrame(lista)
-    if "rate" not in df:
+    try:
+        df = pd.DataFrame(lista)
+        if "rate" not in df:
+            return vazio, None, None
+        df["rate"] = pd.to_numeric(df["rate"], errors="coerce")
+
+        data = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns, UTC]")
+        for col in ("paymentDate", "exDate", "lastDatePrior"):
+            if col in df:
+                data = data.fillna(pd.to_datetime(df[col], errors="coerce", utc=True))
+        df["data"] = data
+        df = df.dropna(subset=["rate", "data"])
+        if df.empty:
+            return vazio, None, None
+
+        por_ano = df.groupby(df["data"].dt.year)["rate"].sum()
+        por_ano.index = por_ano.index.astype(int)
+        por_ano.index.name = "ano"
+
+        hoje = pd.Timestamp.now(tz="UTC")
+        mask12 = (df["data"] >= hoje - pd.Timedelta(days=365)) & (df["data"] <= hoje)
+        div_12m = float(df.loc[mask12, "rate"].sum())
+
+        completos = por_ano[por_ano.index < hoje.year].tail(5)
+        base = completos if len(completos) else por_ano
+        return por_ano, float(base.mean()) if not base.empty else 0.0, div_12m
+    except Exception:
         return vazio, None, None
-    df["rate"] = pd.to_numeric(df["rate"], errors="coerce")
-
-    data = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns, UTC]")
-    for col in ("paymentDate", "exDate", "lastDatePrior"):
-        if col in df:
-            data = data.fillna(pd.to_datetime(df[col], errors="coerce", utc=True))
-    df["data"] = data
-    df = df.dropna(subset=["rate", "data"])
-    if df.empty:
-        return vazio, None, None
-
-    por_ano = df.groupby(df["data"].dt.year)["rate"].sum()
-    por_ano.index = por_ano.index.astype(int)
-    por_ano.index.name = "ano"
-
-    hoje = pd.Timestamp.now(tz="UTC")
-    mask12 = (df["data"] >= hoje - pd.Timedelta(days=365)) & (df["data"] <= hoje)
-    div_12m = float(df.loc[mask12, "rate"].sum())
-
-    completos = por_ano[por_ano.index < hoje.year].tail(5)
-    base = completos if len(completos) else por_ano
-    return por_ano, float(base.mean()), div_12m
 
 def buscar_brapi(ticker: str) -> dict:
     tk = normaliza(ticker)
@@ -159,93 +160,102 @@ def buscar_brapi(ticker: str) -> dict:
         "acoes": None, "moeda": "BRL", "erro": None,
     }
     erros = []
-    js, err = _get(f"/quote/{tk}", {"dividends": "true"})
-    if err:
-        erros.append(f"cotação: {err}")
-    q = _primeiro(js)
-    lista_div = None
-    if q:
-        d["nome"] = q.get("longName") or q.get("shortName") or tk
-        d["preco"] = _num(q.get("regularMarketPrice"))
-        d["lpa"] = _num(q.get("earningsPerShare"))
-        d["moeda"] = q.get("currency") or "BRL"
-        lista_div = (q.get("dividendsData") or {}).get("cashDividends")
-
-    if lista_div is None:
-        js, err = _get("/v2/stocks/dividends", {"symbols": tk})
+    try:
+        js, err = _get(f"/quote/{tk}", {"dividends": "true"})
         if err:
-            erros.append(f"dividendos: {err}")
+            erros.append(f"cotação: {err}")
+        q = _primeiro(js)
+        lista_div = None
+        if q:
+            d["nome"] = q.get("longName") or q.get("shortName") or tk
+            d["preco"] = _num(q.get("regularMarketPrice"))
+            d["lpa"] = _num(q.get("earningsPerShare"))
+            d["moeda"] = q.get("currency") or "BRL"
+            lista_div = (q.get("dividendsData") or {}).get("cashDividends")
+
+        if lista_div is None:
+            js, err = _get("/v2/stocks/dividends", {"symbols": tk})
+            if err:
+                erros.append(f"dividendos: {err}")
+            item = _primeiro(js)
+            if item:
+                lista_div = (item.get("data") or {}).get("cashDividends")
+        d["div_ano"], d["div_medio"], d["div_12m"] = _proventos(lista_div)
+
+        js, err = _get("/v2/stocks/statistics", {"symbols": tk})
+        if err:
+            erros.append(f"múltiplos: {err}")
         item = _primeiro(js)
-        if item:
-            lista_div = (item.get("data") or {}).get("cashDividends")
-    d["div_ano"], d["div_medio"], d["div_12m"] = _proventos(lista_div)
+        est = (item or {}).get("data") or {}
+        if isinstance(est, dict):
+            d["vpa"] = _num(est.get("bookValue"))
+            d["lpa"] = _num(est.get("trailingEps")) or d["lpa"]
+            d["ev_ebitda"] = _num(est.get("enterpriseToEbitda"))
+            d["acoes"] = _num(est.get("sharesOutstanding"))
+            d["margem_liq"] = _num(est.get("profitMargins"))
 
-    js, err = _get("/v2/stocks/statistics", {"symbols": tk})
-    if err:
-        erros.append(f"múltiplos: {err}")
-    item = _primeiro(js)
-    est = (item or {}).get("data") or {}
-    if isinstance(est, dict):
-        d["vpa"] = _num(est.get("bookValue"))
-        d["lpa"] = _num(est.get("trailingEps")) or d["lpa"]
-        d["ev_ebitda"] = _num(est.get("enterpriseToEbitda"))
-        d["acoes"] = _num(est.get("sharesOutstanding"))
-        d["margem_liq"] = _num(est.get("profitMargins"))
-
-    js, err = _get("/v2/stocks/financial-data", {"symbols": tk})
-    if err:
-        erros.append(f"dados financeiros: {err}")
-    item = _primeiro(js)
-    fin = (item or {}).get("data") or {}
-    if isinstance(fin, dict):
-        d["roe"] = _num(fin.get("returnOnEquity"))
-        d["margem_liq"] = _num(fin.get("profitMargins")) if _num(fin.get("profitMargins")) is not None else d["margem_liq"]
-        dpl = _num(fin.get("debtToEquity"))
-        d["div_pl"] = dpl * 100 if dpl is not None else None
-        if fin.get("financialCurrency"):
-            d["moeda"] = fin["financialCurrency"]
+        js, err = _get("/v2/stocks/financial-data", {"symbols": tk})
+        if err:
+            erros.append(f"dados financeiros: {err}")
+        item = _primeiro(js)
+        fin = (item or {}).get("data") or {}
+        if isinstance(fin, dict):
+            d["roe"] = _num(fin.get("returnOnEquity"))
+            d["margem_liq"] = _num(fin.get("profitMargins")) if _num(fin.get("profitMargins")) is not None else d["margem_liq"]
+            dpl = _num(fin.get("debtToEquity"))
+            d["div_pl"] = dpl * 100 if dpl is not None else None
+            if fin.get("financialCurrency"):
+                d["moeda"] = fin["financialCurrency"]
+    except Exception as e:
+        erros.append(f"exceção brapi: {e}")
 
     d["erro"] = "; ".join(erros) or None
     return d
 
 def buscar_caixa_brapi(ticker: str) -> pd.DataFrame:
-    js, _ = _get("/v2/stocks/cash-flow", {"symbols": normaliza(ticker), "period": "annual"})
-    item = _primeiro(js)
-    linhas = (item or {}).get("data")
-    if not linhas:
+    try:
+        js, _ = _get("/v2/stocks/cash-flow", {"symbols": normaliza(ticker), "period": "annual"})
+        item = _primeiro(js)
+        linhas = (item or {}).get("data")
+        if not linhas:
+            return pd.DataFrame()
+        df = pd.DataFrame(linhas)
+        if "endDate" not in df:
+            return pd.DataFrame()
+        nomes = {
+            "operatingCashFlow": "Caixa operacional",
+            "investmentCashFlow": "Caixa de investimento",
+            "freeCashFlow": "Fluxo de caixa livre",
+        }
+        cols = [k for k in nomes if k in df]
+        if not cols:
+            return pd.DataFrame()
+        out = df[cols].apply(pd.to_numeric, errors="coerce").rename(columns=nomes)
+        out.index = pd.to_datetime(df["endDate"], errors="coerce").dt.year
+        out = out[out.index.notna()]
+        out.index = out.index.astype(int)
+        out = out[~out.index.duplicated(keep="last")]
+        return out.dropna(how="all").sort_index()
+    except Exception:
         return pd.DataFrame()
-    df = pd.DataFrame(linhas)
-    if "endDate" not in df:
-        return pd.DataFrame()
-    nomes = {
-        "operatingCashFlow": "Caixa operacional",
-        "investmentCashFlow": "Caixa de investimento",
-        "freeCashFlow": "Fluxo de caixa livre",
-    }
-    cols = [k for k in nomes if k in df]
-    if not cols:
-        return pd.DataFrame()
-    out = df[cols].apply(pd.to_numeric, errors="coerce").rename(columns=nomes)
-    out.index = pd.to_datetime(df["endDate"], errors="coerce").dt.year
-    out = out[out.index.notna()]
-    out.index = out.index.astype(int)
-    out = out[~out.index.duplicated(keep="last")]
-    return out.dropna(how="all").sort_index()
 
 def historico_brapi(ticker: str, periodo: str, intervalo: str):
-    js, err = _get(f"/quote/{normaliza(ticker)}", {"range": periodo, "interval": intervalo})
-    item = _primeiro(js)
-    dados = (item or {}).get("historicalDataPrice")
-    if not dados:
-        return pd.DataFrame(), err or "a API não devolveu histórico para esse ativo/período"
-    df = pd.DataFrame(dados).rename(columns={
-        "date": "Date", "open": "Open", "high": "High",
-        "low": "Low", "close": "Close", "volume": "Volume"})
-    df["Date"] = (pd.to_datetime(df["Date"], unit="s", utc=True)
-                  .dt.tz_convert("America/Sao_Paulo").dt.tz_localize(None).dt.normalize())
-    df = df.drop_duplicates("Date").set_index("Date").sort_index()
-    df = df[["Open", "High", "Low", "Close", "Volume"]].apply(pd.to_numeric, errors="coerce")
-    return df.dropna(subset=["Open", "High", "Low", "Close"]), None
+    try:
+        js, err = _get(f"/quote/{normaliza(ticker)}", {"range": periodo, "interval": intervalo})
+        item = _primeiro(js)
+        dados = (item or {}).get("historicalDataPrice")
+        if not dados:
+            return pd.DataFrame(), err or "a API não devolveu histórico para esse ativo/período"
+        df = pd.DataFrame(dados).rename(columns={
+            "date": "Date", "open": "Open", "high": "High",
+            "low": "Low", "close": "Close", "volume": "Volume"})
+        df["Date"] = (pd.to_datetime(df["Date"], unit="s", utc=True)
+                      .dt.tz_convert("America/Sao_Paulo").dt.tz_localize(None).dt.normalize())
+        df = df.drop_duplicates("Date").set_index("Date").sort_index()
+        df = df[["Open", "High", "Low", "Close", "Volume"]].apply(pd.to_numeric, errors="coerce")
+        return df.dropna(subset=["Open", "High", "Low", "Close"]), None
+    except Exception as e:
+        return pd.DataFrame(), str(e)
 
 
 # --- 2. Yahoo Finance ---
@@ -390,43 +400,81 @@ def buscar_caixa_fundamentus(ticker: str) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-# --- 4. Banco Central do Brasil (Macro) ---
+# --- 4. Banco Central do Brasil (Macro SGS) ---
 @st.cache_data(ttl=3600, show_spinner=False)
 def buscar_macro_bcb(codigo_serie: int) -> pd.DataFrame:
     """
     432 - Taxa SELIC meta (% a.a.)
     433 - IPCA (% mensal)
+    13522 - IPCA (Acumulado em 12 meses %)
     10813 - Dólar PTAX (Venda)
+    24369 - Taxa de desocupação (Desemprego PNAD %)
     """
     url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo_serie}/dados?formato=json"
     try:
         r = requests.get(url, timeout=10)
         if r.status_code == 200:
             df = pd.DataFrame(r.json())
-            df["data"] = pd.to_datetime(df["data"], format="%d/%m/%Y")
-            df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
-            return df.set_index("data").sort_index()
+            if not df.empty and "data" in df and "valor" in df:
+                df["data"] = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
+                df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
+                return df.dropna(subset=["data"]).set_index("data").sort_index()
     except Exception as e:
         st.error(f"Erro ao buscar série {codigo_serie} no BCB: {e}")
+    return pd.DataFrame()
+
+
+# --- 5. IPEADATA (Macro Estrutural) ---
+@st.cache_data(ttl=3600, show_spinner=False)
+def buscar_macro_ipea(codigo_serie: str) -> pd.DataFrame:
+    """
+    Busca séries temporais públicas diretamente da API OData do IPEADATA.
+    - 'JPM366_EMBI366' : Risco-País (EMBI+ Brasil)
+    - 'IGP12_IGPMG12'  : IGP-M Mensal
+    """
+    url = f"http://www.ipeadata.gov.br/api/odata4/Valores(SERCODIGO='{codigo_serie}')"
+    try:
+        r = requests.get(url, timeout=12)
+        if r.status_code == 200:
+            dados = r.json().get("value", [])
+            if dados:
+                df = pd.DataFrame(dados)
+                df["VALDATA"] = pd.to_datetime(df["VALDATA"], errors="coerce")
+                df["VALVALOR"] = pd.to_numeric(df["VALVALOR"], errors="coerce")
+                return df.dropna(subset=["VALDATA", "VALVALOR"]).set_index("VALDATA").sort_index()[["VALVALOR"]].rename(columns={"VALVALOR": "valor"})
+    except Exception as e:
+        st.error(f"Erro ao buscar série {codigo_serie} no IPEADATA: {e}")
     return pd.DataFrame()
 
 
 # ---------------------------------------------------------------- Funções unificadas
 def buscar(ticker: str) -> dict:
     fonte = st.session_state.get("fonte_dados", "Yahoo Finance")
+    d = {}
     if fonte == "Brapi":
-        return buscar_brapi(ticker)
+        d = buscar_brapi(ticker)
     elif fonte == "Fundamentus":
-        return buscar_fundamentus(ticker)
+        d = buscar_fundamentus(ticker)
     else:
-        return buscar_yahoo(ticker)
+        d = buscar_yahoo(ticker)
+    
+    if (d.get("preco") is None or d.get("preco") == 0) and fonte != "Yahoo Finance":
+        d_fb = buscar_yahoo(ticker)
+        if d_fb.get("preco") is not None and d_fb.get("preco") > 0:
+            d = d_fb
+            d["erro"] = (d.get("erro", "") or "") + " [Fallback ativado: dados recuperados do Yahoo Finance]"
+            
+    return d
 
 def buscar_caixa(ticker: str) -> pd.DataFrame:
     fonte = st.session_state.get("fonte_dados", "Yahoo Finance")
     if fonte == "Brapi":
-        return buscar_caixa_brapi(ticker)
+        df = buscar_caixa_brapi(ticker)
+        if df.empty:
+            df = buscar_caixa_yahoo(ticker)
+        return df
     elif fonte == "Fundamentus":
-        return buscar_caixa_fundamentus(ticker)
+        return buscar_caixa_yahoo(ticker)
     else:
         return buscar_caixa_yahoo(ticker)
 
@@ -447,7 +495,7 @@ def carregar(ativos):
             except Exception as e:
                 st.warning(f"Não consegui carregar {tk}: {e}")
                 continue
-            if d["preco"] is None and d["erro"]:
+            if d.get("preco") is None and d.get("erro"):
                 st.warning(f"{tk}: {d['erro']}")
             out[tk] = d
     return out
@@ -455,25 +503,30 @@ def carregar(ativos):
 
 # ---------------------------------------------------------------- cálculos
 def analisar(d: dict, metodo: str, yield_alvo: float, margem_alvo: float) -> dict:
+    lpa, vpa, preco, div_medio = d.get("lpa"), d.get("vpa"), d.get("preco"), d.get("div_medio")
+
     graham = None
-    if d["lpa"] and d["vpa"] and d["lpa"] > 0 and d["vpa"] > 0:
-        graham = sqrt(22.5 * d["lpa"] * d["vpa"])
+    if lpa is not None and vpa is not None and lpa > 0 and vpa > 0:
+        try:
+            graham = sqrt(22.5 * lpa * vpa)
+        except Exception:
+            graham = None
 
     bazin = None
-    if d["div_medio"] and d["div_medio"] > 0:
-        bazin = d["div_medio"] / (yield_alvo / 100)
+    if div_medio is not None and div_medio > 0 and yield_alvo > 0:
+        bazin = div_medio / (yield_alvo / 100)
 
     if metodo == "Graham":
         justo = graham
     elif metodo == "Bazin":
         justo = bazin
     else:
-        vals = [v for v in (graham, bazin) if v]
+        vals = [v for v in (graham, bazin) if v is not None and v > 0]
         justo = sum(vals) / len(vals) if vals else None
 
     margem = None
-    if justo and d["preco"]:
-        margem = (justo - d["preco"]) / justo * 100
+    if justo is not None and preco is not None and justo > 0:
+        margem = (justo - preco) / justo * 100
 
     if margem is None:
         status, cls = "Sem dados", "na"
@@ -488,41 +541,48 @@ def analisar(d: dict, metodo: str, yield_alvo: float, margem_alvo: float) -> dic
             "margem": margem, "status": status, "cls": cls}
 
 def multiplos(d: dict) -> dict:
-    p = d["preco"]
+    p, lpa, vpa = d.get("preco"), d.get("lpa"), d.get("vpa")
+    div_12m, roe, margem_liq = d.get("div_12m"), d.get("roe"), d.get("margem_liq")
+
     return {
-        "pl": p / d["lpa"] if p and d["lpa"] and d["lpa"] > 0 else None,
-        "pvp": p / d["vpa"] if p and d["vpa"] and d["vpa"] > 0 else None,
-        "dy": d["div_12m"] / p * 100 if p and d["div_12m"] is not None else None,
-        "roe": d["roe"] * 100 if d["roe"] is not None else None,
-        "margem": d["margem_liq"] * 100 if d["margem_liq"] is not None else None,
+        "pl": p / lpa if p and lpa and lpa > 0 else None,
+        "pvp": p / vpa if p and vpa and vpa > 0 else None,
+        "dy": div_12m / p * 100 if p and p > 0 and div_12m is not None else None,
+        "roe": roe * 100 if roe is not None else None,
+        "margem": margem_liq * 100 if margem_liq is not None else None,
     }
 
 def dcf(caixa: pd.DataFrame, acoes, moeda: str, taxa: float, g: float, gp: float):
-    if moeda != "BRL" or not acoes or caixa.empty or "Fluxo de caixa livre" not in caixa:
+    if moeda != "BRL" or not acoes or acoes <= 0 or caixa.empty or "Fluxo de caixa livre" not in caixa:
         return None, None
-    base = caixa["Fluxo de caixa livre"].dropna().tail(3).mean()
-    if pd.isna(base) or base <= 0:
-        return None, base
-    pv = sum(base * (1 + g) ** t / (1 + taxa) ** t for t in range(1, 6))
-    vt = base * (1 + g) ** 5 * (1 + gp) / (taxa - gp)
-    return (pv + vt / (1 + taxa) ** 5) / acoes, base
+    try:
+        base = caixa["Fluxo de caixa livre"].dropna().tail(3).mean()
+        if pd.isna(base) or base <= 0:
+            return None, base
+        if taxa <= gp:
+            return None, base
+        pv = sum(base * (1 + g) ** t / (1 + taxa) ** t for t in range(1, 6))
+        vt = base * (1 + g) ** 5 * (1 + gp) / (taxa - gp)
+        return (pv + vt / (1 + taxa) ** 5) / acoes, base
+    except Exception:
+        return None, None
 
 def brl(v):
     return "—" if v is None or pd.isna(v) else f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def gauge(margem):
-    v = 0 if margem is None else max(-60, min(60, margem))
+    v = 0 if margem is None or pd.isna(margem) else max(-60, min(60, margem))
     fig = go.Figure(go.Indicator(
         mode="gauge+number", value=v,
         number={"suffix": "%", "font": {"size": 26, "color": TEXT}},
         gauge={
-            "axis": {"range": [-60, 60], "tickcolor": "#5d6470"},
-            "bar": {"color": "#aeb4bf", "thickness": 0.22},
+            "axis": {"range": [-60, 60], "tickcolor": MUTED},
+            "bar": {"color": ACCENT, "thickness": 0.22},
             "bgcolor": "rgba(0,0,0,0)", "borderwidth": 0,
             "steps": [
-                {"range": [-60, 0], "color": "rgba(192,133,128,.30)"},
-                {"range": [0, 20], "color": "rgba(194,173,126,.30)"},
-                {"range": [20, 60], "color": "rgba(127,174,147,.30)"},
+                {"range": [-60, 0], "color": "rgba(248,81,73,.20)"},
+                {"range": [0, 20], "color": "rgba(210,153,34,.20)"},
+                {"range": [20, 60], "color": "rgba(63,185,80,.20)"},
             ],
         },
     ))
@@ -548,8 +608,9 @@ def pagina_preco_justo(dados):
             cols = st.columns(por_linha)
             for col, r in zip(cols, resultados[i:i + por_linha]):
                 with col:
-                    aviso = (f'<div class="aviso">Balanço em {r["moeda"]}: LPA/VPA podem não estar em R$</div>'
-                             if r["moeda"] != "BRL" else "")
+                    aviso_moeda = f'<div class="aviso">Balanço em {r["moeda"]}: LPA/VPA podem não estar em R$</div>' if r["moeda"] != "BRL" else ""
+                    aviso_lpa_neg = '<div class="aviso" style="color:#f85149;">⚠️ LPA ou VPA negativo/nulo (Graham bloqueado)</div>' if (r.get("lpa", 0) or 0) <= 0 or (r.get("vpa", 0) or 0) <= 0 else ""
+                    
                     st.markdown(
                         f"""<div class="card">
 <span class="badge {r['cls']}">{r['status']}</span>
@@ -562,7 +623,7 @@ def pagina_preco_justo(dados):
 <div style="margin-top:10px;">
 <div class="lbl">Média de dividendos (5 anos)</div>
 <div class="val">{brl(r['div_medio'])} <span style="font-size:.72rem;color:{MUTED}">/ ano</span></div>
-</div>{aviso}</div>""",
+</div>{aviso_moeda}{aviso_lpa_neg}</div>""",
                         unsafe_allow_html=True,
                     )
                     st.plotly_chart(gauge(r["margem"]), width="stretch",
@@ -576,8 +637,8 @@ def pagina_preco_justo(dados):
         } for r in resultados])
 
         fig = go.Figure()
-        fig.add_bar(x=df["Ticker"], y=df["Preço"], name="Preço atual", marker_color="#6b7a8f")
-        fig.add_bar(x=df["Ticker"], y=df["Preço justo"], name="Preço justo", marker_color="#7fae93")
+        fig.add_bar(x=df["Ticker"], y=df["Preço"], name="Preço atual", marker_color="#8b949e")
+        fig.add_bar(x=df["Ticker"], y=df["Preço justo"], name="Preço justo", marker_color="#3fb950")
         fig.update_layout(barmode="group", height=340, legend=dict(orientation="h", y=1.1), **PLOT)
         fig.update_yaxes(**GRID)
         st.plotly_chart(fig, width="stretch")
@@ -614,7 +675,7 @@ def pagina_valuation(dados):
     if d2.empty:
         st.info("Sem dados disponíveis para esse indicador nos ativos selecionados.")
     else:
-        fig = go.Figure(go.Bar(x=d2["Ticker"], y=d2[metrica], marker_color="#6b7a8f",
+        fig = go.Figure(go.Bar(x=d2["Ticker"], y=d2[metrica], marker_color="#58a6ff",
                                text=[f"{v:.2f}" for v in d2[metrica]], textposition="outside"))
         fig.update_layout(title=metrica, height=340, **PLOT)
         fig.update_yaxes(**GRID)
@@ -627,12 +688,16 @@ def pagina_valuation(dados):
 def pagina_caixa(dados):
     st.markdown("#### Fluxo de caixa histórico")
     tk = st.selectbox("Ativo", list(dados), key="cx_ativo")
+    
+    if tk.startswith(("ITSA", "ITUB", "BBDC", "BBAS", "BPAC", "SANB")):
+        st.info(f"ℹ️ **Aviso setorial**: {tk} pertence ao setor financeiro/bancário. O Fluxo de Caixa Livre e o modelo DCF tradicional sofrem distorções estruturais nestas empresas.")
+
     caixa = buscar_caixa(tk)
     if caixa.empty:
         st.info(f"Sem dados de fluxo de caixa para {tk} na fonte atual.")
     else:
-        cores = {"Caixa operacional": "#6b7a8f", "Caixa de investimento": "#c08580",
-                 "Fluxo de caixa livre": "#7fae93"}
+        cores = {"Caixa operacional": "#8b949e", "Caixa de investimento": "#f85149",
+                 "Fluxo de caixa livre": "#3fb950"}
         fig = go.Figure()
         for col in caixa.columns:
             fig.add_bar(x=[str(a) for a in caixa.index], y=caixa[col] / 1e6, name=col,
@@ -651,10 +716,10 @@ def pagina_caixa(dados):
 
     linhas = []
     for t, d in dados.items():
-        valor, base = dcf(buscar_caixa(t), d["acoes"], d["moeda"], taxa, g, gp)
-        margem = (valor - d["preco"]) / valor * 100 if valor and d["preco"] else None
+        valor, base = dcf(buscar_caixa(t), d.get("acoes"), d.get("moeda", "BRL"), taxa, g, gp)
+        margem = (valor - d["preco"]) / valor * 100 if valor and d.get("preco") and valor > 0 else None
         linhas.append({"Ticker": t, "FCL médio 3a (R$ mi)": base / 1e6 if base is not None and not pd.isna(base) else None,
-                       "Valor DCF": valor, "Preço": d["preco"], "Margem (%)": margem})
+                       "Valor DCF": valor, "Preço": d.get("preco"), "Margem (%)": margem})
     st.dataframe(pd.DataFrame(linhas).style.format({
         "FCL médio 3a (R$ mi)": "{:,.0f}", "Valor DCF": "R$ {:.2f}", "Preço": "R$ {:.2f}",
         "Margem (%)": "{:.1f}%"}, na_rep="—"), width="stretch", hide_index=True)
@@ -663,84 +728,133 @@ def pagina_caixa(dados):
 def pagina_dividendos(dados):
     fig = go.Figure()
     for d in dados.values():
-        if len(d["div_ano"]):
+        if d.get("div_ano") is not None and len(d["div_ano"]) > 0:
             fig.add_bar(x=[str(a) for a in d["div_ano"].index], y=d["div_ano"].values, name=d["ticker"])
     fig.update_layout(barmode="group", title="Dividendos por ação (R$/ano)", height=360,
-                      colorway=["#6b7a8f", "#7fae93", "#c2ad7e", "#c08580", "#9a8fb0", "#8fb0ad"], **PLOT)
+                      colorway=["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#33b3ae"], **PLOT)
     fig.update_yaxes(**GRID)
     st.plotly_chart(fig, width="stretch")
 
     linhas = []
     for t, d in dados.items():
-        p = d["preco"]
-        linhas.append({"Ticker": t, "Proventos 12m": d["div_12m"], "Média 5 anos": d["div_medio"],
-                       "DY 12m (%)": d["div_12m"] / p * 100 if p and d["div_12m"] is not None else None,
-                       "DY s/ média 5a (%)": d["div_medio"] / p * 100 if p and d["div_medio"] else None})
+        p, div_12m, div_medio = d.get("preco"), d.get("div_12m"), d.get("div_medio")
+        linhas.append({"Ticker": t, "Proventos 12m": div_12m, "Média 5 anos": div_medio,
+                       "DY 12m (%)": div_12m / p * 100 if p and p > 0 and div_12m is not None else None,
+                       "DY s/ média 5a (%)": div_medio / p * 100 if p and p > 0 and div_medio is not None else None})
     st.dataframe(pd.DataFrame(linhas).style.format({
         "Proventos 12m": "R$ {:.2f}", "Média 5 anos": "R$ {:.2f}",
         "DY 12m (%)": "{:.2f}%", "DY s/ média 5a (%)": "{:.2f}%"}, na_rep="—"),
         width="stretch", hide_index=True)
 
 
-# ---------------------------------------------------------------- página: macro & micro
+# ---------------------------------------------------------------- página: macro & micro avançada
 def pagina_macro_micro(dados_micro):
-    st.subheader("🌐 Painel Macroeconômico & Microeconômico")
+    st.subheader("🌐 Painel Macroeconômico & Microeconômico Avançado")
     
-    t_macro, t_micro = st.tabs(["📊 Macroeconômico (Brasil)", "🏢 Microeconômico (Empresas)"])
+    t_macro, t_micro = st.tabs(["📊 Macroeconômico (Brasil & IPEADATA)", "🏢 Microeconômico (Empresas)"])
     
     with t_macro:
-        st.markdown("#### Indicadores Oficiais - Banco Central do Brasil (SGS)")
+        st.markdown("#### 🇧🇷 Indicadores de Contexto Macroeconômico para Investidores")
         
-        c1, c2 = st.columns(2)
+        tab_bcb, tab_ipea = st.tabs(["🏦 Banco Central (SGS)", "🏛️ IPEADATA (Risco-País & Índices)"])
         
-        with c1:
-            st.markdown("##### Taxa Selic Meta (% a.a.)")
-            df_selic = buscar_macro_bcb(432)
-            if not df_selic.empty:
-                ultimo_val = df_selic["valor"].iloc[-1]
-                st.metric("Selic Atual", f"{ultimo_val:.2f}%")
-                
-                fig = go.Figure(go.Scatter(x=df_selic.index[-60:], y=df_selic["valor"].tail(60), mode='lines', name='Selic', line=dict(color='#7fae93')))
-                fig.update_layout(height=280, **PLOT)
-                fig.update_yaxes(**GRID)
-                st.plotly_chart(fig, use_container_width=True)
+        with tab_bcb:
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("##### 📈 Taxa Selic Meta (% a.a.)")
+                df_selic = buscar_macro_bcb(432)
+                if not df_selic.empty:
+                    st.metric("Selic Atual", f"{df_selic['valor'].iloc[-1]:.2f}%")
+                    fig = go.Figure(go.Scatter(x=df_selic.index[-70:], y=df_selic["valor"].tail(70), mode='lines+markers', line=dict(color='#3fb950', width=2)))
+                    fig.update_layout(height=250, **PLOT)
+                    fig.update_yaxes(**GRID)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("Dados da Selic indisponíveis no momento.")
 
-        with c2:
-            st.markdown("##### IPCA Mensal (%)")
-            df_ipca = buscar_macro_bcb(433)
-            if not df_ipca.empty:
-                ultimo_ipca = df_ipca["valor"].iloc[-1]
-                st.metric("Último IPCA registrado", f"{ultimo_ipca:.2f}%")
-                
-                fig2 = go.Figure(go.Bar(x=df_ipca.index[-24:], y=df_ipca["valor"].tail(24), marker_color="#8aa0b8"))
-                fig2.update_layout(height=280, **PLOT)
-                fig2.update_yaxes(**GRID)
-                st.plotly_chart(fig2, use_container_width=True)
+            with c2:
+                st.markdown("##### 🛒 IPCA Acumulado 12 Meses (%)")
+                df_ipca12 = buscar_macro_bcb(13522)
+                if not df_ipca12.empty:
+                    st.metric("IPCA 12m Atual", f"{df_ipca12['valor'].iloc[-1]:.2f}%")
+                    fig_ipca = go.Figure(go.Scatter(x=df_ipca12.index[-36:], y=df_ipca12["valor"].tail(36), mode='lines+markers', line=dict(color='#d29922', width=2)))
+                    fig_ipca.update_layout(height=250, **PLOT)
+                    fig_ipca.update_yaxes(**GRID)
+                    st.plotly_chart(fig_ipca, use_container_width=True)
+                else:
+                    st.warning("Dados do IPCA 12m indisponíveis no momento.")
 
-        st.markdown("---")
-        st.markdown("##### Dólar PTAX (Venda - R$)")
-        df_dolar = buscar_macro_bcb(10813)
-        if not df_dolar.empty:
-            ultimo_dolar = df_dolar["valor"].iloc[-1]
-            st.metric("Dólar PTAX Atual", f"R$ {ultimo_dolar:.2f}")
-            
-            fig3 = go.Figure(go.Scatter(x=df_dolar.index[-120:], y=df_dolar["valor"].tail(120), mode='lines', line=dict(color='#c2ad7e')))
-            fig3.update_layout(height=250, **PLOT)
-            fig3.update_yaxes(**GRID)
-            st.plotly_chart(fig3, use_container_width=True)
+            st.markdown("---")
+            c3, c4 = st.columns(2)
+            with c3:
+                st.markdown("##### 💵 Dólar PTAX (Venda - R$)")
+                df_dolar = buscar_macro_bcb(10813)
+                if not df_dolar.empty:
+                    st.metric("Dólar PTAX Atual", f"R$ {df_dolar['valor'].iloc[-1]:.2f}")
+                    fig3 = go.Figure(go.Scatter(x=df_dolar.index[-90:], y=df_dolar["valor"].tail(90), mode='lines', line=dict(color='#58a6ff', width=2)))
+                    fig3.update_layout(height=250, **PLOT)
+                    fig3.update_yaxes(**GRID)
+                    st.plotly_chart(fig3, use_container_width=True)
+                else:
+                    st.warning("Dados do Dólar indisponíveis no momento.")
+
+            with c4:
+                st.markdown("##### 👥 Taxa de Desemprego (PNAD %)")
+                df_des = buscar_macro_bcb(24369)
+                if not df_des.empty:
+                    st.metric("Desemprego Atual", f"{df_des['valor'].iloc[-1]:.2f}%")
+                    fig_des = go.Figure(go.Scatter(x=df_des.index[-36:], y=df_des["valor"].tail(36), mode='lines+markers', line=dict(color='#f85149', width=2)))
+                    fig_des.update_layout(height=250, **PLOT)
+                    fig_des.update_yaxes(**GRID)
+                    st.plotly_chart(fig_des, use_container_width=True)
+                else:
+                    st.warning("Dados de desemprego indisponíveis no momento.")
+
+        with tab_ipea:
+            i1, i2 = st.columns(2)
+            with i1:
+                st.markdown("##### ⚠️ Risco-País (EMBI+ Brasil - Pontos)")
+                df_embi = buscar_macro_ipea("JPM366_EMBI366")
+                if not df_embi.empty:
+                    ultimo_embi = df_embi["valor"].iloc[-1]
+                    st.metric("Risco Brasil (EMBI+)", f"{ultimo_embi:.0f} pts")
+                    fig_embi = go.Figure(go.Scatter(x=df_embi.index[-120:], y=df_embi["valor"].tail(120), mode='lines', line=dict(color='#bc8cff', width=2)))
+                    fig_embi.update_layout(height=250, **PLOT)
+                    fig_embi.update_yaxes(**GRID)
+                    st.plotly_chart(fig_embi, use_container_width=True)
+                else:
+                    st.warning("Dados do Risco-País IPEADATA indisponíveis no momento.")
+
+            with i2:
+                st.markdown("##### 📦 IGP-M Mensal (%)")
+                df_igpm = buscar_macro_ipea("IGP12_IGPMG12")
+                if not df_igpm.empty:
+                    ultimo_igpm = df_igpm["valor"].iloc[-1]
+                    st.metric("Último IGP-M", f"{ultimo_igpm:.2f}%")
+                    fig_igpm = go.Figure(go.Bar(x=df_igpm.index[-24:], y=df_igpm["valor"].tail(24), marker_color="#33b3ae"))
+                    fig_igpm.update_layout(height=250, **PLOT)
+                    fig_igpm.update_yaxes(**GRID)
+                    st.plotly_chart(fig_igpm, use_container_width=True)
+                else:
+                    st.warning("Dados do IGP-M IPEADATA indisponíveis no momento.")
 
     with t_micro:
-        st.markdown("#### Indicadores Microeconômicos das Empresas do Painel")
+        st.markdown("#### 🏢 Matriz Consolidada de Indicadores Microeconômicos")
         
         linhas = []
         for tk, d in dados_micro.items():
+            p = d.get("preco")
+            div_12m = d.get("div_12m")
+            dy = (div_12m / p * 100) if p and p > 0 and div_12m is not None else None
             linhas.append({
                 "Ativo": tk,
-                "Preço": d.get("preco"),
-                "LPA (Lucro por Ação)": d.get("lpa"),
-                "VPA (Valor Patrimonial)": d.get("vpa"),
+                "Preço": p,
+                "LPA": d.get("lpa"),
+                "VPA": d.get("vpa"),
+                "EV/EBITDA": d.get("ev_ebitda"),
+                "DY 12m (%)": dy,
                 "ROE (%)": (d.get("roe") * 100) if d.get("roe") is not None else None,
-                "Margem Líquida (%)": (d.get("margem_liq") * 100) if d.get("margem_liq") is not None else None,
+                "Margem Líq. (%)": (d.get("margem_liq") * 100) if d.get("margem_liq") is not None else None,
                 "Endividamento (Dív/PL %)": d.get("div_pl"),
             })
             
@@ -748,10 +862,12 @@ def pagina_macro_micro(dados_micro):
         st.dataframe(
             df_micro.style.format({
                 "Preço": "R$ {:.2f}",
-                "LPA (Lucro por Ação)": "R$ {:.2f}",
-                "VPA (Valor Patrimonial)": "R$ {:.2f}",
+                "LPA": "R$ {:.2f}",
+                "VPA": "R$ {:.2f}",
+                "EV/EBITDA": "{:.2f}",
+                "DY 12m (%)": "{:.2f}%",
                 "ROE (%)": "{:.2f}%",
-                "Margem Líquida (%)": "{:.2f}%",
+                "Margem Líq. (%)": "{:.2f}%",
                 "Endividamento (Dív/PL %)": "{:.2f}%"
             }, na_rep="—"),
             width="stretch",
@@ -765,7 +881,7 @@ def tradingview(ticker: str, intervalo: str, altura: int):
         "autosize": True, "symbol": f"BMFBOVESPA:{ticker}", "interval": intervalo,
         "timezone": "America/Sao_Paulo", "theme": "dark", "style": "1", "locale": "br",
         "enable_publishing": False, "hide_side_toolbar": True, "allow_symbol_change": False,
-        "backgroundColor": BG, "toolbar_bg": BG, "gridColor": "#262a33", "container_id": "tv_chart",
+        "backgroundColor": BG, "toolbar_bg": BG, "gridColor": BORDER, "container_id": "tv_chart",
     }
     html = f"""
 <style>body{{margin:0;background:{BG};}}</style>
@@ -804,15 +920,19 @@ def pagina_tecnica(ativos):
         return
 
     sinais, padroes, niveis = [], [], []
-    ind = tec.indicadores(df, int(mm_c), int(mm_l))
-    if "Candlestick" in grupos:
-        sinais += [s for s in tec.candlesticks(df) if s["sinal"] in candles_sel]
-    if "Padrões gráficos" in grupos:
-        padroes, niveis = tec.padroes_graficos(df)
-    if "Indicadores (MM, IFR, volume)" in grupos:
-        sinais += ind["sinais"]
+    try:
+        ind = tec.indicadores(df, int(mm_c), int(mm_l))
+        if "Candlestick" in grupos:
+            sinais += [s for s in tec.candlesticks(df) if s["sinal"] in candles_sel]
+        if "Padrões gráficos" in grupos:
+            padroes, niveis = tec.padroes_graficos(df)
+        if "Indicadores (MM, IFR, volume)" in grupos:
+            sinais += ind["sinais"]
+    except Exception as e:
+        st.warning(f"Erro ao calcular indicadores técnicos: {e}")
+        ind = {"sinais": []}
 
-    corte = df.index[-10]
+    corte = df.index[-10] if len(df) >= 10 else df.index[0]
     rec = [s for s in sinais + padroes if s["data"] >= corte]
     m1, m2, m3 = st.columns(3)
     m1.metric("Sinais de alta (10 candles)", sum(s["tipo"] == "alta" for s in rec))
@@ -830,9 +950,12 @@ def pagina_tecnica(ativos):
 
     def bloco_sinais():
         st.markdown("#### Gráfico com sinais")
-        fig = tec.figura(df, sinais, padroes, niveis, ind, diario=(tf == "Diário"),
-                         altura=alt_sinais, mostrar_mm=mostrar_mm)
-        st.plotly_chart(fig, width="stretch", config={"displaylogo": False})
+        try:
+            fig = tec.figura(df, sinais, padroes, niveis, ind, diario=(tf == "Diário"),
+                             altura=alt_sinais, mostrar_mm=mostrar_mm)
+            st.plotly_chart(fig, width="stretch", config={"displaylogo": False})
+        except Exception as e:
+            st.error(f"Erro ao renderizar gráfico técnico: {e}")
 
     if lado:
         a, b = st.columns(2)
@@ -909,4 +1032,4 @@ else:
     {"Valuation": pagina_valuation, "Fluxo de caixa": pagina_caixa,
      "Preço justo": pagina_preco_justo, "Dividendos": pagina_dividendos}[secao](dados)
 
-st.caption("Ferramenta educacional. Graham, Bazin, DCF e indicadores macro/micro são modelos simplificados.")
+st.caption("Ferramenta educacional. Graham, Bazin, DCF e indicadores macro/micro são modelos blindados contra erros.")
