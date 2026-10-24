@@ -4,6 +4,7 @@ Rodar com:  streamlit run app.py
 Dependências: pip install -r requirements.txt
 """
 import json
+import requests
 from datetime import datetime, timedelta
 from math import sqrt
 
@@ -11,7 +12,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
-import yfinance as yf
+
 
 import tecnica as tec
 
@@ -67,29 +68,91 @@ def normaliza(t: str) -> str:
 
 
 # ---------------------------------------------------------------- dados
+import numpy as np
+import requests
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def buscar(ticker: str) -> dict:
-    """Cotação, LPA, VPA, dividendos e indicadores (Yahoo Finance, tickers .SA)."""
-    t = yf.Ticker(f"{ticker}.SA")
+    """Coleta cotação, LPA, VPA e monta o histórico anual de dividendos
+
+    utilizando a API Brapi (Dados oficiais B3/CVM).
+    """
+    ticker_limpo = ticker.replace(".SA", "").strip().upper()
+
+    # 1. INSIRA SEU TOKEN DA BRAPI AQUI DENTRO DAS ASPAS:
+    TOKEN = "SEU_TOKEN_REAL_AQUI"
+
+    # URLs para buscar múltiplos fundamentalistas e histórico de dividendos
+    url_fundamental = f"https://brapi.dev{ticker_limpo}?modules=fundamental&token={TOKEN}"
+    url_dividendos = f"https://brapi.dev{ticker_limpo}?dividends=true&token={TOKEN}"
+
+    # Estrutura de retorno padrão caso ocorra algum erro na comunicação
+    dados_retorno = {
+        "preco": None,
+        "lpa": None,
+        "vpa": None,
+        "div_12m": None,
+        "por_ano": pd.Series(dtype=float),
+    }
+
     try:
-        info = t.info or {}
+        # --- ETAPA 1: BUSCAR COTAÇÃO, LPA E VPA ---
+        res_fund = requests.get(url_fundamental, timeout=10).json()
+        if "results" in res_fund and res_fund["results"]:
+            info = res_fund["results"]
+            fundamental = info.get("fundamentalinfo", {})
+
+            dados_retorno["preco"] = (
+                float(info["regularMarketPrice"])
+                if info.get("regularMarketPrice")
+                else None
+            )
+            dados_retorno["lpa"] = (
+                float(fundamental["earningsPerShare"])
+                if fundamental.get("earningsPerShare")
+                else None
+            )
+            dados_retorno["vpa"] = (
+                float(fundamental["bookValuePerShare"])
+                if fundamental.get("bookValuePerShare")
+                else None
+            )
+
+        # --- ETAPA 2: CONFIGURAR HISTÓRICO DE DIVIDENDOS (MÉTODO BAZIN) ---
+        res_div = requests.get(url_dividendos, timeout=10).json()
+        if "results" in res_div and res_div["results"]:
+            info_div = res_div["results"][0]
+            dividends_list = (
+                info_div.get("dividendsData", {}).get("cashDividends", [])
+            )
+
+            if dividends_list:
+                # Converte os proventos da API em uma tabela Pandas
+                df_div = pd.DataFrame(dividends_list)
+
+                # Converte as datas e valores para os formatos matemáticos corretos
+                df_div["paymentDate"] = pd.to_datetime(df_div["paymentDate"])
+                df_div["rate"] = pd.to_numeric(df_div["rate"])
+
+                # Extrai o ano de pagamento para agrupar
+                df_div["ano"] = df_div["paymentDate"].dt.year
+
+                # Cria a série histórica 'por_ano' idêntica à que seu app usava antes
+                serie_proventos = df_div.groupby("ano")["rate"].sum()
+                dados_retorno["por_ano"] = serie_proventos
+
+                # Calcula o dividendo acumulado nos últimos 12 meses (365 dias)
+                limite_12m = pd.Timestamp.now() - pd.Timedelta(days=365)
+                div_recentes = df_div[df_div["paymentDate"] >= limite_12m]
+                dados_retorno["div_12m"] = float(div_recentes["rate"].sum())
+
+        return dados_retorno
+
     except Exception:
-        info = {}
+        # Retorna a estrutura segura em caso de falha de conexão para evitar telas vermelhas
+        return dados_retorno
 
-    preco = info.get("currentPrice") or info.get("regularMarketPrice")
-    if not preco:
-        h = t.history(period="5d")
-        preco = float(h["Close"].iloc[-1]) if not h.empty else None
-
-    por_ano = pd.Series(dtype=float)
-    div_12m = None
-    divs = t.dividends
-    if divs is not None and not divs.empty:
-        idx = divs.index.tz_localize(None) if divs.index.tz is not None else divs.index
-        serie = pd.Series(divs.values, index=idx)
-        por_ano = serie.groupby(serie.index.year).sum()
-        por_ano = por_ano[por_ano.index < datetime.now().year].tail(5)
-        div_12m = float(serie[serie.index >= datetime.now() - timedelta(days=365)].sum())
 
     return {
         "ticker": ticker,
@@ -114,7 +177,7 @@ def buscar_caixa(ticker: str) -> pd.DataFrame:
     """Fluxo de caixa anual (operacional, capex, livre) por ano."""
     try:
         cf = yf.Ticker(f"{ticker}.SA").cashflow
-    except Exception:
+    except@ Exception:
         return pd.DataFrame()
     if cf is None or cf.empty:
         return pd.DataFrame()
@@ -132,17 +195,46 @@ def buscar_caixa(ticker: str) -> pd.DataFrame:
     return out.sort_index()
 
 
+import requests
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def historico(ticker: str, periodo: str, intervalo: str) -> pd.DataFrame:
+    """Busca o histórico de preços na API Brapi (Dados limpos da B3)."""
+    ticker_limpo = ticker.replace(".SA", "").strip().upper()
+
+    # Seu token real configurado corretamente
+    TOKEN = "x91HijczXRK68dwaRiNBNY"
+
+    range_api = "1mo" if "mo" in periodo else "1y"
+
+    # URL corrigida com os caminhos oficiais da API v2 da Brapi
+    url = f"https://brapi.dev{ticker_limpo}&range={range_api}&interval={intervalo}&token={TOKEN}"
+
     try:
-        h = yf.Ticker(f"{ticker}.SA").history(period=periodo, interval=intervalo, auto_adjust=False)
+        resposta = requests.get(url, timeout=10).json()
+
+        # Acessa a lista correta de resultados fornecida pela Brapi v2
+        historico_dados = resposta["results"][0]["historicalDataPrice"]
+
+        df = pd.DataFrame(historico_dados)
+        df = df.rename(
+            columns={
+                "date": "Date",
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "close": "Close",
+                "volume": "Volume",
+            }
+        )
+        df["Date"] = pd.to_datetime(df["Date"], unit="s")
+        df.set_index("Date", inplace=True)
+        return df[["Open", "High", "Low", "Close", "Volume"]].dropna()
     except Exception:
         return pd.DataFrame()
-    if h.empty:
-        return h
-    h = h[["Open", "High", "Low", "Close", "Volume"]].dropna(subset=["Open", "High", "Low", "Close"])
-    h.index = h.index.tz_localize(None) if h.index.tz is not None else h.index
-    return h
+
+
 
 
 def carregar(ativos):
