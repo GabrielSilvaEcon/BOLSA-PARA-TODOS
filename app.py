@@ -59,18 +59,12 @@ h4 {{font-weight:600; color:#d9dce2;}}
     unsafe_allow_html=True,
 )
 
-PLOT = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font={"color": TEXT}, margin=dict(l=10, r=10, t=40, b=10))
-GRID = dict(gridcolor="#262a33", zeroline=False)
-
 # ---------------------------------------------------------------- estado
 if "ativos" not in st.session_state:
     st.session_state.ativos = ["PETR4", "ITSA4", "BBAS3", "VALE3"]
 
-
 def normaliza(t: str) -> str:
     return t.upper().strip().replace(".SA", "")
-
 
 # ---------------------------------------------------------------- dados
 @st.cache_data(ttl=900, show_spinner=False)
@@ -79,11 +73,8 @@ def buscar(ticker: str) -> dict:
     utilizando a API Brapi (Dados oficiais B3/CVM).
     """
     ticker_limpo = normaliza(ticker)
-
-    # Token configurado a partir do seu cadastro ativo
     TOKEN = "x91HijczXRK68dwaRiNBNY"
 
-    # URLs corrigidas acessando a estrutura v2 oficial
     url_fundamental = f"https://brapi.dev{ticker_limpo}&modules=fundamental&token={TOKEN}"
     url_dividendos = f"https://brapi.dev{ticker_limpo}&dividends=true&token={TOKEN}"
 
@@ -98,28 +89,24 @@ def buscar(ticker: str) -> dict:
         "div_medio": None,
         "ev_ebitda": None,
         "roe": None,
-        "margem_liq": None,
-        "div_pl": None,
-        "moeda": "BRL"
     }
 
     try:
         # --- ETAPA 1: BUSCAR COTAÇÃO, LPA E VPA ---
         res_fund = requests.get(url_fundamental, timeout=10).json()
         if "results" in res_fund and res_fund["results"]:
-            info = res_fund["results"][0]  # Correção do índice da lista v2
-            fundamental = info.get("fundamentalInfo", {}) # Letra maiúscula corrigida
+            # Na v2 a API retorna uma lista dentro de 'results'
+            info = res_fund["results"][0]
+            fundamental = info.get("fundamentalInfo", {})
 
             dados_retorno["nome"] = info.get("longName") or info.get("shortName") or ticker_limpo
             dados_retorno["preco"] = float(info["regularMarketPrice"]) if info.get("regularMarketPrice") else None
-            dados_retorno["lpa"] = float(fundamental.get("earningsPerShare", 0)) if fundamental.get("earningsPerShare") else None
-            dados_retorno["vpa"] = float(fundamental.get("bookValuePerShare", 0)) if fundamental.get("bookValuePerShare") else None
-            
-            # Adicionando múltiplos extras retornados pela CVM/Brapi
+            dados_retorno["lpa"] = float(fundamental.get("earningsPerShare")) if fundamental.get("earningsPerShare") else None
+            dados_retorno["vpa"] = float(fundamental.get("bookValuePerShare")) if fundamental.get("bookValuePerShare") else None
             dados_retorno["ev_ebitda"] = fundamental.get("enterpriseValueEbitda")
             dados_retorno["roe"] = fundamental.get("returnOnEquity")
 
-        # --- ETAPA 2: CONFIGURAR HISTÓRICO DE DIVIDENDOS (MÉTODO BAZIN) ---
+        # --- ETAPA 2: CONFIGURAR HISTÓRICO DE DIVIDENDOS ---
         res_div = requests.get(url_dividendos, timeout=10).json()
         if "results" in res_div and res_div["results"]:
             info_div = res_div["results"][0]
@@ -140,29 +127,12 @@ def buscar(ticker: str) -> dict:
                 dados_retorno["div_12m"] = float(div_recentes["rate"].sum())
 
         return dados_retorno
-
     except Exception:
         return dados_retorno
 
-
-@st.cache_data(ttl=900, show_spinner=False)
-def buscar_caixa(ticker: str) -> pd.DataFrame:
-    """Busca demonstrativos microeconômicos setoriais de fluxo de caixa via API Brapi."""
-    ticker_limpo = normaliza(ticker)
-    TOKEN = "x91HijczXRK68dwaRiNBNY"
-    url = f"https://brapi.dev{ticker_limpo}&modules=fundamental&token={TOKEN}"
-    
-    try:
-        res = requests.get(url, timeout=10).json()
-        # Fallback estruturado para manter o layout de tabelas do app ativo
-        return pd.DataFrame()
-    except Exception:
-        return pd.DataFrame()
-
-
 @st.cache_data(ttl=900, show_spinner=False)
 def historico(ticker: str, periodo: str, intervalo: str) -> pd.DataFrame:
-    """Busca o histórico de preços na API Brapi (Dados limpos da B3)."""
+    """Busca o histórico de preços na API Brapi para o gráfico."""
     ticker_limpo = normaliza(ticker)
     TOKEN = "x91HijczXRK68dwaRiNBNY"
     range_api = "1mo" if "mo" in periodo else "1y"
@@ -174,28 +144,63 @@ def historico(ticker: str, periodo: str, intervalo: str) -> pd.DataFrame:
         historico_dados = resposta["results"][0]["historicalDataPrice"]
 
         df = pd.DataFrame(historico_dados)
-        df = df.rename(
-            columns={
-                "date": "Date",
-                "open": "Open",
-                "high": "High",
-                "low": "Low",
-                "close": "Close",
-                "volume": "Volume",
-            }
-        )
+        df = df.rename(columns={"date": "Date", "open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"})
         df["Date"] = pd.to_datetime(df["Date"], unit="s")
         df.set_index("Date", inplace=True)
         return df[["Open", "High", "Low", "Close", "Volume"]].dropna()
     except Exception:
         return pd.DataFrame()
 
-# Teste básico de renderização inicial no Streamlit
+# ---------------------------------------------------------------- INTERFACE PRINCIPAL
 st.title("📊 Terminal Modular de Inteligência Financeira")
-ticker_sel = st.sidebar.selectbox("Escolha uma Ação", st.session_state.ativos)
-dados_ticker = buscar(ticker_sel)
 
-if dados_ticker["preco"]:
-    st.success(f"Dados de {dados_ticker['nome']} carregados com sucesso da base CVM via Brapi!")
+# Barra lateral para inputs
+ticker_sel = st.sidebar.selectbox("Escolha uma Ação", st.session_state.ativos)
+dy_desejado = st.sidebar.slider("Bazin: Dividend Yield Alvo (%)", 4.0, 12.0, 6.0) / 100
+
+# Executa busca
+dados = buscar(ticker_sel)
+
+if dados["preco"]:
+    st.header(f"{dados['ticker']} - {dados['nome']}")
+    
+    # Divide a tela principal em colunas para os Cards Financeiros
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(label="Preço Atual B3", value=f"R$ {dados['preco']:.2f}")
+        
+    with col2:
+        # Lógica Graham
+        lpa, vpa = dados["lpa"], dados["vpa"]
+        if lpa and vpa and lpa > 0 and vpa > 0:
+            preco_graham = sqrt(22.5 * lpa * vpa)
+            margem_graham = ((preco_graham - dados["preco"]) / preco_graham) * 100
+            st.metric(label="Preço Justo (Graham)", value=f"R$ {preco_graham:.2f}", delta=f"{margem_graham:.1f}% Margem")
+        else:
+            st.metric(label="Preço Justo (Graham)", value="Incompatível", delta="LPA/VPA ≤ 0", delta_color="off")
+            
+    with col3:
+        # Lógica Bazin
+        div_medio = dados["div_medio"]
+        if div_medio and div_medio > 0:
+            preco_bazin = div_medio / dy_desejado
+            margem_bazin = ((preco_bazin - dados["preco"]) / preco_bazin) * 100
+            st.metric(label="Preço Justo (Bazin)", value=f"R$ {preco_bazin:.2f}", delta=f"{margem_bazin:.1f}% Margem")
+        else:
+            st.metric(label="Preço Justo (Bazin)", value="Sem Histórico", delta="Dividendos zerados", delta_color="off")
+
+    # Tabela com as variáveis microeconômicas puras extraídas da CVM
+    st.subheader("🔍 Indicadores Microeconômicos de Suporte")
+    st.write(pd.DataFrame({
+        "Métrica": ["LPA (Lucro por Ação)", "VPA (Valor Patrimonial)", "Dividendos Médios Anuais", "EV/EBITDA", "ROE"],
+        "Valor": [
+            f"R$ {dados['lpa']:.2f}" if dados['lpa'] else "N/A",
+            f"R$ {dados['vpa']:.2f}" if dados['vpa'] else "N/A",
+            f"R$ {dados['div_medio']:.2f}" if dados['div_medio'] else "N/A",
+            f"{dados['ev_ebitda']:.2f}" if dados['ev_ebitda'] else "N/A",
+            f"{dados['roe']*100:.2f}%" if dados['roe'] else "N/A"
+        ]
+    }))
 else:
-    st.warning("Aguardando inserção de dados válidos da API.")
+    st.warning("⚠️ Não foi possível estruturar os dados para este ativo. Verifique a conexão com a API ou altere o ticker.")
