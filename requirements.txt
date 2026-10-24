@@ -1,4 +1,6 @@
-streamlit
+streamlit>=1.49
 pandas
 plotly
 requests
+lxml
+yfinance
