@@ -480,53 +480,7 @@ def buscar(ticker: str) -> dict:
             
     return d
 
-    def calcular_valuations(d: dict) -> dict:
-    """
-    Recebe o dicionário 'd' retornado por buscar_brapi e injeta os cálculos
-    dos métodos de Benjamin Graham e Décio Bazin.
-    """
-    # Evita erros caso os dados básicos estejam ausentes
-    preco_atual = d.get("preco")
-    lpa = d.get("lpa")
-    vpa = d.get("vpa")
-    div_12m = d.get("div_12m")
-    div_medio = d.get("div_medio")
-
-    # Inicializa os campos vazios
-    d["graham_preco_justo"] = None
-    d["graham_margem"] = None
-    d["bazin_preco_teto_12m"] = None
-    d["bazin_margem_12m"] = None
-    d["bazin_preco_teto_medio"] = None
-    d["bazin_margem_media"] = None
-
-    if preco_atual is None or preco_atual <= 0:
-        return d
-
-    # 1. Automação da Fórmula de Benjamin Graham
-    # VPA e LPA precisam ser estritamente positivos devido à raiz quadrada e lógica de valor
-    if lpa and vpa and lpa > 0 and vpa > 0:
-        try:
-            preco_justo = sqrt(22.5 * lpa * vpa)
-            d["graham_preco_justo"] = round(preco_justo, 2)
-            d["graham_margem"] = round(((preco_justo / preco_atual) - 1) * 100, 2)
-        except Exception:
-            pass
-
-    # 2. Automação do Método de Décio Bazin (Exige retorno mínimo de 6%)
-    # Aplicado em duas variações: últimos 12 meses e média histórica dos últimos 5 anos
-    if div_12m and div_12m > 0:
-        teto_12m = div_12m / 0.06
-        d["bazin_preco_teto_12m"] = round(teto_12m, 2)
-        d["bazin_margem_12m"] = round(((teto_12m / preco_atual) - 1) * 100, 2)
-
-    if div_medio and div_medio > 0:
-        teto_medio = div_medio / 0.06
-        d["bazin_preco_teto_medio"] = round(teto_medio, 2)
-        d["bazin_margem_media"] = round(((teto_medio / preco_atual) - 1) * 100, 2)
-
-    return d
-
+    
 
 def buscar_caixa(ticker: str) -> pd.DataFrame:
     fonte = st.session_state.get("fonte_dados", "Yahoo Finance")
