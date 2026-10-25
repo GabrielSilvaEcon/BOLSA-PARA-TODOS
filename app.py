@@ -60,6 +60,24 @@ font-size:.72rem; font-weight:600; float:right;}}
 .lbl {{font-size:.68rem; color:{MUTED}; text-transform:uppercase; letter-spacing:.8px;}}
 .val {{font-size:1.15rem; font-weight:600; color:{TEXT};}}
 h4 {{font-weight:600; color:{TEXT};}}
+.sec {{font-size:1.05rem; font-weight:600; color:{TEXT}; margin:.6rem 0 .3rem;}}
+.tip {{position:relative; display:inline-block; cursor:help; color:{MUTED}; font-size:.85em;
+margin-left:5px; outline:none; text-transform:none; letter-spacing:0; font-weight:400;}}
+.tip .tipbox {{visibility:hidden; opacity:0; position:absolute; z-index:99999; left:50%;
+transform:translateX(-50%); bottom:140%; width:280px; background:#1c2128; border:1px solid {BORDER};
+border-radius:8px; padding:9px 11px; font-size:.74rem; line-height:1.4; font-weight:400;
+color:{TEXT}; text-align:left; box-shadow:0 6px 18px rgba(0,0,0,.5); transition:opacity .15s;}}
+.tip:hover .tipbox, .tip:focus .tipbox {{visibility:visible; opacity:1;}}
+.kpi {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:12px; padding:12px 14px;}}
+.kpi .v {{font-size:1.3rem; font-weight:700;}}
+.kpi .d {{font-size:.72rem; color:{MUTED}; margin-top:2px;}}
+.ctx {{background:{SURFACE}; border:1px solid {BORDER}; border-left-width:4px; border-radius:10px;
+padding:12px 14px; margin-bottom:10px;}}
+.ctx.pos {{border-left-color:{GOOD};}}
+.ctx.neg {{border-left-color:{BAD};}}
+.ctx.neu {{border-left-color:{FAIR};}}
+.ctx .t {{font-weight:600; font-size:.95rem;}}
+.ctx .x {{font-size:.78rem; color:{MUTED}; margin-top:4px; line-height:1.5;}}
 p, span, label, div {{color: {TEXT};}}
 </style>
 """,
@@ -73,6 +91,123 @@ GRID = dict(gridcolor="#30363d", zeroline=False)
 FONTES = ["Yahoo Finance", "Fundamentus", "Brapi"]
 UNIVERSO_PADRAO = ["PETR4", "ITSA4", "BBAS3", "VALE3"]
 FINANCEIRAS = ("ITSA", "ITUB", "BBDC", "BBAS", "BPAC", "SANB", "BBSE", "CXSE", "SULA")
+
+# ---------------------------------------------------------------- cor fixa por ativo
+PALETA = ["#58a6ff", "#f0883e", "#bc8cff", "#33b3ae", "#f778ba", "#e3b341",
+          "#79c0ff", "#7ee787", "#ff7b72", "#a371f7", "#56d364", "#d2a8ff"]
+
+
+def cor_ativo(tk: str) -> str:
+    """Cada ativo tem sempre a mesma cor, em todas as páginas e gráficos."""
+    tk = str(tk).upper().replace(".SA", "").strip()
+    uni = st.session_state.get("universo", [])
+    i = uni.index(tk) if tk in uni else sum(map(ord, tk))
+    return PALETA[i % len(PALETA)]
+
+
+# ---------------------------------------------------------------- glossário (tooltips ⓘ)
+GLOSSARIO = {
+    "Preço": ("Cotação atual da ação na B3.",
+              "Base para comparar com o preço justo e para calcular múltiplos (P/L, P/VP) e dividend yield."),
+    "Preço justo": ("Estimativa do valor intrínseco da ação pelos métodos de Graham e/ou Bazin.",
+                    "Indica se o mercado cobra menos (ação barata) ou mais (ação cara) do que o valor estimado."),
+    "Margem (%)": ("Diferença entre o preço justo e o preço atual, dividida pelo preço justo.",
+                   "Mede a margem de segurança: quanto maior, maior o desconto e a proteção contra erros de estimativa."),
+    "Média 5 anos": ("Média anual dos dividendos por ação nos últimos 5 anos completos.",
+                     "É a base do preço-teto de Bazin e suaviza anos atípicos de proventos."),
+    "Proventos 12m": ("Soma de dividendos e JCP por ação pagos nos últimos 12 meses.",
+                      "Serve para calcular o dividend yield atual."),
+    "P/L": ("Preço ÷ lucro por ação (LPA): quantos anos de lucro o preço atual 'paga'.",
+            "Compara o preço com o lucro. Baixo sugere ação barata; alto sugere expectativa de crescimento ou ação cara. Compare dentro do mesmo setor."),
+    "P/VP": ("Preço ÷ valor patrimonial por ação (VPA).",
+             "Mostra quanto o mercado paga sobre o patrimônio contábil; abaixo de 1 indica negociação abaixo do patrimônio. Muito usado para bancos."),
+    "EV/EBITDA": ("Valor da firma (valor de mercado + dívida líquida) ÷ EBITDA (lucro operacional antes de juros, impostos e depreciação).",
+                  "Compara empresas com estruturas de dívida diferentes: quanto menor, mais barata a operação. Não se aplica bem a bancos."),
+    "DY 12m (%)": ("Dividend yield: proventos dos últimos 12 meses ÷ preço.",
+                   "Mostra o retorno em dividendos sobre o preço atual; útil para estratégias de renda. Yield muito alto pode indicar queda de preço ou pagamento extraordinário."),
+    "DY s/ média 5a (%)": ("Dividend yield calculado com a média anual de proventos dos últimos 5 anos.",
+                           "Versão menos sensível a pagamentos extraordinários."),
+    "ROE (%)": ("Return on Equity: lucro líquido ÷ patrimônio líquido.",
+                "Mede a rentabilidade gerada com o capital dos acionistas; acima de ~15% costuma indicar boa qualidade."),
+    "Margem líq. (%)": ("Lucro líquido ÷ receita líquida.",
+                        "Mostra quanto da receita sobra como lucro; indica eficiência e poder de preço. Compare dentro do setor."),
+    "Dív./PL (%)": ("Dívida bruta ÷ patrimônio líquido.",
+                    "Mede alavancagem e risco financeiro; valores altos aumentam a fragilidade com juros altos. Não se aplica a bancos."),
+    "LPA": ("Lucro por ação dos últimos 12 meses.", "Base do P/L e do preço justo de Graham."),
+    "VPA": ("Valor patrimonial por ação.", "Base do P/VP e do preço justo de Graham."),
+    "FCL": ("Fluxo de caixa livre: caixa gerado pela operação menos os investimentos para manter o negócio.",
+            "É o dinheiro que sobra para acionistas e credores; base do DCF."),
+    "FCL base (R$ mi)": ("Fluxo de caixa livre médio usado como ponto de partida da projeção, em R$ milhões.",
+                         "Define a escala de todo o DCF: se a base estiver errada, o valor justo também estará."),
+    "Valor DCF": ("Valor por ação obtido ao trazer a valor presente os fluxos de caixa livres projetados.",
+                  "Estimativa de valor intrínseco baseada na capacidade da empresa de gerar caixa."),
+    "Taxa de desconto": ("Retorno mínimo exigido para investir na empresa (custo de capital).",
+                         "Quanto maior, menor o valor presente dos fluxos futuros. Costuma partir da Selic mais um prêmio de risco."),
+    "Perpetuidade": ("Crescimento anual do fluxo de caixa após o período explícito, para sempre.",
+                     "Resume o valor da empresa depois do horizonte projetado; deve ficar abaixo do crescimento da economia."),
+    "Valor terminal": ("Valor presente de todos os fluxos depois do período explícito.",
+                       "Se passa de ~75% do valor total, o resultado depende demais de premissas de longo prazo."),
+    "Potencial": ("Valor justo ÷ preço atual − 1.", "Mostra quanto a ação teria de subir (ou cair) para chegar ao valor estimado."),
+    "Nota": ("Pontuação de 0 a 100 que combina os cinco pilares com os pesos escolhidos.",
+             "Ordena os ativos para uma triagem inicial; não substitui a análise da empresa."),
+    "Valor": ("Pilar de preço: margem de segurança, P/L, P/VP, EV/EBITDA e DCF.", "Mede se a ação está barata em relação ao que entrega."),
+    "Qualidade": ("Pilar de rentabilidade: ROE e margem líquida.", "Mede se a empresa transforma capital e receita em lucro de forma eficiente."),
+    "Dividendos": ("Pilar de renda: dividend yield e regularidade nos últimos 5 anos.", "Mede o retorno em proventos e a consistência do pagamento."),
+    "Solidez": ("Pilar de endividamento: Dív./PL (não se aplica a financeiras).", "Mede a resistência da empresa a juros altos e crises."),
+    "Tendência": ("Pilar técnico: distância do preço à média de 200 dias e cruzamento das médias de 50 e 200.",
+                  "Mede se o mercado está comprando ou vendendo o ativo no momento."),
+    "Atratividade": ("Faixa da nota: Alta (≥70), Moderada (50–70) ou Baixa (<50).", "Leitura rápida do ranking."),
+    "Cobertura": ("Quantos dos 5 pilares tiveram dados disponíveis.", "Notas com cobertura baixa são menos confiáveis."),
+    "Status": ("Situação do preço frente ao preço justo e à margem alvo.", "Resume se há margem de segurança, se está justo ou caro."),
+    "Selic": ("Taxa básica de juros da economia, definida pelo Copom.",
+              "Referência para o custo do crédito e para a renda fixa: juros altos reduzem o valor das ações e favorecem a renda fixa."),
+    "IPCA 12m": ("Inflação oficial acumulada em 12 meses.",
+                 "Indica a pressão sobre custos e poder de compra e orienta o rumo dos juros. A meta é 3% com tolerância de 1,5 ponto."),
+    "Dólar": ("Cotação do dólar comercial em reais.",
+              "Afeta exportadoras (ganham com dólar alto) e importadoras e empresas endividadas em dólar (perdem)."),
+    "Desemprego": ("Taxa de desocupação da PNAD Contínua (trimestre móvel).",
+                   "Mede a força do consumo e da renda: desemprego baixo favorece varejo, crédito e imobiliário."),
+    "EMBI": ("Risco-país: sobretaxa que o Brasil paga sobre títulos dos EUA, em pontos-base.",
+             "Indica a percepção de risco dos investidores; alto encarece o capital e pressiona ativos domésticos."),
+    "IGP-M": ("Índice Geral de Preços do Mercado, muito ligado a atacado, commodities e câmbio.",
+              "Reajusta aluguéis, contratos e tarifas (utilidades, FIIs); alto favorece quem recebe e pesa para quem paga."),
+    "Juro real": ("Selic menos IPCA 12m: o juro acima da inflação.", "Mede o quanto a política monetária é restritiva (acima de ~8% é muito alto)."),
+}
+
+
+def ajuda_txt(k: str) -> str:
+    o, p = GLOSSARIO[k]
+    return f"**O que é:** {o}\n\n**Para que serve:** {p}"
+
+
+def tip(k: str) -> str:
+    """Ícone ⓘ com balão (passar o mouse ou tocar/clicar)."""
+    if k not in GLOSSARIO:
+        return ""
+    o, p = GLOSSARIO[k]
+    return (f'<span class="tip" tabindex="0">ⓘ<span class="tipbox"><b>O que é:</b> {html.escape(o)}'
+            f'<br><b>Para que serve:</b> {html.escape(p)}</span></span>')
+
+
+def md(h: str):
+    st.markdown(h.replace("$", "&#36;"), unsafe_allow_html=True)
+
+
+def kpi(label, valor, chave=None, detalhe=None, cor=None):
+    d = f'<div class="d">{detalhe}</div>' if detalhe else ""
+    md(f'<div class="kpi"><div class="lbl">{html.escape(label)}{tip(chave) if chave else ""}</div>'
+       f'<div class="v" style="color:{cor or TEXT}">{valor}</div>{d}</div>')
+
+
+def explica(k: str):
+    o, p = GLOSSARIO[k]
+    md(f'<div class="ctx neu"><div class="t">{html.escape(k)}</div>'
+       f'<div class="x"><b>O que é:</b> {html.escape(o)}<br><b>Para que serve:</b> {html.escape(p)}</div></div>')
+
+
+def cfg_ajuda(df) -> dict:
+    """column_config com o ⓘ do glossário nos cabeçalhos da tabela."""
+    return {c: st.column_config.Column(help=ajuda_txt(c)) for c in df.columns if c in GLOSSARIO}
 
 # ---------------------------------------------------------------- estado
 if "universo" not in st.session_state:
@@ -248,6 +383,7 @@ def dict_base(tk: str) -> dict:
         "div_ano": pd.Series(dtype=float), "div_medio": None, "div_12m": None,
         "ev_ebitda": None, "roe": None, "margem_liq": None, "div_pl": None,
         "acoes": None, "moeda": "BRL", "moeda_balanco": "BRL", "divida_liq": None,
+        "setor": None, "data_balanco": None,
         "erro": None, "alertas": [],
     }
 
@@ -451,6 +587,13 @@ def buscar_yahoo(ticker: str) -> dict:
         td, tc = _num(info.get("totalDebt")), _num(info.get("totalCash"))
         if td is not None and tc is not None:
             d["divida_liq"] = td - tc
+        d["setor"] = info.get("sector")
+        try:
+            mrq = info.get("mostRecentQuarter")
+            if mrq:
+                d["data_balanco"] = pd.to_datetime(mrq, unit="s").strftime("%Y-%m-%d")
+        except Exception:
+            pass
 
         divs = t.dividends
         if divs is not None and not divs.empty:
@@ -617,7 +760,7 @@ def buscar(ticker: str) -> dict:
                 d["erro"] = erro_ant
         else:
             conferir_preco(d, ref)
-            for k in ("acoes", "divida_liq"):
+            for k in ("acoes", "divida_liq", "setor", "data_balanco"):
                 if d.get(k) is None and ref.get(k) is not None:
                     d[k] = ref[k]
             if ref.get("moeda_balanco") and fonte == "Fundamentus":
@@ -764,19 +907,19 @@ def fcl_base(caixa: pd.DataFrame, modo: str, n: int):
     return float(s.tail(n).mean()) if modo.startswith("Média") else float(s.iloc[-1])
 
 
-def gauge(margem):
+def gauge(margem, cor=ACCENT):
     v = 0 if margem is None or pd.isna(margem) else max(-60, min(60, margem))
     fig = go.Figure(go.Indicator(
         mode="gauge+number", value=v,
         number={"suffix": "%", "font": {"size": 26, "color": TEXT}},
         gauge={"axis": {"range": [-60, 60], "tickcolor": MUTED},
-               "bar": {"color": ACCENT, "thickness": 0.22},
+               "bar": {"color": cor, "thickness": 0.22},
                "bgcolor": "rgba(0,0,0,0)", "borderwidth": 0,
                "steps": [{"range": [-60, 0], "color": "rgba(248,81,73,.20)"},
                          {"range": [0, 20], "color": "rgba(210,153,34,.20)"},
                          {"range": [20, 60], "color": "rgba(63,185,80,.20)"}]},
     ))
-    fig.update_layout(height=150, margin=dict(l=10, r=10, t=10, b=0),
+    fig.update_layout(height=115, margin=dict(l=10, r=10, t=10, b=0),
                       **{k: v_ for k, v_ in PLOT.items() if k != "margin"})
     return fig
 
@@ -801,10 +944,18 @@ def pagina_inicio():
     s_v = selic["valor"].iloc[-1] if not selic.empty else None
     i_v = ipca["valor"].iloc[-1] if not ipca.empty else None
     d_v = dol["valor"].iloc[-1] if not dol.empty else None
-    c1.metric("Selic meta", pct(s_v, 2))
-    c2.metric("IPCA 12 meses", pct(i_v, 2))
-    c3.metric("Dólar (venda)", brl(d_v))
-    c4.metric("Juro real (Selic − IPCA 12m)", pct(s_v - i_v, 2) if s_v is not None and i_v is not None else "—")
+    def _ref(df, mensal=False):
+        return "Ref. " + df.index[-1].strftime("%m/%Y" if mensal else "%d/%m/%Y") if not df.empty else None
+    with c1:
+        kpi("Selic meta", pct(s_v, 2), "Selic", _ref(selic))
+    with c2:
+        kpi("IPCA 12 meses", pct(i_v, 2), "IPCA 12m", _ref(ipca, True))
+    with c3:
+        kpi("Dólar (venda)", brl(d_v), "Dólar", _ref(dol))
+    with c4:
+        kpi("Juro real (Selic − IPCA 12m)",
+            pct(s_v - i_v, 2) if s_v is not None and i_v is not None else "—", "Juro real")
+    st.caption("Leitura completa, época dos dados e impacto por ação e setor em Técnica & Macro → Macroeconomia.")
 
     st.markdown("#### Resumo dos ativos")
     dados = dados_ativos()
@@ -820,7 +971,7 @@ def pagina_inicio():
     df = pd.DataFrame(linhas)
     st.dataframe(estilizar(df, {"Preço": brl, "Preço justo": brl, "Margem (%)": pct, "P/L": num,
                                 "P/VP": num, "DY 12m (%)": pct}),
-                 width="stretch", hide_index=True)
+                 width="stretch", hide_index=True, column_config=cfg_ajuda(df))
     st.caption("Preço justo = média de Graham e Bazin (yield 6%, margem alvo 20%). "
                "Ajuste os parâmetros em Fundamentalista → Preço justo.")
 
@@ -852,44 +1003,54 @@ def pagina_preco_justo():
                     aviso_lpa = ('<div class="aviso" style="color:#f85149;">⚠️ LPA ou VPA negativo/ausente (Graham indisponível)</div>'
                                  if sem_graham else "")
                     st.markdown(
-                        f"""<div class="card">
+                        f"""<div class="card" style="border-top:3px solid {cor_ativo(r['ticker'])};">
 <span class="badge {r['cls']}">{r['status']}</span>
 <div class="tk">{html.escape(r['ticker'])}</div>
 <div class="nm">{html.escape(str(r['nome']))}</div>
 <div style="display:flex; gap:22px;">
-<div><div class="lbl">Preço atual</div><div class="val">{brl(r['preco'])}</div></div>
-<div><div class="lbl">Preço justo</div><div class="val">{brl(r['justo'])}</div></div>
+<div><div class="lbl">Preço atual{tip('Preço')}</div><div class="val">{brl(r['preco'])}</div></div>
+<div><div class="lbl">Preço justo{tip('Preço justo')}</div><div class="val">{brl(r['justo'])}</div></div>
 </div>
 <div style="margin-top:10px;">
-<div class="lbl">Média de dividendos (5 anos)</div>
+<div class="lbl">Média de dividendos (5 anos){tip('Média 5 anos')}</div>
 <div class="val">{brl(r['div_medio'])} <span style="font-size:.72rem;color:{MUTED}">/ ano</span></div>
 </div>{aviso_moeda}{aviso_lpa}</div>""",
                         unsafe_allow_html=True)
-                    st.plotly_chart(gauge(r["margem"]), width="stretch",
+                    st.plotly_chart(gauge(r["margem"], cor_ativo(r["ticker"])), width="stretch",
                                     key=f"g_{r['ticker']}", config={"displayModeBar": False})
                     st.caption(f"Margem de segurança · Graham {brl(r['graham'])} · Bazin {brl(r['bazin'])}")
 
     with t_comp:
         df = pd.DataFrame([{"Ticker": r["ticker"], "Preço": r["preco"], "Preço justo": r["justo"],
                             "Margem (%)": r["margem"], "Status": r["status"]} for r in resultados])
-        fig = go.Figure()
-        fig.add_bar(x=df["Ticker"], y=df["Preço"], name="Preço atual", marker_color="#8b949e")
-        fig.add_bar(x=df["Ticker"], y=df["Preço justo"], name="Preço justo", marker_color=GOOD)
-        fig.update_layout(barmode="group", height=340, legend=dict(orientation="h", y=1.1), **PLOT)
-        fig.update_yaxes(**GRID)
-        st.plotly_chart(fig, width="stretch")
-
-        d2 = df.dropna(subset=["Margem (%)"]).sort_values("Margem (%)")
-        if not d2.empty:
-            fig2 = go.Figure(go.Bar(
-                x=d2["Margem (%)"], y=d2["Ticker"], orientation="h",
-                marker_color=[BAD if m < 0 else GOOD if m >= margem_alvo else FAIR for m in d2["Margem (%)"]],
-                text=[pct(m) for m in d2["Margem (%)"]], textposition="outside"))
-            fig2.update_layout(title="Margem de segurança", height=90 + 46 * len(d2), **PLOT)
-            fig2.update_xaxes(**GRID)
-            st.plotly_chart(fig2, width="stretch")
+        g1, g2 = st.columns(2)
+        with g1:
+            md(f'<div class="sec">Preço atual × preço justo{tip("Preço justo")}</div>')
+            cores = [cor_ativo(t) for t in df["Ticker"]]
+            fig = go.Figure()
+            fig.add_bar(x=df["Ticker"], y=df["Preço"], name="Preço atual (tom claro)",
+                        marker_color=cores, marker_opacity=0.45)
+            fig.add_bar(x=df["Ticker"], y=df["Preço justo"], name="Preço justo (tom cheio)", marker_color=cores)
+            fig.update_layout(barmode="group", height=250, legend=dict(orientation="h", y=1.15, x=0), **PLOT)
+            fig.update_yaxes(**GRID)
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        with g2:
+            md(f'<div class="sec">Margem de segurança{tip("Margem (%)")}</div>')
+            d2 = df.dropna(subset=["Margem (%)"]).sort_values("Margem (%)")
+            if d2.empty:
+                st.info("Sem margem calculável para os ativos selecionados.")
+            else:
+                fig2 = go.Figure(go.Bar(
+                    x=d2["Margem (%)"], y=d2["Ticker"], orientation="h",
+                    marker_color=[cor_ativo(t) for t in d2["Ticker"]],
+                    text=[pct(m) for m in d2["Margem (%)"]], textposition="outside"))
+                fig2.add_vline(x=margem_alvo, line_dash="dot", line_color=MUTED,
+                               annotation_text=f"alvo {margem_alvo}%", annotation_font_color=MUTED)
+                fig2.update_layout(height=max(200, 70 + 34 * len(d2)), **PLOT)
+                fig2.update_xaxes(**GRID)
+                st.plotly_chart(fig2, width="stretch", config={"displayModeBar": False})
         st.dataframe(estilizar(df, {"Preço": brl, "Preço justo": brl, "Margem (%)": pct}),
-                     width="stretch", hide_index=True)
+                     width="stretch", hide_index=True, column_config=cfg_ajuda(df))
 
 
 def pagina_valuation():
@@ -904,18 +1065,23 @@ def pagina_valuation():
                        "Margem líq. (%)": m["margem"], "Dív./PL (%)": d["div_pl"]})
     df = pd.DataFrame(linhas)
     metrica = st.selectbox("Comparar por", [c for c in df.columns if c not in ("Ticker", "Preço")])
+    gA, gB = st.columns([1.3, 1])
     d2 = df.dropna(subset=[metrica]).sort_values(metrica)
-    if d2.empty:
-        st.info("Sem dados disponíveis para esse indicador nos ativos selecionados.")
-    else:
-        fig = go.Figure(go.Bar(x=d2["Ticker"], y=d2[metrica], marker_color=ACCENT,
-                               text=[num(v) for v in d2[metrica]], textposition="outside"))
-        fig.update_layout(title=metrica, height=340, **PLOT)
-        fig.update_yaxes(**GRID)
-        st.plotly_chart(fig, width="stretch")
+    with gA:
+        if d2.empty:
+            st.info("Sem dados disponíveis para esse indicador nos ativos selecionados.")
+        else:
+            fig = go.Figure(go.Bar(x=d2["Ticker"], y=d2[metrica],
+                                   marker_color=[cor_ativo(t) for t in d2["Ticker"]],
+                                   text=[num(v) for v in d2[metrica]], textposition="outside"))
+            fig.update_layout(title=metrica, height=260, **PLOT)
+            fig.update_yaxes(**GRID)
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    with gB:
+        explica(metrica)
     fmts = {c: num for c in df.columns if c != "Ticker"}
     fmts.update({"Preço": brl, "DY 12m (%)": pct, "ROE (%)": pct, "Margem líq. (%)": pct, "Dív./PL (%)": pct})
-    st.dataframe(estilizar(df, fmts), width="stretch", hide_index=True)
+    st.dataframe(estilizar(df, fmts), width="stretch", hide_index=True, column_config=cfg_ajuda(df))
 
 
 def pagina_dividendos():
@@ -925,11 +1091,12 @@ def pagina_dividendos():
     fig = go.Figure()
     for d in dados.values():
         if d.get("div_ano") is not None and len(d["div_ano"]) > 0:
-            fig.add_bar(x=[str(a) for a in d["div_ano"].index], y=d["div_ano"].values, name=d["ticker"])
-    fig.update_layout(barmode="group", title="Dividendos por ação (R$/ano)", height=360,
-                      colorway=[ACCENT, GOOD, FAIR, BAD, "#bc8cff", "#33b3ae"], **PLOT)
+            fig.add_bar(x=[str(a) for a in d["div_ano"].index], y=d["div_ano"].values,
+                        name=d["ticker"], marker_color=cor_ativo(d["ticker"]))
+    fig.update_layout(barmode="group", title="Dividendos por ação (R$/ano)", height=270,
+                      legend=dict(orientation="h", y=1.15, x=0), **PLOT)
     fig.update_yaxes(**GRID)
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
     linhas = []
     for t, d in dados.items():
@@ -937,9 +1104,10 @@ def pagina_dividendos():
         linhas.append({"Ticker": t, "Proventos 12m": d12, "Média 5 anos": dm,
                        "DY 12m (%)": d12 / p * 100 if p and p > 0 and d12 is not None else None,
                        "DY s/ média 5a (%)": dm / p * 100 if p and p > 0 and dm is not None else None})
-    st.dataframe(estilizar(pd.DataFrame(linhas), {
+    df_div = pd.DataFrame(linhas)
+    st.dataframe(estilizar(df_div, {
         "Proventos 12m": brl, "Média 5 anos": brl, "DY 12m (%)": pct, "DY s/ média 5a (%)": pct}),
-        width="stretch", hide_index=True)
+        width="stretch", hide_index=True, column_config=cfg_ajuda(df_div))
 
 
 # ---------------------------------------------------------------- página: DCF
@@ -948,7 +1116,7 @@ def grafico_caixa(caixa: pd.DataFrame):
     fig = go.Figure()
     for col in caixa.columns:
         fig.add_bar(x=[str(a) for a in caixa.index], y=caixa[col] / 1e6, name=col, marker_color=cores.get(col))
-    fig.update_layout(barmode="group", height=320, title="Fluxo de caixa histórico (R$ milhões)",
+    fig.update_layout(barmode="group", height=250, title="Fluxo de caixa histórico (R$ milhões)",
                       legend=dict(orientation="h", y=1.15), **PLOT)
     fig.update_yaxes(**GRID)
     return fig
@@ -1003,10 +1171,17 @@ def pagina_dcf():
     margem = (res["valor"] - preco) / res["valor"] * 100 if preco else None
     potencial = (res["valor"] / preco - 1) * 100 if preco else None
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Valor justo (DCF)", brl(res["valor"]))
-    m2.metric("Preço atual", brl(preco))
-    m3.metric("Margem de segurança", pct(margem), help="(Valor − Preço) ÷ Valor")
-    m4.metric("Potencial", pct(potencial), help="Valor ÷ Preço − 1")
+    with m1:
+        kpi("Valor justo (DCF)", brl(res["valor"]), "Valor DCF", cor=cor_ativo(tk))
+    with m2:
+        kpi("Preço atual", brl(preco), "Preço")
+    with m3:
+        kpi("Margem de segurança", pct(margem), "Margem (%)")
+    with m4:
+        kpi("Potencial", pct(potencial), "Potencial")
+    with st.expander("ⓘ O que significam os termos do DCF?"):
+        for k_ in ("FCL", "Taxa de desconto", "Perpetuidade", "Valor terminal"):
+            explica(k_)
     if res["pct_terminal"] > 75:
         st.warning(f"⚠️ {pct(res['pct_terminal'], 0)} do valor vem da perpetuidade: o resultado é muito "
                    "sensível às premissas de longo prazo.")
@@ -1014,16 +1189,18 @@ def pagina_dcf():
         st.caption(f"Valor terminal = {pct(res['pct_terminal'], 0)} do valor da firma · "
                    f"FCL base {brl(base / 1e6)} mi")
 
+    cA, cB = st.columns(2)
     anos_lbl = [f"Ano {i}" for i in range(1, horizonte + 1)]
     fig = go.Figure()
     fig.add_bar(x=anos_lbl, y=[f / 1e6 for f in res["fluxos"]], name="FCL projetado", marker_color="#8b949e")
     fig.add_bar(x=anos_lbl, y=[v / 1e6 for v in res["vps"]], name="Valor presente", marker_color=ACCENT)
-    fig.update_layout(barmode="group", height=300, title="Fluxos projetados (R$ milhões)",
-                      legend=dict(orientation="h", y=1.15), **PLOT)
+    fig.update_layout(barmode="group", height=290, title="Fluxos projetados (R$ milhões)",
+                      legend=dict(orientation="h", y=-0.15), **PLOT)
     fig.update_yaxes(**GRID)
-    st.plotly_chart(fig, width="stretch")
-
-    st.markdown("#### Sensibilidade (potencial vs. preço atual)")
+    with cA:
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    with cB:
+        st.caption("Sensibilidade: potencial vs. preço atual conforme taxa de desconto e perpetuidade")
     taxas = [taxa + x for x in (-0.02, -0.01, 0, 0.01, 0.02)]
     gps = sorted({round(max(0.0, gp + x), 4) for x in (-0.01, -0.005, 0, 0.005, 0.01)})
     z, txt = [], []
@@ -1039,9 +1216,10 @@ def pagina_dcf():
         z=z, x=[pct(x * 100) for x in gps], y=[pct(x * 100) for x in taxas], text=txt,
         texttemplate="%{text}", colorscale="RdYlGn", zmid=0,
         colorbar=dict(title="Potencial %")))
-    heat.update_layout(height=340, xaxis_title="Crescimento na perpetuidade",
+    heat.update_layout(height=290, xaxis_title="Crescimento na perpetuidade",
                        yaxis_title="Taxa de desconto", **PLOT)
-    st.plotly_chart(heat, width="stretch")
+    with cB:
+        st.plotly_chart(heat, width="stretch", config={"displayModeBar": False})
 
     st.markdown("#### Cenários")
     cen = {"Pessimista": (taxa + 0.02, g - 0.03, max(0.0, gp - 0.01)),
@@ -1128,7 +1306,7 @@ def pagina_picking():
 
     with st.expander("Pesos e critérios", expanded=False):
         cols = st.columns(5)
-        pesos = {p: cols[i].slider(p, 0, 100, v, 5, key=f"w_{p}")
+        pesos = {p: cols[i].slider(p, 0, 100, v, 5, key=f"w_{p}", help=ajuda_txt(p))
                  for i, (p, v) in enumerate(zip(PILARES, [30, 25, 20, 15, 10]))}
         usar_tend = st.checkbox("Incluir tendência (preço vs. médias de 50 e 200 dias)", value=True)
         st.markdown(
@@ -1169,10 +1347,14 @@ def pagina_picking():
         return "—" if n is None or pd.isna(n) else ("Alta" if n >= 70 else "Moderada" if n >= 50 else "Baixa")
     df.insert(3, "Atratividade", df["Nota"].map(rotulo))
 
-    pc = {p: st.column_config.ProgressColumn(p, min_value=0, max_value=100, format="%.0f") for p in ["Nota"] + PILARES}
-    pc.update({"Preço": st.column_config.NumberColumn("Preço", format="R$ %.2f"),
-               "Preço justo": st.column_config.NumberColumn("Preço justo", format="R$ %.2f"),
-               "Margem (%)": st.column_config.NumberColumn("Margem (%)", format="%.1f%%")})
+    pc = {p: st.column_config.ProgressColumn(p, help=ajuda_txt(p), min_value=0, max_value=100, format="%.0f")
+          for p in ["Nota"] + PILARES}
+    pc.update({"Preço": st.column_config.NumberColumn("Preço", help=ajuda_txt("Preço"), format="R$ %.2f"),
+               "Preço justo": st.column_config.NumberColumn("Preço justo", help=ajuda_txt("Preço justo"), format="R$ %.2f"),
+               "Margem (%)": st.column_config.NumberColumn("Margem (%)", help=ajuda_txt("Margem (%)"), format="%.1f%%"),
+               "Atratividade": st.column_config.Column(help=ajuda_txt("Atratividade")),
+               "Cobertura": st.column_config.Column(help=ajuda_txt("Cobertura")),
+               "Status": st.column_config.Column(help=ajuda_txt("Status"))})
     st.dataframe(df, width="stretch", hide_index=True, column_config=pc)
 
     g1, g2 = st.columns(2)
@@ -1182,24 +1364,26 @@ def pagina_picking():
             fig = go.Figure(go.Bar(
                 x=top["Nota"], y=top["Ativo"], orientation="h", text=[num(v, 0) for v in top["Nota"]],
                 textposition="outside",
-                marker_color=[GOOD if n >= 70 else FAIR if n >= 50 else BAD for n in top["Nota"]]))
-            fig.update_layout(title="Nota geral", height=120 + 40 * len(top), xaxis=dict(range=[0, 110]), **PLOT)
+                marker_color=[cor_ativo(t) for t in top["Ativo"]]))
+            fig.update_layout(title="Nota geral", height=max(200, 80 + 32 * len(top)),
+                              xaxis=dict(range=[0, 110]), **PLOT)
             fig.update_xaxes(**GRID)
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     with g2:
         q = df.dropna(subset=["Valor", "Qualidade"])
         if not q.empty:
             fig = go.Figure(go.Scatter(
                 x=q["Valor"], y=q["Qualidade"], mode="markers+text", text=q["Ativo"],
-                textposition="top center", marker=dict(size=14, color=ACCENT)))
+                textposition="top center",
+                marker=dict(size=13, color=[cor_ativo(t) for t in q["Ativo"]])))
             fig.add_vline(x=50, line_color=BORDER)
             fig.add_hline(y=50, line_color=BORDER)
-            fig.update_layout(title="Valor × Qualidade (alto-direito = barato e bom)", height=340,
+            fig.update_layout(title="Valor × Qualidade (alto-direito = barato e bom)", height=260,
                               xaxis=dict(range=[-5, 105], title="Valor"),
                               yaxis=dict(range=[-5, 105], title="Qualidade"), **PLOT)
             fig.update_xaxes(**GRID)
             fig.update_yaxes(**GRID)
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
     st.markdown("#### Perfil por ativo")
     sel = st.multiselect("Ativos no radar", list(df["Ativo"]), default=list(df["Ativo"])[:3], key="radar_sel")
@@ -1209,8 +1393,9 @@ def pagina_picking():
             row = df[df["Ativo"] == tk].iloc[0]
             vals = [0 if pd.isna(row[p]) else row[p] for p in PILARES]
             radar.add_trace(go.Scatterpolar(r=vals + vals[:1], theta=PILARES + PILARES[:1],
-                                            fill="toself", name=tk, opacity=0.55))
-        radar.update_layout(height=420, polar=dict(bgcolor="rgba(0,0,0,0)",
+                                            fill="toself", name=tk, opacity=0.55,
+                                            line=dict(color=cor_ativo(tk))))
+        radar.update_layout(height=330, polar=dict(bgcolor="rgba(0,0,0,0)",
                                                    radialaxis=dict(range=[0, 100], gridcolor=BORDER),
                                                    angularaxis=dict(gridcolor=BORDER)),
                             legend=dict(orientation="h", y=-0.1), **PLOT)
@@ -1356,7 +1541,7 @@ def pagina_tecnica():
 
     link = f"https://br.tradingview.com/chart/?symbol=BMFBOVESPA%3A{ticker}"
     lado = layout == "Lado a lado"
-    alt_tv, alt_sinais = (620, 620) if lado else (520, 720)
+    alt_tv, alt_sinais = (440, 500) if lado else (400, 520)
 
     def bloco_limpo():
         st.markdown("#### Gráfico limpo · TradingView")
@@ -1430,8 +1615,8 @@ def barra_superior():
 
 # ---------------------------------------------------------------- navegação
 paginas = {
-    "Início": [st.Page(pagina_inicio, title="Visão geral", icon="🏠", url_path="inicio", default=True)],
     "Fundamentalista": [
+        st.Page(pagina_inicio, title="Visão geral", icon="🏠", url_path="inicio", default=True),
         st.Page(pagina_preco_justo, title="Preço justo", icon="🎯", url_path="preco-justo"),
         st.Page(pagina_valuation, title="Valuation", icon="⚖️", url_path="valuation"),
         st.Page(pagina_dividendos, title="Dividendos", icon="💰", url_path="dividendos"),
@@ -1440,8 +1625,8 @@ paginas = {
         st.Page(pagina_dcf, title="Fluxo de caixa descontado", icon="🧮", url_path="dcf"),
         st.Page(pagina_picking, title="Stock picking", icon="🏆", url_path="stock-picking"),
     ],
-    "Técnica": [st.Page(pagina_tecnica, title="Análise técnica", icon="📉", url_path="tecnica")],
-    "Macro & Micro": [
+    "Técnica & Macro": [
+        st.Page(pagina_tecnica, title="Análise técnica", icon="📉", url_path="tecnica"),
         st.Page(pagina_macro, title="Macroeconomia", icon="🌐", url_path="macro"),
         st.Page(pagina_micro, title="Microeconomia", icon="🏢", url_path="micro"),
     ],
