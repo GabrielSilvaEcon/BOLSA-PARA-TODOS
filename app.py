@@ -1752,33 +1752,7 @@ IPEA_CATEGORIAS = {
 }
 
 
-def _ler_serie(cod: str):
-    if cod.startswith("SGS:"):
-        return buscar_macro_bcb(int(cod[4:]), 10)
-    return buscar_macro_ipea(cod)
 
-
-@st.cache_data(ttl=3600, show_spinner="Buscando indicadores no Ipeadata...")
-def _serie_ipea_cache(codigos: tuple):
-    for cod, modo in codigos:
-        try:
-            df = _ler_serie(cod)
-        except Exception:
-            continue
-        if df is None or df.empty or "valor" not in df:
-            continue
-        s = df["valor"].dropna()
-        if s.empty:
-            continue
-        if modo == "preco" and s.abs().median() > 30:
-            s = (s.pct_change() * 100).dropna()
-        if not s.empty:
-            return cod, modo, s.to_frame("valor")
-    return None, None, pd.DataFrame()
-
-
-def _serie_ipea(codigos):
-    return _serie_ipea_cache(tuple(tuple(c) for c in codigos))
 
 
 
