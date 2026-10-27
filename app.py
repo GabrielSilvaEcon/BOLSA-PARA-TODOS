@@ -103,6 +103,7 @@ p, span, label, div {{color: {TEXT};}}
 PLOT = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font={"color": TEXT}, margin=dict(l=10, r=10, t=40, b=10))
 GRID = dict(gridcolor="#30363d", zeroline=False)
+PLOT_LEG = {**PLOT, "margin": dict(l=10, r=10, t=40, b=60)}  # margem extra p/ legenda abaixo do gráfico
 
 FONTES = ["Yahoo Finance", "Fundamentus", "Brapi"]
 PERFIS = rec.PERFIS
@@ -452,82 +453,50 @@ def media(lista):
     return sum(vals) / len(vals) if vals else None
 
 
-# ---------------------------------------------------------------- tendência do gráfico diário (até 5 anos)
-def _rotular_tendencia(acima: bool, cruz: bool, incl: bool):
+# ---------------------------------------------------------------- tendência do gráfico diário (5 anos)
+TEND_VIS = {"Alta": ("▲", GOOD), "Lateral": ("►", FAIR), "Baixa": ("▼", BAD)}
+
+
+def _rotular_tendencia(acima: bool, cruz: bool, incl: bool) -> str:
     """Três sinais: preço acima da média de 200 dias, média de 50 acima da de 200 e média de 200 subindo."""
     pts = int(acima) + int(cruz) + int(incl)
-    return {3: ("Alta", "good"),
-            2: ("Lateral · viés de alta", "fair"),
-            1: ("Lateral · viés de baixa", "fair"),
-            0: ("Baixa", "bad")}[pts]
+    return "Alta" if pts == 3 else ("Baixa" if pts == 0 else "Lateral")
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def _tendencia_cache(ticker: str, fonte: str) -> dict:
-    """Lê o gráfico diário de 5 anos. Levanta erro quando não há dados (assim a falha não fica em cache)."""
+def _tendencia_cache(ticker: str, fonte: str) -> str:
+    """Lê o gráfico diário (até 5 anos). Levanta erro sem dados, para a falha não ficar em cache."""
     df, _ = historico(ticker, "5y", "1d")
     if df is None or df.empty or "Close" not in df:
         raise ValueError("sem histórico")
     c = df["Close"].dropna()
-    if len(c) < 60:
+    if len(c) < 200:
         raise ValueError("histórico curto")
-    ult = float(c.iloc[-1])
-    out = {"serie": c, "ret": (ult / float(c.iloc[0]) - 1) * 100,
-           "anos": (c.index[-1] - c.index[0]).days / 365.25,
-           "dist200": None, "rotulo": "Histórico curto", "cls": "na"}
-    if len(c) >= 200:
-        mm50, mm200 = c.rolling(50).mean(), c.rolling(200).mean()
-        m200 = float(mm200.iloc[-1])
-        if m200 > 0:
-            acima = ult > m200
-            cruz = float(mm50.iloc[-1]) > m200
-            ref = mm200.iloc[-21] if len(c) >= 220 else None
-            incl = (m200 > float(ref)) if ref is not None and pd.notna(ref) else cruz
-            out["dist200"] = (ult / m200 - 1) * 100
-            out["rotulo"], out["cls"] = _rotular_tendencia(acima, cruz, incl)
-    return out
+    mm50, mm200 = c.rolling(50).mean(), c.rolling(200).mean()
+    m200 = float(mm200.iloc[-1])
+    if not m200 > 0:
+        raise ValueError("média inválida")
+    ref = mm200.iloc[-21] if len(c) >= 220 else None
+    cruz = float(mm50.iloc[-1]) > m200
+    incl = (m200 > float(ref)) if ref is not None and pd.notna(ref) else cruz
+    return _rotular_tendencia(float(c.iloc[-1]) > m200, cruz, incl)
 
 
 def tendencia_5a(ticker: str):
+    """'Alta', 'Lateral', 'Baixa' ou None quando não há histórico suficiente."""
     try:
         return _tendencia_cache(ticker, st.session_state.get("fonte_dados", "Yahoo Finance"))
     except Exception:
         return None
 
 
-def grafico_tendencia(t: dict, cor: str):
-    c = t["serie"]
-    fig = go.Figure()
-    fig.add_scatter(x=c.index, y=c.values, mode="lines", name="Preço",
-                    line=dict(color=cor, width=1.6), hovertemplate="%{x|%d/%m/%Y}: R$ %{y:.2f}<extra></extra>")
-    if len(c) >= 200:
-        fig.add_scatter(x=c.index, y=c.rolling(200).mean().values, mode="lines", name="Média 200d",
-                        line=dict(color=MUTED, width=1.2, dash="dot"), hoverinfo="skip")
-    fig.update_layout(height=150, showlegend=False, margin=dict(l=0, r=0, t=6, b=0),
-                      **{k: v for k, v in PLOT.items() if k != "margin"})
-    fig.update_yaxes(**GRID)
-    fig.update_xaxes(showgrid=False)
-    return fig
-
-
-def bloco_tendencia(tk: str, t, cor: str):
-    """Mostra, no cartão de cada ação, a tendência do gráfico diário (até 5 anos)."""
+def linha_tendencia(t) -> str:
     if not t:
-        md('<div class="ctx neu"><div class="t">Tendência · diário, 5 anos</div>'
-           '<div class="x">Histórico diário indisponível ou curto demais para este ativo.</div></div>')
-        return
-    cor_ret = GOOD if t["ret"] >= 0 else BAD
-    dist = pct(t["dist200"], 1) if t["dist200"] is not None else "—"
-    md(f"""<div class="card" style="padding:12px 16px; margin-bottom:4px;">
-<span class="badge {t['cls']}">{t['rotulo']}</span>
-<div class="lbl">Tendência · gráfico diário{tip('Tendência')}</div>
-<div style="display:flex; gap:22px; margin-top:8px;">
-<div><div class="lbl">Retorno em {num(t['anos'], 1)} anos</div>
-<div class="val" style="color:{cor_ret}">{pct(t['ret'], 1)}</div></div>
-<div><div class="lbl">Preço vs. média 200d</div><div class="val">{dist}</div></div>
-</div></div>""")
-    st.plotly_chart(grafico_tendencia(t, cor), width="stretch", key=f"t5_{tk}",
-                    config={"displayModeBar": False})
+        return (f'<div style="margin-top:10px;"><div class="lbl">Tendência · diário, 5 anos{tip("Tendência")}</div>'
+                f'<div class="val" style="color:{MUTED}">— sem dados</div></div>')
+    ic, cor = TEND_VIS[t]
+    return (f'<div style="margin-top:10px;"><div class="lbl">Tendência · diário, 5 anos{tip("Tendência")}</div>'
+            f'<div class="val" style="color:{cor}">{ic} {t}</div></div>')
 
 
 # ---------------------------------------------------------------- componentes de interface (logos, boas-vindas, tutorial)
@@ -793,21 +762,19 @@ def pagina_preco_justo():
 <div style="margin-top:10px;">
 <div class="lbl">Média de dividendos (5 anos){tip('Média 5 anos')}</div>
 <div class="val">{brl(r['div_medio'])} <span style="font-size:.72rem;color:{MUTED}">/ ano</span></div>
-</div>{aviso_moeda}{aviso_lpa}</div>""",
+</div>{linha_tendencia(tend.get(r['ticker']))}{aviso_moeda}{aviso_lpa}</div>""",
                         unsafe_allow_html=True)
                     st.plotly_chart(gauge(r["margem"], cor_ativo(r["ticker"])), width="stretch",
                                     key=f"g_{r['ticker']}", config={"displayModeBar": False})
                     st.caption(f"Margem de segurança · Graham {brl(r['graham'])} · Bazin {brl(r['bazin'])}")
-                    bloco_tendencia(r["ticker"], tend.get(r["ticker"]), cor_ativo(r["ticker"]))
-        st.caption("Tendência = leitura do gráfico diário (até 5 anos): preço acima ou abaixo da média de 200 dias, "
-                   "média de 50 dias acima ou abaixo da de 200 e inclinação da média de 200 dias. "
-                   "Linha pontilhada = média de 200 dias. Indicador técnico, não recomendação.")
+        st.caption("Tendência no gráfico diário (até 5 anos): ▲ Alta (verde) = preço acima da média de 200 dias, média de "
+                   "50 acima da de 200 e média de 200 subindo; ▼ Baixa (vermelho) = os três sinais contrários; "
+                   "► Lateral (amarelo) = sinais mistos. Indicador técnico, não recomendação.")
 
     with t_comp:
         df = pd.DataFrame([{"Ticker": r["ticker"], "Preço": r["preco"], "Preço justo": r["justo"],
                             "Margem (%)": r["margem"], "Status": r["status"],
-                            "Tendência 5a": (tend[r["ticker"]]["rotulo"] if tend.get(r["ticker"]) else "—"),
-                            "Retorno 5a (%)": (tend[r["ticker"]]["ret"] if tend.get(r["ticker"]) else None)}
+                            "Tendência 5a": tend.get(r["ticker"]) or "—"}
                            for r in resultados])
         g1, g2 = st.columns(2)
         with g1:
@@ -835,7 +802,7 @@ def pagina_preco_justo():
                 fig2.update_layout(height=max(200, 70 + 34 * len(d2)), **PLOT)
                 fig2.update_xaxes(**GRID)
                 st.plotly_chart(fig2, width="stretch", config={"displayModeBar": False})
-        st.dataframe(estilizar(df, {"Preço": brl, "Preço justo": brl, "Margem (%)": pct, "Retorno 5a (%)": pct}),
+        st.dataframe(estilizar(df, {"Preço": brl, "Preço justo": brl, "Margem (%)": pct}),
                      width="stretch", hide_index=True, column_config=cfg_ajuda(df))
 
 
@@ -902,8 +869,8 @@ def grafico_caixa(caixa: pd.DataFrame):
     fig = go.Figure()
     for col in caixa.columns:
         fig.add_bar(x=[str(a) for a in caixa.index], y=caixa[col] / 1e6, name=col, marker_color=cores.get(col))
-    fig.update_layout(barmode="group", height=250, title="Fluxo de caixa histórico (R$ milhões)",
-                      legend=dict(orientation="h", y=1.15), **PLOT)
+    fig.update_layout(barmode="group", height=300, title="Fluxo de caixa histórico (R$ milhões)",
+                      legend=dict(orientation="h", y=-0.15, x=0), **PLOT_LEG)
     fig.update_yaxes(**GRID)
     return fig
 
@@ -986,8 +953,8 @@ def pagina_dcf():
     fig = go.Figure()
     fig.add_bar(x=anos_lbl, y=[f / 1e6 for f in res["fluxos"]], name="FCL projetado", marker_color="#8b949e")
     fig.add_bar(x=anos_lbl, y=[v / 1e6 for v in res["vps"]], name="Valor presente", marker_color=ACCENT)
-    fig.update_layout(barmode="group", height=290, title="Fluxos projetados (R$ milhões)",
-                      legend=dict(orientation="h", y=-0.15), **PLOT)
+    fig.update_layout(barmode="group", height=330, title="Fluxos projetados (R$ milhões)",
+                      legend=dict(orientation="h", y=-0.15, x=0), **PLOT_LEG)
     fig.update_yaxes(**GRID)
     with cA:
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
@@ -1277,8 +1244,8 @@ def pagina_perfis():
             fig = go.Figure()
             for pf in PERFIS:
                 fig.add_bar(x=tks, y=[aval[(t, pf)]["nota"] for t in tks], name=pf, marker_color=COR_PERFIL[pf])
-            fig.update_layout(barmode="group", title="Nota por perfil", height=280,
-                              legend=dict(orientation="h", y=1.18, x=0), **PLOT)
+            fig.update_layout(barmode="group", title="Nota por perfil", height=330,
+                              legend=dict(orientation="h", y=-0.15, x=0), **PLOT_LEG)
             fig.update_yaxes(range=[0, 100], **GRID)
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         with g2:
@@ -1286,8 +1253,8 @@ def pagina_perfis():
             for pf in PERFIS:
                 fig.add_bar(x=tks, y=[aval[(t, pf)]["pot"] for t in tks], name=pf, marker_color=COR_PERFIL[pf])
             fig.add_hline(y=0, line_color=MUTED)
-            fig.update_layout(barmode="group", title="Potencial do DCF por perfil (%)", height=280,
-                              legend=dict(orientation="h", y=1.18, x=0), **PLOT)
+            fig.update_layout(barmode="group", title="Potencial do DCF por perfil (%)", height=330,
+                              legend=dict(orientation="h", y=-0.15, x=0), **PLOT_LEG)
             fig.update_yaxes(**GRID)
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         if any(eh_financeiro(t) for t in dados):
@@ -1336,8 +1303,8 @@ def pagina_perfis():
                 if d.get("preco"):
                     fig.add_hline(y=d["preco"], line_dash="dot", line_color=MUTED,
                                   annotation_text=f"preço atual {brl(d['preco'])}", annotation_font_color=MUTED)
-                fig.update_layout(barmode="group", title=f"Valor justo por DCF · {rec.nome_curto(tk)}", height=300,
-                                  legend=dict(orientation="h", y=1.18, x=0), **PLOT)
+                fig.update_layout(barmode="group", title=f"Valor justo por DCF · {rec.nome_curto(tk)}", height=350,
+                                  legend=dict(orientation="h", y=-0.15, x=0), **PLOT_LEG)
                 fig.update_yaxes(**GRID)
                 st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             st.dataframe(estilizar(dfc, {"Taxa (%)": pct, "Cresc. FCL (%)": pct, "Perpetuidade (%)": pct,
