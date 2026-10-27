@@ -998,6 +998,10 @@ def pagina_dcf():
     selic = buscar_macro_bcb(432, 1)
     if not selic.empty:
         st.caption(f"Referência: Selic meta atual {pct(selic['valor'].iloc[-1], 2)} a.a.")
+    _, _, embi = _serie_ipea(IPEA_CATEGORIAS["💹 Macro e valuation"][2][1])
+    if not embi.empty:
+        st.caption(f"Risco-País (EMBI+): {num(embi['valor'].iloc[-1], 0)} pts. "
+                   "Quanto maior, mais alta tende a ser a taxa de desconto exigida.")
     perfil = perfil_atual()
     P = PERFIS[perfil]
     st.caption(f"Premissas iniciais do perfil {P['icone']} {perfil} (taxa, crescimento e perpetuidade); ajuste à vontade.")
@@ -1698,65 +1702,54 @@ def cartao_serie(titulo, df, anos, fmt, cor, unid="", barra=False, degrau=False)
     st.plotly_chart(fig, width="stretch", key=f"serie_{titulo}")
 
 
-# ======================================================================
-# PATCH: indicadores do IPEADATA na página "Cenário econômico"
-# No app.py, troque a função inteira `pagina_macro` por TUDO abaixo
-# (a constante IPEA_CATEGORIAS e a função _serie_ipea ficam logo antes dela).
-# Não precisa de nenhum import novo.
-# ======================================================================
-
-# (título, [(código, modo), ...], formatador, cor, unidade do delta, o que monitorar)
-# O 1º código é o que você pediu; os seguintes são reserva, usados só se o primeiro vier vazio.
-# modo: "valor"  -> mostra a série como vem
-#       "preco"  -> índice de preços: se vier como nível, vira variação % mensal
-#       "indice" -> número-índice: mostra o nível e a variação em 12 meses
+# ---- indicadores do IPEADATA (título, [(código, modo), ...], formatador, cor, unidade do delta, o que monitorar)
+# O 1º código é o preferido; os seguintes são reserva, usados só se o anterior vier vazio.
+# Código "SGS:número" = série do Banco Central.
+# modo: "valor" = série como vem · "preco" = índice de preços (vira % mensal se vier como nível)
+#       "indice" = número-índice (mostra o nível e a variação em 12 meses)
 IPEA_CATEGORIAS = {
     "💹 Macro e valuation": [
         ("Selic acumulada no mês (%)", [("BM12_SELC12", "valor"), ("BM12_TJOVER12", "valor")],
-         lambda v: pct(v, 2), GOOD, "p.p.",
-         "Custo de capital e taxa de desconto das empresas (WACC)."),
+         lambda v: pct(v, 2), GOOD, "p.p.", "Custo de capital e taxa de desconto das empresas (WACC)."),
         ("Câmbio R$/US$ (média)", [("BM12_ERC12", "valor"), ("BM12_ERV12", "valor")],
-         brl, ACCENT, "R$",
-         "Impacto em exportadoras (Vale, Suzano) e importadoras."),
-        ("Risco-País EMBI+ Brasil (pontos)", [("BM12_EMBI12", "valor"), ("JPM366_EMBI366", "valor")],
-         lambda v: f"{num(v, 0)} pts", "#7C3AED", "pts",
-         "Prêmio de risco exigido para investir no Brasil."),
+         brl, ACCENT, "R$", "Impacto em exportadoras (Vale, Suzano) e importadoras."),
+        ("Risco-País EMBI+ (pontos)", [("BM12_EMBI12", "valor"), ("JPM366_EMBI366", "valor")],
+         lambda v: f"{num(v, 0)} pts", "#7C3AED", "pts", "Prêmio de risco exigido para investir no Brasil."),
     ],
     "🏷️ Preços e contratos": [
         ("IPCA mensal (%)", [("PRECOS12_IPCA12", "preco"), ("PRECOS12_IPCAG12", "valor")],
-         lambda v: pct(v, 2), FAIR, "p.p.",
-         "Reajuste de contratos e inflação repassada ao consumidor."),
-        ("IGP-M mensal (%)", [("PRECOS12_IGPM12", "preco"), ("IGP12_IGPMG12", "valor"), ("IGP12_IGPM12", "preco")],
-         lambda v: pct(v, 2), "#0D9488", "p.p.",
-         "Indexador de aluguéis (shoppings, galpões) e contratos de elétricas."),
-        ("INCC mensal (%)", [("PRECOS12_INCC12", "preco")],
-         lambda v: pct(v, 2), "#CA8A04", "p.p.",
-         "Pressão de custos em construtoras e incorporadoras."),
+         lambda v: pct(v, 2), FAIR, "p.p.", "Reajuste de contratos e inflação repassada ao consumidor."),
+        ("IGP-M mensal (%)", [("IGP12_IGPMG12", "valor"), ("IGP12_IGPM12", "preco")],
+         lambda v: pct(v, 2), "#0D9488", "p.p.", "Indexador de aluguéis (shoppings, galpões) e contratos de elétricas."),
+        ("INCC mensal (%)", [("IGP12_INCC12", "preco"), ("PRECOS12_INCC12", "preco")],
+         lambda v: pct(v, 2), "#CA8A04", "p.p.", "Pressão de custos em construtoras e incorporadoras."),
     ],
     "🏭 Atividade econômica": [
         ("IBC-Br (prévia do PIB)", [("SGS12_IBCBR12", "indice")],
-         lambda v: num(v, 1), "#0284C7", "pts",
-         "Termômetro mensal da economia: o país está crescendo?"),
-        ("Produção industrial (geral)", [("PIMPF12_INDG12", "indice")],
-         lambda v: num(v, 1), "#4D7C0F", "pts",
-         "Demanda e desempenho de indústrias e bens de capital."),
+         lambda v: num(v, 1), "#0284C7", "pts", "Termômetro mensal: o país está crescendo?"),
+        ("Produção industrial (geral)", [("PIMPFN12_QIIGN12", "indice"), ("SGS:21859", "indice"), ("PIMPF12_INDG12", "indice")],
+         lambda v: num(v, 1), "#4D7C0F", "pts", "Demanda e desempenho de indústrias e bens de capital."),
     ],
     "🛒 Varejo, consumo e crédito": [
-        ("Vendas no varejo (PMC)", [("PMC12_RVT12", "indice")],
-         lambda v: num(v, 1), "#DB2777", "pts",
-         "Força do consumo (Assaí, Carrefour, Magazine Luiza)."),
-        ("Desemprego PNAD (%)", [("PNADC12_TDES12", "valor")],
-         lambda v: pct(v, 1), BAD, "p.p.",
-         "Capacidade de endividamento da população e inadimplência."),
+        ("Vendas no varejo (PMC)", [("SGS:1455", "indice"), ("PMC12_RVT12", "indice")],
+         lambda v: num(v, 1), "#DB2777", "pts", "Força do consumo (Assaí, Carrefour, Magazine Luiza)."),
+        ("Desemprego PNAD (%)", [("SGS:24369", "valor"), ("PNADC12_TDES12", "valor")],
+         lambda v: pct(v, 1), BAD, "p.p.", "Capacidade de endividamento da população e inadimplência."),
     ],
 }
 
 
-def _serie_ipea(codigos, modo_unused=None):
-    """Tenta cada código na ordem. Devolve (código usado, modo, DataFrame com coluna 'valor')."""
+def _ler_serie(cod: str):
+    if cod.startswith("SGS:"):
+        return buscar_macro_bcb(int(cod[4:]), 10)
+    return buscar_macro_ipea(cod)
+
+
+@st.cache_data(ttl=3600, show_spinner="Buscando indicadores no Ipeadata...")
+def _serie_ipea_cache(codigos: tuple):
     for cod, modo in codigos:
         try:
-            df = buscar_macro_ipea(cod)
+            df = _ler_serie(cod)
         except Exception:
             continue
         if df is None or df.empty or "valor" not in df:
@@ -1764,17 +1757,21 @@ def _serie_ipea(codigos, modo_unused=None):
         s = df["valor"].dropna()
         if s.empty:
             continue
-        if modo == "preco" and s.abs().median() > 30:  # veio como número-índice: converte em % mensal
+        if modo == "preco" and s.abs().median() > 30:  # veio como número-índice: vira % mensal
             s = (s.pct_change() * 100).dropna()
         if not s.empty:
             return cod, modo, s.to_frame("valor")
     return None, None, pd.DataFrame()
 
 
+def _serie_ipea(codigos):
+    return _serie_ipea_cache(tuple(tuple(c) for c in codigos))
+
+
 def pagina_macro():
     intro("🌐", "O cenário econômico do Brasil",
-          "Juros (Selic), inflação (IPCA), dólar, atividade e desemprego influenciam o preço das ações. Aqui você "
-          "acompanha esses números e vê <b>o que observar</b> em cada um.")
+          "Juros (Selic), inflação (IPCA), dólar, atividade e desemprego influenciam o preço das ações. "
+          "Aqui você acompanha esses números e vê <b>o que observar</b> em cada um.")
     anos = st.segmented_control("Período", [1, 2, 5, 10], default=2,
                                 format_func=lambda x: f"{x} ano{'s' if x > 1 else ''}", key="macro_anos") or 2
     t_bcb, t_ipea = st.tabs(["🏦 Banco Central (SGS)", "🏛️ IPEADATA"])
@@ -1800,8 +1797,7 @@ def pagina_macro():
                     with col:
                         cod, modo, df = _serie_ipea(codigos)
                         if df.empty:
-                            st.warning(f"{titulo}: sem dados no Ipeadata agora "
-                                       f"(código {codigos[0][0]}). Confira o código ou tente 🔄 mais tarde.")
+                            st.warning(f"{titulo}: sem dados agora (código {codigos[0][0]}).")
                             st.caption(f"👀 {monitorar}")
                             continue
                         cartao_serie(titulo, df, anos, fmt, cor, unid, barra=(modo == "preco"))
@@ -1809,23 +1805,10 @@ def pagina_macro():
                         if modo == "indice" and len(df) > 12:
                             v12 = (df["valor"].iloc[-1] / df["valor"].iloc[-13] - 1) * 100
                             extra = f" · 12 meses: {pct(v12, 1)}"
-                        nota_cod = "" if cod == codigos[0][0] else f" (código reserva {cod})"
-                        st.caption(f"👀 {monitorar}{extra}  \nIpeadata: {cod}{nota_cod}")
-        st.caption("Séries do Ipeadata. Se o código pedido não devolver dados, o app tenta um código reserva da "
-                   "mesma série. Alguns indicadores saem com defasagem de 1 a 2 meses.")
-
-
-# ----------------------------------------------------------------------
-# OPCIONAL (Macro/Valuation dentro do DCF): em pagina_dcf, logo depois de
-#     if not selic.empty:
-#         st.caption(f"Referência: Selic meta atual {pct(selic['valor'].iloc[-1], 2)} a.a.")
-# acrescente:
-#     _, _, embi = _serie_ipea(IPEA_CATEGORIAS["💹 Macro e valuation"][2][1])
-#     if not embi.empty:
-#         st.caption(f"Risco-País (EMBI+): {num(embi['valor'].iloc[-1], 0)} pts. "
-#                    "Quanto maior, mais alta tende a ser a taxa de desconto exigida.")
-# ----------------------------------------------------------------------
-
+                        reserva = "" if cod == codigos[0][0] else " (código reserva)"
+                        st.caption(f"👀 {monitorar}{extra}  \nFonte: {cod}{reserva}")
+        st.caption("Séries do Ipeadata e do Banco Central. Se o código preferido não devolver dados, o app tenta um "
+                   "reserva da mesma série. Alguns indicadores saem com 1 a 2 meses de defasagem.")
 
 
 def pagina_micro():
@@ -2000,61 +1983,4 @@ def barra_superior():
         st.rerun()
     if c6.button("❓", help="Abrir o tutorial", width="stretch"):
         st.session_state.tour_passo = 0
-        tutorial()
-
-    p1, p2 = st.columns([3.4, 5], vertical_alignment="center")
-    p1.radio("Perfil do investidor", list(PERFIS), key="perfil", horizontal=True,
-             format_func=lambda x: f"{PERFIS[x]['icone']} {x}", help=ajuda_txt("Perfil"))
-    p2.caption(PERFIS[perfil_atual()]["resumo"])
-    if st.session_state.fonte_dados == "Brapi" and not _token():
-        st.warning("Token da Brapi não configurado (BRAPI_TOKEN). Os dados virão do Yahoo Finance quando faltarem.")
-
-
-# ---------------------------------------------------------------- navegação
-# Menu organizado pelo que a pessoa quer fazer:
-#   Início    -> ver o panorama e o cenário econômico
-#   Encontrar -> achar empresas para estudar
-#   Analisar  -> olhar a fundo as empresas escolhidas (valor, caixa, múltiplos, dividendos, gráfico, indicadores)
-#   Comparar  -> ranquear e comparar as empresas entre si e entre perfis
-PG_INICIO = st.Page(pagina_inicio, title="Visão geral", icon="🏠", url_path="inicio", default=True)
-PG_MACRO = st.Page(pagina_macro, title="Cenário econômico", icon="🌐", url_path="macro")
-PG_BUSCA = st.Page(pagina_busca, title="Buscar empresa", icon="🔎", url_path="buscar")
-PG_SCREENER = st.Page(pagina_screener, title="Buscador de oportunidades", icon="🧪", url_path="oportunidades")
-PG_PRECO = st.Page(pagina_preco_justo, title="Preço justo e tendência", icon="🎯", url_path="preco-justo")
-PG_DCF = st.Page(pagina_dcf, title="Fluxo de caixa descontado (DCF)", icon="🧮", url_path="dcf")
-PG_VAL = st.Page(pagina_valuation, title="Múltiplos (P/L, P/VP...)", icon="⚖️", url_path="valuation")
-PG_DIV = st.Page(pagina_dividendos, title="Dividendos", icon="💰", url_path="dividendos")
-PG_TEC = st.Page(pagina_tecnica, title="Gráfico e tendência", icon="📉", url_path="tecnica")
-PG_MICRO = st.Page(pagina_micro, title="Saúde das empresas", icon="🏢", url_path="micro")
-PG_PICK = st.Page(pagina_picking, title="Ranking (Stock picking)", icon="🏆", url_path="stock-picking")
-PG_PERFIS = st.Page(pagina_perfis, title="Perfis e cenários", icon="🧭", url_path="perfis")
-
-paginas = {
-    "🏠 Início": [PG_INICIO, PG_MACRO],
-    "🔎 Encontrar": [PG_BUSCA, PG_SCREENER],
-    "📊 Analisar": [PG_PRECO, PG_DCF, PG_VAL, PG_DIV, PG_TEC, PG_MICRO],
-    "🏆 Comparar": [PG_PICK, PG_PERFIS],
-}
-
-try:
-    pg = st.navigation(paginas, position="top")
-    st.markdown('<style>section[data-testid="stSidebar"], '
-                '[data-testid="stSidebarCollapsedControl"], '
-                '[data-testid="collapsedControl"] {display:none !important;}</style>',
-                unsafe_allow_html=True)
-except TypeError:
-    st.warning("Navegação no topo requer streamlit >= 1.46 (`pip install -U streamlit`). "
-               "Usando o menu lateral como alternativa.")
-    pg = st.navigation(paginas)
-
-barra_superior()
-if not st.session_state.tour_visto:  # tutorial abre sozinho na primeira visita
-    st.session_state.tour_visto = True
-    try:
-        tutorial()
-    except Exception as e:  # o tutorial é um extra: não pode impedir o app de abrir
-        st.caption(f"Tutorial indisponível no momento ({e.__class__.__name__}). Use o botão ❓ para tentar de novo.")
-pg.run()
-
-st.caption("Ferramenta educacional. Graham, Bazin, DCF e a nota de Stock Picking são modelos simplificados "
-           "e dependem da qualidade das fontes; não constituem recomendação de investimento.")
+        tut
