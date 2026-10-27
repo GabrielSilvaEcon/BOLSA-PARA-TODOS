@@ -1588,7 +1588,61 @@ def cartao_serie(titulo, df, anos, fmt, cor, unid="", barra=False, degrau=False)
     st.plotly_chart(fig, width="stretch", key=f"serie_{titulo}")
 
 
+IPEA_CATEGORIAS = {
+    "💹 Macro e valuation": [
+        ("Selic acumulada no mês (%)", [("BM12_SELC12", "valor"), ("BM12_TJOVER12", "valor")],
+         lambda v: pct(v, 2), GOOD, "p.p.", "Custo de capital e taxa de desconto das empresas (WACC)."),
+        ("Câmbio R$/US$ (média)", [("BM12_ERC12", "valor"), ("BM12_ERV12", "valor")],
+         brl, ACCENT, "R$", "Impacto em exportadoras (Vale, Suzano) e importadoras."),
+        ("Risco-País EMBI+ (pontos)", [("BM12_EMBI12", "valor"), ("JPM366_EMBI366", "valor")],
+         lambda v: f"{num(v, 0)} pts", "#7C3AED", "pts", "Prêmio de risco exigido para investir no Brasil."),
+    ],
+    "🏷️ Preços e contratos": [
+        ("IPCA mensal (%)", [("PRECOS12_IPCA12", "preco"), ("PRECOS12_IPCAG12", "valor")],
+         lambda v: pct(v, 2), FAIR, "p.p.", "Reajuste de contratos e inflação repassada ao consumidor."),
+        ("IGP-M mensal (%)", [("PRECOS12_IGPM12", "preco"), ("IGP12_IGPMG12", "valor"), ("IGP12_IGPM12", "preco")],
+         lambda v: pct(v, 2), "#0D9488", "p.p.", "Indexador de aluguéis (shoppings, galpões) e contratos de elétricas."),
+        ("INCC mensal (%)", [("PRECOS12_INCC12", "preco")],
+         lambda v: pct(v, 2), "#CA8A04", "p.p.", "Pressão de custos em construtoras e incorporadoras."),
+    ],
+    "🏭 Atividade econômica": [
+        ("IBC-Br (prévia do PIB)", [("SGS12_IBCBR12", "indice")],
+         lambda v: num(v, 1), "#0284C7", "pts", "Termômetro mensal: o país está crescendo?"),
+        ("Produção industrial (geral)", [("PIMPF12_INDG12", "indice")],
+         lambda v: num(v, 1), "#4D7C0F", "pts", "Demanda e desempenho de indústrias e bens de capital."),
+    ],
+    "🛒 Varejo, consumo e crédito": [
+        ("Vendas no varejo (PMC)", [("PMC12_RVT12", "indice")],
+         lambda v: num(v, 1), "#DB2777", "pts", "Força do consumo (Assaí, Carrefour, Magazine Luiza)."),
+        ("Desemprego PNAD (%)", [("PNADC12_TDES12", "valor")],
+         lambda v: pct(v, 1), BAD, "p.p.", "Capacidade de endividamento da população e inadimplência."),
+    ],
+}
+
+
+def _serie_ipea(codigos):
+    """Tenta cada código na ordem. Devolve (código usado, modo, DataFrame com 'valor')."""
+    for cod, modo in codigos:
+        try:
+            df = buscar_macro_ipea(cod)
+        except Exception:
+            continue
+        if df is None or df.empty or "valor" not in df:
+            continue
+        s = df["valor"].dropna()
+        if s.empty:
+            continue
+        if modo == "preco" and s.abs().median() > 30:  # veio como índice: vira % mensal
+            s = (s.pct_change() * 100).dropna()
+        if not s.empty:
+            return cod, modo, s.to_frame("valor")
+    return None, None, pd.DataFrame()
+
+
 def pagina_macro():
+    intro("🌐", "O cenário econômico do Brasil",
+          "Juros (Selic), inflação (IPCA), dólar, atividade e desemprego influenciam o preço das ações. "
+          "Aqui você acompanha esses números e vê <b>o que observar</b> em cada um.")
     anos = st.segmented_control("Período", [1, 2, 5, 10], default=2,
                                 format_func=lambda x: f"{x} ano{'s' if x > 1 else ''}", key="macro_anos") or 2
     t_bcb, t_ipea = st.tabs(["🏦 Banco Central (SGS)", "🏛️ IPEADATA"])
@@ -1604,14 +1658,28 @@ def pagina_macro():
             cartao_serie("Dólar comercial venda (R$)", buscar_macro_bcb(1, 10), anos, brl, ACCENT, "R$")
         with c4:
             cartao_serie("Desemprego PNAD (%)", buscar_macro_bcb(24369, 10), anos, lambda v: pct(v, 1), BAD, "p.p.")
+
     with t_ipea:
-        i1, i2 = st.columns(2)
-        with i1:
-            cartao_serie("Risco-País EMBI+ (pontos)", buscar_macro_ipea("JPM366_EMBI366"), anos,
-                         lambda v: f"{num(v, 0)} pts", "#bc8cff", "pts")
-        with i2:
-            cartao_serie("IGP-M mensal (%)", buscar_macro_ipea("IGP12_IGPMG12"), anos,
-                         lambda v: pct(v, 2), "#33b3ae", "p.p.", barra=True)
+        for categoria, itens in IPEA_CATEGORIAS.items():
+            st.markdown(f"#### {categoria}")
+            for i in range(0, len(itens), 2):
+                cols = st.columns(2)
+                for col, (titulo, codigos, fmt, cor, unid, monitorar) in zip(cols, itens[i:i + 2]):
+                    with col:
+                        cod, modo, df = _serie_ipea(codigos)
+                        if df.empty:
+                            st.warning(f"{titulo}: sem dados agora (código {codigos[0][0]}).")
+                            st.caption(f"👀 {monitorar}")
+                            continue
+                        cartao_serie(titulo, df, anos, fmt, cor, unid, barra=(modo == "preco"))
+                        extra = ""
+                        if modo == "indice" and len(df) > 12:
+                            v12 = (df["valor"].iloc[-1] / df["valor"].iloc[-13] - 1) * 100
+                            extra = f" · 12 meses: {pct(v12, 1)}"
+                        reserva = "" if cod == codigos[0][0] else " (código reserva)"
+                        st.caption(f"👀 {monitorar}{extra}  \nIpeadata: {cod}{reserva}")
+        st.caption("Séries do Ipeadata. Se o código pedido não devolver dados, o app tenta um reserva da mesma série. "
+                   "Alguns indicadores saem com 1 a 2 meses de defasagem.")
 
 
 def pagina_micro():
