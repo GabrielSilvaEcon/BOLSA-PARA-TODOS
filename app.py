@@ -12,7 +12,6 @@ Convenções internas dos dados (todas as fontes são normalizadas para isso):
 """
 
 import base64
-import functools
 import html
 import json
 import re
@@ -228,168 +227,6 @@ def intro(emoji: str, titulo: str, texto: str):
     """Faixa amarela no topo de cada página explicando, em linguagem simples, o que ela mostra."""
     md(f'<div class="intro"><div class="ie">{emoji}</div><div><div class="it">{html.escape(titulo)}</div>'
        f'<div class="ix">{texto}</div></div></div>')
-
-
-# ---------------------------------------------------------------- guia de cada método (abertura + relatório de prós e contras)
-GUIAS = {
-    "preco": {
-        "emoji": "🎯", "titulo": "Preço justo e tendência",
-        "serve": "descobrir, de forma rápida, se o preço de uma ação está abaixo ou acima do que ela deveria valer, "
-                 "e se o preço vem subindo, andando de lado ou caindo.",
-        "entrega": "para cada ação, o preço justo estimado, a margem de segurança (a folga entre o preço justo e o "
-                   "preço de hoje), a média de dividendos dos últimos 5 anos e a tendência (Alta, Lateral ou Baixa).",
-        "pros": ["Simples de entender: usa dois métodos clássicos, Graham (lucro e patrimônio) e Bazin (dividendos).",
-                 "Dá um número de referência e um semáforo claro (abaixo, no ponto ou acima do justo).",
-                 "A margem de segurança funciona como uma folga contra erros de estimativa."],
-        "contras": ["É uma estimativa baseada em dados do passado, não uma previsão.",
-                    "Graham não funciona quando a empresa tem prejuízo ou patrimônio negativo; Bazin exige que ela "
-                    "pague dividendos.",
-                    "Não considera o crescimento futuro nem o humor do mercado.",
-                    "Bancos, seguradoras e setores muito cíclicos podem distorcer o resultado."],
-        "quando": "É um ótimo ponto de partida para quem está começando: use para separar as empresas que merecem "
-                  "estudo e confirme depois com o DCF e a saúde da empresa.",
-    },
-    "dcf": {
-        "emoji": "🧮", "titulo": "Fluxo de caixa descontado (DCF)",
-        "serve": "estimar quanto a empresa vale pelo dinheiro que ela deve gerar nos próximos anos, trazido para o "
-                 "valor de hoje.",
-        "entrega": "o valor justo por ação segundo o DCF, o potencial de alta ou queda frente ao preço atual, uma "
-                   "tabela de sensibilidade e três cenários (pessimista, base e otimista).",
-        "pros": ["Olha para o futuro, e não só para o passado.",
-                 "Mostra o quanto o resultado depende das suas hipóteses, com a sensibilidade e os cenários.",
-                 "Funciona bem para empresas com caixa previsível."],
-        "contras": ["Pequenas mudanças na taxa de desconto ou no crescimento mudam muito o valor.",
-                    "Boa parte do valor costuma vir da perpetuidade, ou seja, de anos muito distantes.",
-                    "Não é adequado para bancos e seguradoras.",
-                    "Precisa de caixa positivo: sem isso, o cálculo não sai."],
-        "quando": "Use depois do Preço justo, em empresas com caixa previsível e positivo. Teste vários cenários "
-                  "antes de confiar em um único número.",
-    },
-    "valuation": {
-        "emoji": "⚖️", "titulo": "Múltiplos (P/L, P/VP e outros)",
-        "serve": "comparar empresas usando indicadores prontos, como P/L, P/VP, EV/EBITDA, dividend yield, ROE e dívida.",
-        "entrega": "um gráfico e uma tabela para comparar as empresas que você escolheu, indicador por indicador, "
-                   "com a explicação de cada um.",
-        "pros": ["Rápido: compara várias empresas de uma vez.",
-                 "Usa números que o mercado inteiro conhece e discute.",
-                 "Mostra quem está mais cara ou mais barata em relação às outras."],
-        "contras": ["Um indicador sozinho engana: é preciso olhar vários juntos.",
-                    "Só compara bem empresas do mesmo setor.",
-                    "Não diz o valor justo, apenas compara.",
-                    "Lucros pontuais, como a venda de um ativo, distorcem o P/L."],
-        "quando": "Use para colocar empresas do mesmo setor lado a lado. Olhe vários indicadores juntos, nunca um só.",
-    },
-    "dividendos": {
-        "emoji": "💰", "titulo": "Dividendos",
-        "serve": "ver quanto as empresas pagam de proventos aos sócios e se pagam com regularidade.",
-        "entrega": "o gráfico de dividendos por ano, os proventos dos últimos 12 meses, a média de 5 anos e o "
-                   "dividend yield (quanto o dividendo rende frente ao preço da ação).",
-        "pros": ["Mostra a renda que a ação gera, útil para quem quer receber dinheiro ao longo do tempo.",
-                 "Empresas que pagam sempre costumam ser mais estáveis.",
-                 "É fácil de entender e de comparar."],
-        "contras": ["Dividendo muito alto pode significar preço que despencou ou pagamento que não se sustenta.",
-                    "Dividendos passados não garantem pagamentos futuros.",
-                    "Há pagamentos extraordinários que não se repetem.",
-                    "Não diz nada sobre a saúde nem sobre o crescimento da empresa."],
-        "quando": "Use se o seu objetivo é renda. Confira se o pagamento é regular e se a empresa tem lucro para "
-                  "sustentá-lo.",
-    },
-    "tecnica": {
-        "emoji": "📉", "titulo": "Gráfico e tendência (análise técnica)",
-        "serve": "ler o comportamento do preço no gráfico para entender a tendência e possíveis momentos de entrada "
-                 "ou saída.",
-        "entrega": "o gráfico com candles, médias móveis, volume e IFR, sinais de alta, baixa e indecisão, e padrões "
-                   "gráficos, como suportes, resistências e figuras.",
-        "pros": ["Mostra o humor do mercado, refletido no preço.",
-                 "Ajuda a escolher o momento de comprar ou vender, e não só o que comprar.",
-                 "Funciona para qualquer ativo, mesmo sem olhar o balanço."],
-        "contras": ["Os sinais podem errar ou ser falsos.",
-                    "Não considera os resultados da empresa.",
-                    "É mais subjetiva: duas pessoas podem ler o mesmo gráfico de jeitos diferentes.",
-                    "Menos útil para quem investe pensando em muitos anos."],
-        "quando": "Use para escolher o momento de entrar ou sair, depois de decidir que a empresa vale a pena. "
-                  "Não use sozinha.",
-    },
-    "micro": {
-        "emoji": "🏢", "titulo": "Saúde das empresas",
-        "serve": "avaliar se a empresa é lucrativa, rentável e pouco endividada.",
-        "entrega": "uma tabela com LPA, VPA, EV/EBITDA, dividend yield, ROE, margem líquida e dívida sobre patrimônio.",
-        "pros": ["Mostra a qualidade do negócio, e não só o preço.",
-                 "Ajuda a evitar empresas muito endividadas ou pouco lucrativas.",
-                 "Serve de base para os métodos de preço justo."],
-        "contras": ["Retrata o passado: os balanços saem a cada trimestre.",
-                    "Não diz se o preço está caro ou barato.",
-                    "Os dados vêm de fontes gratuitas e podem ter falhas: confira nos balanços oficiais.",
-                    "Os indicadores variam entre setores, então só compare empresas parecidas."],
-        "quando": "Use antes de decidir: uma empresa barata, mas fraca ou endividada, pode ser uma armadilha.",
-    },
-    "picking": {
-        "emoji": "🏆", "titulo": "Ranking de notas (stock picking)",
-        "serve": "fazer uma primeira triagem, colocando as empresas em ordem por uma nota de 0 a 100.",
-        "entrega": "a nota geral, a nota em seis pilares (valor, qualidade, dividendos, solidez, tendência e risco), "
-                   "o ranking, gráficos e um radar por empresa.",
-        "pros": ["Resume muitos indicadores em um número só.",
-                 "Os pesos mudam conforme o seu perfil de investidor.",
-                 "Mostra os pontos fortes e fracos de cada empresa."],
-        "contras": ["Uma nota única esconde detalhes: olhe também os pilares.",
-                    "Pesos e faixas são escolhas educacionais, não verdades absolutas.",
-                    "Pilares sem dado são ignorados, o que pode distorcer a nota.",
-                    "Não é recomendação de compra ou venda."],
-        "quando": "Use para filtrar muitas empresas rapidamente e, depois, estude as melhores a fundo.",
-    },
-    "perfis": {
-        "emoji": "🧭", "titulo": "Perfis e cenários",
-        "serve": "entender como a mesma empresa se sai para investidores com jeitos diferentes de investir "
-                 "(Conservador, Moderado e Arrojado).",
-        "entrega": "a nota da empresa em cada perfil, o potencial do DCF, os cenários pessimista, base e otimista e as "
-                   "regras de cada perfil lado a lado.",
-        "pros": ["Mostra que uma boa empresa depende de quem investe.",
-                 "Ajuda a ver se a empresa combina com o seu perfil.",
-                 "Os cenários dão uma noção do risco envolvido."],
-        "contras": ["Os perfis aqui são simplificados: o perfil oficial vem de um questionário (suitability) na corretora.",
-                    "As premissas são fixas e podem não refletir a sua situação.",
-                    "Os cenários dependem das hipóteses escolhidas."],
-        "quando": "Use para conferir se uma empresa combina com o seu jeito de investir antes de analisá-la a fundo.",
-    },
-}
-
-
-def guia_topo(k: str):
-    g = GUIAS[k]
-    md(f'<div class="intro"><div class="ie">{g["emoji"]}</div><div>'
-       f'<div class="it">{html.escape(g["titulo"])}</div>'
-       f'<div class="ix"><b>Para que serve:</b> {g["serve"]}<br>'
-       f'<b>O que você vai ver aqui:</b> {g["entrega"]}</div></div></div>')
-
-
-def guia_relatorio(k: str):
-    g = GUIAS[k]
-
-    def lista(itens):
-        return "".join(f"<li>{x}</li>" for x in itens)
-    st.divider()
-    st.markdown(f"#### 📝 Relatório do método: prós e contras ({g['titulo']})")
-    c1, c2 = st.columns(2)
-    with c1:
-        md(f'<div class="ctx pos"><div class="t">✅ Pontos fortes</div>'
-           f'<div class="x"><ul style="margin:6px 0 0 18px; padding:0;">{lista(g["pros"])}</ul></div></div>')
-    with c2:
-        md(f'<div class="ctx neg"><div class="t">⚠️ Limites e cuidados</div>'
-           f'<div class="x"><ul style="margin:6px 0 0 18px; padding:0;">{lista(g["contras"])}</ul></div></div>')
-    md(f'<div class="ctx neu"><div class="t">💡 Em resumo</div><div class="x">{g["quando"]}</div></div>')
-    st.caption("Texto educacional. Nenhum método é recomendação de investimento: use vários em conjunto.")
-
-
-def com_guia(k: str):
-    """Decorador das páginas: abre com 'para que serve' e fecha com o relatório de prós e contras."""
-    def deco(fn):
-        @functools.wraps(fn)
-        def pagina():
-            guia_topo(k)
-            fn()
-            guia_relatorio(k)
-        return pagina
-    return deco
 
 
 def cfg_ajuda(df) -> dict:
@@ -966,8 +803,11 @@ def pagina_inicio():
 
 
 # ---------------------------------------------------------------- páginas: fundamentalista
-@com_guia("preco")
 def pagina_preco_justo():
+    intro("🎯", "Esta ação está cara ou barata?",
+          "Calculamos o <b>preço justo</b> de cada ação (quanto ela deveria valer) e comparamos com o preço de hoje. "
+          "Quanto mais abaixo do justo, maior a <b>margem de segurança</b>. A <b>tendência</b> mostra se o preço vem "
+          "subindo, andando de lado ou caindo.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1057,8 +897,10 @@ def pagina_preco_justo():
                      width="stretch", hide_index=True, column_config=cfg_ajuda(df))
 
 
-@com_guia("valuation")
 def pagina_valuation():
+    intro("⚖️", "Comparando os números das empresas",
+          "Indicadores como <b>P/L</b> (quantos anos de lucro o preço paga) e <b>P/VP</b> (preço frente ao patrimônio) "
+          "ajudam a comparar empresas. Passe o mouse no ⓘ para entender cada um.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1089,8 +931,10 @@ def pagina_valuation():
     st.dataframe(estilizar(df, fmts), width="stretch", hide_index=True, column_config=cfg_ajuda(df))
 
 
-@com_guia("dividendos")
 def pagina_dividendos():
+    intro("💰", "Quanto a empresa paga aos sócios",
+          "<b>Dividendos</b> são a parte do lucro repartida com quem tem ações. O <b>DY</b> mostra quanto isso "
+          "rendeu em relação ao preço da ação.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1128,8 +972,10 @@ def grafico_caixa(caixa: pd.DataFrame):
     return fig
 
 
-@com_guia("dcf")
 def pagina_dcf():
+    intro("🧮", "Quanto a empresa vale pelo dinheiro que gera",
+          "O <b>fluxo de caixa descontado</b> estima o valor da empresa a partir do dinheiro que ela deve gerar nos "
+          "próximos anos, trazido para valores de hoje. É um método mais avançado: comece pelo Preço justo.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1352,8 +1198,10 @@ def veredito(nota, perfil: str) -> str:
     return "Aderente" if nota >= mn else ("Neutro" if nota >= mn - 10 else "Pouco aderente")
 
 
-@com_guia("picking")
 def pagina_picking():
+    intro("🏆", "Ranking de notas",
+          "Dá uma nota de 0 a 100 para cada empresa em seis pontos: valor, qualidade, dividendos, solidez, tendência "
+          "e risco. A nota serve para uma primeira triagem, não é ordem de compra.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1457,8 +1305,9 @@ def pagina_picking():
 
 
 # ---------------------------------------------------------------- página: perfis e cenários
-@com_guia("perfis")
 def pagina_perfis():
+    intro("🧭", "E se eu investisse de outro jeito?",
+          "Veja a mesma empresa pelos olhos de um investidor <b>Conservador</b>, <b>Moderado</b> e <b>Arrojado</b>.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1878,8 +1727,9 @@ def pagina_macro():
                          lambda v: pct(v, 2), "#0D9488", "p.p.", barra=True)
 
 
-@com_guia("micro")
 def pagina_micro():
+    intro("🏢", "Saúde das empresas",
+          "Lucro, dívida e rentabilidade (<b>ROE</b>) mostram se a empresa está forte. Compare as que você escolheu.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1911,8 +1761,10 @@ def tradingview(ticker: str, intervalo: str, altura: int):
 <script>new TradingView.widget({json.dumps(cfg)});</script>""", height=altura)
 
 
-@com_guia("tecnica")
 def pagina_tecnica():
+    intro("📉", "Para onde o preço está caminhando",
+          "O gráfico mostra o histórico de preços. <b>Alta</b> = subindo, <b>Baixa</b> = caindo, <b>Lateral</b> = "
+          "andando de lado. Os sinais são indicadores técnicos e podem errar.")
     ativos = st.session_state.get("sel_ativos", [])
     if not ativos:
         estado_vazio()
@@ -1956,4 +1808,152 @@ def pagina_tecnica():
             sinais += ind["sinais"]
     except Exception as e:
         st.warning(f"Erro ao calcular indicadores técnicos: {e}")
-        
+        ind = {"sinais": []}
+
+    corte = df.index[-10] if len(df) >= 10 else df.index[0]
+    recentes = [s for s in sinais + padroes if s["data"] >= corte]
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Sinais de alta (10 candles)", sum(s["tipo"] == "alta" for s in recentes))
+    m2.metric("Sinais de baixa (10 candles)", sum(s["tipo"] == "baixa" for s in recentes))
+    m3.metric("Indecisão (10 candles)", sum(s["tipo"] == "neutro" for s in recentes))
+
+    link = f"https://br.tradingview.com/chart/?symbol=BMFBOVESPA%3A{ticker}"
+    lado = layout == "Lado a lado"
+    alt_tv, alt_sinais = (440, 500) if lado else (400, 520)
+
+    def bloco_limpo():
+        st.markdown("#### Gráfico limpo · TradingView")
+        tradingview(ticker, tv_int, alt_tv)
+        st.link_button("Abrir no TradingView ↗", link)
+
+    def bloco_sinais():
+        st.markdown("#### Gráfico com sinais")
+        try:
+            fig = tec.figura(df, sinais, padroes, niveis, ind, diario=(tf == "Diário"),
+                             altura=alt_sinais, mostrar_mm=mostrar_mm)
+            st.plotly_chart(fig, width="stretch", config={"displaylogo": False})
+        except Exception as e:
+            st.error(f"Erro ao renderizar gráfico técnico: {e}")
+
+    if lado:
+        a, b = st.columns(2)
+        with a:
+            bloco_limpo()
+        with b:
+            bloco_sinais()
+    else:
+        bloco_limpo()
+        bloco_sinais()
+
+
+# ---------------------------------------------------------------- barra superior (substitui a sidebar)
+def _adicionar_ticker():
+    """Aceita tickers ou nomes de empresa, separados por vírgula."""
+    termos = []
+    for p in re.split(r"[,;]+", st.session_state.get("novo_ticker", "")):
+        sub = p.split()
+        if len(sub) > 1 and all(rec.REGEX_TICKER.fullmatch(rec.normalizar_ticker(s)) for s in sub):
+            termos += sub
+        elif p.strip():
+            termos.append(p.strip())
+    novos, falhas = [], []
+    for termo in termos:
+        tk = rec.resolver_termo(termo)
+        if tk:
+            _adicionar(tk)
+            novos.append(tk)
+        else:
+            falhas.append(termo)
+    partes = []
+    if novos:
+        partes.append("Adicionado: " + ", ".join(novos))
+    if falhas:
+        partes.append("Não encontrei: " + ", ".join(falhas) + ". Tente em Encontrar → Buscar empresa.")
+    st.session_state["msg_add"] = " · ".join(partes)
+
+
+def barra_superior():
+    c1, c2, c3, c4, c5, c6 = st.columns([2.4, 4.2, 1.0, 1.8, 0.55, 0.55], vertical_alignment="center")
+    c1.markdown(f'<div class="brand"><img src="{svg_uri(LOGO_SVG)}" width="38" height="38">'
+                f'<div><div class="hero">Bolsa para Todos</div>'
+                f'<div class="sub">Atualizado em {datetime.now():%d/%m/%Y %H:%M}</div></div></div>',
+                unsafe_allow_html=True)
+    opcoes = list(dict.fromkeys(st.session_state.universo + rec.TODOS_TICKERS))
+    c2.multiselect("Ativos em análise", options=opcoes, key="sel_ativos", format_func=rec.rotulo,
+                   label_visibility="collapsed",
+                   placeholder="Digite o nome da empresa (ex.: Petrobras) ou o ticker")
+    for t in st.session_state.sel_ativos:
+        if t not in st.session_state.universo:
+            st.session_state.universo.append(t)
+    with c3.popover("➕ Ativo"):
+        with st.form("add", clear_on_submit=True):
+            st.text_input("Nome ou ticker", key="novo_ticker", placeholder="Ex.: Petrobras, WEGE3, ABCB4")
+            st.form_submit_button("Adicionar", on_click=_adicionar_ticker)
+        if st.session_state.get("msg_add"):
+            st.caption(st.session_state["msg_add"])
+        st.caption("Para explorar por setor ou ver logos, use Encontrar → Buscar empresa.")
+    c4.selectbox("Fonte de dados", FONTES, key="fonte_dados", label_visibility="collapsed",
+                 format_func=lambda f: f"Fonte: {f}")
+    if c5.button("🔄", help="Limpar cache e atualizar dados", width="stretch"):
+        st.cache_data.clear()
+        st.rerun()
+    if c6.button("❓", help="Abrir o tutorial", width="stretch"):
+        st.session_state.tour_passo = 0
+        tutorial()
+
+    p1, p2 = st.columns([3.4, 5], vertical_alignment="center")
+    p1.radio("Perfil do investidor", list(PERFIS), key="perfil", horizontal=True,
+             format_func=lambda x: f"{PERFIS[x]['icone']} {x}", help=ajuda_txt("Perfil"))
+    p2.caption(PERFIS[perfil_atual()]["resumo"])
+    if st.session_state.fonte_dados == "Brapi" and not _token():
+        st.warning("Token da Brapi não configurado (BRAPI_TOKEN). Os dados virão do Yahoo Finance quando faltarem.")
+
+
+# ---------------------------------------------------------------- navegação
+# Menu organizado pelo que a pessoa quer fazer:
+#   Início    -> ver o panorama e o cenário econômico
+#   Encontrar -> achar empresas para estudar
+#   Analisar  -> olhar a fundo as empresas escolhidas (valor, caixa, múltiplos, dividendos, gráfico, indicadores)
+#   Comparar  -> ranquear e comparar as empresas entre si e entre perfis
+PG_INICIO = st.Page(pagina_inicio, title="Visão geral", icon="🏠", url_path="inicio", default=True)
+PG_MACRO = st.Page(pagina_macro, title="Cenário econômico", icon="🌐", url_path="macro")
+PG_BUSCA = st.Page(pagina_busca, title="Buscar empresa", icon="🔎", url_path="buscar")
+PG_SCREENER = st.Page(pagina_screener, title="Buscador de oportunidades", icon="🧪", url_path="oportunidades")
+PG_PRECO = st.Page(pagina_preco_justo, title="Preço justo e tendência", icon="🎯", url_path="preco-justo")
+PG_DCF = st.Page(pagina_dcf, title="Fluxo de caixa descontado (DCF)", icon="🧮", url_path="dcf")
+PG_VAL = st.Page(pagina_valuation, title="Múltiplos (P/L, P/VP...)", icon="⚖️", url_path="valuation")
+PG_DIV = st.Page(pagina_dividendos, title="Dividendos", icon="💰", url_path="dividendos")
+PG_TEC = st.Page(pagina_tecnica, title="Gráfico e tendência", icon="📉", url_path="tecnica")
+PG_MICRO = st.Page(pagina_micro, title="Saúde das empresas", icon="🏢", url_path="micro")
+PG_PICK = st.Page(pagina_picking, title="Ranking (Stock picking)", icon="🏆", url_path="stock-picking")
+PG_PERFIS = st.Page(pagina_perfis, title="Perfis e cenários", icon="🧭", url_path="perfis")
+
+paginas = {
+    "🏠 Início": [PG_INICIO, PG_MACRO],
+    "🔎 Encontrar": [PG_BUSCA, PG_SCREENER],
+    "📊 Analisar": [PG_PRECO, PG_DCF, PG_VAL, PG_DIV, PG_TEC, PG_MICRO],
+    "🏆 Comparar": [PG_PICK, PG_PERFIS],
+}
+
+try:
+    pg = st.navigation(paginas, position="top")
+    st.markdown('<style>section[data-testid="stSidebar"], '
+                '[data-testid="stSidebarCollapsedControl"], '
+                '[data-testid="collapsedControl"] {display:none !important;}</style>',
+                unsafe_allow_html=True)
+except TypeError:
+    st.warning("Navegação no topo requer streamlit >= 1.46 (`pip install -U streamlit`). "
+               "Usando o menu lateral como alternativa.")
+    pg = st.navigation(paginas)
+
+barra_superior()
+if not st.session_state.tour_visto:  # tutorial abre sozinho na primeira visita
+    st.session_state.tour_visto = True
+    try:
+        tutorial()
+    except Exception as e:  # o tutorial é um extra: não pode impedir o app de abrir
+        st.caption(f"Tutorial indisponível no momento ({e.__class__.__name__}). Use o botão ❓ para tentar de novo.")
+pg.run()
+
+st.caption("Ferramenta educacional. Graham, Bazin, DCF e a nota de Stock Picking são modelos simplificados "
+           "e dependem da qualidade das fontes; não constituem recomendação de investimento.")
