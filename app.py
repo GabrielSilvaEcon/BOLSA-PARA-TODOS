@@ -36,6 +36,9 @@ except ImportError as e:
     st.stop()
 import tecnica as tec
 
+import carteira
+import guias
+
 try:
     from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
 except Exception:  # versões sem esse caminho: segue sem contexto nas threads
@@ -2029,11 +2032,15 @@ PG_MICRO = st.Page(pagina_micro, title="Saúde das empresas", icon="🏢", url_p
 PG_PICK = st.Page(pagina_picking, title="Ranking (Stock picking)", icon="🏆", url_path="stock-picking")
 PG_PERFIS = st.Page(pagina_perfis, title="Perfis e cenários", icon="🧭", url_path="perfis")
 
+PG_CART = st.Page(carteira.pagina_carteira, title="Minha carteira", icon="💼", url_path="carteira")
+
 paginas = {
     "🏠 Início": [PG_INICIO, PG_MACRO],
     "🔎 Encontrar": [PG_BUSCA, PG_SCREENER],
     "📊 Analisar": [PG_PRECO, PG_DCF, PG_VAL, PG_DIV, PG_TEC, PG_MICRO],
     "🏆 Comparar": [PG_PICK, PG_PERFIS],
+
+        "💼 Carteira": [PG_CART],
 }
 
 try:
@@ -2054,7 +2061,9 @@ if not st.session_state.tour_visto:  # tutorial abre sozinho na primeira visita
         tutorial()
     except Exception as e:  # o tutorial é um extra: não pode impedir o app de abrir
         st.caption(f"Tutorial indisponível no momento ({e.__class__.__name__}). Use o botão ❓ para tentar de novo.")
+guias.topo(pg.url_path)
 pg.run()
+guias.fim(pg.url_path)
 
 st.caption("Ferramenta educacional. Graham, Bazin, DCF e a nota de Stock Picking são modelos simplificados "
            "e dependem da qualidade das fontes; não constituem recomendação de investimento.")
