@@ -35,6 +35,7 @@ except ImportError as e:
              "Se for um pacote, inclua no requirements.txt.")
     st.stop()
 import tecnica as tec
+import leitura_macro as lm
 
 import carteira
 import guias
@@ -335,8 +336,10 @@ def validar(d: dict):
         a.append("Dív./PL negativo (patrimônio líquido negativo?).")
 
 
-def buscar(ticker: str) -> dict:
-    fonte = st.session_state.get("fonte_dados", "Yahoo Finance")
+_ULTIMO_BOM: dict = {}  # ticker -> (dados, hora da leitura): reserva quando todas as fontes falham
+
+
+def _buscar_fonte(ticker: str, fonte: str) -> dict:
     d = {"Brapi": buscar_brapi, "Fundamentus": buscar_fundamentus}.get(fonte, buscar_yahoo)(ticker)
     d = dict(d)
     d["alertas"] = list(d.get("alertas", []))
@@ -360,6 +363,36 @@ def buscar(ticker: str) -> dict:
     converter_moeda(d)
     validar(d)
     return d
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _buscar_cache(ticker: str, fonte: str) -> dict:
+    d = _buscar_fonte(ticker, fonte)
+    if not d.get("preco"):
+        raise ValueError(d.get("erro") or "sem preço")  # erro não é guardado em cache
+    return d
+
+
+def buscar(ticker: str) -> dict:
+    """Busca com cache de 15 min, troca de fonte se faltar preço e última leitura boa como reserva."""
+    fonte = st.session_state.get("fonte_dados", "Yahoo Finance")
+    for f in [fonte] + [x for x in FONTES if x != fonte]:
+        try:
+            d = dict(_buscar_cache(ticker, f))
+        except Exception:
+            continue
+        d["alertas"] = list(d.get("alertas", []))
+        if f != fonte:
+            d["alertas"].append(f"{fonte} sem preço agora: dados vindos de {f}.")
+        _ULTIMO_BOM[ticker] = (d, datetime.now())
+        return d
+    if ticker in _ULTIMO_BOM:
+        d, quando = _ULTIMO_BOM[ticker]
+        d = dict(d)
+        d["alertas"] = list(d["alertas"]) + [
+            f"Fontes indisponíveis agora: usando a última leitura bem-sucedida ({quando:%d/%m %H:%M})."]
+        return d
+    return _buscar_fonte(ticker, fonte)  # sem nada em cache: devolve o formato original, com o erro
 
 
 def buscar_caixa(ticker: str):
@@ -1499,7 +1532,7 @@ def _aplicar_preset(nome: str):
 
 
 def coletar_universo(tickers: list) -> dict:
-    """Busca os dados (Yahoo) de várias empresas em paralelo."""
+    """Busca os dados (Yahoo) de várias empresas em paralelo (poucas threads, para não ser bloqueado)."""
     ctx = get_script_run_ctx()
 
     def tarefa(tk):
@@ -1514,7 +1547,7 @@ def coletar_universo(tickers: list) -> dict:
 
     out = {}
     prog = st.progress(0.0, text="Coletando dados...")
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:
         futs = [ex.submit(tarefa, tk) for tk in tickers]
         for n, f in enumerate(as_completed(futs), start=1):
             tk, d = f.result()
@@ -1583,7 +1616,7 @@ def pagina_screener():
     if cA.button("📥 Coletar dados", type="primary", disabled=not tickers, width="stretch"):
         st.session_state.scr_base = coletar_universo(tickers)
         st.session_state.scr_quando = datetime.now()
-    cB.caption(f"{len(tickers)} empresa(s). A coleta leva cerca de {max(5, len(tickers) // 4)} segundos "
+    cB.caption(f"{len(tickers)} empresa(s). A coleta leva cerca de {max(5, len(tickers) // 2)} segundos "
                "(dados do Yahoo Finance) e fica guardada enquanto você ajusta os critérios.")
 
     base = st.session_state.get("scr_base")
@@ -1701,13 +1734,6 @@ def cartao_serie(titulo, df, anos, fmt, cor, unid="", barra=False, degrau=False)
     st.plotly_chart(fig, width="stretch", key=f"serie_{titulo}")
 
 
-# ======================================================================
-# PATCH: indicadores do IPEADATA na página "Cenário econômico"
-# No app.py, troque a função inteira `pagina_macro` por TUDO abaixo
-# (a constante IPEA_CATEGORIAS e a função _serie_ipea ficam logo antes dela).
-# Não precisa de nenhum import novo.
-# ======================================================================
-
 # (título, [(código, modo), ...], formatador, cor, unidade do delta, o que monitorar)
 # O 1º código é o que você pediu; os seguintes são reserva, usados só se o primeiro vier vazio.
 # modo: "valor"  -> mostra a série como vem
@@ -1774,12 +1800,46 @@ def _serie_ipea(codigos, modo_unused=None):
     return None, None, pd.DataFrame()
 
 
+# versão com cache de 1 hora: evita refazer as chamadas ao Ipeadata a cada clique
+_serie_ipea_cache = st.cache_data(ttl=3600, show_spinner=False)(_serie_ipea)
+
+
+def painel_assistente(anos: int):
+    """Resume, em frases, o que os números atuais estão dizendo (sem explicar o que cada indicador é)."""
+    st.markdown("#### 🤖 Assistente: o que os dados estão dizendo")
+    with st.spinner("Lendo os indicadores..."):
+        selic, ipca = buscar_macro_bcb(432, 10), buscar_macro_bcb(13522, 10)
+        leituras = [lm.ler_selic(selic, ipca, anos), lm.ler_ipca(ipca, anos),
+                    lm.ler_dolar(buscar_macro_bcb(1, 10), anos),
+                    lm.ler_desemprego(buscar_macro_bcb(24369, 10), anos)]
+        for cats in IPEA_CATEGORIAS.values():
+            for titulo, codigos, *_ in cats:
+                if titulo in lm.SPEC_IPEA:
+                    _, _, df_ = _serie_ipea_cache(codigos)
+                    leituras.append(lm.ler_ipea(titulo, df_, unidade_pts="pontos" in titulo))
+    leituras = [l for l in leituras if l]
+    sintese = lm.montar_sintese(leituras)
+    md(f'<div class="ctx neu"><div class="t">Resumo do cenário</div>'
+       f'<div class="x">{html.escape(sintese)}</div></div>')
+    cols = st.columns(2)
+    for i, l in enumerate(leituras):
+        with cols[i % 2]:
+            md(f'<div class="ctx {l["tom"]}"><div class="t">{html.escape(l["titulo"])}</div>'
+               f'<div class="x">{html.escape(l["texto"])}</div></div>')
+    with st.expander("📋 Copiar o resumo em texto"):
+        st.code(lm.texto_plano(sintese, leituras), language=None)
+    st.caption("Leitura automática por regras simples sobre os dados mais recentes. Verde = favorável à bolsa, "
+               "vermelho = pede atenção, amarelo = neutro. Não é recomendação de investimento.")
+    st.divider()
+
+
 def pagina_macro():
     intro("🌐", "O cenário econômico do Brasil",
           "Juros (Selic), inflação (IPCA), dólar, atividade e desemprego influenciam o preço das ações. Aqui você "
           "acompanha esses números e vê <b>o que observar</b> em cada um.")
     anos = st.segmented_control("Período", [1, 2, 5, 10], default=2,
                                 format_func=lambda x: f"{x} ano{'s' if x > 1 else ''}", key="macro_anos") or 2
+    painel_assistente(anos)
     t_bcb, t_ipea = st.tabs(["🏦 Banco Central (SGS)", "🏛️ IPEADATA"])
     with t_bcb:
         c1, c2 = st.columns(2)
@@ -1801,7 +1861,7 @@ def pagina_macro():
                 cols = st.columns(2)
                 for col, (titulo, codigos, fmt, cor, unid, monitorar) in zip(cols, itens[i:i + 2]):
                     with col:
-                        cod, modo, df = _serie_ipea(codigos)
+                        cod, modo, df = _serie_ipea_cache(codigos)
                         if df.empty:
                             st.warning(f"{titulo}: sem dados no Ipeadata agora "
                                        f"(código {codigos[0][0]}). Confira o código ou tente 🔄 mais tarde.")
@@ -1816,19 +1876,6 @@ def pagina_macro():
                         st.caption(f"👀 {monitorar}{extra}  \nIpeadata: {cod}{nota_cod}")
         st.caption("Séries do Ipeadata. Se o código pedido não devolver dados, o app tenta um código reserva da "
                    "mesma série. Alguns indicadores saem com defasagem de 1 a 2 meses.")
-
-
-# ----------------------------------------------------------------------
-# OPCIONAL (Macro/Valuation dentro do DCF): em pagina_dcf, logo depois de
-#     if not selic.empty:
-#         st.caption(f"Referência: Selic meta atual {pct(selic['valor'].iloc[-1], 2)} a.a.")
-# acrescente:
-#     _, _, embi = _serie_ipea(IPEA_CATEGORIAS["💹 Macro e valuation"][2][1])
-#     if not embi.empty:
-#         st.caption(f"Risco-País (EMBI+): {num(embi['valor'].iloc[-1], 0)} pts. "
-#                    "Quanto maior, mais alta tende a ser a taxa de desconto exigida.")
-# ----------------------------------------------------------------------
-
 
 
 def pagina_micro():
@@ -2039,8 +2086,7 @@ paginas = {
     "🔎 Encontrar": [PG_BUSCA, PG_SCREENER],
     "📊 Analisar": [PG_PRECO, PG_DCF, PG_VAL, PG_DIV, PG_TEC, PG_MICRO],
     "🏆 Comparar": [PG_PICK, PG_PERFIS],
-
-        "💼 Carteira": [PG_CART],
+    "💼 Carteira": [PG_CART],
 }
 
 try:
