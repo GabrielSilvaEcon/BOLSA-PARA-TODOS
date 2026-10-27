@@ -452,6 +452,84 @@ def media(lista):
     return sum(vals) / len(vals) if vals else None
 
 
+# ---------------------------------------------------------------- tendência do gráfico diário (até 5 anos)
+def _rotular_tendencia(acima: bool, cruz: bool, incl: bool):
+    """Três sinais: preço acima da média de 200 dias, média de 50 acima da de 200 e média de 200 subindo."""
+    pts = int(acima) + int(cruz) + int(incl)
+    return {3: ("Alta", "good"),
+            2: ("Lateral · viés de alta", "fair"),
+            1: ("Lateral · viés de baixa", "fair"),
+            0: ("Baixa", "bad")}[pts]
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _tendencia_cache(ticker: str, fonte: str) -> dict:
+    """Lê o gráfico diário de 5 anos. Levanta erro quando não há dados (assim a falha não fica em cache)."""
+    df, _ = historico(ticker, "5y", "1d")
+    if df is None or df.empty or "Close" not in df:
+        raise ValueError("sem histórico")
+    c = df["Close"].dropna()
+    if len(c) < 60:
+        raise ValueError("histórico curto")
+    ult = float(c.iloc[-1])
+    out = {"serie": c, "ret": (ult / float(c.iloc[0]) - 1) * 100,
+           "anos": (c.index[-1] - c.index[0]).days / 365.25,
+           "dist200": None, "rotulo": "Histórico curto", "cls": "na"}
+    if len(c) >= 200:
+        mm50, mm200 = c.rolling(50).mean(), c.rolling(200).mean()
+        m200 = float(mm200.iloc[-1])
+        if m200 > 0:
+            acima = ult > m200
+            cruz = float(mm50.iloc[-1]) > m200
+            ref = mm200.iloc[-21] if len(c) >= 220 else None
+            incl = (m200 > float(ref)) if ref is not None and pd.notna(ref) else cruz
+            out["dist200"] = (ult / m200 - 1) * 100
+            out["rotulo"], out["cls"] = _rotular_tendencia(acima, cruz, incl)
+    return out
+
+
+def tendencia_5a(ticker: str):
+    try:
+        return _tendencia_cache(ticker, st.session_state.get("fonte_dados", "Yahoo Finance"))
+    except Exception:
+        return None
+
+
+def grafico_tendencia(t: dict, cor: str):
+    c = t["serie"]
+    fig = go.Figure()
+    fig.add_scatter(x=c.index, y=c.values, mode="lines", name="Preço",
+                    line=dict(color=cor, width=1.6), hovertemplate="%{x|%d/%m/%Y}: R$ %{y:.2f}<extra></extra>")
+    if len(c) >= 200:
+        fig.add_scatter(x=c.index, y=c.rolling(200).mean().values, mode="lines", name="Média 200d",
+                        line=dict(color=MUTED, width=1.2, dash="dot"), hoverinfo="skip")
+    fig.update_layout(height=150, showlegend=False, margin=dict(l=0, r=0, t=6, b=0),
+                      **{k: v for k, v in PLOT.items() if k != "margin"})
+    fig.update_yaxes(**GRID)
+    fig.update_xaxes(showgrid=False)
+    return fig
+
+
+def bloco_tendencia(tk: str, t, cor: str):
+    """Mostra, no cartão de cada ação, a tendência do gráfico diário (até 5 anos)."""
+    if not t:
+        md('<div class="ctx neu"><div class="t">Tendência · diário, 5 anos</div>'
+           '<div class="x">Histórico diário indisponível ou curto demais para este ativo.</div></div>')
+        return
+    cor_ret = GOOD if t["ret"] >= 0 else BAD
+    dist = pct(t["dist200"], 1) if t["dist200"] is not None else "—"
+    md(f"""<div class="card" style="padding:12px 16px; margin-bottom:4px;">
+<span class="badge {t['cls']}">{t['rotulo']}</span>
+<div class="lbl">Tendência · gráfico diário{tip('Tendência')}</div>
+<div style="display:flex; gap:22px; margin-top:8px;">
+<div><div class="lbl">Retorno em {num(t['anos'], 1)} anos</div>
+<div class="val" style="color:{cor_ret}">{pct(t['ret'], 1)}</div></div>
+<div><div class="lbl">Preço vs. média 200d</div><div class="val">{dist}</div></div>
+</div></div>""")
+    st.plotly_chart(grafico_tendencia(t, cor), width="stretch", key=f"t5_{tk}",
+                    config={"displayModeBar": False})
+
+
 # ---------------------------------------------------------------- componentes de interface (logos, boas-vindas, tutorial)
 def perfil_atual() -> str:
     p = st.session_state.get("perfil", "Moderado")
@@ -489,7 +567,7 @@ def _adicionar_varios(chave: str):
 def estado_vazio():
     md('<div class="ctx neu"><div class="t">👋 Nenhuma empresa em análise ainda</div>'
        '<div class="x">Digite o <b>nome</b> de uma empresa (ex.: <b>Petrobras</b>) no campo '
-       '<b>Ativos em análise</b>, lá em cima, ou use <b>Descobrir → Buscar empresa</b>.</div></div>')
+       '<b>Ativos em análise</b>, lá em cima, ou use <b>Encontrar → Buscar empresa</b>.</div></div>')
     c1, c2, _ = st.columns([1.4, 1.2, 3])
     c1.page_link(PG_BUSCA, label="Buscar empresa pelo nome", icon="🔎")
     if c2.button("🎓 Abrir tutorial"):
@@ -509,7 +587,7 @@ ao seu perfil de investidor. Nenhuma empresa vem pré-selecionada: você escolhe
         ("2 · Busque empresas", "Digite o nome (ex.: <b>Itaú</b>, <b>WEG</b>) e o painel encontra o ticker. "
                                 "Cada empresa aparece com a sua logo."),
         ("3 · Compare e decida", "Veja o preço justo, o DCF, o ranking e como a mesma empresa se sai em cada perfil "
-                                 "(Avaliação → Perfis e cenários)."),
+                                 "(Comparar → Perfis e cenários)."),
     ]
     for col, (t, x) in zip((c1, c2, c3), passos):
         with col:
@@ -546,8 +624,8 @@ def tutorial():
            "se o preço está atrativo, quanto ela entrega em dividendos e se o risco combina com o seu perfil.")
         c1, c2, c3 = st.columns(3)
         c1.markdown("**🔎 Encontre**  \nBusque pelo nome e veja logo e ticker.")
-        c2.markdown("**⚖️ Avalie**  \nPreço justo, DCF, múltiplos e nota.")
-        c3.markdown("**🧭 Compare**  \nOs mesmos ativos em cada perfil.")
+        c2.markdown("**📊 Analise**  \nPreço justo, DCF, múltiplos e tendência.")
+        c3.markdown("**🏆 Compare**  \nRanking e os mesmos ativos em cada perfil.")
         st.caption("Ferramenta educacional: nada aqui é recomendação de compra ou venda.")
 
     elif i == 1:
@@ -573,7 +651,7 @@ def tutorial():
             if res:
                 render_resultados(res, "tour")
             else:
-                st.info("Não encontrei no catálogo. Depois use **Descobrir → Buscar empresa** para procurar na internet.")
+                st.info("Não encontrei no catálogo. Depois use **Encontrar → Buscar empresa** para procurar na internet.")
         sel = st.session_state.get("sel_ativos", [])
         if sel:
             st.success("Em análise: " + ", ".join(rec.nome_curto(t) for t in sel))
@@ -587,14 +665,15 @@ def tutorial():
            "é (45,98 − 35) ÷ 45,98 = **23,9%**")
         md("**Status:** 🟢 *Com margem* (acima da margem alvo do seu perfil), 🟡 *Preço justo* (margem entre 0 e o alvo) "
            "e 🔴 *Acima do justo* (preço maior que o valor estimado).")
+        md("Cada cartão também mostra a **tendência do gráfico diário** nos últimos 5 anos: Alta, Lateral ou Baixa.")
         st.caption("Passe o mouse no ⓘ de qualquer indicador para ver o que ele significa.")
 
     elif i == 4:
         st.markdown("### Descubra oportunidades")
-        md("- **🧪 Buscador de oportunidades** (Descobrir): marque critérios de uma boa empresa (ROE, dívida, "
+        md("- **🧪 Buscador de oportunidades** (Encontrar): marque critérios de uma boa empresa (ROE, dívida, "
            "dividendos, margem de segurança...) e veja quais do catálogo passam no filtro.\n"
-           "- **🏆 Stock picking** (Avaliação): ranking com nota de 0 a 100 em seis pilares, com pesos do seu perfil.\n"
-           "- **🧭 Perfis e cenários** (Avaliação): a mesma empresa avaliada nos três perfis, com cenários de DCF "
+           "- **🏆 Ranking (Stock picking)** (Comparar): nota de 0 a 100 em seis pilares, com pesos do seu perfil.\n"
+           "- **🧭 Perfis e cenários** (Comparar): a mesma empresa avaliada nos três perfis, com cenários de DCF "
            "pessimista, base e otimista.")
 
     else:
@@ -643,7 +722,7 @@ def pagina_inicio():
     with c4:
         kpi("Juro real (Selic − IPCA 12m)",
             pct(s_v - i_v, 2) if s_v is not None and i_v is not None else "—", "Juro real")
-    st.caption("Leitura completa, época dos dados e impacto por ação e setor em Técnica & Macro → Macroeconomia.")
+    st.caption("Leitura completa, época dos dados e impacto por ação e setor em Início → Macroeconomia.")
     if vazio:
         return
 
@@ -664,7 +743,7 @@ def pagina_inicio():
                  width="stretch", hide_index=True, column_config={**cfg_ajuda(df), **CFG_LOGO})
     st.caption(f"Preço justo = média de Graham e Bazin com os parâmetros do perfil {perfil} "
                f"(yield {pct(P['yield_alvo'], 1)}, margem alvo {P['margem_alvo']}%). "
-               "Ajuste em Fundamentalista → Preço justo.")
+               "Ajuste em Analisar → Preço justo.")
 
 
 # ---------------------------------------------------------------- páginas: fundamentalista
@@ -684,6 +763,8 @@ def pagina_preco_justo():
     st.caption("Graham = √(22,5 × LPA × VPA) · Bazin = dividendo médio dos últimos 5 anos completos ÷ yield desejado")
 
     resultados = [analisar(d, metodo.split(" ")[0], yield_alvo, margem_alvo) for d in dados.values()]
+    with st.spinner("Lendo o gráfico diário dos últimos 5 anos..."):
+        tend = {r["ticker"]: tendencia_5a(r["ticker"]) for r in resultados}
     t_painel, t_comp = st.tabs(["Painel", "Comparativo"])
 
     with t_painel:
@@ -717,10 +798,17 @@ def pagina_preco_justo():
                     st.plotly_chart(gauge(r["margem"], cor_ativo(r["ticker"])), width="stretch",
                                     key=f"g_{r['ticker']}", config={"displayModeBar": False})
                     st.caption(f"Margem de segurança · Graham {brl(r['graham'])} · Bazin {brl(r['bazin'])}")
+                    bloco_tendencia(r["ticker"], tend.get(r["ticker"]), cor_ativo(r["ticker"]))
+        st.caption("Tendência = leitura do gráfico diário (até 5 anos): preço acima ou abaixo da média de 200 dias, "
+                   "média de 50 dias acima ou abaixo da de 200 e inclinação da média de 200 dias. "
+                   "Linha pontilhada = média de 200 dias. Indicador técnico, não recomendação.")
 
     with t_comp:
         df = pd.DataFrame([{"Ticker": r["ticker"], "Preço": r["preco"], "Preço justo": r["justo"],
-                            "Margem (%)": r["margem"], "Status": r["status"]} for r in resultados])
+                            "Margem (%)": r["margem"], "Status": r["status"],
+                            "Tendência 5a": (tend[r["ticker"]]["rotulo"] if tend.get(r["ticker"]) else "—"),
+                            "Retorno 5a (%)": (tend[r["ticker"]]["ret"] if tend.get(r["ticker"]) else None)}
+                           for r in resultados])
         g1, g2 = st.columns(2)
         with g1:
             md(f'<div class="sec">Preço atual × preço justo{tip("Preço justo")}</div>')
@@ -747,7 +835,7 @@ def pagina_preco_justo():
                 fig2.update_layout(height=max(200, 70 + 34 * len(d2)), **PLOT)
                 fig2.update_xaxes(**GRID)
                 st.plotly_chart(fig2, width="stretch", config={"displayModeBar": False})
-        st.dataframe(estilizar(df, {"Preço": brl, "Preço justo": brl, "Margem (%)": pct}),
+        st.dataframe(estilizar(df, {"Preço": brl, "Preço justo": brl, "Margem (%)": pct, "Retorno 5a (%)": pct}),
                      width="stretch", hide_index=True, column_config=cfg_ajuda(df))
 
 
@@ -1050,7 +1138,7 @@ def pagina_picking():
     perfil = perfil_atual()
     P = PERFIS[perfil]
     st.caption(f"Ranking quantitativo no perfil **{P['icone']} {perfil}**. Troque o perfil no topo da página, "
-               "ou veja os três lado a lado em Avaliação → Perfis e cenários.")
+               "ou veja os três lado a lado em Comparar → Perfis e cenários.")
 
     with st.expander("Pesos e critérios", expanded=False):
         cols = st.columns(len(PILARES))
@@ -1273,7 +1361,7 @@ def pagina_perfis():
                    "questionário de suitability com a sua instituição financeira.")
 
 
-# ---------------------------------------------------------------- páginas: descobrir (busca por nome e buscador de oportunidades)
+# ---------------------------------------------------------------- páginas: encontrar (busca por nome e buscador de oportunidades)
 def render_resultados(res: list, pref: str = "r"):
     """Cartões com logo, nome, setor e botões ➕ por ticker."""
     if not res:
@@ -1563,7 +1651,7 @@ def pagina_micro():
     dados = dados_ativos()
     if not dados:
         return
-    st.markdown("#### Matriz de indicadores microeconômicos")
+    st.markdown("#### Matriz de indicadores das empresas")
     linhas = []
     for tk, d in dados.items():
         m = multiplos(d)
@@ -1695,7 +1783,7 @@ def _adicionar_ticker():
     if novos:
         partes.append("Adicionado: " + ", ".join(novos))
     if falhas:
-        partes.append("Não encontrei: " + ", ".join(falhas) + ". Tente em Descobrir → Buscar empresa.")
+        partes.append("Não encontrei: " + ", ".join(falhas) + ". Tente em Encontrar → Buscar empresa.")
     st.session_state["msg_add"] = " · ".join(partes)
 
 
@@ -1717,7 +1805,7 @@ def barra_superior():
             st.form_submit_button("Adicionar", on_click=_adicionar_ticker)
         if st.session_state.get("msg_add"):
             st.caption(st.session_state["msg_add"])
-        st.caption("Para explorar por setor ou ver logos, use Descobrir → Buscar empresa.")
+        st.caption("Para explorar por setor ou ver logos, use Encontrar → Buscar empresa.")
     c4.selectbox("Fonte de dados", FONTES, key="fonte_dados", label_visibility="collapsed",
                  format_func=lambda f: f"Fonte: {f}")
     if c5.button("🔄", help="Limpar cache e atualizar dados", width="stretch"):
@@ -1736,25 +1824,29 @@ def barra_superior():
 
 
 # ---------------------------------------------------------------- navegação
+# Menu organizado pelo que a pessoa quer fazer:
+#   Início    -> ver o panorama e o cenário econômico
+#   Encontrar -> achar empresas para estudar
+#   Analisar  -> olhar a fundo as empresas escolhidas (valor, caixa, múltiplos, dividendos, gráfico, indicadores)
+#   Comparar  -> ranquear e comparar as empresas entre si e entre perfis
 PG_INICIO = st.Page(pagina_inicio, title="Visão geral", icon="🏠", url_path="inicio", default=True)
+PG_MACRO = st.Page(pagina_macro, title="Economia (Macro)", icon="🌐", url_path="macro")
 PG_BUSCA = st.Page(pagina_busca, title="Buscar empresa", icon="🔎", url_path="buscar")
 PG_SCREENER = st.Page(pagina_screener, title="Buscador de oportunidades", icon="🧪", url_path="oportunidades")
-PG_PRECO = st.Page(pagina_preco_justo, title="Preço justo", icon="🎯", url_path="preco-justo")
-PG_VAL = st.Page(pagina_valuation, title="Valuation", icon="⚖️", url_path="valuation")
+PG_PRECO = st.Page(pagina_preco_justo, title="Preço justo e tendência", icon="🎯", url_path="preco-justo")
+PG_DCF = st.Page(pagina_dcf, title="Fluxo de caixa descontado (DCF)", icon="🧮", url_path="dcf")
+PG_VAL = st.Page(pagina_valuation, title="Múltiplos (P/L, P/VP...)", icon="⚖️", url_path="valuation")
 PG_DIV = st.Page(pagina_dividendos, title="Dividendos", icon="💰", url_path="dividendos")
-PG_DCF = st.Page(pagina_dcf, title="Fluxo de caixa descontado", icon="🧮", url_path="dcf")
-PG_PICK = st.Page(pagina_picking, title="Stock picking", icon="🏆", url_path="stock-picking")
+PG_TEC = st.Page(pagina_tecnica, title="Gráfico e análise técnica", icon="📉", url_path="tecnica")
+PG_MICRO = st.Page(pagina_micro, title="Indicadores das empresas", icon="🏢", url_path="micro")
+PG_PICK = st.Page(pagina_picking, title="Ranking (Stock picking)", icon="🏆", url_path="stock-picking")
 PG_PERFIS = st.Page(pagina_perfis, title="Perfis e cenários", icon="🧭", url_path="perfis")
-PG_TEC = st.Page(pagina_tecnica, title="Análise técnica", icon="📉", url_path="tecnica")
-PG_MACRO = st.Page(pagina_macro, title="Macroeconomia", icon="🌐", url_path="macro")
-PG_MICRO = st.Page(pagina_micro, title="Microeconomia", icon="🏢", url_path="micro")
 
 paginas = {
-    "Início": [PG_INICIO],
-    "Descobrir": [PG_BUSCA, PG_SCREENER],
-    "Fundamentalista": [PG_PRECO, PG_VAL, PG_DIV],
-    "Avaliação": [PG_DCF, PG_PICK, PG_PERFIS],
-    "Técnica & Macro": [PG_TEC, PG_MACRO, PG_MICRO],
+    "🏠 Início": [PG_INICIO, PG_MACRO],
+    "🔎 Encontrar": [PG_BUSCA, PG_SCREENER],
+    "📊 Analisar": [PG_PRECO, PG_DCF, PG_VAL, PG_DIV, PG_TEC, PG_MICRO],
+    "🏆 Comparar": [PG_PICK, PG_PERFIS],
 }
 
 try:
