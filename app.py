@@ -1,5 +1,5 @@
 """
-Painel B3 - Fundamentalista + DCF + Stock Picking + Técnica + Macro & Micro + Perfis do investidor
+Bolsa para Todos - Fundamentalista + DCF + Stock Picking + Técnica + Macro & Micro + Perfis do investidor
 
 Rodar com: streamlit run app.py
 Requer streamlit >= 1.46 (navegação no topo) e os módulos tecnica.py e recursos.py ao lado.
@@ -11,6 +11,7 @@ Convenções internas dos dados (todas as fontes são normalizadas para isso):
   acoes ............................................... unidades
 """
 
+import base64
 import html
 import json
 import re
@@ -44,56 +45,121 @@ except Exception:  # versões sem esse caminho: segue sem contexto nas threads
     def get_script_run_ctx(*a, **k):
         return None
 
-st.set_page_config(page_title="Painel B3", page_icon="📈", layout="wide",
+st.set_page_config(page_title="Bolsa para Todos", page_icon="🌱", layout="wide",
                    initial_sidebar_state="collapsed")
 
-# ---------------------------------------------------------------- paleta neutra
-BG, SURFACE, BORDER = "#0e1117", "#161b22", "#30363d"
-TEXT, MUTED = "#e6edf3", "#8b949e"
-ACCENT = "#58a6ff"
-GOOD, FAIR, BAD = "#3fb950", "#d29922", "#f85149"
+# ---------------------------------------------------------------- paleta clara e acolhedora
+BG, SURFACE, BORDER = "#FFFBF2", "#FFFFFF", "#EADFC8"
+TEXT, MUTED = "#1F2937", "#667085"
+ACCENT = "#2563EB"  # destaque neutro dos gráficos
+BRAND, BRAND_DARK, SUN = "#0B8A4D", "#066B3A", "#FFC83D"
+GOOD, FAIR, BAD = "#15803D", "#B45309", "#C62828"
+
+
+def svg_uri(svg: str) -> str:
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
+
+
+LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+<rect width="48" height="48" rx="14" fill="#0B8A4D"/>
+<rect x="10" y="26" width="7" height="12" rx="2" fill="#BFF0D4"/>
+<rect x="21" y="19" width="7" height="19" rx="2" fill="#7BE0A8"/>
+<rect x="32" y="11" width="7" height="27" rx="2" fill="#FFC83D"/></svg>"""
+
+HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240">
+<circle cx="170" cy="120" r="108" fill="#FFFFFF" opacity=".10"/>
+<circle cx="170" cy="120" r="74" fill="#FFFFFF" opacity=".12"/>
+<rect x="40" y="212" width="240" height="6" rx="3" fill="#FFFFFF" opacity=".35"/>
+<rect x="70" y="152" width="38" height="60" rx="10" fill="#BFF0D4"/>
+<rect x="122" y="120" width="38" height="92" rx="10" fill="#7BE0A8"/>
+<rect x="174" y="88" width="38" height="124" rx="10" fill="#FFC83D"/>
+<rect x="226" y="56" width="38" height="156" rx="10" fill="#FFFFFF"/>
+<path d="M60 134 L128 98 L176 114 L250 40" fill="none" stroke="#FF8A3D" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M232 36 L264 26 L256 58 Z" fill="#FF8A3D"/>
+<circle cx="80" cy="66" r="26" fill="#FFC83D" stroke="#E5A50A" stroke-width="5"/>
+<text x="80" y="73" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#7A5200">R$</text>
+<circle cx="288" cy="190" r="18" fill="#FFC83D" stroke="#E5A50A" stroke-width="4"/>
+<text x="288" y="196" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#7A5200">R$</text>
+<circle cx="30" cy="170" r="5" fill="#FFFFFF" opacity=".7"/><circle cx="296" cy="96" r="4" fill="#FFFFFF" opacity=".7"/>
+<circle cx="150" cy="40" r="4" fill="#FFC83D"/></svg>"""
 
 st.markdown(
     f"""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
 .stApp {{background:{BG};}}
-header[data-testid="stHeader"] {{background:{BG}; border-bottom:1px solid {BORDER};}}
+.stApp, .stApp p, .stApp label, .stApp li, .stApp h1, .stApp h2, .stApp h3, .stApp h4,
+.stApp button, .stApp input, .stApp textarea {{font-family:'Nunito','Segoe UI',sans-serif;}}
+header[data-testid="stHeader"] {{background:{SURFACE}; border-bottom:3px solid {SUN};}}
 .block-container {{padding-top:4.2rem; max-width:1400px;}}
-.hero {{font-size:1.35rem; font-weight:700; color:{TEXT}; letter-spacing:.2px; line-height:1.1;}}
+.brand {{display:flex; align-items:center; gap:10px;}}
+.hero {{font-size:1.45rem; font-weight:800; color:{BRAND}; letter-spacing:.2px; line-height:1.05;}}
 .sub {{font-size:.72rem; color:{MUTED};}}
-.card {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:14px;
-padding:16px 18px; margin-bottom:10px;}}
-.tk {{font-size:1.3rem; font-weight:700; color:{TEXT}; letter-spacing:.4px;}}
-.nm {{font-size:.78rem; color:{MUTED}; margin-bottom:8px;}}
-.aviso {{font-size:.72rem; color:{FAIR}; margin-top:6px;}}
-.badge {{display:inline-block; padding:3px 11px; border-radius:999px;
-font-size:.72rem; font-weight:600; float:right;}}
-.good {{background:rgba(63,185,80,.15); color:{GOOD};}}
-.fair {{background:rgba(210,153,34,.15); color:{FAIR};}}
-.bad {{background:rgba(248,81,73,.15); color:{BAD};}}
-.na {{background:rgba(139,148,158,.15); color:{MUTED};}}
-.lbl {{font-size:.68rem; color:{MUTED}; text-transform:uppercase; letter-spacing:.8px;}}
-.val {{font-size:1.15rem; font-weight:600; color:{TEXT};}}
-h4 {{font-weight:600; color:{TEXT};}}
-.sec {{font-size:1.05rem; font-weight:600; color:{TEXT}; margin:.6rem 0 .3rem;}}
+.card {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:18px;
+padding:16px 18px; margin-bottom:10px; box-shadow:0 2px 8px rgba(120,90,20,.08);}}
+.tk {{font-size:1.3rem; font-weight:800; color:{TEXT}; letter-spacing:.4px;}}
+.nm {{font-size:.8rem; color:{MUTED}; margin-bottom:8px;}}
+.aviso {{font-size:.74rem; color:{FAIR}; margin-top:6px;}}
+.badge {{display:inline-block; padding:4px 12px; border-radius:999px;
+font-size:.74rem; font-weight:800; float:right;}}
+.good {{background:rgba(21,128,61,.12); color:{GOOD};}}
+.fair {{background:rgba(180,83,9,.12); color:{FAIR};}}
+.bad {{background:rgba(198,40,40,.12); color:{BAD};}}
+.na {{background:rgba(102,112,133,.14); color:{MUTED};}}
+.lbl {{font-size:.68rem; color:{MUTED}; text-transform:uppercase; letter-spacing:.6px; font-weight:700;}}
+.val {{font-size:1.15rem; font-weight:800; color:{TEXT};}}
+h4 {{font-weight:800; color:{TEXT};}}
+.sec {{font-size:1.05rem; font-weight:800; color:{TEXT}; margin:.6rem 0 .3rem;}}
 .tip {{position:relative; display:inline-block; cursor:help; color:{MUTED}; font-size:.85em;
 margin-left:5px; outline:none; text-transform:none; letter-spacing:0; font-weight:400;}}
 .tip .tipbox {{visibility:hidden; opacity:0; position:absolute; z-index:99999; left:50%;
-transform:translateX(-50%); bottom:140%; width:280px; background:#1c2128; border:1px solid {BORDER};
-border-radius:8px; padding:9px 11px; font-size:.74rem; line-height:1.4; font-weight:400;
-color:{TEXT}; text-align:left; box-shadow:0 6px 18px rgba(0,0,0,.5); transition:opacity .15s;}}
+transform:translateX(-50%); bottom:140%; width:280px; background:{SURFACE}; border:1px solid {BORDER};
+border-radius:12px; padding:10px 12px; font-size:.76rem; line-height:1.45; font-weight:400;
+color:{TEXT}; text-align:left; box-shadow:0 8px 22px rgba(0,0,0,.18); transition:opacity .15s;}}
 .tip:hover .tipbox, .tip:focus .tipbox {{visibility:visible; opacity:1;}}
-.kpi {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:12px; padding:12px 14px;}}
-.kpi .v {{font-size:1.3rem; font-weight:700;}}
+.kpi {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:16px; padding:12px 14px;
+box-shadow:0 2px 8px rgba(120,90,20,.06);}}
+.kpi .v {{font-size:1.3rem; font-weight:800;}}
 .kpi .d {{font-size:.72rem; color:{MUTED}; margin-top:2px;}}
-.ctx {{background:{SURFACE}; border:1px solid {BORDER}; border-left-width:4px; border-radius:10px;
+.ctx {{background:{SURFACE}; border:1px solid {BORDER}; border-left-width:5px; border-radius:14px;
 padding:12px 14px; margin-bottom:10px;}}
 .ctx.pos {{border-left-color:{GOOD};}}
 .ctx.neg {{border-left-color:{BAD};}}
-.ctx.neu {{border-left-color:{FAIR};}}
-.ctx .t {{font-weight:600; font-size:.95rem;}}
-.ctx .x {{font-size:.78rem; color:{MUTED}; margin-top:4px; line-height:1.5;}}
-.logo {{border-radius:10px; background:#ffffff; padding:3px; object-fit:contain; flex-shrink:0;}}
+.ctx.neu {{border-left-color:{SUN};}}
+.ctx .t {{font-weight:800; font-size:.95rem;}}
+.ctx .x {{font-size:.8rem; color:{MUTED}; margin-top:4px; line-height:1.5;}}
+.logo {{border-radius:12px; background:#ffffff; padding:3px; object-fit:contain; flex-shrink:0;
+border:1px solid {BORDER};}}
+.banner {{background:linear-gradient(135deg,{BRAND} 0%,{BRAND_DARK} 100%); border-radius:26px;
+padding:26px 30px; display:flex; align-items:center; gap:24px; margin-bottom:16px;
+box-shadow:0 10px 28px rgba(11,138,77,.28);}}
+.banner h1 {{color:#ffffff !important; font-size:2.2rem; font-weight:800; line-height:1.1; margin:0 0 8px; padding:0;}}
+.banner p {{color:#EAFBF1 !important; font-size:1.02rem; line-height:1.5; margin:0 0 6px;}}
+.banner .pill {{display:inline-block; background:{SUN}; color:#3A2A00 !important; font-weight:800;
+font-size:.78rem; border-radius:999px; padding:4px 12px; margin-bottom:10px;}}
+.banner img {{width:230px; max-width:38%; flex-shrink:0;}}
+@media (max-width:700px) {{
+.banner {{flex-direction:column; text-align:center; padding:20px;}}
+.banner img {{max-width:70%;}} .banner h1 {{font-size:1.65rem;}}
+}}
+.step {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:20px; padding:18px; height:100%;
+box-shadow:0 2px 10px rgba(120,90,20,.08);}}
+.step .ico {{width:52px; height:52px; border-radius:16px; background:#E6F6EC; display:flex;
+align-items:center; justify-content:center; font-size:1.7rem; margin-bottom:10px;}}
+.step .n {{font-size:.7rem; font-weight:800; color:{BRAND}; letter-spacing:.8px; text-transform:uppercase;}}
+.step .tt {{font-size:1.05rem; font-weight:800; margin:2px 0 6px;}}
+.step .xx {{font-size:.85rem; color:{MUTED}; line-height:1.5;}}
+.mini {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:16px; padding:12px 14px; height:100%;}}
+.mini .tt {{font-weight:800; font-size:.95rem;}}
+.mini .xx {{font-size:.8rem; color:{MUTED}; margin-top:2px; line-height:1.45;}}
+.intro {{display:flex; gap:12px; align-items:flex-start; background:#FFF3CF; border:1px solid #F4DC8C;
+border-radius:16px; padding:12px 16px; margin-bottom:14px;}}
+.intro .ie {{font-size:1.6rem; line-height:1;}}
+.intro .it {{font-weight:800; font-size:1.05rem; color:#3A2A00;}}
+.intro .ix {{font-size:.85rem; color:#5B4B1E; line-height:1.5; margin-top:2px;}}
+.stButton > button, .stFormSubmitButton > button {{border-radius:999px; font-weight:700;}}
+a[data-testid="stPageLink-NavLink"] {{border:1px solid {BORDER}; border-radius:999px; background:{SURFACE};}}
+button[data-testid="stBaseButton-primary"] p, button[kind="primary"] p {{color:#ffffff !important;}}
 p, span, label, div {{color: {TEXT};}}
 </style>
 """,
@@ -102,7 +168,7 @@ p, span, label, div {{color: {TEXT};}}
 
 PLOT = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font={"color": TEXT}, margin=dict(l=10, r=10, t=40, b=10))
-GRID = dict(gridcolor="#30363d", zeroline=False)
+GRID = dict(gridcolor="#EDE6D6", zeroline=False)
 PLOT_LEG = {**PLOT, "margin": dict(l=10, r=10, t=40, b=60)}  # margem extra p/ legenda abaixo do gráfico
 
 FONTES = ["Yahoo Finance", "Fundamentus", "Brapi"]
@@ -111,8 +177,8 @@ FINANCEIRAS = ("ITSA", "ITUB", "BBDC", "BBAS", "BPAC", "SANB", "BBSE", "CXSE", "
                "INBR", "BRSR", "BPAN", "XPBR", "PSSA", "ROXO", "ABCB")
 
 # ---------------------------------------------------------------- cor fixa por ativo
-PALETA = ["#58a6ff", "#f0883e", "#bc8cff", "#33b3ae", "#f778ba", "#e3b341",
-          "#79c0ff", "#7ee787", "#ff7b72", "#a371f7", "#56d364", "#d2a8ff"]
+PALETA = ["#2563EB", "#EA580C", "#7C3AED", "#0D9488", "#DB2777", "#CA8A04",
+          "#0284C7", "#16A34A", "#DC2626", "#9333EA", "#4D7C0F", "#C026D3"]
 
 
 def cor_ativo(tk: str) -> str:
@@ -155,6 +221,12 @@ def explica(k: str):
     o, p = GLOSSARIO[k]
     md(f'<div class="ctx neu"><div class="t">{html.escape(k)}</div>'
        f'<div class="x"><b>O que é:</b> {html.escape(o)}<br><b>Para que serve:</b> {html.escape(p)}</div></div>')
+
+
+def intro(emoji: str, titulo: str, texto: str):
+    """Faixa amarela no topo de cada página explicando, em linguagem simples, o que ela mostra."""
+    md(f'<div class="intro"><div class="ie">{emoji}</div><div><div class="it">{html.escape(titulo)}</div>'
+       f'<div class="ix">{texto}</div></div></div>')
 
 
 def cfg_ajuda(df) -> dict:
@@ -374,9 +446,9 @@ def analisar(d: dict, metodo: str, yield_alvo: float, margem_alvo: float) -> dic
     if margem is None:
         status, cls = "Sem dados", "na"
     elif margem >= margem_alvo:
-        status, cls = "Com margem", "good"
+        status, cls = "Abaixo do justo", "good"
     elif margem >= 0:
-        status, cls = "Preço justo", "fair"
+        status, cls = "No preço justo", "fair"
     else:
         status, cls = "Acima do justo", "bad"
     return {**d, "graham": graham, "bazin": bazin, "justo": justo,
@@ -545,29 +617,44 @@ def estado_vazio():
 
 
 def boas_vindas():
-    md(f"""<div class="card" style="border-top:3px solid {ACCENT};">
-<div class="tk">Bem-vindo ao Painel B3 👋</div>
-<div class="nm">Analise ações da bolsa brasileira com preço justo, fluxo de caixa descontado e uma nota ajustada
-ao seu perfil de investidor. Nenhuma empresa vem pré-selecionada: você escolhe o que quer estudar.</div></div>""")
+    md(f"""<div class="banner">
+<div><span class="pill">Gratuito · feito para quem está começando</span>
+<h1>Bolsa para Todos</h1>
+<p>Descubra, em linguagem simples, se uma ação está <b>cara ou barata</b>, quanto ela paga de dividendos e se combina com o seu jeito de investir.</p>
+<p style="opacity:.85; font-size:.88rem;">Você escolhe a empresa. A gente explica os números.</p></div>
+<img src="{svg_uri(HERO_SVG)}" alt="Gráfico crescendo com moedas"></div>""")
     c1, c2, c3 = st.columns(3)
     passos = [
-        ("1 · Escolha seu perfil", "Conservador, Moderado ou Arrojado. O perfil muda os pesos da nota, a margem de "
-                                   "segurança exigida e as premissas do DCF. Fica logo abaixo do título, no topo."),
-        ("2 · Busque empresas", "Digite o nome (ex.: <b>Itaú</b>, <b>WEG</b>) e o painel encontra o ticker. "
-                                "Cada empresa aparece com a sua logo."),
-        ("3 · Compare e decida", "Veja o preço justo, o DCF, o ranking e como a mesma empresa se sai em cada perfil "
-                                 "(Comparar → Perfis e cenários)."),
+        ("🔍", "Passo 1", "Escolha uma empresa",
+         "Digite o nome (ex.: <b>Itaú</b>, <b>WEG</b>, <b>Petrobras</b>) no campo lá em cima. Sem decorar código nenhum."),
+        ("🎯", "Passo 2", "Veja se está cara ou barata",
+         "Mostramos o <b>preço justo</b> da ação e um semáforo: abaixo, no ponto ou acima do justo."),
+        ("🧭", "Passo 3", "Compare com o seu perfil",
+         "Conservador, Moderado ou Arrojado: as notas se ajustam ao quanto de risco você aguenta."),
     ]
-    for col, (t, x) in zip((c1, c2, c3), passos):
+    for col, (ico, n, t, x) in zip((c1, c2, c3), passos):
         with col:
-            md(f'<div class="card"><div class="sec" style="margin-top:0">{t}</div>'
-               f'<div class="nm" style="margin-bottom:0">{x}</div></div>')
+            md(f'<div class="step"><div class="ico">{ico}</div><div class="n">{n}</div>'
+               f'<div class="tt">{t}</div><div class="xx">{x}</div></div>')
+    st.write("")
     b1, b2, b3 = st.columns(3)
     if b1.button("🎓 Fazer o tutorial guiado", type="primary", width="stretch"):
         st.session_state.tour_passo = 0
         tutorial()
     b2.page_link(PG_BUSCA, label="Buscar uma empresa pelo nome", icon="🔎")
     b3.page_link(PG_SCREENER, label="Buscar oportunidades por critérios", icon="🧪")
+
+    st.markdown("#### Primeiras palavras do mundo dos investimentos")
+    termos = [
+        ("🏢", "Ação", "Um pedacinho de uma empresa. Quem tem ações é sócio dela."),
+        ("💰", "Dividendo", "Parte do lucro que a empresa reparte com os sócios, como uma renda."),
+        ("🎯", "Preço justo", "Estimativa de quanto a ação deveria valer. É uma conta, não uma promessa."),
+        ("📈", "Tendência", "Para onde o preço caminhou: subindo (alta), de lado (lateral) ou caindo (baixa)."),
+    ]
+    for col, (ico, t, x) in zip(st.columns(4), termos):
+        with col:
+            md(f'<div class="mini"><div class="tt">{ico} {t}</div><div class="xx">{x}</div></div>')
+    st.caption("Ferramenta educacional: nada aqui é recomendação de compra ou venda.")
     st.divider()
 
 
@@ -582,7 +669,7 @@ def _tour_perfil():
     st.session_state["perfil"] = st.session_state["tour_perfil"]
 
 
-@st.dialog("🎓 Tutorial do Painel B3", width="large")
+@st.dialog("🎓 Tutorial da Bolsa para Todos", width="large")
 def tutorial():
     i = st.session_state.get("tour_passo", 0)
     st.progress((i + 1) / len(TOUR), text=f"Passo {i + 1} de {len(TOUR)} · {TOUR[i]}")
@@ -632,8 +719,8 @@ def tutorial():
            "- **Bazin**: dividendo médio ÷ yield desejado = R$ 2,40 ÷ 6% = **R$ 40,00**\n"
            "- **Preço justo** (média): **R$ 45,98**. Com preço atual de R$ 35,00, a **margem de segurança** "
            "é (45,98 − 35) ÷ 45,98 = **23,9%**")
-        md("**Status:** 🟢 *Com margem* (acima da margem alvo do seu perfil), 🟡 *Preço justo* (margem entre 0 e o alvo) "
-           "e 🔴 *Acima do justo* (preço maior que o valor estimado).")
+        md("**Semáforo:** 🟢 *Abaixo do justo* (preço abaixo do valor estimado, com a folga que o seu perfil pede), "
+           "🟡 *No preço justo* (folga menor que a pedida) e 🔴 *Acima do justo* (preço maior que o valor estimado).")
         md("Cada cartão também mostra a **tendência do gráfico diário** nos últimos 5 anos: Alta, Lateral ou Baixa.")
         st.caption("Passe o mouse no ⓘ de qualquer indicador para ver o que ele significa.")
 
@@ -673,7 +760,7 @@ def pagina_inicio():
     if vazio:
         boas_vindas()
 
-    st.markdown("#### Contexto macro")
+    st.markdown("#### Como está a economia hoje")
     selic, ipca, dol = buscar_macro_bcb(432, 2), buscar_macro_bcb(13522, 2), buscar_macro_bcb(1, 2)
     c1, c2, c3, c4 = st.columns(4)
     s_v = selic["valor"].iloc[-1] if not selic.empty else None
@@ -691,7 +778,7 @@ def pagina_inicio():
     with c4:
         kpi("Juro real (Selic − IPCA 12m)",
             pct(s_v - i_v, 2) if s_v is not None and i_v is not None else "—", "Juro real")
-    st.caption("Leitura completa, época dos dados e impacto por ação e setor em Início → Macroeconomia.")
+    st.caption("Leitura completa, época dos dados e impacto por ação e setor em Início → Cenário econômico.")
     if vazio:
         return
 
@@ -717,6 +804,10 @@ def pagina_inicio():
 
 # ---------------------------------------------------------------- páginas: fundamentalista
 def pagina_preco_justo():
+    intro("🎯", "Esta ação está cara ou barata?",
+          "Calculamos o <b>preço justo</b> de cada ação (quanto ela deveria valer) e comparamos com o preço de hoje. "
+          "Quanto mais abaixo do justo, maior a <b>margem de segurança</b>. A <b>tendência</b> mostra se o preço vem "
+          "subindo, andando de lado ou caindo.")
     dados = dados_ativos()
     if not dados:
         return
@@ -746,7 +837,7 @@ def pagina_preco_justo():
                     if r.get("fx_aplicado"):
                         aviso_moeda = (f'<div class="aviso">Balanço em USD convertido (dólar {num(r["fx_aplicado"], 2)})</div>')
                     sem_graham = (r.get("lpa") or 0) <= 0 or (r.get("vpa") or 0) <= 0
-                    aviso_lpa = ('<div class="aviso" style="color:#f85149;">⚠️ LPA ou VPA negativo/ausente (Graham indisponível)</div>'
+                    aviso_lpa = ('<div class="aviso" style="color:#C62828;">⚠️ LPA ou VPA negativo/ausente (Graham indisponível)</div>'
                                  if sem_graham else "")
                     st.markdown(
                         f"""<div class="card" style="border-top:3px solid {cor_ativo(r['ticker'])};">
@@ -807,6 +898,9 @@ def pagina_preco_justo():
 
 
 def pagina_valuation():
+    intro("⚖️", "Comparando os números das empresas",
+          "Indicadores como <b>P/L</b> (quantos anos de lucro o preço paga) e <b>P/VP</b> (preço frente ao patrimônio) "
+          "ajudam a comparar empresas. Passe o mouse no ⓘ para entender cada um.")
     dados = dados_ativos()
     if not dados:
         return
@@ -838,6 +932,9 @@ def pagina_valuation():
 
 
 def pagina_dividendos():
+    intro("💰", "Quanto a empresa paga aos sócios",
+          "<b>Dividendos</b> são a parte do lucro repartida com quem tem ações. O <b>DY</b> mostra quanto isso "
+          "rendeu em relação ao preço da ação.")
     dados = dados_ativos()
     if not dados:
         return
@@ -876,6 +973,9 @@ def grafico_caixa(caixa: pd.DataFrame):
 
 
 def pagina_dcf():
+    intro("🧮", "Quanto a empresa vale pelo dinheiro que gera",
+          "O <b>fluxo de caixa descontado</b> estima o valor da empresa a partir do dinheiro que ela deve gerar nos "
+          "próximos anos, trazido para valores de hoje. É um método mais avançado: comece pelo Preço justo.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1015,7 +1115,7 @@ def pagina_dcf():
 
 # ---------------------------------------------------------------- página: stock picking (com perfil do investidor)
 PILARES = ["Valor", "Qualidade", "Dividendos", "Solidez", "Tendência", "Risco"]
-COR_PERFIL = {"Conservador": "#33b3ae", "Moderado": ACCENT, "Arrojado": "#f0883e"}
+COR_PERFIL = {"Conservador": "#0D9488", "Moderado": "#2563EB", "Arrojado": "#EA580C"}
 
 
 def sinais_tecnicos(ticker: str) -> dict:
@@ -1099,6 +1199,9 @@ def veredito(nota, perfil: str) -> str:
 
 
 def pagina_picking():
+    intro("🏆", "Ranking de notas",
+          "Dá uma nota de 0 a 100 para cada empresa em seis pontos: valor, qualidade, dividendos, solidez, tendência "
+          "e risco. A nota serve para uma primeira triagem, não é ordem de compra.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1203,6 +1306,8 @@ def pagina_picking():
 
 # ---------------------------------------------------------------- página: perfis e cenários
 def pagina_perfis():
+    intro("🧭", "E se eu investisse de outro jeito?",
+          "Veja a mesma empresa pelos olhos de um investidor <b>Conservador</b>, <b>Moderado</b> e <b>Arrojado</b>.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1350,7 +1455,9 @@ def render_resultados(res: list, pref: str = "r"):
 
 
 def pagina_busca():
-    st.markdown("#### Encontre uma empresa pelo nome")
+    intro("🔎", "Ache empresas pelo nome",
+          "Não sabe o código (ticker) da empresa? Digite o nome ou o setor, ou escolha na lista, e clique em ➕ "
+          "para analisar.")
     q = st.text_input("Nome da empresa, ticker ou setor", key="busca_q",
                       placeholder="Ex.: Petrobras, WEG, banco, energia, saneamento...")
     c1, c2 = st.columns([1, 1.4], vertical_alignment="center")
@@ -1449,6 +1556,9 @@ def _passa(k: str, v, lim, fin: bool) -> bool:
 
 
 def pagina_screener():
+    intro("🧪", "Ache oportunidades por critérios",
+          "Escolha o que você considera uma boa empresa (lucro alto, pouca dívida, bons dividendos...) e veja quais "
+          "passam no filtro.")
     perfil = perfil_atual()
     P = PERFIS[perfil]
     padrao = rec.PRESETS[rec.PRESET_PADRAO]
@@ -1589,6 +1699,9 @@ def cartao_serie(titulo, df, anos, fmt, cor, unid="", barra=False, degrau=False)
 
 
 def pagina_macro():
+    intro("🌐", "O cenário econômico do Brasil",
+          "Juros (Selic), inflação (IPCA), dólar e desemprego influenciam o preço das ações. Aqui você acompanha "
+          "esses números.")
     anos = st.segmented_control("Período", [1, 2, 5, 10], default=2,
                                 format_func=lambda x: f"{x} ano{'s' if x > 1 else ''}", key="macro_anos") or 2
     t_bcb, t_ipea = st.tabs(["🏦 Banco Central (SGS)", "🏛️ IPEADATA"])
@@ -1608,13 +1721,15 @@ def pagina_macro():
         i1, i2 = st.columns(2)
         with i1:
             cartao_serie("Risco-País EMBI+ (pontos)", buscar_macro_ipea("JPM366_EMBI366"), anos,
-                         lambda v: f"{num(v, 0)} pts", "#bc8cff", "pts")
+                         lambda v: f"{num(v, 0)} pts", "#7C3AED", "pts")
         with i2:
             cartao_serie("IGP-M mensal (%)", buscar_macro_ipea("IGP12_IGPMG12"), anos,
-                         lambda v: pct(v, 2), "#33b3ae", "p.p.", barra=True)
+                         lambda v: pct(v, 2), "#0D9488", "p.p.", barra=True)
 
 
 def pagina_micro():
+    intro("🏢", "Saúde das empresas",
+          "Lucro, dívida e rentabilidade (<b>ROE</b>) mostram se a empresa está forte. Compare as que você escolheu.")
     dados = dados_ativos()
     if not dados:
         return
@@ -1636,7 +1751,7 @@ def pagina_micro():
 # ---------------------------------------------------------------- página: técnica
 def tradingview(ticker: str, intervalo: str, altura: int):
     cfg = {"autosize": True, "symbol": f"BMFBOVESPA:{ticker}", "interval": intervalo,
-           "timezone": "America/Sao_Paulo", "theme": "dark", "style": "1", "locale": "br",
+           "timezone": "America/Sao_Paulo", "theme": "light", "style": "1", "locale": "br",
            "enable_publishing": False, "hide_side_toolbar": True, "allow_symbol_change": False,
            "backgroundColor": BG, "toolbar_bg": BG, "gridColor": BORDER, "container_id": "tv_chart"}
     components.html(f"""
@@ -1647,6 +1762,9 @@ def tradingview(ticker: str, intervalo: str, altura: int):
 
 
 def pagina_tecnica():
+    intro("📉", "Para onde o preço está caminhando",
+          "O gráfico mostra o histórico de preços. <b>Alta</b> = subindo, <b>Baixa</b> = caindo, <b>Lateral</b> = "
+          "andando de lado. Os sinais são indicadores técnicos e podem errar.")
     ativos = st.session_state.get("sel_ativos", [])
     if not ativos:
         estado_vazio()
@@ -1755,9 +1873,10 @@ def _adicionar_ticker():
 
 
 def barra_superior():
-    c1, c2, c3, c4, c5, c6 = st.columns([1.7, 4.6, 1.0, 1.8, 0.55, 0.55], vertical_alignment="center")
-    c1.markdown(f'<div class="hero">Painel B3</div>'
-                f'<div class="sub">Atualizado em {datetime.now():%d/%m/%Y %H:%M}</div>',
+    c1, c2, c3, c4, c5, c6 = st.columns([2.4, 4.2, 1.0, 1.8, 0.55, 0.55], vertical_alignment="center")
+    c1.markdown(f'<div class="brand"><img src="{svg_uri(LOGO_SVG)}" width="38" height="38">'
+                f'<div><div class="hero">Bolsa para Todos</div>'
+                f'<div class="sub">Atualizado em {datetime.now():%d/%m/%Y %H:%M}</div></div></div>',
                 unsafe_allow_html=True)
     opcoes = list(dict.fromkeys(st.session_state.universo + rec.TODOS_TICKERS))
     c2.multiselect("Ativos em análise", options=opcoes, key="sel_ativos", format_func=rec.rotulo,
@@ -1797,15 +1916,15 @@ def barra_superior():
 #   Analisar  -> olhar a fundo as empresas escolhidas (valor, caixa, múltiplos, dividendos, gráfico, indicadores)
 #   Comparar  -> ranquear e comparar as empresas entre si e entre perfis
 PG_INICIO = st.Page(pagina_inicio, title="Visão geral", icon="🏠", url_path="inicio", default=True)
-PG_MACRO = st.Page(pagina_macro, title="Economia (Macro)", icon="🌐", url_path="macro")
+PG_MACRO = st.Page(pagina_macro, title="Cenário econômico", icon="🌐", url_path="macro")
 PG_BUSCA = st.Page(pagina_busca, title="Buscar empresa", icon="🔎", url_path="buscar")
 PG_SCREENER = st.Page(pagina_screener, title="Buscador de oportunidades", icon="🧪", url_path="oportunidades")
 PG_PRECO = st.Page(pagina_preco_justo, title="Preço justo e tendência", icon="🎯", url_path="preco-justo")
 PG_DCF = st.Page(pagina_dcf, title="Fluxo de caixa descontado (DCF)", icon="🧮", url_path="dcf")
 PG_VAL = st.Page(pagina_valuation, title="Múltiplos (P/L, P/VP...)", icon="⚖️", url_path="valuation")
 PG_DIV = st.Page(pagina_dividendos, title="Dividendos", icon="💰", url_path="dividendos")
-PG_TEC = st.Page(pagina_tecnica, title="Gráfico e análise técnica", icon="📉", url_path="tecnica")
-PG_MICRO = st.Page(pagina_micro, title="Indicadores das empresas", icon="🏢", url_path="micro")
+PG_TEC = st.Page(pagina_tecnica, title="Gráfico e tendência", icon="📉", url_path="tecnica")
+PG_MICRO = st.Page(pagina_micro, title="Saúde das empresas", icon="🏢", url_path="micro")
 PG_PICK = st.Page(pagina_picking, title="Ranking (Stock picking)", icon="🏆", url_path="stock-picking")
 PG_PERFIS = st.Page(pagina_perfis, title="Perfis e cenários", icon="🧭", url_path="perfis")
 

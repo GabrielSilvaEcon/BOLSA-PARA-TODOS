@@ -1,7 +1,11 @@
 [theme]
-base = "dark"
-primaryColor = "#58a6ff"
-backgroundColor = "#0e1117"
-secondaryBackgroundColor = "#161b22"
-textColor = "#e6edf3"
+base = "light"
+primaryColor = "#0B8A4D"
+backgroundColor = "#FFFBF2"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1F2937"
+font = "sans serif"
 
+[client]
+# Esconde Share, estrela e GitHub para quem só visita o app. Apague esta linha se quiser mostrar.
+toolbarMode = "minimal"
