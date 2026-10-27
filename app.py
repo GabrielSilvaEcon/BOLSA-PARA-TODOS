@@ -29,7 +29,12 @@ import streamlit as st
 import streamlit.components.v1 as components
 import yfinance as yf
 
-import recursos as rec
+try:
+    import recursos as rec
+except ImportError:
+    st.error("Arquivo **recursos.py** não encontrado. Ele precisa estar na mesma pasta do app.py no GitHub "
+             "(raiz do repositório, junto com o tecnica.py).")
+    st.stop()
 import tecnica as tec
 
 try:
@@ -982,7 +987,7 @@ def logos_df(df: pd.DataFrame, col: str = "Ativo") -> pd.DataFrame:
     return out
 
 
-CFG_LOGO = {"Logo": st.column_config.ImageColumn("", width="small")}
+CFG_LOGO = {"Logo": st.column_config.ImageColumn("Logo", width="small")}
 
 
 def _adicionar(tk: str):
@@ -2033,9 +2038,4 @@ def cartao_serie(titulo, df, anos, fmt, cor, unid="", barra=False, degrau=False)
         return
     delta = None
     if len(s) > 1:
-        delta = _sep(f"{s.iloc[-1] - s.iloc[-2]:+.2f}") + (f" {unid}" if unid else "")
-    st.metric(titulo, fmt(s.iloc[-1]), delta=delta, delta_color="off",
-              help=f"Última leitura: {s.index[-1]:%d/%m/%Y}")
-    fig = go.Figure()
-    if barra:
-        fig.add_b
+        delta = _sep(f"{s.iloc[-1] - s.iloc[-2]:+.2f}"
