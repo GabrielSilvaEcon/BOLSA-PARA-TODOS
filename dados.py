@@ -476,3 +476,28 @@ def buscar_fundamentus(ticker: str) -> dict:
     except Exception as e:
         d["erro"] = f"Erro Fundamentus: {e}"
     return d
+
+    # Mapeamento de Tickers para os códigos microeconômicos correspondentes
+MAPEAMENTO_MICRO = {
+    "PETR4": {
+        "tipo": "ipca",
+        "codigo": "4812", # Código do subitem 'Combustíveis (automotivos)' no IPCA
+        "nome_exibicao": "Preço dos Combustíveis (IPCA)"
+    },
+    "ABCB4": {
+        "tipo": "credito",
+        "codigo": "20539", # Exemplo de código do Banco Central para concessão de crédito
+        "nome_exibicao": "Concessão de Crédito - Setor Privado"
+    },
+    "BBAS3": {
+        "tipo": "credito",
+        "codigo": "20539",
+        "nome_exibicao": "Inadimplência Geral do Crédito"
+    },
+    "INBR32": {
+        "tipo": "pmc",
+        "codigo": "11046", # Código geral do volume de vendas no Comércio (PMC)
+        "nome_exibicao": "Volume de Vendas do Varejo (PMC)"
+    }
+}
+

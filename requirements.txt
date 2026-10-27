@@ -1,6 +1,7 @@
-streamlit>=1.49
+streamlit>=1.46
 pandas
 plotly
 requests
 yfinance
+sidrapy
 fundamentus
