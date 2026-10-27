@@ -1752,11 +1752,17 @@ IPEA_CATEGORIAS = {
 }
 
 
-def _serie_ipea(codigos, modo_unused=None):
-    """Tenta cada código na ordem. Devolve (código usado, modo, DataFrame com coluna 'valor')."""
+def _ler_serie(cod: str):
+    if cod.startswith("SGS:"):
+        return buscar_macro_bcb(int(cod[4:]), 10)
+    return buscar_macro_ipea(cod)
+
+
+@st.cache_data(ttl=3600, show_spinner="Buscando indicadores no Ipeadata...")
+def _serie_ipea_cache(codigos: tuple):
     for cod, modo in codigos:
         try:
-            df = buscar_macro_ipea(cod)
+            df = _ler_serie(cod)
         except Exception:
             continue
         if df is None or df.empty or "valor" not in df:
@@ -1764,67 +1770,15 @@ def _serie_ipea(codigos, modo_unused=None):
         s = df["valor"].dropna()
         if s.empty:
             continue
-        if modo == "preco" and s.abs().median() > 30:  # veio como número-índice: converte em % mensal
+        if modo == "preco" and s.abs().median() > 30:
             s = (s.pct_change() * 100).dropna()
         if not s.empty:
             return cod, modo, s.to_frame("valor")
     return None, None, pd.DataFrame()
 
 
-def pagina_macro():
-    intro("🌐", "O cenário econômico do Brasil",
-          "Juros (Selic), inflação (IPCA), dólar, atividade e desemprego influenciam o preço das ações. Aqui você "
-          "acompanha esses números e vê <b>o que observar</b> em cada um.")
-    anos = st.segmented_control("Período", [1, 2, 5, 10], default=2,
-                                format_func=lambda x: f"{x} ano{'s' if x > 1 else ''}", key="macro_anos") or 2
-    t_bcb, t_ipea = st.tabs(["🏦 Banco Central (SGS)", "🏛️ IPEADATA"])
-    with t_bcb:
-        c1, c2 = st.columns(2)
-        with c1:
-            cartao_serie("Selic meta (% a.a.)", buscar_macro_bcb(432, 10), anos, lambda v: pct(v, 2), GOOD, "p.p.", degrau=True)
-        with c2:
-            cartao_serie("IPCA acumulado 12m (%)", buscar_macro_bcb(13522, 10), anos, lambda v: pct(v, 2), FAIR, "p.p.")
-        st.markdown("---")
-        c3, c4 = st.columns(2)
-        with c3:
-            cartao_serie("Dólar comercial venda (R$)", buscar_macro_bcb(1, 10), anos, brl, ACCENT, "R$")
-        with c4:
-            cartao_serie("Desemprego PNAD (%)", buscar_macro_bcb(24369, 10), anos, lambda v: pct(v, 1), BAD, "p.p.")
-
-    with t_ipea:
-        for categoria, itens in IPEA_CATEGORIAS.items():
-            st.markdown(f"#### {categoria}")
-            for i in range(0, len(itens), 2):
-                cols = st.columns(2)
-                for col, (titulo, codigos, fmt, cor, unid, monitorar) in zip(cols, itens[i:i + 2]):
-                    with col:
-                        cod, modo, df = _serie_ipea(codigos)
-                        if df.empty:
-                            st.warning(f"{titulo}: sem dados no Ipeadata agora "
-                                       f"(código {codigos[0][0]}). Confira o código ou tente 🔄 mais tarde.")
-                            st.caption(f"👀 {monitorar}")
-                            continue
-                        cartao_serie(titulo, df, anos, fmt, cor, unid, barra=(modo == "preco"))
-                        extra = ""
-                        if modo == "indice" and len(df) > 12:
-                            v12 = (df["valor"].iloc[-1] / df["valor"].iloc[-13] - 1) * 100
-                            extra = f" · 12 meses: {pct(v12, 1)}"
-                        nota_cod = "" if cod == codigos[0][0] else f" (código reserva {cod})"
-                        st.caption(f"👀 {monitorar}{extra}  \nIpeadata: {cod}{nota_cod}")
-        st.caption("Séries do Ipeadata. Se o código pedido não devolver dados, o app tenta um código reserva da "
-                   "mesma série. Alguns indicadores saem com defasagem de 1 a 2 meses.")
-
-
-# ----------------------------------------------------------------------
-# OPCIONAL (Macro/Valuation dentro do DCF): em pagina_dcf, logo depois de
-#     if not selic.empty:
-#         st.caption(f"Referência: Selic meta atual {pct(selic['valor'].iloc[-1], 2)} a.a.")
-# acrescente:
-#     _, _, embi = _serie_ipea(IPEA_CATEGORIAS["💹 Macro e valuation"][2][1])
-#     if not embi.empty:
-#         st.caption(f"Risco-País (EMBI+): {num(embi['valor'].iloc[-1], 0)} pts. "
-#                    "Quanto maior, mais alta tende a ser a taxa de desconto exigida.")
-# ----------------------------------------------------------------------
+def _serie_ipea(codigos):
+    return _serie_ipea_cache(tuple(tuple(c) for c in codigos))
 
 
 
