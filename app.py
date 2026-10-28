@@ -168,8 +168,23 @@ border-radius:16px; padding:12px 16px; margin-bottom:14px;}}
 a[data-testid="stPageLink-NavLink"] {{border:1px solid {BORDER}; border-radius:999px; background:{SURFACE};}}
 button[data-testid="stBaseButton-primary"] p, button[kind="primary"] p {{color:#ffffff !important;}}
 p, span, label, div {{color: {TEXT};}}
-/* menu próprio: grupos em menus suspensos no computador, botão ☰ único no celular */
-.st-key-nav_mobile {{display:none;}}
+/* menu próprio: uma barra única no computador, botão ☰ no celular */
+.st-key-nav_desktop {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:16px; padding:4px 8px;
+margin:2px 0 12px; box-shadow:0 2px 8px rgba(120,90,20,.06);}}
+.st-key-nav_desktop [data-testid="stHorizontalBlock"] {{flex-wrap:nowrap !important; gap:.25rem !important;
+align-items:center;}}
+.st-key-nav_desktop [data-testid="stColumn"], .st-key-nav_desktop [data-testid="column"] {{min-width:0 !important;
+flex:1 1 0 !important; width:auto !important;}}
+.st-key-nav_desktop button, .st-key-nav_mobile button {{width:100%; border:none !important;
+background:transparent !important; box-shadow:none !important; justify-content:center;}}
+.st-key-nav_desktop button p, .st-key-nav_mobile button p {{font-weight:800; white-space:nowrap;
+overflow:hidden; text-overflow:ellipsis;}}
+.st-key-nav_desktop button:hover, .st-key-nav_mobile button:hover {{background:#E6F6EC !important;}}
+.st-key-nav_mobile {{display:none; background:{SURFACE}; border:1px solid {BORDER}; border-radius:14px;
+padding:2px 6px; margin-bottom:10px;}}
+[data-testid="stPopoverBody"] a[data-testid="stPageLink-NavLink"] {{border:none; border-radius:10px;
+background:transparent; padding:.45rem .6rem;}}
+[data-testid="stPopoverBody"] a[data-testid="stPageLink-NavLink"]:hover {{background:#E6F6EC;}}
 @media (max-width:768px) {{
 .st-key-nav_desktop {{display:none;}}
 .st-key-nav_mobile {{display:block;}}
@@ -2132,19 +2147,12 @@ def contexto_assistente() -> str:
     return f"Perfil escolhido no app: {perfil_atual()}.\n" + "\n".join(linhas)
 
 
-def pagina_assistente():
-    assistente.pagina(contexto_fn=contexto_assistente, intro_fn=intro)
-
-
-PG_ASSIST = st.Page(pagina_assistente, title="Assistente de estudos (IA)", icon="🤖", url_path="assistente")
-
 paginas = {
     "🏠 Início": [PG_INICIO, PG_MACRO],
     "🔎 Encontrar": [PG_BUSCA, PG_SCREENER],
     "📊 Analisar": [PG_PRECO, PG_DCF, PG_VAL, PG_DIV, PG_TEC, PG_MICRO],
     "🏆 Comparar": [PG_PICK, PG_PERFIS],
     "💼 Carteira": [PG_CART],
-    "🤖 Assistente": [PG_ASSIST],
 }
 
 # A navegação nativa do Streamlit fica escondida: o menu do topo some no celular.
@@ -2188,6 +2196,10 @@ try:
     guias.fim(pg.url_path)
 except Exception:
     pass
+try:  # Assistente de Investimentos: botão flutuante 💬 em todas as páginas
+    assistente.flutuante(contexto_fn=contexto_assistente)
+except Exception as e:
+    st.caption(f"Assistente indisponível no momento ({e.__class__.__name__}).")
 
 st.caption("Ferramenta educacional. Graham, Bazin, DCF e a nota de Stock Picking são modelos simplificados "
            "e dependem da qualidade das fontes; não constituem recomendação de investimento.")

@@ -1,5 +1,5 @@
 """
-Assistente de estudos (IA) do Bolsa para Todos.
+Assistente de Investimentos (IA) do Bolsa para Todos: chat flutuante, tema escuro.
 
 Funciona como um assessor que ENSINA: explica conceitos, indicadores e como ler as telas do app,
 mas nunca indica compra, venda, preço-alvo ou carteira.
@@ -11,7 +11,9 @@ IA GRATUITA (padrão): Google Gemini, camada gratuita, sem cartão de crédito.
   3) Opcional: GEMINI_MODEL = "gemini-flash-lite-latest" (padrão). Troque se o Google renomear modelos.
 Alternativa paga (opcional): ANTHROPIC_API_KEY (+ ANTHROPIC_MODEL). Se as duas existirem, o Gemini é usado.
 
-Sem nenhuma chave, a página continua útil: responde com o glossário do app (modo sem IA).
+Sem nenhuma chave, o chat continua útil: responde com o glossário do app (modo sem IA).
+
+Uso no app.py:  assistente.flutuante(contexto_fn=funcao_que_devolve_texto_dos_ativos)
 """
 
 import json
@@ -21,27 +23,26 @@ import urllib.error
 import urllib.request
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from glossario import GLOSSARIO
 
+NOME = "Assistente de Investimentos"
 API_URL = "https://api.anthropic.com/v1/messages"
 MODELO_PADRAO = "claude-sonnet-5-5"
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
 GEMINI_MODELO_PADRAO = "gemini-flash-lite-latest"
-MAX_PERGUNTAS = 40        # por sessão (controla o custo)
+MAX_PERGUNTAS = 40        # por sessão (controla o custo/limite)
 MAX_HISTORICO = 12        # mensagens enviadas ao modelo
 MAX_CHARS_PERGUNTA = 600
 
 SUGESTOES = [
-    "O que é P/L e como eu leio esse número?",
-    "Como funciona o preço justo de Graham?",
-    "Qual a diferença entre dividendo e juros sobre capital próprio?",
+    "O que é P/L?",
+    "Como funciona o preço justo?",
     "O que é margem de segurança?",
-    "Como ler a tendência de alta, baixa e lateral?",
-    "Por onde começo a estudar investimentos?",
 ]
 
-SYSTEM_PROMPT = """Você é a Assistente do app "Bolsa para Todos": uma educadora financeira que age como um assessor que ENSINA, nunca como alguém que indica. Seu público são brasileiros iniciantes no mercado de ações da B3.
+SYSTEM_PROMPT = """Você é a Assistente de Investimentos do app "Bolsa para Todos": uma educadora financeira (uma IA, não uma profissional registrada) que age como um assessor que ENSINA, nunca como alguém que indica. Seu público são brasileiros iniciantes no mercado de ações da B3.
 
 Como responder
 - Português do Brasil, linguagem simples, sem jargão (se usar um termo técnico, explique em seguida), com exemplos do dia a dia.
@@ -72,6 +73,45 @@ MSG_FILTRO = ("Eu não faço recomendações de compra ou venda, e a minha respo
               "uma empresa e onde ver cada um no app. Quer tentar reformular a pergunta, por exemplo: "
               "“como eu analiso o endividamento de uma empresa?”")
 
+BOAS_VINDAS = ("Olá! 👋 Sou a **Assistente de Investimentos**. Explico termos, indicadores e como ler as telas "
+               "do app. Eu **ensino**, mas **não indico** compra, venda nem carteira.")
+
+# ---------------------------------------------------------------- aparência (tema escuro, flutuante)
+CSS = """
+<style>
+.st-key-chat_fechado, .st-key-chat_aberto {position:fixed; right:16px; bottom:70px; z-index:99990;}
+.st-key-chat_fechado {width:auto;}
+.st-key-chat_fechado button {width:54px; height:54px; min-height:54px; padding:0; border-radius:50%;
+  background:#0F172A !important; border:2px solid #0B8A4D !important; box-shadow:0 8px 22px rgba(0,0,0,.35);}
+.st-key-chat_fechado button:hover {background:#0B8A4D !important;}
+.st-key-chat_fechado button p {font-size:1.45rem; line-height:1; color:#fff !important;}
+.st-key-chat_aberto {width:min(400px, calc(100vw - 24px)); background:#0F172A; border:1px solid #243047;
+  border-radius:20px; padding:12px 12px 8px; box-shadow:0 18px 48px rgba(0,0,0,.45);}
+.st-key-chat_aberto :is(p, span, label, li, strong, em, div, h1, h2, h3, h4, small, a) {color:#E5E7EB;}
+.st-key-chat_aberto .ia-titulo {font-weight:800; font-size:1rem; color:#fff !important;}
+.st-key-chat_aberto .ia-sub {font-size:.72rem; color:#94A3B8 !important;}
+.st-key-chat_aberto [data-testid="stHorizontalBlock"] {flex-wrap:nowrap !important; gap:.4rem !important;}
+.st-key-chat_aberto [data-testid="stColumn"], .st-key-chat_aberto [data-testid="column"] {min-width:0 !important;}
+.st-key-chat_aberto button {background:#1E293B !important; border:1px solid #334155 !important; border-radius:12px;
+  color:#E5E7EB !important; font-weight:700;}
+.st-key-chat_aberto button:hover {border-color:#0B8A4D !important; background:#243047 !important;}
+.st-key-chat_aberto [data-testid="stFormSubmitButton"] button {background:#0B8A4D !important; border-color:#0B8A4D !important;}
+.st-key-chat_aberto [data-testid="stFormSubmitButton"] button:hover {background:#066B3A !important;}
+.st-key-chat_aberto [data-testid="stForm"] {border:none; padding:0;}
+.st-key-chat_aberto input {background:#1E293B !important; color:#F8FAFC !important;}
+.st-key-chat_aberto [data-baseweb="input"], .st-key-chat_aberto [data-baseweb="base-input"] {
+  background:#1E293B !important; border-color:#334155 !important; border-radius:12px;}
+.st-key-chat_aberto input::placeholder {color:#94A3B8 !important;}
+.st-key-chat_aberto [data-testid="stCheckbox"] label span {font-size:.74rem;}
+.st-key-chat_msgs {max-height:min(340px, 46vh); overflow-y:auto; padding:2px 2px 2px 0; margin-bottom:6px;}
+.st-key-chat_msgs [data-testid="stChatMessage"] {background:#1E293B; border-radius:14px; padding:.6rem .75rem;}
+.st-key-chat_msgs [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {background:#064E3B;}
+.st-key-chat_msgs [data-testid="stChatMessage"] p {font-size:.86rem; line-height:1.5;}
+.st-key-chat_aberto code {background:#0B1220; color:#7BE0A8 !important;}
+.st-key-chat_aberto .ia-aviso {font-size:.66rem; color:#94A3B8 !important; line-height:1.35; margin-top:4px;}
+</style>
+"""
+
 
 def _segredo(nome: str):
     try:
@@ -93,9 +133,8 @@ def resposta_sem_ia(pergunta: str) -> str:
     q = pergunta.lower()
     achados = [k for k in GLOSSARIO if len(k) >= 2 and k.lower() in q][:3]
     if not achados:
-        return ("No modo sem IA eu só consigo explicar os termos do glossário do app (por exemplo: P/L, P/VP, "
-                "ROE, Dividend yield, Margem de segurança, DCF). Escreva o nome de um deles na pergunta. "
-                "Para conversar livremente, peça a quem administra o app para configurar a chave da IA.")
+        return ("No modo sem IA eu só explico os termos do glossário do app (por exemplo: P/L, P/VP, ROE, "
+                "Dividend yield, Margem de segurança, DCF). Escreva o nome de um deles na pergunta.")
     partes = []
     for k in achados:
         o, p = GLOSSARIO[k]
@@ -103,11 +142,17 @@ def resposta_sem_ia(pergunta: str) -> str:
     return "\n\n---\n\n".join(partes)
 
 
-def _chamar_ia(historico: list, system: str, chave: str, modelo: str) -> str:
+def _recortar(historico: list) -> list:
     msgs = [m for m in historico if m["role"] in ("user", "assistant")][-MAX_HISTORICO:]
     while msgs and msgs[0]["role"] != "user":
         msgs = msgs[1:]
-    corpo = json.dumps({"model": modelo, "max_tokens": 700, "system": system, "messages": msgs}).encode("utf-8")
+    return msgs
+
+
+def _chamar_ia(historico: list, system: str, chave: str, modelo: str) -> str:
+    """Claude (API paga), opcional."""
+    corpo = json.dumps({"model": modelo, "max_tokens": 700, "system": system,
+                        "messages": _recortar(historico)}).encode("utf-8")
     req = urllib.request.Request(
         API_URL, data=corpo, method="POST",
         headers={"content-type": "application/json", "x-api-key": chave, "anthropic-version": "2023-06-01"})
@@ -132,13 +177,10 @@ def _chamar_ia(historico: list, system: str, chave: str, modelo: str) -> str:
 
 def _chamar_gemini(historico: list, system: str, chave: str, modelo: str) -> str:
     """Google Gemini (camada gratuita) pela API REST, sem pacote extra."""
-    msgs = [m for m in historico if m["role"] in ("user", "assistant")][-MAX_HISTORICO:]
-    while msgs and msgs[0]["role"] != "user":
-        msgs = msgs[1:]
     corpo = json.dumps({
         "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
-                     for m in msgs],
+                     for m in _recortar(historico)],
         "generationConfig": {"maxOutputTokens": 1500, "temperature": 0.4},
     }).encode("utf-8")
     req = urllib.request.Request(
@@ -165,83 +207,118 @@ def _chamar_gemini(historico: list, system: str, chave: str, modelo: str) -> str
     return texto
 
 
+def _provedor():
+    """(chave, modelo, função de chamada) conforme as chaves configuradas; chave None = modo sem IA."""
+    g = _segredo("GEMINI_API_KEY")
+    if g:
+        return g, _segredo("GEMINI_MODEL") or GEMINI_MODELO_PADRAO, _chamar_gemini
+    return _segredo("ANTHROPIC_API_KEY"), _segredo("ANTHROPIC_MODEL") or MODELO_PADRAO, _chamar_ia
+
+
+def _responder(pergunta: str, hist: list, contexto_fn, usar_ctx: bool) -> str:
+    chave, modelo, chamar = _provedor()
+    if not chave:
+        return resposta_sem_ia(pergunta)
+    system = SYSTEM_PROMPT
+    ctx = contexto_fn() if (usar_ctx and contexto_fn) else ""
+    if ctx:
+        system += ("\n\nDados dos ativos que a pessoa selecionou (fontes públicas, podem conter erros; "
+                   "use só para explicar o significado dos números):\n" + ctx)
+    try:
+        resp = chamar(hist, system, chave, modelo)
+    except RuntimeError as e:
+        return f"⚠️ {e}"
+    return MSG_FILTRO if passou_do_limite(resp) else resp
+
+
+# ---------------------------------------------------------------- interface
 def _mostrar(texto: str):
     st.markdown(texto.replace("$", "\\$"))
+
+
+def _alternar():
+    st.session_state["ia_aberto"] = not st.session_state.get("ia_aberto", False)
 
 
 def _pedir(q: str):
     st.session_state["ia_pendente"] = q
 
 
-def pagina(contexto_fn=None, intro_fn=None):
-    """Página do assistente. contexto_fn() devolve um texto com os dados dos ativos selecionados."""
-    if intro_fn:
-        intro_fn("🤖", "Assistente de estudos",
-                 "Tire dúvidas sobre indicadores, termos e como ler as telas do app. Ela <b>ensina</b>, mas "
-                 "<b>não indica</b> compra, venda nem carteira: a decisão é sua.")
-    chave_g = _segredo("GEMINI_API_KEY")
-    chave_a = _segredo("ANTHROPIC_API_KEY")
-    if chave_g:
-        chave, modelo, chamar = chave_g, _segredo("GEMINI_MODEL") or GEMINI_MODELO_PADRAO, _chamar_gemini
-    else:
-        chave, modelo, chamar = chave_a, _segredo("ANTHROPIC_MODEL") or MODELO_PADRAO, _chamar_ia
+def _enviar():
+    t = (st.session_state.get("ia_texto") or "").strip()
+    if t:
+        st.session_state["ia_pendente"] = t[:MAX_CHARS_PERGUNTA]
+
+
+def _nova_conversa():
+    st.session_state["chat_ia"] = []
+
+
+def flutuante(contexto_fn=None):
+    """Desenha o botão flutuante 💬 e, quando aberto, o painel do chat (canto inferior direito)."""
+    st.markdown(CSS, unsafe_allow_html=True)
     hist = st.session_state.setdefault("chat_ia", [])
-    feitas = sum(1 for m in hist if m["role"] == "user")
 
-    if not chave:
-        st.info("💡 A IA ainda não está ativada neste app. Enquanto isso, a assistente responde apenas com o "
-                "glossário (modo sem IA).")
+    if not st.session_state.get("ia_aberto", False):
+        with st.container(key="chat_fechado"):
+            st.button("💬", key="ia_abrir", on_click=_alternar, help=NOME)
+        return
 
-    c1, c2 = st.columns([3, 1.2], vertical_alignment="center")
-    usar_ctx = c1.toggle("Usar os ativos que selecionei como exemplo", value=True, key="ia_ctx",
-                         help="A assistente enxerga os números dos ativos em análise (preço, múltiplos, tendência) "
-                              "apenas para explicar o que eles significam.")
-    if c2.button("🧹 Nova conversa", width="stretch"):
-        st.session_state["chat_ia"] = []
-        st.rerun()
+    with st.container(key="chat_aberto"):
+        c1, c2 = st.columns([6, 1], vertical_alignment="center")
+        sem_ia = _provedor()[0] is None
+        c1.markdown(f'<div class="ia-titulo">🤖 {NOME}</div>'
+                    f'<div class="ia-sub">{"Modo sem IA: só o glossário" if sem_ia else "Ensina, não indica"}</div>',
+                    unsafe_allow_html=True)
+        c2.button("✕", key="ia_fechar", on_click=_alternar, help="Fechar")
 
-    if not hist:
-        st.markdown("##### Comece por uma destas perguntas")
-        cols = st.columns(2)
-        for i, s in enumerate(SUGESTOES):
-            cols[i % 2].button(s, key=f"ia_sug_{i}", on_click=_pedir, args=(s,), width="stretch")
+        pend = st.session_state.pop("ia_pendente", None)
+        feitas = sum(1 for m in hist if m["role"] == "user")
+        limite = bool(pend) and feitas >= MAX_PERGUNTAS
+        if limite:
+            pend = None
+        if pend:
+            hist.append({"role": "user", "content": pend})
 
-    for m in hist:
-        with st.chat_message("user" if m["role"] == "user" else "assistant", avatar=None if m["role"] == "user" else "🤖"):
-            _mostrar(m["content"])
+        usar_ctx = st.session_state.get("ia_ctx", True)
+        with st.container(key="chat_msgs"):
+            if not hist:
+                with st.chat_message("assistant", avatar="🤖"):
+                    _mostrar(BOAS_VINDAS)
+            for m in hist:
+                with st.chat_message("user" if m["role"] == "user" else "assistant",
+                                     avatar=None if m["role"] == "user" else "🤖"):
+                    _mostrar(m["content"])
+            if pend:
+                with st.chat_message("assistant", avatar="🤖"):
+                    with st.spinner("Pensando..."):
+                        resp = _responder(pend, hist, contexto_fn, usar_ctx)
+                    _mostrar(resp)
+                if resp.startswith("⚠️"):
+                    hist.pop()  # erro técnico não entra no histórico: a pessoa pode tentar de novo
+                else:
+                    hist.append({"role": "assistant", "content": resp})
+            if limite:
+                st.warning("Limite de perguntas desta sessão atingido. Use 🧹 para recomeçar.")
 
-    pergunta = st.chat_input("Pergunte sobre um indicador, um termo ou uma tela do app...", max_chars=MAX_CHARS_PERGUNTA)
-    pergunta = pergunta or st.session_state.pop("ia_pendente", None)
+        if not hist:
+            for i, s in enumerate(SUGESTOES):
+                st.button(s, key=f"ia_sug_{i}", on_click=_pedir, args=(s,), width="stretch")
 
-    if pergunta:
-        if feitas >= MAX_PERGUNTAS:
-            st.warning("Você chegou ao limite de perguntas desta sessão. Clique em Nova conversa para recomeçar.")
-        else:
-            hist.append({"role": "user", "content": pergunta.strip()[:MAX_CHARS_PERGUNTA]})
-            with st.chat_message("user"):
-                _mostrar(hist[-1]["content"])
-            with st.chat_message("assistant", avatar="🤖"):
-                with st.spinner("Pensando..."):
-                    if chave:
-                        system = SYSTEM_PROMPT
-                        ctx = contexto_fn() if (usar_ctx and contexto_fn) else ""
-                        if ctx:
-                            system += ("\n\nDados dos ativos que a pessoa selecionou (fontes públicas, podem conter "
-                                       "erros; use só para explicar o significado dos números):\n" + ctx)
-                        try:
-                            resp = chamar(hist, system, chave, modelo)
-                            if passou_do_limite(resp):
-                                resp = MSG_FILTRO
-                        except RuntimeError as e:
-                            resp = f"⚠️ {e}"
-                    else:
-                        resp = resposta_sem_ia(pergunta)
-                _mostrar(resp)
-            if resp.startswith("⚠️"):
-                hist.pop()  # erro técnico não entra no histórico: a pessoa pode tentar de novo
-            else:
-                hist.append({"role": "assistant", "content": resp})
+        with st.form("ia_form", clear_on_submit=True):
+            f1, f2 = st.columns([5, 2], vertical_alignment="center")
+            f1.text_input("Pergunta", key="ia_texto", label_visibility="collapsed",
+                          placeholder="Pergunte sobre um termo ou indicador...", max_chars=MAX_CHARS_PERGUNTA)
+            f2.form_submit_button("Enviar", on_click=_enviar, width="stretch")
 
-    st.caption("Conteúdo educacional gerado por IA, que pode errar: confira nas fontes oficiais. Nada aqui é "
-               "recomendação de investimento, de compra ou de venda. Para orientação personalizada, procure um "
-               "profissional registrado na CVM.")
+        b1, b2 = st.columns([5, 2], vertical_alignment="center")
+        b1.checkbox("Usar meus ativos como exemplo", value=True, key="ia_ctx",
+                    help="A assistente vê os números dos ativos em análise só para explicar o que significam.")
+        b2.button("🧹 Limpar", key="ia_limpar", on_click=_nova_conversa, width="stretch")
+        st.markdown('<div class="ia-aviso">IA educacional, pode errar. Não é recomendação de compra ou venda; '
+                    'para orientação personalizada procure um profissional registrado na CVM.</div>',
+                    unsafe_allow_html=True)
+
+    if hist:  # mantém a conversa rolada até a última mensagem
+        components.html("<script>setTimeout(function(){var e=window.parent.document.querySelector"
+                        "('.st-key-chat_msgs');if(e){e.scrollTop=e.scrollHeight;}},150);</script>", height=0)
