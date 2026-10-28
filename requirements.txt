@@ -5,4 +5,4 @@ requests
 yfinance
 sidrapy
 fundamentus
-google.genai
+google.genai.
