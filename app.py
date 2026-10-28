@@ -168,6 +168,10 @@ border-radius:16px; padding:12px 16px; margin-bottom:14px;}}
 a[data-testid="stPageLink-NavLink"] {{border:1px solid {BORDER}; border-radius:999px; background:{SURFACE};}}
 button[data-testid="stBaseButton-primary"] p, button[kind="primary"] p {{color:#ffffff !important;}}
 p, span, label, div {{color: {TEXT};}}
+/* convite opcional do tutorial */
+.st-key-convite_tour {{background:#FFF3CF; border:2px solid {SUN}; border-radius:16px; padding:10px 14px;
+margin-bottom:10px; box-shadow:0 4px 14px rgba(229,165,10,.25);}}
+.st-key-convite_tour p {{color:#3A2A00;}}
 /* menu próprio: uma barra única no computador, botão ☰ no celular */
 .st-key-nav_desktop {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:16px; padding:4px 8px;
 margin:2px 0 12px; box-shadow:0 2px 8px rgba(120,90,20,.06);}}
@@ -475,7 +479,8 @@ def carregar(ativos):
             try:
                 out[tk] = buscar(tk)
             except Exception as e:
-                st.warning(f"Não consegui carregar {tk}: {e}")
+                st.warning(f"Não consegui carregar {tk}: {e}. Se persistir, troque a **Fonte** no topo "
+                           "(Fundamentus ou Brapi) ou abra o 🩺 Diagnóstico no fim da página.")
     return out
 
 
@@ -738,7 +743,8 @@ def boas_vindas():
     st.divider()
 
 
-TOUR = ["Boas-vindas", "Seu perfil", "Encontre empresas", "Preço justo", "Descubra oportunidades", "Pronto!"]
+TOUR = ["Como escolher boas ações", "Seu perfil", "Encontre empresas", "Preço justo", "Múltiplos e saúde da empresa",
+        "Fluxo de caixa (DCF)", "Dividendos", "Tendência e gráfico", "Ranking e perfis", "Cenário e assistente"]
 
 
 def _tour_ir(delta: int):
@@ -749,23 +755,54 @@ def _tour_perfil():
     st.session_state["perfil"] = st.session_state["tour_perfil"]
 
 
+def _tour_bloco(onde: str, serve: str, ajuda: str, cuidado: str):
+    """Quatro linhas padrão: onde ver, para que serve, como ajuda a escolher boas ações e o limite do método."""
+    md(f"**📍 Onde ver:** {onde}")
+    md(f"**🎯 Para que serve:** {serve}")
+    md(f"**🧭 Como ajuda a escolher boas ações:** {ajuda}")
+    md(f"**⚠️ Cuidado:** {cuidado}")
+
+
+def convite_tutorial():
+    """Faixa de destaque, opcional: a pessoa escolhe fazer o tutorial ou dispensar. Nada abre sozinho."""
+    if st.session_state.get("tour_visto"):
+        return
+    with st.container(key="convite_tour"):
+        c1, c2, c3 = st.columns([5, 1.7, 1.3], vertical_alignment="center")
+        c1.markdown("**🎓 Primeira vez por aqui?** Em poucos minutos você vê para que serve cada tela e como "
+                    "elas ajudam a analisar boas ações. É opcional.")
+        if c2.button("Fazer o tutorial", key="convite_sim", type="primary", width="stretch"):
+            st.session_state.tour_visto = True
+            st.session_state.tour_passo = 0
+            tutorial()
+        if c3.button("Agora não", key="convite_nao", width="stretch"):
+            st.session_state.tour_visto = True
+            st.rerun()
+
+
 @st.dialog("🎓 Tutorial da Bolsa para Todos", width="large")
 def tutorial():
     i = st.session_state.get("tour_passo", 0)
     st.progress((i + 1) / len(TOUR), text=f"Passo {i + 1} de {len(TOUR)} · {TOUR[i]}")
 
     if i == 0:
-        st.markdown("### Bem-vindo! 👋")
-        md("Este painel ajuda você a **estudar ações da B3** de forma organizada: quanto a empresa vale, "
-           "se o preço está atrativo, quanto ela entrega em dividendos e se o risco combina com o seu perfil.")
-        c1, c2, c3 = st.columns(3)
-        c1.markdown("**🔎 Encontre**  \nBusque pelo nome e veja logo e ticker.")
-        c2.markdown("**📊 Analise**  \nPreço justo, DCF, múltiplos e tendência.")
-        c3.markdown("**🏆 Compare**  \nRanking e os mesmos ativos em cada perfil.")
-        st.caption("Ferramenta educacional: nada aqui é recomendação de compra ou venda.")
+        st.markdown("### Como se escolhe uma boa ação?")
+        md("Não existe um número mágico. Quem estuda empresas costuma juntar **várias respostas**, e cada tela do "
+           "app responde a uma pergunta diferente:")
+        md("- 💲 **O preço está de acordo com o valor?** → Preço justo, Múltiplos e DCF\n"
+           "- 🏗️ **A empresa é bem administrada e saudável?** → Saúde das empresas (lucro, rentabilidade, dívida)\n"
+           "- 💰 **Ela reparte lucro de forma consistente?** → Dividendos\n"
+           "- 📈 **Como o mercado vem tratando o preço?** → Tendência e gráfico\n"
+           "- 🧭 **Isso combina com o meu jeito de investir?** → Perfil, Ranking e Perfis e cenários\n"
+           "- 🌐 **Como está a economia?** → Cenário econômico")
+        st.caption("Nenhuma tela decide sozinha. O objetivo é você aprender a cruzar as informações. "
+                   "Ferramenta educacional: nada aqui é recomendação de compra ou venda.")
 
     elif i == 1:
         st.markdown("### Qual é o seu perfil de investidor?")
+        md("O perfil muda as réguas do app: quanta **margem de segurança** exigir, que **dividend yield** buscar, "
+           "que **taxa de desconto** usar no DCF e quanta **oscilação** tolerar. Assim a mesma empresa é avaliada "
+           "com mais ou menos rigor.")
         st.session_state["tour_perfil"] = perfil_atual()
         st.radio("Escolha o perfil que mais combina com você", list(PERFIS), key="tour_perfil",
                  on_change=_tour_perfil, format_func=lambda x: f"{PERFIS[x]['icone']} {x}")
@@ -776,10 +813,14 @@ def tutorial():
            f"- Dividend yield desejado (Bazin): **{pct(P['yield_alvo'], 1)}**\n"
            f"- Taxa de desconto do DCF: **{pct(P['taxa'], 1)}**\n"
            f"- Oscilação anual tolerada: **~{P['vol_tol']:.0f}%**")
-        st.caption("Você pode trocar o perfil a qualquer momento no topo da tela.")
+        st.caption("Você pode trocar o perfil a qualquer momento no topo da tela. O perfil de verdade é definido "
+                   "no questionário de suitability da sua corretora.")
 
     elif i == 2:
         st.markdown("### Encontre uma empresa pelo nome")
+        md("O primeiro passo é escolher **o que estudar**. Você pode buscar pelo nome, por setor ou usar o "
+           "**Buscador de oportunidades** (Encontrar), que filtra o catálogo por critérios como ROE, dívida e "
+           "dividendos.")
         st.caption("Experimente digitar *Petrobras*, *banco*, *energia* ou *WEG* e clique em **➕** para adicionar.")
         q = st.text_input("Nome da empresa", key="tour_q", placeholder="Ex.: Petrobras, WEG, Itaú...")
         if q.strip():
@@ -793,31 +834,91 @@ def tutorial():
             st.success("Em análise: " + ", ".join(rec.nome_curto(t) for t in sel))
 
     elif i == 3:
-        st.markdown("### Como ler o preço justo")
-        md("O painel combina dois métodos clássicos. Exemplo **fictício**:")
-        md("- **Graham**: √(22,5 × LPA × VPA) = √(22,5 × 4,00 × 30,00) = **R$ 51,96**\n"
-           "- **Bazin**: dividendo médio ÷ yield desejado = R$ 2,40 ÷ 6% = **R$ 40,00**\n"
-           "- **Preço justo** (média): **R$ 45,98**. Com preço atual de R$ 35,00, a **margem de segurança** "
-           "é (45,98 − 35) ÷ 45,98 = **23,9%**")
-        md("**Semáforo:** 🟢 *Abaixo do justo* (preço abaixo do valor estimado, com a folga que o seu perfil pede), "
-           "🟡 *No preço justo* (folga menor que a pedida) e 🔴 *Acima do justo* (preço maior que o valor estimado).")
-        md("Cada cartão também mostra a **tendência do gráfico diário** nos últimos 5 anos: Alta, Lateral ou Baixa.")
-        st.caption("Passe o mouse no ⓘ de qualquer indicador para ver o que ele significa.")
+        st.markdown("### 🎯 Preço justo e margem de segurança")
+        _tour_bloco(
+            "Analisar → Preço justo e tendência",
+            "Estimar quanto a ação *deveria* valer, pelos métodos de **Graham** (usa lucro e patrimônio por ação) e "
+            "**Bazin** (usa os dividendos), e comparar com o preço de hoje.",
+            "Evita pagar caro demais. A **margem de segurança** é a folga entre o preço e o valor estimado: quanto "
+            "maior, mais espaço para a estimativa errar sem prejuízo. O semáforo resume: abaixo, no ponto ou acima do justo.",
+            "Depende de LPA, VPA e dividendos, que podem estar distorcidos por um ano atípico. Graham não calcula "
+            "empresas com prejuízo. É um modelo simplificado, não uma previsão.")
+        md("Exemplo **fictício**: Graham = √(22,5 × 4,00 × 30,00) = **R$ 51,96**; Bazin = R$ 2,40 ÷ 6% = **R$ 40,00**; "
+           "preço justo (média) = **R$ 45,98**. Com preço de R$ 35,00, a margem de segurança é **23,9%**.")
 
     elif i == 4:
-        st.markdown("### Descubra oportunidades")
-        md("- **🧪 Buscador de oportunidades** (Encontrar): marque critérios de uma boa empresa (ROE, dívida, "
-           "dividendos, margem de segurança...) e veja quais do catálogo passam no filtro.\n"
-           "- **🏆 Ranking (Stock picking)** (Comparar): nota de 0 a 100 em seis pilares, com pesos do seu perfil.\n"
-           "- **🧭 Perfis e cenários** (Comparar): a mesma empresa avaliada nos três perfis, com cenários de DCF "
-           "pessimista, base e otimista.")
+        st.markdown("### ⚖️ Múltiplos e 🏢 saúde da empresa")
+        _tour_bloco(
+            "Analisar → Múltiplos e Analisar → Saúde das empresas",
+            "Transformar a empresa em números comparáveis: **P/L** (anos de lucro que o preço paga), **P/VP** (preço "
+            "frente ao patrimônio), **EV/EBITDA** (valor da empresa frente ao que ela gera na operação), **ROE** "
+            "(lucro para cada R$ 1 de patrimônio), **margem líquida** e **Dív./PL** (endividamento).",
+            "Permitem comparar empresas do mesmo setor. A combinação costuma importar mais que um número isolado: "
+            "múltiplo baixo **com** boa rentabilidade e dívida controlada é um sinal diferente de múltiplo baixo "
+            "com empresa em dificuldade (a famosa “barata por um motivo”).",
+            "Cada setor tem seus patamares normais. Lucro de um ano fora da curva distorce P/L e ROE. Bancos "
+            "e seguradoras não usam Dív./PL e EV/EBITDA da mesma forma.")
+
+    elif i == 5:
+        st.markdown("### 🧮 Fluxo de caixa descontado (DCF)")
+        _tour_bloco(
+            "Analisar → Fluxo de caixa descontado (DCF)",
+            "Estimar o valor da empresa pelo dinheiro que ela deve gerar nos próximos anos (o **fluxo de caixa "
+            "livre**), trazido para valores de hoje por uma **taxa de desconto**.",
+            "Olha para o futuro e não só para o passado. Mostra o quanto o resultado muda se a taxa ou o "
+            "crescimento mudarem (tabela de sensibilidade e cenários pessimista, base e otimista), o que ensina a "
+            "enxergar a incerteza da estimativa.",
+            "Pequenas mudanças nas premissas mudam muito o valor, e quando mais de 75% do valor vem da "
+            "perpetuidade o resultado fica frágil. Não se aplica bem a bancos e seguradoras.")
+
+    elif i == 6:
+        st.markdown("### 💰 Dividendos")
+        _tour_bloco(
+            "Analisar → Dividendos",
+            "Mostrar quanto a empresa pagou por ação a cada ano, o **dividend yield** (quanto isso rendeu frente ao "
+            "preço) e a **média dos últimos 5 anos**.",
+            "Pagar proventos de forma regular costuma indicar lucro e caixa de verdade. A média de 5 anos suaviza "
+            "anos extraordinários e é a base do método de Bazin. O histórico mostra se o pagamento é constante "
+            "ou irregular.",
+            "Yield muito alto pode ser sinal de preço em queda ou de pagamento que não se repete. O passado "
+            "não garante o futuro.")
+
+    elif i == 7:
+        st.markdown("### 📉 Tendência e gráfico")
+        _tour_bloco(
+            "Preço justo e tendência (selo de Alta, Lateral ou Baixa) e Analisar → Gráfico e tendência",
+            "Mostrar para onde o preço caminhou. O selo usa três sinais: preço acima da média de 200 dias, média de "
+            "50 acima da de 200 e média de 200 subindo. O gráfico também traz padrões de candles e indicadores.",
+            "Ajuda a ver o momento do mercado em relação à empresa, em complemento ao valor. Uma ação pode parecer "
+            "barata e estar em queda por um motivo que os números ainda não mostram; a tendência ajuda a "
+            "perguntar “por quê?”.",
+            "É um indicador técnico: olha o passado, atrasa em relação ao preço e dá sinais falsos. Não prevê o futuro.")
+
+    elif i == 8:
+        st.markdown("### 🏆 Ranking, perfis e cenários")
+        _tour_bloco(
+            "Comparar → Ranking (Stock picking) e Comparar → Perfis e cenários",
+            "Juntar tudo em uma **nota de 0 a 100** com seis pilares: valor, qualidade, dividendos, solidez, tendência "
+            "e risco. Os pesos mudam conforme o perfil, e a tela de perfis mostra a mesma empresa avaliada como "
+            "Conservador, Moderado e Arrojado.",
+            "Serve de triagem: em vez de olhar tela por tela, você compara várias empresas de uma vez e vê em "
+            "qual pilar cada uma é forte ou fraca. Depois volta às telas de detalhe para entender o porquê.",
+            "A nota é um ponto de partida para estudar, não uma ordem de compra. Pilares sem dados são ignorados e "
+            "os pesos, reponderados.")
 
     else:
-        st.markdown("### Tudo pronto! ✅")
+        st.markdown("### 🌐 Cenário econômico, assistente e pronto!")
+        _tour_bloco(
+            "Início → Cenário econômico e o botão 💬 no canto da tela",
+            "O **cenário econômico** mostra Selic, inflação, dólar e atividade. O **💬 Assistente de Investimentos** "
+            "explica qualquer termo ou indicador em linguagem simples.",
+            "Juros altos, por exemplo, pesam no valor das empresas (taxa de desconto maior) e tornam a renda fixa "
+            "mais atraente. Entender o cenário ajuda a ler os números de cada empresa com mais contexto.",
+            "O assistente ensina, mas não indica compra nem venda. Para recomendação personalizada, procure um "
+            "profissional registrado na CVM.")
         pf = perfil_atual()
         n = len(st.session_state.get("sel_ativos", []))
-        md(f"- Perfil escolhido: **{PERFIS[pf]['icone']} {pf}**\n"
-           f"- Empresas em análise: **{n}**")
+        md(f"✅ Perfil escolhido: **{PERFIS[pf]['icone']} {pf}** · Empresas em análise: **{n}**")
         md("Dicas: use **🔄** para atualizar os dados e **❓** para rever este tutorial.")
 
     st.write("")
@@ -825,7 +926,7 @@ def tutorial():
     c1.button("← Voltar", on_click=_tour_ir, args=(-1,), disabled=i == 0, width="stretch")
     if i < len(TOUR) - 1:
         c2.button("Próximo →", on_click=_tour_ir, args=(1,), type="primary", width="stretch")
-        if c3.button("Pular tutorial", width="stretch"):
+        if c3.button("Fechar", width="stretch"):
             st.rerun()
     elif c2.button("Concluir ✅", type="primary", width="stretch"):
         st.session_state.tour_passo = 0
@@ -2041,6 +2142,33 @@ def pagina_tecnica():
         bloco_sinais()
 
 
+# ---------------------------------------------------------------- diagnóstico das fontes de dados
+def diagnostico_fontes():
+    """Testa as três fontes sem cache e mostra o que cada uma devolveu (ou o erro)."""
+    with st.expander("🩺 Diagnóstico das fontes de dados (use se preço ou dividendos não aparecerem)"):
+        tk = st.text_input("Ticker para testar", value="PETR4", key="diag_tk")
+        if st.button("Testar as 3 fontes agora", key="diag_btn"):
+            try:
+                from importlib.metadata import version
+                st.caption(f"yfinance instalado: {version('yfinance')}")
+            except Exception:
+                st.caption("yfinance: versão não identificada")
+            linhas = []
+            for f in FONTES:
+                try:
+                    d = _buscar_fonte(normaliza(tk), f)
+                    linhas.append({"Fonte": f, "Preço": d.get("preco"), "LPA": d.get("lpa"), "VPA": d.get("vpa"),
+                                   "Proventos 12m": d.get("div_12m"), "Média 5 anos": d.get("div_medio"),
+                                   "Erro": str(d.get("erro") or "—"),
+                                   "Avisos": " | ".join(d.get("alertas", [])) or "—"})
+                except Exception as e:
+                    linhas.append({"Fonte": f, "Preço": None, "LPA": None, "VPA": None, "Proventos 12m": None,
+                                   "Média 5 anos": None, "Erro": f"{e.__class__.__name__}: {e}", "Avisos": "—"})
+            st.dataframe(pd.DataFrame(linhas), width="stretch", hide_index=True)
+            st.caption("“Too Many Requests” ou 429 no Yahoo = o Yahoo bloqueou o servidor onde o app roda (comum no "
+                       "Streamlit Cloud). Se Fundamentus ou Brapi funcionarem, escolha uma delas em **Fonte** no topo.")
+
+
 # ---------------------------------------------------------------- barra superior (substitui a sidebar)
 def _adicionar_ticker():
     """Aceita tickers ou nomes de empresa, separados por vírgula."""
@@ -2179,14 +2307,9 @@ def menu_navegacao():
                     st.page_link(p, label=p.title, icon=p.icon)
 
 
-barra_superior()
-menu_navegacao()
-if not st.session_state.tour_visto:  # tutorial abre sozinho na primeira visita
-    st.session_state.tour_visto = True
-    try:
-        tutorial()
-    except Exception as e:  # o tutorial é um extra: não pode impedir o app de abrir
-        st.caption(f"Tutorial indisponível no momento ({e.__class__.__name__}). Use o botão ❓ para tentar de novo.")
+menu_navegacao()   # menu no topo da página, acima de tudo
+barra_superior()   # marca, ativos em análise, fonte e perfil do investidor
+convite_tutorial() # faixa opcional: a pessoa escolhe fazer o tutorial ou dispensar
 try:
     guias.topo(pg.url_path)
 except Exception:  # o guia é um extra: não pode derrubar a página
@@ -2200,6 +2323,11 @@ try:  # Assistente de Investimentos: botão flutuante 💬 em todas as páginas
     assistente.flutuante(contexto_fn=contexto_assistente)
 except Exception as e:
     st.caption(f"Assistente indisponível no momento ({e.__class__.__name__}).")
+
+try:
+    diagnostico_fontes()
+except Exception:
+    pass
 
 st.caption("Ferramenta educacional. Graham, Bazin, DCF e a nota de Stock Picking são modelos simplificados "
            "e dependem da qualidade das fontes; não constituem recomendação de investimento.")
