@@ -2,7 +2,8 @@
 Bolsa para Todos - Fundamentalista + DCF + Stock Picking + Técnica + Macro & Micro + Perfis do investidor
 
 Rodar com: streamlit run app.py
-Requer streamlit >= 1.46 (navegação no topo) e os módulos tecnica.py e recursos.py ao lado.
+Requer streamlit >= 1.46 e os módulos tecnica.py, recursos.py, dados.py, glossario.py,
+leitura_macro.py, carteira.py e guias.py ao lado.
 
 Convenções internas dos dados (todas as fontes são normalizadas para isso):
   preco, lpa, vpa, div_12m, div_medio, divida_liq ..... R$ (já convertidos se o balanço for em USD)
@@ -12,6 +13,7 @@ Convenções internas dos dados (todas as fontes são normalizadas para isso):
 """
 
 import base64
+import colorsys
 import html
 import json
 import re
@@ -95,7 +97,7 @@ st.markdown(
 .stApp, .stApp p, .stApp label, .stApp li, .stApp h1, .stApp h2, .stApp h3, .stApp h4,
 .stApp button, .stApp input, .stApp textarea {{font-family:'Nunito','Segoe UI',sans-serif;}}
 header[data-testid="stHeader"] {{background:{SURFACE}; border-bottom:3px solid {SUN};}}
-.block-container {{padding-top:4.2rem; max-width:1400px;}}
+.block-container {{padding-top:3.6rem; max-width:1400px;}}
 .brand {{display:flex; align-items:center; gap:10px;}}
 .hero {{font-size:1.45rem; font-weight:800; color:{BRAND}; letter-spacing:.2px; line-height:1.05;}}
 .sub {{font-size:.72rem; color:{MUTED};}}
@@ -165,6 +167,15 @@ border-radius:16px; padding:12px 16px; margin-bottom:14px;}}
 a[data-testid="stPageLink-NavLink"] {{border:1px solid {BORDER}; border-radius:999px; background:{SURFACE};}}
 button[data-testid="stBaseButton-primary"] p, button[kind="primary"] p {{color:#ffffff !important;}}
 p, span, label, div {{color: {TEXT};}}
+/* menu próprio: grupos em menus suspensos no computador, botão ☰ único no celular */
+.st-key-nav_mobile {{display:none;}}
+@media (max-width:768px) {{
+.st-key-nav_desktop {{display:none;}}
+.st-key-nav_mobile {{display:block;}}
+.block-container {{padding-left:.8rem; padding-right:.8rem;}}
+}}
+section[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {{display:none !important;}}
 </style>
 """,
     unsafe_allow_html=True,
@@ -180,17 +191,34 @@ PERFIS = rec.PERFIS
 FINANCEIRAS = ("ITSA", "ITUB", "BBDC", "BBAS", "BPAC", "SANB", "BBSE", "CXSE", "SULA",
                "INBR", "BRSR", "BPAN", "XPBR", "PSSA", "ROXO", "ABCB")
 
-# ---------------------------------------------------------------- cor fixa por ativo
-PALETA = ["#2563EB", "#EA580C", "#7C3AED", "#0D9488", "#DB2777", "#CA8A04",
-          "#0284C7", "#16A34A", "#DC2626", "#9333EA", "#4D7C0F", "#C026D3"]
+# ---------------------------------------------------------------- cor fixa e única por ativo
+PALETA = ["#2563EB", "#EA580C", "#16A34A", "#DC2626", "#7C3AED", "#CA8A04",
+          "#0891B2", "#DB2777", "#4D7C0F", "#9A3412", "#1E3A8A", "#65A30D",
+          "#C026D3", "#0F766E", "#B45309", "#475569", "#BE123C", "#0369A1",
+          "#6D28D9", "#A16207"]
+
+
+def _cor_gerada(n: int) -> str:
+    """Cor extra (ângulo áureo no matiz) para quando a paleta fixa acaba."""
+    r, g, b = colorsys.hls_to_rgb((n * 0.61803398875) % 1, 0.42, 0.65)
+    return "#%02X%02X%02X" % (int(r * 255), int(g * 255), int(b * 255))
 
 
 def cor_ativo(tk: str) -> str:
-    """Cada ativo tem sempre a mesma cor, em todas as páginas e gráficos."""
+    """Cada ativo tem sempre a mesma cor em todas as páginas, e dois ativos nunca dividem a mesma cor."""
     tk = str(tk).upper().replace(".SA", "").strip()
-    uni = st.session_state.get("universo", [])
-    i = uni.index(tk) if tk in uni else sum(map(ord, tk))
-    return PALETA[i % len(PALETA)]
+    mapa = st.session_state.setdefault("cores_ativos", {})
+    if tk not in mapa:
+        usadas = set(mapa.values())
+        cor = next((c for c in PALETA if c not in usadas), None)
+        n = len(mapa)
+        while cor is None:
+            cand = _cor_gerada(n)
+            if cand not in usadas:
+                cor = cand
+            n += 1
+        mapa[tk] = cor
+    return mapa[tk]
 
 
 # ---------------------------------------------------------------- glossário (tooltips ⓘ)
@@ -2089,18 +2117,32 @@ paginas = {
     "💼 Carteira": [PG_CART],
 }
 
+# A navegação nativa do Streamlit fica escondida: o menu do topo some no celular.
+# O menu próprio (menu_navegacao) funciona em qualquer tela.
 try:
-    pg = st.navigation(paginas, position="top")
-    st.markdown('<style>section[data-testid="stSidebar"], '
-                '[data-testid="stSidebarCollapsedControl"], '
-                '[data-testid="collapsedControl"] {display:none !important;}</style>',
-                unsafe_allow_html=True)
+    pg = st.navigation(paginas, position="hidden")
 except TypeError:
-    st.warning("Navegação no topo requer streamlit >= 1.46 (`pip install -U streamlit`). "
-               "Usando o menu lateral como alternativa.")
+    st.warning("Esta versão do Streamlit é antiga (`pip install -U streamlit`). Usando o menu lateral.")
     pg = st.navigation(paginas)
 
+
+def menu_navegacao():
+    """Computador: um menu suspenso por grupo. Celular: um único botão ☰ Menu com todos os grupos."""
+    with st.container(key="nav_desktop"):
+        for col, (grupo, itens) in zip(st.columns(len(paginas)), paginas.items()):
+            with col.popover(grupo):
+                for p in itens:
+                    st.page_link(p, label=p.title, icon=p.icon)
+    with st.container(key="nav_mobile"):
+        with st.popover("☰ Menu"):
+            for grupo, itens in paginas.items():
+                st.markdown(f"**{grupo}**")
+                for p in itens:
+                    st.page_link(p, label=p.title, icon=p.icon)
+
+
 barra_superior()
+menu_navegacao()
 if not st.session_state.tour_visto:  # tutorial abre sozinho na primeira visita
     st.session_state.tour_visto = True
     try:
