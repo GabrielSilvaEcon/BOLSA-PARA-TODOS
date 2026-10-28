@@ -39,6 +39,7 @@ except ImportError as e:
 import tecnica as tec
 import leitura_macro as lm
 
+import assistente
 import carteira
 import guias
 
@@ -2109,12 +2110,41 @@ PG_PERFIS = st.Page(pagina_perfis, title="Perfis e cenários", icon="🧭", url_
 
 PG_CART = st.Page(carteira.pagina_carteira, title="Minha carteira", icon="💼", url_path="carteira")
 
+
+def contexto_assistente() -> str:
+    """Resumo dos ativos selecionados (até 6) para a assistente explicar o significado dos números."""
+    P = PERFIS[perfil_atual()]
+    linhas = []
+    for tk in st.session_state.get("sel_ativos", [])[:6]:
+        try:
+            d = buscar(tk)
+            r = analisar(d, "Média", P["yield_alvo"], P["margem_alvo"])
+            m = multiplos(d)
+            linhas.append(
+                f"- {tk} ({rec.nome_curto(tk)}): preço {brl(d.get('preco'))}; preço justo do app (Graham/Bazin) "
+                f"{brl(r['justo'])}; margem de segurança {pct(r['margem'], 1)}; P/L {num(m['pl'])}; "
+                f"P/VP {num(m['pvp'])}; DY 12m {pct(m['dy'], 1)}; ROE {pct(m['roe'], 1)}; "
+                f"Dív./PL {pct(d.get('div_pl'), 0)}; tendência 5a {tendencia_5a(tk) or 'sem dados'}")
+        except Exception:
+            continue
+    if not linhas:
+        return ""
+    return f"Perfil escolhido no app: {perfil_atual()}.\n" + "\n".join(linhas)
+
+
+def pagina_assistente():
+    assistente.pagina(contexto_fn=contexto_assistente, intro_fn=intro)
+
+
+PG_ASSIST = st.Page(pagina_assistente, title="Assistente de estudos (IA)", icon="🤖", url_path="assistente")
+
 paginas = {
     "🏠 Início": [PG_INICIO, PG_MACRO],
     "🔎 Encontrar": [PG_BUSCA, PG_SCREENER],
     "📊 Analisar": [PG_PRECO, PG_DCF, PG_VAL, PG_DIV, PG_TEC, PG_MICRO],
     "🏆 Comparar": [PG_PICK, PG_PERFIS],
     "💼 Carteira": [PG_CART],
+    "🤖 Assistente": [PG_ASSIST],
 }
 
 # A navegação nativa do Streamlit fica escondida: o menu do topo some no celular.
@@ -2149,9 +2179,15 @@ if not st.session_state.tour_visto:  # tutorial abre sozinho na primeira visita
         tutorial()
     except Exception as e:  # o tutorial é um extra: não pode impedir o app de abrir
         st.caption(f"Tutorial indisponível no momento ({e.__class__.__name__}). Use o botão ❓ para tentar de novo.")
-guias.topo(pg.url_path)
+try:
+    guias.topo(pg.url_path)
+except Exception:  # o guia é um extra: não pode derrubar a página
+    pass
 pg.run()
-guias.fim(pg.url_path)
+try:
+    guias.fim(pg.url_path)
+except Exception:
+    pass
 
 st.caption("Ferramenta educacional. Graham, Bazin, DCF e a nota de Stock Picking são modelos simplificados "
            "e dependem da qualidade das fontes; não constituem recomendação de investimento.")
