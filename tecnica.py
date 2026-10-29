@@ -265,8 +265,202 @@ def indicadores(df: pd.DataFrame, mm_curta: int = 21, mm_longa: int = 50, ifr_n:
             "n_curta": mm_curta, "n_longa": mm_longa}
 
 
+# ------------------------------------------------------------------ setups operacionais
+SETUP_NOMES = ["Inside Bar", "Setup 9.1 (Larry Williams)", "Cruzamento MME 9/21",
+               "Rompimento com volume", "Fair Value Gap", "Pin Bar"]
+
+
+def _brl(v) -> str:
+    return "R$ " + f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _setup_sinal(df, i, nome, tipo, preco=None):
+    """Sinal de setup no formato do gráfico: alta marca a mínima, baixa e indecisão marcam a máxima."""
+    if preco is None:
+        preco = df["Low"].iloc[i] if tipo == ALTA else df["High"].iloc[i]
+    return _sinal(df.index[i], nome, tipo, preco, "Setup")
+
+
+def setup_inside_bar(df: pd.DataFrame):
+    """Inside Bar: candle totalmente dentro da faixa (máxima e mínima) do candle anterior, a barra mãe.
+    Compra se um candle seguinte romper a máxima da barra mãe; venda se romper a mínima.
+    Rompendo os dois lados no mesmo candle o sinal é ambíguo e não é emitido."""
+    h, l = df["High"].to_numpy(), df["Low"].to_numpy()
+    sinais, alertas = [], []
+    mae = None  # (índice, máxima, mínima) da barra mãe ainda sem rompimento
+    for i in range(1, len(df)):
+        if mae is not None:
+            _, mh, ml = mae
+            if h[i] <= mh and l[i] >= ml:
+                sinais.append(_setup_sinal(df, i, "Inside Bar", NEUTRO))
+                continue
+            rompe_alta, rompe_baixa = h[i] > mh, l[i] < ml
+            if rompe_alta and not rompe_baixa:
+                sinais.append(_setup_sinal(df, i, "Inside Bar: rompeu a máxima da barra mãe (compra)", ALTA))
+            elif rompe_baixa and not rompe_alta:
+                sinais.append(_setup_sinal(df, i, "Inside Bar: rompeu a mínima da barra mãe (venda)", BAIXA))
+            mae = None
+            continue
+        if h[i] < h[i - 1] and l[i] > l[i - 1]:
+            mae = (i - 1, float(h[i - 1]), float(l[i - 1]))
+            sinais.append(_setup_sinal(df, i, "Inside Bar", NEUTRO))
+    if mae is not None:
+        alertas.append((NEUTRO, f"Inside Bar ativa: compra se o preço romper a máxima da barra mãe ({_brl(mae[1])}); "
+                                f"venda se romper a mínima ({_brl(mae[2])})."))
+    return {"sinais": sinais, "zonas": [], "alertas": alertas}
+
+
+def setup_91(df: pd.DataFrame, periodo: int = 9):
+    """Setup 9.1 de Larry Williams. A MME de 9 períodos muda de inclinação: o candle da virada arma o setup e
+    o gatilho é a máxima (compra) ou a mínima (venda) desse candle. O sinal sai quando um candle seguinte
+    rompe o gatilho; o setup é cancelado se a média virar de novo antes disso."""
+    ema = df["Close"].ewm(span=periodo, adjust=False).mean().to_numpy()
+    h, l = df["High"].to_numpy(), df["Low"].to_numpy()
+    sinais, alertas = [], []
+    armado = None  # (direção, gatilho)
+    for i in range(2, len(df)):
+        sobe, desce = ema[i] > ema[i - 1], ema[i] < ema[i - 1]
+        virou_alta = sobe and ema[i - 1] <= ema[i - 2]
+        virou_baixa = desce and ema[i - 1] >= ema[i - 2]
+        if armado is not None:
+            dire, gat = armado
+            if (dire == ALTA and desce) or (dire == BAIXA and sobe):
+                armado = None  # inclinação virou contra o setup: cancelado
+            elif (dire == ALTA and h[i] > gat) or (dire == BAIXA and l[i] < gat):
+                nome = "Setup 9.1 compra (gatilho acionado)" if dire == ALTA else "Setup 9.1 venda (gatilho acionado)"
+                sinais.append(_setup_sinal(df, i, nome, dire))
+                armado = None
+        if virou_alta:
+            armado = (ALTA, float(h[i]))
+        elif virou_baixa:
+            armado = (BAIXA, float(l[i]))
+    if armado is not None:
+        dire, gat = armado
+        if dire == ALTA:
+            alertas.append((ALTA, f"Setup 9.1 armado (compra): a MME {periodo} virou para cima. "
+                                  f"Gatilho: preço acima de {_brl(gat)}."))
+        else:
+            alertas.append((BAIXA, f"Setup 9.1 armado (venda): a MME {periodo} virou para baixo. "
+                                   f"Gatilho: preço abaixo de {_brl(gat)}."))
+    return {"sinais": sinais, "zonas": [], "alertas": alertas}
+
+
+def setup_cruzamento_mme(df: pd.DataFrame, curta: int = 9, longa: int = 21):
+    """Golden Cross (MME 9 cruza para cima a MME 21) e Death Cross (cruza para baixo)."""
+    c = df["Close"]
+    mc, ml = c.ewm(span=curta, adjust=False).mean(), c.ewm(span=longa, adjust=False).mean()
+    golden = ((mc > ml) & (mc.shift(1) <= ml.shift(1))).to_numpy(dtype=bool)
+    death = ((mc < ml) & (mc.shift(1) >= ml.shift(1))).to_numpy(dtype=bool)
+    sinais = ([_setup_sinal(df, i, f"Golden Cross MME{curta}/{longa} (compra)", ALTA) for i in np.flatnonzero(golden)]
+              + [_setup_sinal(df, i, f"Death Cross MME{curta}/{longa} (venda)", BAIXA) for i in np.flatnonzero(death)])
+    return {"sinais": sinais, "zonas": [], "alertas": []}
+
+
+def setup_rompimento_volume(df: pd.DataFrame, janela: int = 20):
+    """Rompimento da máxima (resistência) ou da mínima (suporte) dos últimos `janela` candles, validado só se o
+    volume do candle estiver acima da média de volume desses mesmos candles anteriores."""
+    c, v = df["Close"], df["Volume"]
+    resist = df["High"].rolling(janela).max().shift(1)
+    suporte = df["Low"].rolling(janela).min().shift(1)
+    vol_med = v.rolling(janela).mean().shift(1)
+    forte = v > vol_med
+    alta = ((c > resist) & forte).to_numpy(dtype=bool)
+    baixa = ((c < suporte) & forte).to_numpy(dtype=bool)
+    sinais = ([_setup_sinal(df, i, f"Rompimento de resistência de {janela} candles com volume (compra)", ALTA)
+               for i in np.flatnonzero(alta)]
+              + [_setup_sinal(df, i, f"Rompimento de suporte de {janela} candles com volume (venda)", BAIXA)
+                 for i in np.flatnonzero(baixa)])
+    return {"sinais": sinais, "zonas": [], "alertas": []}
+
+
+def setup_fvg(df: pd.DataFrame, tamanho_min_pct: float = 0.3, max_zonas: int = 6):
+    """Fair Value Gap (desequilíbrio) em três candles. Alta: a mínima do 3º candle fica acima da máxima do 1º.
+    Baixa: a máxima do 3º fica abaixo da mínima do 1º. A zona é o espaço entre os dois e continua aberta
+    enquanto nenhum candle posterior voltar a tocá-la. Gaps menores que `tamanho_min_pct` % do preço são ignorados."""
+    h, l, c = df["High"].to_numpy(), df["Low"].to_numpy(), df["Close"].to_numpy()
+    n = len(df)
+    sinais, zonas = [], []
+    for i in range(2, n):
+        if l[i] > h[i - 2]:
+            topo, base, tipo = float(l[i]), float(h[i - 2]), ALTA
+        elif h[i] < l[i - 2]:
+            topo, base, tipo = float(l[i - 2]), float(h[i]), BAIXA
+        else:
+            continue
+        if c[i - 1] <= 0 or (topo - base) / c[i - 1] * 100 < tamanho_min_pct:
+            continue
+        nome = "FVG de alta (desequilíbrio)" if tipo == ALTA else "FVG de baixa (desequilíbrio)"
+        sinais.append(_setup_sinal(df, i, nome, tipo))
+        depois_l, depois_h = l[i + 1:], h[i + 1:]
+        tocou = bool((depois_l <= topo).any()) if tipo == ALTA else bool((depois_h >= base).any())
+        if not tocou:
+            zonas.append({"x0": df.index[i - 2], "x1": df.index[-1], "y0": base, "y1": topo, "tipo": tipo})
+    zonas = zonas[-max_zonas:]
+    alertas = []
+    ultimo = df.index[-1]
+    for s in sinais:
+        if s["data"] == ultimo:
+            alertas.append((s["tipo"], f"{s['sinal']} formado no último candle."))
+    for z in zonas[-2:]:
+        lado = "alta" if z["tipo"] == ALTA else "baixa"
+        alertas.append((NEUTRO, f"FVG de {lado} ainda aberto entre {_brl(z['y0'])} e {_brl(z['y1'])}."))
+    return {"sinais": sinais, "zonas": zonas, "alertas": alertas}
+
+
+def setup_pin_bar(df: pd.DataFrame, pavio_pct: float = 60.0):
+    """Pin Bar (rejeição): o pavio inferior (compra) ou superior (venda) ocupa pelo menos `pavio_pct` % do
+    tamanho total do candle (máxima menos mínima)."""
+    o, h, l, c = df["Open"], df["High"], df["Low"], df["Close"]
+    rng = (h - l).replace(0, np.nan)
+    inf = (np.minimum(o, c) - l) / rng
+    sup = (h - np.maximum(o, c)) / rng
+    lim = pavio_pct / 100
+    alta = (inf >= lim).to_numpy(dtype=bool)
+    baixa = (sup >= lim).to_numpy(dtype=bool)
+    sinais = []
+    for i in range(len(df)):
+        if alta[i] and baixa[i]:
+            continue  # pavio dos dois lados ≥ limite só ocorre com limite baixo: sem direção clara
+        if alta[i]:
+            sinais.append(_setup_sinal(df, i, f"Pin Bar de alta (pavio inferior ≥ {pavio_pct:.0f}%)", ALTA))
+        elif baixa[i]:
+            sinais.append(_setup_sinal(df, i, f"Pin Bar de baixa (pavio superior ≥ {pavio_pct:.0f}%)", BAIXA))
+    return {"sinais": sinais, "zonas": [], "alertas": []}
+
+
+def setups(df: pd.DataFrame, escolhidos: list[str], janela: int = 20, pavio_pct: float = 60.0,
+           fvg_min_pct: float = 0.3) -> dict:
+    """Roda os setups escolhidos. Devolve {'sinais', 'zonas', 'alertas'}; os alertas são os do último candle
+    (setups armados ou sinais acionados nele), na ordem em que foram pedidos."""
+    funcoes = {
+        "Inside Bar": setup_inside_bar,
+        "Setup 9.1 (Larry Williams)": setup_91,
+        "Cruzamento MME 9/21": setup_cruzamento_mme,
+        "Rompimento com volume": lambda d: setup_rompimento_volume(d, janela),
+        "Fair Value Gap": lambda d: setup_fvg(d, fvg_min_pct),
+        "Pin Bar": lambda d: setup_pin_bar(d, pavio_pct),
+    }
+    out = {"sinais": [], "zonas": [], "alertas": []}
+    if len(df) < 3:
+        return out
+    ultimo = df.index[-1]
+    for nome in SETUP_NOMES:
+        if nome not in escolhidos:
+            continue
+        r = funcoes[nome](df)
+        out["sinais"] += r["sinais"]
+        out["zonas"] += r["zonas"]
+        out["alertas"] += r["alertas"]
+        ja = {t for _, t in r["alertas"]}
+        for s in r["sinais"]:  # sinal que saiu exatamente no último candle
+            txt = f"{s['sinal']} no último candle."
+            if s["data"] == ultimo and s["tipo"] != NEUTRO and txt not in ja and not nome == "Fair Value Gap":
+                out["alertas"].append((s["tipo"], txt))
+    return out
+
+
 # ------------------------------------------------------------------ figura
-def figura(df, sinais, padroes, niveis, ind, diario=True, altura=700, mostrar_mm=True):
+def figura(df, sinais, padroes, niveis, ind, diario=True, altura=700, mostrar_mm=True, zonas=None):
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, row_heights=[0.62, 0.15, 0.23],
                         vertical_spacing=0.025)
     fig.add_trace(go.Candlestick(
@@ -310,6 +504,11 @@ def figura(df, sinais, padroes, niveis, ind, diario=True, altura=700, mostrar_mm
         fig.add_annotation(x=df.index[p["ref"]], y=p["preco"], text=p["nome"], showarrow=True,
                            arrowcolor=cor, arrowwidth=1, ax=0, ay=36 if p["tipo"] == ALTA else -36,
                            font=dict(size=10, color=cor), row=1, col=1)
+
+    for z in (zonas or []):
+        cor_z = "rgba(111,156,133,.22)" if z["tipo"] == ALTA else "rgba(176,112,107,.22)"
+        fig.add_shape(type="rect", x0=z["x0"], x1=z["x1"], y0=z["y0"], y1=z["y1"], fillcolor=cor_z,
+                      line=dict(width=0), layer="below", row=1, col=1)
 
     for nv in niveis:
         fig.add_hline(y=nv["preco"], row=1, col=1, line=dict(color=ACCENT, width=1, dash="dot"),
