@@ -2,7 +2,7 @@
 Análise fundamentalista de protocolos DeFi / criptoativos (página do Streamlit).
 
 Fontes gratuitas, sem chave:
-  - DefiLlama (https://api.llama.fi): TVL, taxas e volume
+  - DefiLlama (https://api.llama.fi): lista de protocolos (busca por nome), TVL, taxas e volume
   - CoinGecko (https://api.coingecko.com/api/v3): Market Cap, FDV e supply
 
 Uso no app.py:
@@ -14,7 +14,10 @@ Ferramenta educacional, não é recomendação de investimento.
 """
 from __future__ import annotations
 
+import html as _html
+import re
 import time
+import unicodedata
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -34,6 +37,12 @@ POPULARES = {
 
 # Cores no mesmo tom do app
 BRAND, ACCENT, GOOD, FAIR, BAD = "#1F7A55", "#3B6BC4", "#2E7D4F", "#A8650B", "#B83A3A"
+TEXT, MUTED, BORDER, SURFACE = "#1F2933", "#5B6675", "#D5DAE0", "#F9FAFB"
+
+# classe visual -> (cor do texto/borda, cor de fundo do selo)
+COR_CLS = {"good": (GOOD, "rgba(46,125,79,.14)"), "fair": (FAIR, "rgba(168,101,11,.14)"),
+           "bad": (BAD, "rgba(184,58,58,.14)"), "na": (MUTED, "rgba(91,102,117,.16)")}
+ICONE_STATUS = {"Positivo": "✅", "Neutro": "➖", "Atenção": "⚠️", "Negativo": "❌", "Sem dados": "❔"}
 
 
 class ErroAPI(Exception):
@@ -227,6 +236,242 @@ def _pct(v) -> str:
     return "n/d" if v is None else f"{v * 100:.1f}%".replace(".", ",")
 
 
+# ------------------------------------------------------------ quadrados de resumo
+def _md(h: str):
+    """Markdown com HTML; o $ é escapado para o Streamlit não tratá-lo como fórmula."""
+    st.markdown(h.replace("$", "&#36;"), unsafe_allow_html=True)
+
+
+def _var_tvl_30d(hist: list) -> float | None:
+    """Variação do TVL nos últimos 30 dias (fração: 0.10 = +10%)."""
+    if len(hist) < 2:
+        return None
+    df = pd.DataFrame(hist, columns=["data", "tvl"]).sort_values("data")
+    fim = df.iloc[-1]
+    antes = df[df["data"] <= fim["data"] - pd.Timedelta(days=30)]
+    if antes.empty or not antes.iloc[-1]["tvl"] or antes.iloc[-1]["tvl"] <= 0:
+        return None
+    return float(fim["tvl"] / antes.iloc[-1]["tvl"] - 1)
+
+
+def _card(titulo, icone, status, cls, texto, linhas, nota=""):
+    return {"titulo": titulo, "icone": icone, "status": status, "cls": cls, "texto": texto,
+            "linhas": linhas, "nota": nota}
+
+
+def indicadores(a: dict) -> list[dict]:
+    """Um quadrado por indicador, com selo (Positivo / Neutro / Atenção / Negativo / Sem dados)
+    e uma frase em linguagem simples. Os limites são regras educacionais, não recomendação."""
+    out = []
+
+    # 1 · diluição (Market Cap / FDV)
+    mf = a["mc_fdv"]
+    linhas = [("Market Cap", usd(a["mcap"])), ("FDV", usd(a["fdv"])), ("Já em circulação", _pct(mf))]
+    nota = "Market Cap ÷ FDV"
+    if mf is None:
+        out.append(_card("Diluição do token", "🪙", "Sem dados", "na",
+                         "Não deu para calcular: o token não está na CoinGecko ou ela está fora do ar.", linhas, nota))
+    elif mf >= 0.8:
+        out.append(_card("Diluição do token", "🪙", "Positivo", "good",
+                         f"{mf:.0%} dos tokens já circulam. Pouco risco de tokens novos derrubarem o preço.", linhas, nota))
+    elif mf >= 0.5:
+        out.append(_card("Diluição do token", "🪙", "Atenção", "fair",
+                         f"Só {mf:.0%} dos tokens circulam. Ainda vão entrar tokens novos no mercado.", linhas, nota))
+    else:
+        out.append(_card("Diluição do token", "🪙", "Negativo", "bad",
+                         f"Apenas {mf:.0%} dos tokens circulam. Muitos tokens ainda serão liberados e podem pressionar o preço.",
+                         linhas, nota))
+
+    # 2 · uso do protocolo (TVL e sua variação em 30 dias)
+    v = _var_tvl_30d(a["hist_tvl"])
+    sinal = "" if v is None else f"{v * 100:+.1f}%".replace(".", ",")
+    linhas = [("TVL atual", usd(a["tvl"])), ("Variação 30 dias", sinal or "n/d")]
+    nota = "Dinheiro depositado no protocolo"
+    if v is None:
+        out.append(_card("Uso do protocolo (TVL)", "🏦", "Sem dados", "na",
+                         "Não há histórico suficiente para ver se o dinheiro depositado está subindo ou caindo.", linhas, nota))
+    elif v >= 0.05:
+        out.append(_card("Uso do protocolo (TVL)", "🏦", "Positivo", "good",
+                         "Mais dinheiro entrando no protocolo nos últimos 30 dias: sinal de confiança dos usuários.", linhas, nota))
+    elif v >= -0.10:
+        out.append(_card("Uso do protocolo (TVL)", "🏦", "Neutro", "fair",
+                         "O dinheiro depositado ficou praticamente estável no último mês.", linhas, nota))
+    else:
+        out.append(_card("Uso do protocolo (TVL)", "🏦", "Negativo", "bad",
+                         "Saiu bastante dinheiro do protocolo no último mês: usuários estão retirando recursos.", linhas, nota))
+
+    # 3 · receita (taxas pagas pelos usuários)
+    f30 = a["fees30"]
+    linhas = [("Taxas 30 dias", usd(f30)), ("Taxas anualizadas", usd(a["fees_anuais"])), ("Volume 30 dias", usd(a["vol30"]))]
+    nota = "Quanto os usuários pagaram para usar"
+    if f30 is None:
+        out.append(_card("Receita (taxas)", "💸", "Sem dados", "na",
+                         "O DefiLlama não tem dados de taxas deste protocolo. O volume só existe para corretoras descentralizadas.",
+                         linhas, nota))
+    elif f30 > 0:
+        out.append(_card("Receita (taxas)", "💸", "Positivo", "good",
+                         "O protocolo gera taxas: há gente pagando para usá-lo, não é só dinheiro parado.", linhas, nota))
+    else:
+        out.append(_card("Receita (taxas)", "💸", "Negativo", "bad",
+                         "Nenhuma taxa registrada nos últimos 30 dias: o protocolo quase não é usado.", linhas, nota))
+
+    # 4 · Preço/Taxas
+    pt = a["p_taxas"]
+    linhas = [("Preço/Taxas", _x(pt, 1)), ("Market Cap", usd(a["mcap"]))]
+    nota = "Market Cap ÷ taxas anuais (parecido com o P/L)"
+    if pt is None:
+        out.append(_card("Preço/Taxas", "⚖️", "Sem dados", "na",
+                         "Sem taxas ou sem valor de mercado para calcular.", linhas, nota))
+    elif pt < 15:
+        out.append(_card("Preço/Taxas", "⚖️", "Positivo", "good",
+                         f"O token vale {pt:.1f}x as taxas de um ano: barato para o quanto o protocolo gera.", linhas, nota))
+    elif pt <= 50:
+        out.append(_card("Preço/Taxas", "⚖️", "Neutro", "fair",
+                         f"O token vale {pt:.1f}x as taxas de um ano: preço intermediário.", linhas, nota))
+    else:
+        out.append(_card("Preço/Taxas", "⚖️", "Atenção", "fair",
+                         f"O token vale {pt:.1f}x as taxas de um ano: caro, depende de muito crescimento.", linhas, nota))
+
+    # 5 · Market Cap / TVL
+    mt = a["mc_tvl"]
+    linhas = [("Market Cap / TVL", _x(mt, 2)), ("TVL atual", usd(a["tvl"]))]
+    nota = "Valor do token ÷ dinheiro depositado"
+    if mt is None:
+        out.append(_card("Valor × dinheiro depositado", "📊", "Sem dados", "na",
+                         "Sem TVL ou sem valor de mercado para calcular.", linhas, nota))
+    elif mt < 1:
+        out.append(_card("Valor × dinheiro depositado", "📊", "Positivo", "good",
+                         "O token vale menos que o dinheiro depositado no protocolo: aparenta estar descontado.", linhas, nota))
+    elif mt <= 3:
+        out.append(_card("Valor × dinheiro depositado", "📊", "Neutro", "fair",
+                         "O token vale entre 1 e 3 vezes o dinheiro depositado: valuation razoável.", linhas, nota))
+    else:
+        out.append(_card("Valor × dinheiro depositado", "📊", "Atenção", "fair",
+                         "O token vale mais de 3 vezes o dinheiro depositado: o mercado já espera muito crescimento.",
+                         linhas, nota))
+    return out
+
+
+def _html_card(c: dict) -> str:
+    cor, fundo = COR_CLS[c["cls"]]
+    esc = _html.escape
+    itens = "".join(
+        f'<div><div style="font-size:.68rem;color:{MUTED};text-transform:uppercase;letter-spacing:.6px;'
+        f'font-weight:700;">{esc(r)}</div><div style="font-size:1.05rem;font-weight:800;color:{TEXT};">{esc(v)}</div></div>'
+        for r, v in c["linhas"])
+    return (
+        f'<div style="background:{SURFACE};border:1px solid {BORDER};border-top:3px solid {cor};border-radius:16px;'
+        f'padding:14px 16px;margin-bottom:10px;min-height:235px;">'
+        f'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
+        f'<div style="font-size:1.02rem;font-weight:800;color:{TEXT};">{c["icone"]} {esc(c["titulo"])}</div>'
+        f'<span style="background:{fundo};color:{cor};padding:3px 11px;border-radius:999px;font-size:.74rem;'
+        f'font-weight:800;white-space:nowrap;">{ICONE_STATUS[c["status"]]} {esc(c["status"])}</span></div>'
+        f'<div style="font-size:.78rem;color:{MUTED};margin:2px 0 10px;">{esc(c["nota"])}</div>'
+        f'<div style="display:flex;flex-wrap:wrap;gap:8px 22px;">{itens}</div>'
+        f'<div style="font-size:.86rem;color:{TEXT};line-height:1.45;margin-top:12px;">{esc(c["texto"])}</div></div>')
+
+
+def _resumo_geral(cards: list[dict]):
+    """Faixa no topo: quantos indicadores são positivos."""
+    n = sum(c["status"] != "Sem dados" for c in cards)
+    pos = sum(c["status"] == "Positivo" for c in cards)
+    neg = sum(c["status"] == "Negativo" for c in cards)
+    if n == 0:
+        cls, titulo = "na", "Sem dados suficientes para resumir"
+    elif neg * 2 >= n:
+        cls, titulo = "bad", "Quadro desfavorável"
+    elif pos / n >= 0.6 and neg == 0:
+        cls, titulo = "good", "Quadro favorável"
+    else:
+        cls, titulo = "fair", "Quadro misto"
+    cor, _ = COR_CLS[cls]
+    detalhe = (f"{pos} de {n} indicadores positivos · {neg} negativo(s) · {n - pos - neg} neutro(s) ou de atenção"
+               if n else "CoinGecko ou DefiLlama sem resposta para este protocolo.")
+    _md(f'<div style="background:{SURFACE};border:1px solid {BORDER};border-left:5px solid {cor};border-radius:12px;'
+        f'padding:12px 16px;margin:6px 0 12px;"><div style="font-weight:800;font-size:1.05rem;color:{cor};">{titulo}</div>'
+        f'<div style="font-size:.85rem;color:{MUTED};margin-top:3px;">{detalhe}</div></div>')
+
+
+# ----------------------------------------------------------------------- busca
+def _norm(s) -> str:
+    """Minúsculas, sem acento e sem pontuação: 'MakerDAO / Sky' -> 'makerdao sky'."""
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def listar_protocolos() -> list[dict]:
+    """Todos os protocolos do DefiLlama (nome, slug, símbolo, categoria, TVL, logo), do maior TVL ao menor.
+    Levanta ErroAPI se a API não responder (erro não fica em cache)."""
+    dados = _get_json(f"{LLAMA}/protocols", tentativas=2)
+    if not isinstance(dados, list):
+        raise ErroAPI("resposta inesperada do DefiLlama")
+    out = []
+    for p in dados:
+        if not isinstance(p, dict) or not p.get("slug") or p.get("category") == "CEX":
+            continue
+        tvl = p.get("tvl")
+        out.append({
+            "slug": p["slug"], "nome": p.get("name") or p["slug"], "simbolo": p.get("symbol") or "",
+            "categoria": p.get("category") or "", "tvl": float(tvl) if isinstance(tvl, (int, float)) else None,
+            "logo": p.get("logo") or "",
+            "_n": _norm(p.get("name")), "_s": _norm(p["slug"]), "_y": _norm(p.get("symbol")),
+        })
+    out.sort(key=lambda x: x["tvl"] or 0, reverse=True)
+    return out
+
+
+def buscar_protocolos(termo: str, lista: list[dict], limite: int = 6) -> list[dict]:
+    """Procura por nome, slug ou símbolo. Primeiro o que bate exato, depois o que começa com o termo,
+    depois o que contém; em empate, o de maior TVL aparece antes."""
+    q = _norm(termo)
+    if len(q) < 2:
+        return []
+    achados = []
+    for p in lista:
+        nome, slug, sim = p["_n"], p["_s"], p["_y"]
+        if q in (nome, slug, sim):
+            pts = 0
+        elif nome.startswith(q) or slug.startswith(q) or sim.startswith(q):
+            pts = 1
+        elif q in nome or q in slug:
+            pts = 2
+        elif all(w in nome for w in q.split()):
+            pts = 3
+        else:
+            continue
+        achados.append((pts, -(p["tvl"] or 0), p))
+    achados.sort(key=lambda x: (x[0], x[1]))
+    return [p for _, _, p in achados[:limite]]
+
+
+def _adicionar_defi(slug: str):
+    sel = st.session_state.get("defi_ativos", [])
+    if slug not in sel:
+        st.session_state["defi_ativos"] = sel + [slug]
+
+
+def _render_resultados(res: list[dict], sel: list[str]):
+    """Um cartão por protocolo achado, com logo, categoria, TVL e botão de adicionar."""
+    esc = _html.escape
+    for p in res:
+        with st.container(border=True):
+            a, b = st.columns([5, 1.5], vertical_alignment="center")
+            logo = p.get("logo") or ""
+            img = (f'<img src="{esc(logo)}" width="38" height="38" style="border-radius:10px;background:#fff;'
+                   f'padding:3px;border:1px solid {BORDER};object-fit:contain;flex-shrink:0;">'
+                   if logo.startswith("https://") else "")
+            sim = f" ({esc(p['simbolo'])})" if p["simbolo"] and p["simbolo"] != "-" else ""
+            cat = esc(p["categoria"] or "n/d")
+            with a:
+                _md(f'<div style="display:flex;align-items:center;gap:12px;">{img}<div>'
+                    f'<div style="font-weight:800;color:{TEXT};">{esc(p["nome"])}{sim}</div>'
+                    f'<div style="font-size:.8rem;color:{MUTED};">{cat} · TVL {usd(p["tvl"])}</div></div></div>')
+            ja = p["slug"] in sel
+            b.button("✔ Adicionado" if ja else "➕ Adicionar", key=f"defi_add_{p['slug']}",
+                     on_click=_adicionar_defi, args=(p["slug"],), disabled=ja, width="stretch")
+
+
 # ---------------------------------------------------------------------- página
 def _grafico_tvl(hist: list) -> go.Figure | None:
     if len(hist) < 2:
@@ -245,30 +490,13 @@ def _mostrar_alerta(nivel: str, texto: str):
     {"ok": st.success, "aviso": st.warning, "ruim": st.error, "info": st.info}[nivel](texto)
 
 
-def pagina_cripto():
-    st.markdown("### 🪙 Cripto / DeFi")
-    st.caption("Análise fundamentalista de protocolos DeFi com dados públicos do DefiLlama e da CoinGecko. "
-               "Informe o nome do protocolo como aparece no DefiLlama (ex.: uniswap, aave, lido).")
-
-    with st.form("form_defi"):
-        c1, c2, c3 = st.columns([2, 2, 1], vertical_alignment="bottom")
-        escolha = c1.selectbox("Protocolos populares", ["(digitar outro)"] + list(POPULARES), key="defi_pop")
-        livre = c2.text_input("Ou digite o slug", key="defi_slug", placeholder="ex.: uniswap")
-        enviar = c3.form_submit_button("Analisar", type="primary", width="stretch")
-
-    if enviar:
-        slug = (livre or "").strip().lower() or POPULARES.get(escolha, "")
-        st.session_state["defi_ativo"] = slug
-    slug = st.session_state.get("defi_ativo", "")
-    if not slug:
-        st.info("Escolha um protocolo da lista ou digite o slug e clique em **Analisar**.")
-        return
-
+def _mostrar_protocolo(slug: str):
+    """Analisa e exibe um protocolo (quadrados, números detalhados e gráfico do TVL)."""
     try:
         with st.spinner(f"Consultando DefiLlama e CoinGecko para “{slug}”…"):
             a = analisar_protocolo(slug)
     except ErroAPI as e:
-        st.error(f"{e} Confira o slug em defillama.com/protocols (ex.: uniswap, aave, lido).")
+        st.error(f"{e} Confira o nome em defillama.com/protocols ou remova da lista.")
         return
     except Exception as e:  # erro inesperado não derruba o app
         st.error(f"Erro inesperado ao analisar “{slug}”: {e.__class__.__name__}.")
@@ -280,34 +508,112 @@ def pagina_cripto():
     for av in a["avisos"]:
         st.warning(av)
 
-    st.markdown("**Alertas de valuation**")
-    for nivel, texto in alertas(a):
-        _mostrar_alerta(nivel, texto)
+    cards = indicadores(a)
+    st.markdown("**Resumo dos indicadores**")
+    _resumo_geral(cards)
+    for linha in (cards[:3], cards[3:]):
+        for col, c in zip(st.columns(3), linha):
+            with col:
+                _md(_html_card(c))
 
-    st.markdown("**1. Tokenomics**")
-    k = st.columns(3)
-    k[0].metric("Market Cap", usd(a["mcap"]), help="Valor de mercado dos tokens em circulação.")
-    k[1].metric("FDV", usd(a["fdv"]), help="Valor se todos os tokens (inclusive os ainda não liberados) já circulassem.")
-    k[2].metric("Market Cap / FDV", _pct(a["mc_fdv"]),
-                help="Quanto do FDV já circula. Quanto menor, maior o risco de diluição por novos tokens.")
+    with st.expander("Ver todos os números e alertas detalhados"):
+        st.markdown("**Alertas de valuation**")
+        for nivel, texto in alertas(a):
+            _mostrar_alerta(nivel, texto)
 
-    st.markdown("**2. On-chain / DeFi**")
-    k = st.columns(3)
-    k[0].metric("TVL atual", usd(a["tvl"]), help="Total Value Locked: valor depositado no protocolo.")
-    k[1].metric("Taxas (30 dias)", usd(a["fees30"]), help="Taxas pagas pelos usuários do protocolo nos últimos 30 dias.")
-    k[2].metric("Volume (30 dias)", usd(a["vol30"]), help="Só existe para corretoras descentralizadas (DEX).")
+        st.markdown("**1. Tokenomics**")
+        k = st.columns(3)
+        k[0].metric("Market Cap", usd(a["mcap"]), help="Valor de mercado dos tokens em circulação.")
+        k[1].metric("FDV", usd(a["fdv"]), help="Valor se todos os tokens (inclusive os ainda não liberados) já circulassem.")
+        k[2].metric("Market Cap / FDV", _pct(a["mc_fdv"]),
+                    help="Quanto do FDV já circula. Quanto menor, maior o risco de diluição por novos tokens.")
 
-    st.markdown("**3. Valuation**")
-    k = st.columns(3)
-    k[0].metric("Taxas anualizadas", usd(a["fees_anuais"]), help="Taxas de 30 dias × 365/30.")
-    k[1].metric("Preço/Taxas", _x(a["p_taxas"], 1), help="Market Cap ÷ taxas anuais. Parecido com o P/L das ações: quanto menor, mais barato.")
-    k[2].metric("Market Cap / TVL", _x(a["mc_tvl"], 2), help="Abaixo de 1: o token vale menos que o capital depositado.")
+        st.markdown("**2. On-chain / DeFi**")
+        k = st.columns(3)
+        k[0].metric("TVL atual", usd(a["tvl"]), help="Total Value Locked: valor depositado no protocolo.")
+        k[1].metric("Taxas (30 dias)", usd(a["fees30"]), help="Taxas pagas pelos usuários do protocolo nos últimos 30 dias.")
+        k[2].metric("Volume (30 dias)", usd(a["vol30"]), help="Só existe para corretoras descentralizadas (DEX).")
+
+        st.markdown("**3. Valuation**")
+        k = st.columns(3)
+        k[0].metric("Taxas anualizadas", usd(a["fees_anuais"]), help="Taxas de 30 dias × 365/30.")
+        k[1].metric("Preço/Taxas", _x(a["p_taxas"], 1), help="Market Cap ÷ taxas anuais. Parecido com o P/L das ações: quanto menor, mais barato.")
+        k[2].metric("Market Cap / TVL", _x(a["mc_tvl"], 2), help="Abaixo de 1: o token vale menos que o capital depositado.")
+
 
     fig = _grafico_tvl(a["hist_tvl"])
     if fig:
         st.markdown("**Evolução do TVL**")
-        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", key=f"defi_tvl_{slug}", config={"displayModeBar": False})
+
+
+def pagina_cripto():
+    st.markdown("### 🪙 Cripto / DeFi")
+    st.caption("Pesquise o protocolo pelo nome (ex.: Uniswap, Aave, Lido), adicione quantos quiser e veja a análise "
+               "fundamentalista com dados públicos do DefiLlama e da CoinGecko.")
+    st.session_state.setdefault("defi_ativos", [])
+
+    try:
+        with st.spinner("Carregando a lista de protocolos…"):
+            lista = listar_protocolos()
+    except Exception:
+        lista = []
+    nomes = {p["slug"]: p["nome"] for p in lista}
+
+    # ---- busca por nome (igual às ações)
+    with st.form("form_defi_busca"):
+        c1, c2 = st.columns([5, 1.6], vertical_alignment="center")
+        c1.text_input("Buscar protocolo", key="defi_q", label_visibility="collapsed",
+                      placeholder="Digite o nome ou o símbolo: Uniswap, Aave, Lido, Pendle…")
+        c2.form_submit_button("Buscar", type="primary", width="stretch")
+    termo = (st.session_state.get("defi_q") or "").strip()
+    sel = st.session_state["defi_ativos"]
+
+    if termo:
+        if not lista:
+            st.warning("Não consegui carregar a lista do DefiLlama agora, então a busca por nome está indisponível. "
+                       "Você ainda pode tentar o nome exato do protocolo abaixo.")
+            res = []
+        else:
+            res = buscar_protocolos(termo, lista)
+            if res:
+                _render_resultados(res, sel)
+            elif len(_norm(termo)) < 2:
+                st.caption("Digite pelo menos 2 letras.")
+            else:
+                st.info("Não encontrei esse protocolo. Confira o nome ou tente o símbolo. Aqui entram protocolos DeFi "
+                        "(DefiLlama); moedas como Bitcoin, que não têm TVL, em geral não aparecem.")
+        slug_tentativa = re.sub(r"[^a-z0-9.\-]+", "-", termo.lower()).strip("-")
+        if slug_tentativa and slug_tentativa not in sel:
+            st.button(f"Tentar “{slug_tentativa}” como nome exato do DefiLlama", key="defi_tentar",
+                      on_click=_adicionar_defi, args=(slug_tentativa,))
+
+    # ---- atalhos populares
+    st.caption("Ou comece por um destes:")
+    for linha in (list(POPULARES.items())[:4], list(POPULARES.items())[4:]):
+        for col, (nome, slug) in zip(st.columns(4), linha):
+            col.button(nome, key=f"defi_pop_{slug}", on_click=_adicionar_defi, args=(slug,),
+                       disabled=slug in sel, width="stretch")
+
+    # ---- protocolos em análise (dá para remover pelo x)
+    opcoes = list(dict.fromkeys(sel + list(POPULARES.values())))
+    st.multiselect("Protocolos em análise", options=opcoes, key="defi_ativos",
+                   format_func=lambda s: nomes.get(s) or s,
+                   placeholder="Nenhum protocolo ainda: busque acima ou escolha um atalho")
+    sel = st.session_state["defi_ativos"]
+    if not sel:
+        st.info("Busque um protocolo pelo nome e clique em **➕ Adicionar** para ver a análise.")
+        return
+
+    mostrar = sel[:4]
+    for slug in mostrar:
+        st.divider()
+        _mostrar_protocolo(slug)
+    if len(sel) > len(mostrar):
+        st.caption(f"Mostrando {len(mostrar)} de {len(sel)} protocolos, para não estourar o limite de consultas da "
+                   "CoinGecko. Remova algum da lista para ver os demais.")
 
     st.caption("Fontes: DefiLlama e CoinGecko (dados públicos, cache de 10 minutos). Os limites dos alertas são regras "
                "simples e educacionais (Market Cap/TVL, diluição e Preço/Taxas); não são recomendação de investimento. "
-               "Market Cap/TVL pode enganar em protocolos de liquid staking.")
+               "Market Cap/TVL pode enganar em protocolos de liquid staking. Selo verde = positivo; "
+               "amarelo = neutro ou atenção; vermelho = negativo; cinza = sem dados.")
