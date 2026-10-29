@@ -3,7 +3,7 @@ Bolsa para Todos - Preço justo, DCF, múltiplos, dividendos, técnica, ranking 
 
 Rodar com: streamlit run app.py
 Requer streamlit >= 1.46 e os módulos tecnica.py, recursos.py, dados.py, glossario.py,
-leitura_macro.py, carteira.py e assistente.py ao lado.
+leitura_macro.py, carteira.py, cripto.py e assistente.py ao lado.
 
 Estrutura do menu (pensada como uma jornada para quem está começando):
   Início     -> escolher uma empresa e ver o resumo
@@ -11,6 +11,7 @@ Estrutura do menu (pensada como uma jornada para quem está começando):
   Ranking    -> notas por empresa, por perfil de investidor, das selecionadas ou de setores
   Economia   -> Selic, inflação, dólar, atividade
   Carteira   -> acompanhar a carteira
+  Cripto / DeFi -> análise fundamentalista de protocolos (DefiLlama + CoinGecko)
   Ajuda      -> termos, tutorial, fontes de dados
 
 Convenções internas dos dados (todas as fontes são normalizadas para isso):
@@ -49,6 +50,7 @@ import leitura_macro as lm
 
 import assistente
 import carteira
+import cripto
 
 try:
     from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
@@ -2011,6 +2013,7 @@ PG_TEC = st.Page(pagina_tecnica, title="Gráfico e tendência", icon="📉", url
 PG_PICK = st.Page(pagina_picking, title="Ranking", icon="🏆", url_path="stock-picking")
 PG_MACRO = st.Page(pagina_macro, title="Economia", icon="🌐", url_path="macro")
 PG_CART = st.Page(carteira.pagina_carteira, title="Carteira", icon="💼", url_path="carteira")
+PG_DEFI = st.Page(cripto.pagina_cripto, title="Cripto / DeFi", icon="🪙", url_path="defi")
 PG_AJUDA = st.Page(pagina_ajuda, title="Ajuda", icon="❓", url_path="ajuda")
 
 
@@ -2041,6 +2044,7 @@ paginas = {
     "🏆 Ranking": [PG_PICK],
     "🌐 Economia": [PG_MACRO],
     "💼 Carteira": [PG_CART],
+    "🪙 Cripto / DeFi": [PG_DEFI],
     "❓ Ajuda": [PG_AJUDA],
 }
 
