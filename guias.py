@@ -10,7 +10,7 @@ import streamlit as st
 
 GUIAS = {
     "preco-justo": {
-        "icone": "🎯", "titulo": "Preço justo (Graham + Bazin)",
+        "icone": "🎯", "titulo": "Preço justo ",
         "serve": "Estimar quanto a ação deveria valer a partir do lucro, do patrimônio e dos dividendos da empresa, "
                  "e comparar com o preço de mercado.",
         "entrega": "O preço justo de cada ação, a margem de segurança (folga entre o preço justo e o preço atual), "
