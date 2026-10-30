@@ -102,22 +102,74 @@ def usuario():
     return None
 
 
-def exigir_login(marca_html: str = ""):
+_ROSA = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='-100 -100 200 200'>"
+         "<g fill='none' stroke='%231F7A55' stroke-width='.7'><circle r='92'/><circle r='72'/><circle r='46' stroke-dasharray='2 3'/></g>"
+         "<polygon points='0,-92 9,-9 0,0 -9,-9' fill='%231F7A55'/><polygon points='0,92 9,9 0,0 -9,9' fill='%231F7A55'/>"
+         "<polygon points='92,0 9,-9 0,0 9,9' fill='%233B6BC4'/><polygon points='-92,0 -9,-9 0,0 -9,9' fill='%233B6BC4'/>"
+         "<g fill='%23C9A227'><polygon points='56,-56 7,-3 0,0 3,-7'/><polygon points='-56,-56 -7,-3 0,0 -3,-7'/>"
+         "<polygon points='56,56 7,3 0,0 3,7'/><polygon points='-56,56 -7,3 0,0 -3,7'/></g></svg>")
+
+
+def _css_login() -> str:
+    return f"""<style>
+.stApp {{background:
+  radial-gradient(900px 520px at 85% -10%, rgba(59,107,196,.16), transparent 60%),
+  radial-gradient(800px 520px at -10% 105%, rgba(31,122,85,.18), transparent 60%),
+  radial-gradient(520px 320px at 100% 100%, rgba(201,162,39,.14), transparent 60%), #EEF0F3;}}
+.stApp::before {{content:""; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.10;
+  background-image: url("data:image/svg+xml;utf8,{_ROSA}"),
+    repeating-linear-gradient(0deg, rgba(31,122,85,.35) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(90deg, rgba(31,122,85,.35) 0 1px, transparent 1px 64px);
+  background-repeat:no-repeat, repeat, repeat; background-position:center 46%, 0 0, 0 0;
+  background-size:min(820px,140vw), auto, auto;}}
+.block-container {{position:relative; z-index:1; padding-top:3.2rem !important;}}
+.st-key-login_card {{max-width:440px; margin:0 auto; background:#F9FAFB; border:1px solid #D5DAE0;
+  border-radius:26px; box-shadow:0 22px 60px rgba(14,42,92,.20); overflow:hidden; padding:0 0 22px; gap:0 !important;}}
+.st-key-login_card > div {{gap:0 !important;}}
+.lg-top {{text-align:center; padding:30px 24px 24px; color:#fff;
+  background:linear-gradient(160deg,#0E2A5C 0%,#164A8F 55%,#17604A 130%);}}
+.lg-top img {{width:112px; height:112px; border-radius:26px; box-shadow:0 10px 26px rgba(0,0,0,.35);}}
+.lg-top .nm {{font-size:1.9rem; font-weight:800; letter-spacing:.3px; margin-top:14px; color:#fff;}}
+.lg-top .nm b {{color:#E9C85A; font-weight:800;}}
+.lg-top .sb {{font-size:.95rem; color:#D8E4F6; margin-top:4px;}}
+.lg-body {{padding:22px 26px 6px;}}
+.lg-body h3 {{margin:0 0 6px; font-size:1.2rem; font-weight:800; color:#1F2933;}}
+.lg-body p {{margin:0; font-size:.9rem; color:#5B6675; line-height:1.5;}}
+.lg-chips {{display:flex; flex-wrap:wrap; gap:7px; margin-top:14px;}}
+.lg-chips span {{background:#E3E8EE; border:1px solid #D5DAE0; border-radius:999px; padding:4px 11px;
+  font-size:.76rem; font-weight:700; color:#1F2933;}}
+.st-key-login_card [data-testid="stButton"] {{padding:14px 26px 0;}}
+.st-key-login_card button {{border-radius:14px; font-weight:800; padding:.7rem 1rem; border:0;
+  background:linear-gradient(135deg,#1F7A55,#17604A); box-shadow:0 8px 20px rgba(31,122,85,.30);}}
+.st-key-login_card button p {{color:#fff !important; font-size:1rem;}}
+.lg-foot {{padding:12px 26px 0; font-size:.74rem; color:#5B6675; text-align:center; line-height:1.45;}}
+</style>"""
+
+
+def exigir_login(logo_uri: str = "", nome: str = "Bússola B3"):
     """Mostra a tela de entrada e interrompe o app enquanto não houver login (se o login estiver configurado)."""
     if not _configurado():
         return None
     u = usuario()
     if u:
         return u
-    _, meio, _ = st.columns([1, 1.6, 1])
-    with meio:
-        if marca_html:
-            st.markdown(marca_html, unsafe_allow_html=True)
-        st.markdown("### Entre para continuar")
-        st.write("Entre com sua conta Google para guardar suas empresas em análise, seu perfil de investidor "
-                 "e suas carteiras. Usamos só o seu e-mail e nome para identificar você.")
-        st.button("Entrar com Google", icon="🔐", type="primary", width="stretch",
+    st.markdown(_css_login(), unsafe_allow_html=True)
+    topo, resto = nome.rsplit(" ", 1) if " " in nome else (nome, "")
+    img = f'<img src="{logo_uri}" alt="{nome}">' if logo_uri else ""
+    with st.container(key="login_card"):
+        st.markdown(
+            f'<div class="lg-top">{img}<div class="nm">{topo} <b>{resto}</b></div>'
+            f'<div class="sb">Seu norte no mercado de ações brasileiro</div></div>'
+            f'<div class="lg-body"><h3>Entre para continuar</h3>'
+            f'<p>Com a sua conta Google, suas empresas em análise, seu perfil de investidor e suas carteiras '
+            f'ficam guardados e te esperam em qualquer aparelho.</p>'
+            f'<div class="lg-chips"><span>📈 Preço justo</span><span>🧭 Análise técnica</span>'
+            f'<span>💼 Carteira</span><span>🪙 Cripto</span></div></div>',
+            unsafe_allow_html=True)
+        st.button("Entrar com Google", icon=":material/login:", type="primary", width="stretch",
                   on_click=st.login, args=("google",))
+        st.markdown('<div class="lg-foot">Usamos só o seu nome e e-mail para identificar você. '
+                    'Ferramenta educacional, sem recomendação de investimento.</div>', unsafe_allow_html=True)
     st.stop()
 
 
