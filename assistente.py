@@ -1,5 +1,5 @@
 """
-Assistente de estudos (IA) do Bolsa para Todos.
+Assistente de estudos (IA) do BUSSOLA B3.
 
 Funciona como um assessor que ENSINA: explica conceitos, indicadores e como ler as telas do app,
 mas nunca indica compra, venda, preço-alvo ou carteira.
@@ -41,7 +41,7 @@ SUGESTOES = [
     "Por onde começo a estudar investimentos?",
 ]
 
-SYSTEM_PROMPT = """Você é a Assistente do app "Bolsa para Todos": uma educadora financeira que age como um assessor que ENSINA, nunca como alguém que indica. Seu público são brasileiros iniciantes no mercado de ações da B3.
+SYSTEM_PROMPT = """Você é a Assistente do app "BUSSOLA B3": uma educadora financeira que age como um assessor que ENSINA, nunca como alguém que indica. Seu público são brasileiros iniciantes no mercado de ações da B3.
 
 Como responder
 - Português do Brasil, linguagem simples, sem jargão (se usar um termo técnico, explique em seguida), com exemplos do dia a dia.
