@@ -40,6 +40,7 @@ def skeleton(linhas: int = 3) -> str:
 
 def css() -> str:
     return """<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap');
 :root {
   /* espaçamento: múltiplos de 8px */
   --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s5:40px;
@@ -258,6 +259,66 @@ button[data-testid^="stBaseButton-primary"]:hover {background:linear-gradient(18
   overflow:hidden; text-overflow:ellipsis;}
 .st-key-nav_bottom a[aria-current="page"] {background:var(--brand-soft) !important;}
 .st-key-nav_bottom a[aria-current="page"] p {color:var(--brand-d) !important;}
+
+/* ================= camada tecnológica: vidro, brilho, bordas em degradê, números em mono ================= */
+:root {--mono:'JetBrains Mono','IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --grad:linear-gradient(135deg,rgba(31,122,85,.65),rgba(59,107,196,.65));}
+.stApp {background:
+  radial-gradient(rgba(22,32,43,.055) 1px, transparent 1.2px) 0 0/22px 22px,
+  radial-gradient(900px 480px at 100% -8%, rgba(59,107,196,.14), transparent 62%),
+  radial-gradient(760px 460px at -8% 12%, rgba(31,122,85,.13), transparent 60%),
+  linear-gradient(180deg,#F5F7FA 0%,#EEF2F3 100%) !important;}
+.kpi .v, .val, [data-testid="stMetricValue"], .tk {font-family:var(--mono); letter-spacing:-.02em; font-weight:700;}
+.lbl, [data-testid="stMetricLabel"] p {font-family:var(--mono); font-size:.66rem; letter-spacing:.1em;}
+
+/* botões secundários: fundo branco com borda em degradê e brilho no hover */
+.stButton > button[data-testid^="stBaseButton-secondary"], .stFormSubmitButton > button[data-testid^="stBaseButton-secondary"],
+.stDownloadButton > button, a[data-testid="stPageLink-NavLink"]:not(.nav-x), button[data-testid="stPopoverButton"] {
+  background:linear-gradient(#fff,#fff) padding-box, var(--grad) border-box !important;
+  border:1px solid transparent !important; color:var(--t1); font-weight:700; letter-spacing:.01em;
+  box-shadow:0 1px 2px rgba(22,32,43,.05), 0 8px 18px -12px rgba(31,122,85,.45) !important;}
+.stButton > button[data-testid^="stBaseButton-secondary"]:hover, .stFormSubmitButton > button[data-testid^="stBaseButton-secondary"]:hover,
+a[data-testid="stPageLink-NavLink"]:not(.nav-x):hover, button[data-testid="stPopoverButton"]:hover {
+  background:linear-gradient(var(--brand-soft),var(--brand-soft)) padding-box, var(--grad) border-box !important;
+  box-shadow:0 0 0 4px rgba(31,122,85,.10), 0 14px 28px -12px rgba(31,122,85,.55) !important; transform:translateY(-1px);}
+/* menus e barras mantêm o visual limpo (sem borda em degradê) */
+.st-key-nav_desktop button, .st-key-nav_mobile button, .st-key-nav_bottom button,
+.st-key-nav_desktop a[data-testid="stPageLink-NavLink"], .st-key-nav_bottom a[data-testid="stPageLink-NavLink"],
+[data-testid="stPopoverBody"] a[data-testid="stPageLink-NavLink"] {background:transparent !important; border:none !important; box-shadow:none !important;}
+.st-key-trilha_bar a[data-testid="stPageLink-NavLink"] {border:1px solid var(--line) !important; background:#fff !important; box-shadow:none !important;}
+
+/* botão principal: degradê com brilho (corrige o texto invisível do "Buscar") */
+.stButton > button[data-testid^="stBaseButton-primary"], .stFormSubmitButton > button[data-testid^="stBaseButton-primary"] {
+  background:linear-gradient(135deg,#1F7A55 0%,#17604A 55%,#1B5C8F 130%) !important; border:1px solid rgba(255,255,255,.12) !important;
+  color:#fff !important; font-weight:800; letter-spacing:.02em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 24px -10px rgba(31,122,85,.75) !important;}
+.stButton > button[data-testid^="stBaseButton-primary"] p, .stFormSubmitButton > button[data-testid^="stBaseButton-primary"] p {
+  color:#fff !important;}
+.stButton > button[data-testid^="stBaseButton-primary"]:hover, .stFormSubmitButton > button[data-testid^="stBaseButton-primary"]:hover {
+  filter:brightness(1.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 0 0 4px rgba(31,122,85,.14), 0 16px 30px -10px rgba(31,122,85,.8) !important;}
+
+/* campos: fundo em vidro, leve sombra interna e brilho no foco */
+[data-baseweb="input"], [data-baseweb="select"] > div, [data-baseweb="textarea"] {
+  background:rgba(255,255,255,.9) !important; box-shadow:inset 0 1px 2px rgba(22,32,43,.06) !important;}
+[data-baseweb="input"]:focus-within, [data-baseweb="select"] > div:focus-within {
+  border-color:var(--brand) !important; box-shadow:0 0 0 4px rgba(31,122,85,.14), 0 10px 24px -14px rgba(31,122,85,.6) !important;}
+[data-testid="stForm"] {background:rgba(255,255,255,.72); backdrop-filter:blur(10px); border:1px solid var(--line-2) !important;
+  border-radius:var(--r-card); box-shadow:var(--sh1);}
+
+/* abas e controle segmentado em formato de cápsula */
+.stTabs [data-baseweb="tab-list"] {background:rgba(22,32,43,.05); padding:4px; border-radius:var(--r-pill); border-bottom:none; gap:4px; width:fit-content;}
+.stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {display:none !important;}
+.stTabs [data-baseweb="tab"] {border-radius:var(--r-pill); padding:6px 16px; height:auto;}
+.stTabs [aria-selected="true"] {background:#fff; color:var(--brand-d) !important; box-shadow:0 2px 6px rgba(22,32,43,.10), 0 0 0 1px var(--line);}
+button[data-testid^="stBaseButton-segmented_control"] {border-radius:var(--r-pill) !important; min-height:40px; font-weight:700;
+  border:1px solid var(--line-2) !important; background:rgba(255,255,255,.85) !important; transition:var(--ease);}
+button[data-testid="stBaseButton-segmented_controlActive"] {background:linear-gradient(135deg,#1F7A55,#17604A) !important;
+  color:#fff !important; border-color:transparent !important; box-shadow:0 8px 18px -8px rgba(31,122,85,.7) !important;}
+button[data-testid="stBaseButton-segmented_controlActive"] p {color:#fff !important;}
+
+/* cartões com brilho de borda no hover */
+.card:hover, .kpi:hover, .mini:hover, [data-testid="stMetric"]:hover {
+  box-shadow:inset 0 3px 0 var(--brand), 0 0 0 1px rgba(31,122,85,.28), var(--sh2) !important;}
 
 /* ---------- acessibilidade ---------- */
 @media (prefers-reduced-motion: reduce) {* {transition:none !important; animation:none !important;}}

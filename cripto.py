@@ -509,7 +509,7 @@ SETORES = [
     ("Layer 2 (redes de escala)", "layer-2", ["l2", "camada 2", "escala"]),
     ("Stablecoins (moedas estáveis)", "stablecoins", ["estavel", "estaveis", "dolar", "stable"]),
     ("Memecoins", "meme-token", ["meme", "memes"]),
-    ("Inteligência artificial", "artificial-intelligence", ["ia", "ai", "inteligencia"]),
+    ("Inteligência artificial (IA)", "artificial-intelligence", ["ia", "ai", "inteligencia"]),
     ("Jogos (GameFi)", "gaming", ["jogos", "games", "game", "gamefi"]),
     ("NFT", "non-fungible-tokens-nft", ["nft", "colecionaveis"]),
     ("Exchanges (corretoras)", "exchange-based-tokens", ["exchange", "corretora", "corretoras"]),
@@ -971,29 +971,18 @@ def _render_setor(res: list[dict], sel: list[str]):
 
 
 def _secao_setor(sel: list[str]):
-    """Escolha de setor + lista das maiores moedas dele."""
+    """Um único campo de setor (em português primeiro, depois todos os da CoinGecko) + as maiores moedas dele."""
     curados = setores_curados()
-    rotulos = {n: cid for n, cid, _ in curados}
-    OUTRO = "🔎 Outro setor (lista completa)"
-    st.markdown("**Ou explore por setor**")
-    escolha = st.selectbox("Setor", list(rotulos) + [OUTRO], index=None, key="cripto_setor_sel",
-                           placeholder="Escolha um setor: DeFi, Layer 1, IA, Memecoins…",
-                           label_visibility="collapsed", on_change=_zerar_n_setor)
-    cid, nome_setor = None, ""
-    if escolha == OUTRO:
-        todos = listar_setores()
-        if todos:
-            cid = st.selectbox("Todos os setores", sorted(todos, key=lambda k: todos[k].lower()), index=None,
-                               key="cripto_setor_all", format_func=lambda k: todos.get(k, k),
-                               placeholder="Digite para procurar entre todos os setores (em inglês)",
-                               label_visibility="collapsed", on_change=_zerar_n_setor)
-            nome_setor = todos.get(cid, "") if cid else ""
-        else:
-            st.warning("Não consegui carregar a lista de setores agora. Tente de novo em instantes.")
-    elif escolha:
-        cid, nome_setor = rotulos[escolha], escolha
+    todos = listar_setores()
+    nomes = {**todos, **{cid: n for n, cid, _ in curados}}
+    primeiros = [cid for _, cid, _ in curados]
+    ids = primeiros + sorted((k for k in todos if k not in primeiros), key=lambda k: todos[k].lower())
+    cid = st.selectbox("Setor", ids, index=None, key="cripto_setor_id", format_func=lambda k: nomes.get(k, k),
+                       placeholder="Escolha ou digite um setor: DeFi, Layer 1, IA, memecoins…",
+                       label_visibility="collapsed", on_change=_zerar_n_setor)
     if not cid:
         return
+    nome_setor = nomes.get(cid, cid)
     n = st.session_state.get("cripto_setor_n", 10)
     espera = st.empty()
     espera.markdown(tema.skeleton(3), unsafe_allow_html=True)   # cartões fantasma enquanto carrega
@@ -1005,8 +994,7 @@ def _secao_setor(sel: list[str]):
         return
     espera.empty()
     if not res:
-        _md(tema.vazio("caixa", "Nenhuma moeda encontrada neste setor",
-                       "Tente outro setor ou use a lista completa."))
+        _md(tema.vazio("caixa", "Nenhuma moeda encontrada neste setor", "Tente outro setor."))
         return
     st.caption(f"{nome_setor}: as {len(res)} maiores por valor de mercado (CoinGecko).")
     _render_setor(res, sel)
@@ -1016,7 +1004,7 @@ def _secao_setor(sel: list[str]):
 
 def pagina_cripto():
     st.markdown("### 🪙 Cripto / DeFi")
-    st.caption("Pesquise qualquer criptomoeda pelo nome, símbolo ou setor (Bitcoin, Solana, DeFi, IA…), adicione quantas quiser e "
+    st.caption("Busque uma criptomoeda pelo nome ou explore por setor, adicione quantas quiser e "
                "veja a análise com dados públicos da CoinGecko e do DefiLlama.")
     st.session_state.setdefault("cripto_ativos", [])
     st.session_state.setdefault("cripto_nomes", {})
@@ -1032,55 +1020,41 @@ def pagina_cripto():
             st.code('COINGECKO_KEY = "cole-sua-chave-aqui"', language="toml")
             st.caption("Depois reinicie o app. A chave nunca fica no código nem aparece na tela.")
 
-    # ---- busca por nome (igual às ações)
-    with st.form("form_cripto_busca"):
-        c1, c2 = st.columns([5, 1.6], vertical_alignment="center")
-        c1.text_input("Buscar moeda", key="cripto_q", label_visibility="collapsed",
-                      placeholder="Nome, símbolo ou setor: Bitcoin, ETH, Uniswap, memecoins…")
-        c2.form_submit_button("Buscar", type="primary", width="stretch")
-    termo = (st.session_state.get("cripto_q") or "").strip()
+    # ---- busca: alterna entre moeda e setor (mesmo padrão do Ranking)
+    modo = st.segmented_control("Buscar por", ["Moeda", "Setor"], default="Moeda", key="cripto_modo",
+                                label_visibility="collapsed") or "Moeda"
     sel = st.session_state["cripto_ativos"]
-
-    if termo:
-        try:
-            res = buscar_moedas(termo)
-        except ErroAPI as e:
-            res = None
-            st.warning(f"Não consegui buscar agora ({e}). Tente de novo em instantes ou use um dos atalhos abaixo.")
-        if res:
-            _render_resultados(res, sel)
-        elif res is not None:
-            st.caption("Digite pelo menos 2 letras.") if len(_norm(termo)) < 2 else st.info(
-                "Não encontrei essa moeda. Confira o nome ou tente o símbolo.")
-
-    # ---- setores que combinam com o texto digitado (ex.: "meme", "ia", "layer")
-    if termo:
-        try:
-            setores = buscar_setores(termo)
-        except ErroAPI:
-            setores = []
-        if setores:
-            st.caption("Setores com esse nome:")
-            for col, (cid_s, nome_s) in zip(st.columns(min(len(setores), 3)), setores[:3]):
-                col.button(f"📂 {nome_s}", key=f"cripto_setor_hit_{cid_s}", on_click=_escolher_setor,
-                           args=(cid_s,), width="stretch")
-
-    # ---- por setor
-    _secao_setor(sel)
-
-    # ---- atalhos populares
-    st.caption("Ou comece por uma destas:")
-    for linha in (list(POPULARES.items())[:4], list(POPULARES.items())[4:]):
-        for col, (nome, gid) in zip(st.columns(4), linha):
-            col.button(nome, key=f"cripto_pop_{gid}", on_click=_adicionar_cripto, args=(gid, nome),
-                       disabled=gid in sel, width="stretch")
+    if modo == "Moeda":
+        with st.form("form_cripto_busca"):
+            c1, c2 = st.columns([5, 1.6], vertical_alignment="center")
+            c1.text_input("Buscar moeda", key="cripto_q", label_visibility="collapsed",
+                          placeholder="Nome ou símbolo: Bitcoin, ETH, Uniswap…")
+            c2.form_submit_button("Buscar", type="primary", width="stretch")
+        termo = (st.session_state.get("cripto_q") or "").strip()
+        if termo:
+            try:
+                res = buscar_moedas(termo)
+            except ErroAPI as e:
+                res = None
+                st.warning(f"Não consegui buscar agora ({e}). Tente de novo em instantes.")
+            if res:
+                _render_resultados(res, sel)
+            elif res is not None:
+                st.caption("Digite pelo menos 2 letras.") if len(_norm(termo)) < 2 else st.info(
+                    "Não encontrei essa moeda. Confira o nome ou tente o símbolo.")
+        elif not sel:  # atalhos só enquanto ainda não há nenhuma moeda
+            for col, (nome, gid) in zip(st.columns(4), list(POPULARES.items())[:4]):
+                col.button(nome, key=f"cripto_pop_{gid}", on_click=_adicionar_cripto, args=(gid, nome),
+                           width="stretch")
+    else:
+        _secao_setor(sel)
 
     # ---- moedas em análise (dá para remover pelo x)
     nomes = {**{v: k for k, v in POPULARES.items()}, **st.session_state["cripto_nomes"]}
     opcoes = list(dict.fromkeys(sel + list(POPULARES.values())))
     st.multiselect("Moedas em análise", options=opcoes, key="cripto_ativos",
                    format_func=lambda g: nomes.get(g) or g.replace("-", " ").title(),
-                   placeholder="Nenhuma moeda ainda: busque acima ou escolha um atalho")
+                   placeholder="Nenhuma moeda ainda: busque acima")
     sel = st.session_state["cripto_ativos"]
     if not sel:
         _md(tema.vazio("moeda", "Nenhuma moeda em análise",
