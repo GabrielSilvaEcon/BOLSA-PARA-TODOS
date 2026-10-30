@@ -151,6 +151,28 @@ def _css_login() -> str:
 </style>"""
 
 
+def _diagnostico() -> dict:
+    """Informações sem dados pessoais para descobrir por que o login não conclui."""
+    from urllib.parse import urlparse
+    d = {}
+    for rot, fn in (
+        ("conectado", lambda: bool(st.user.is_logged_in)),
+        ("campos do usuário", lambda: list(st.user.to_dict().keys())),
+        ("cookies recebidos", lambda: list(st.context.cookies.keys())),
+        ("endereço acessado", lambda: st.context.headers.get("Host")),
+        ("endereço do redirect_uri", lambda: urlparse(st.secrets["auth"]["redirect_uri"]).netloc),
+        ("redirect_uri termina em /oauth2callback", lambda: st.secrets["auth"]["redirect_uri"].endswith("/oauth2callback")),
+        ("tem cookie_secret", lambda: bool(st.secrets["auth"].get("cookie_secret"))),
+        ("tem [auth.google]", lambda: all(k in st.secrets["auth"]["google"] for k in ("client_id", "client_secret", "server_metadata_url"))),
+        ("versão do streamlit", lambda: st.__version__),
+    ):
+        try:
+            d[rot] = fn()
+        except Exception as e:
+            d[rot] = f"erro: {e.__class__.__name__}"
+    return d
+
+
 def eh_visitante() -> bool:
     return bool(st.session_state.get("_visitante")) and not usuario()
 
@@ -198,6 +220,12 @@ def exigir_login(logo_uri: str = "", nome: str = "Bússola B3"):
                 st.login("google")
             except Exception as e:  # mostra o motivo real (o Streamlit esconde a mensagem quando o erro não é tratado)
                 st.error(f"Não foi possível iniciar o login: {e}")
+        with st.expander("Não consegue entrar?"):
+            st.write("Abra o app direto no Chrome ou no Safari (não pelo navegador de dentro de outro app) "
+                     "e deixe os cookies liberados. Depois de escolher a conta no Google, você volta para a "
+                     "página inicial já conectado: seu nome aparece no menu, em 👤.")
+        with st.expander("🔧 Diagnóstico do login"):
+            st.json(_diagnostico())
         st.button("Continuar como visitante", icon=":material/person:", width="stretch",
                   key="login_visit", on_click=_virar_visitante)
         st.markdown('<div class="lg-foot">Como visitante você usa tudo, mas nada fica salvo. '
@@ -232,6 +260,7 @@ def iniciar():
             st.session_state[k] = v
         st.session_state["_perfil_de"] = u["email"]
         st.session_state["_salvo"] = _chave(_snapshot())
+        st.toast(f"Bem-vindo, {u['nome'].split()[0]}! Seus dados estão carregados.", icon="👋")
     return u
 
 
@@ -244,6 +273,11 @@ def salvar():
     ch = _chave(snap)
     if ch != st.session_state.get("_salvo") and _gravar(u["email"], snap):
         st.session_state["_salvo"] = ch
+
+
+def primeiro_nome() -> str:
+    u = usuario()
+    return (u["nome"].split()[0][:12]) if u else ""
 
 
 def menu_conta(sufixo: str = "d"):
