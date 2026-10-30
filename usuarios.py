@@ -95,6 +95,8 @@ def usuario():
     try:
         if _configurado() and st.user.is_logged_in:
             email = (st.user.get("email") or "").strip().lower()
+            if not email and st.user.get("sub"):
+                email = f"sub:{st.user.get('sub')}"
             if email:
                 return {"email": email, "nome": st.user.get("name") or email.split("@")[0]}
     except Exception:
@@ -142,8 +144,31 @@ def _css_login() -> str:
 .st-key-login_card button {{border-radius:14px; font-weight:800; padding:.7rem 1rem; border:0;
   background:linear-gradient(135deg,#1F7A55,#17604A); box-shadow:0 8px 20px rgba(31,122,85,.30);}}
 .st-key-login_card button p {{color:#fff !important; font-size:1rem;}}
+.st-key-login_card .st-key-login_visit button {{background:#fff; border:1px solid #D5DAE0 !important; box-shadow:none;}}
+.st-key-login_card .st-key-login_visit button p {{color:#1F2933 !important; font-size:.95rem;}}
+.st-key-login_card .st-key-login_visit [data-testid="stButton"] {{padding-top:8px;}}
 .lg-foot {{padding:12px 26px 0; font-size:.74rem; color:#5B6675; text-align:center; line-height:1.45;}}
 </style>"""
+
+
+def eh_visitante() -> bool:
+    return bool(st.session_state.get("_visitante")) and not usuario()
+
+
+def _virar_visitante():
+    st.session_state["_visitante"] = True
+
+
+def sair_visitante():
+    """Volta para a tela de login."""
+    st.session_state.pop("_visitante", None)
+
+
+def menu_visitante(sufixo: str = "d"):
+    st.markdown("**Visitante**")
+    st.caption("Você está sem conta: nada fica salvo.")
+    st.button("Entrar com Google", icon=":material/login:", on_click=sair_visitante, width="stretch",
+              key=f"entrar_{sufixo}")
 
 
 def exigir_login(logo_uri: str = "", nome: str = "Bússola B3"):
@@ -153,6 +178,8 @@ def exigir_login(logo_uri: str = "", nome: str = "Bússola B3"):
     u = usuario()
     if u:
         return u
+    if st.session_state.get("_visitante"):
+        return None
     st.markdown(_css_login(), unsafe_allow_html=True)
     topo, resto = nome.rsplit(" ", 1) if " " in nome else (nome, "")
     img = f'<img src="{logo_uri}" alt="{nome}">' if logo_uri else ""
@@ -171,7 +198,10 @@ def exigir_login(logo_uri: str = "", nome: str = "Bússola B3"):
                 st.login("google")
             except Exception as e:  # mostra o motivo real (o Streamlit esconde a mensagem quando o erro não é tratado)
                 st.error(f"Não foi possível iniciar o login: {e}")
-        st.markdown('<div class="lg-foot">Usamos só o seu nome e e-mail para identificar você. '
+        st.button("Continuar como visitante", icon=":material/person:", width="stretch",
+                  key="login_visit", on_click=_virar_visitante)
+        st.markdown('<div class="lg-foot">Como visitante você usa tudo, mas nada fica salvo. '
+                    'Com a conta Google, usamos só o seu nome e e-mail para identificar você. '
                     'Ferramenta educacional, sem recomendação de investimento.</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -249,7 +279,11 @@ def pagina_conta():
                 '<div class="pgsub">Seus dados, o que fica guardado e como sair.</div></div>', unsafe_allow_html=True)
     u = usuario()
     if not u:
-        st.info("O login ainda não está ativo neste app, então você está como visitante e nada fica salvo.")
+        st.info("Você está como visitante e nada fica salvo. Entre com o Google para guardar suas empresas, "
+                "seu perfil e suas carteiras.")
+        if _configurado():
+            st.button("Entrar com Google", icon=":material/login:", type="primary", on_click=sair_visitante,
+                      key="entrar_conta")
         return
     foto = ""
     try:
