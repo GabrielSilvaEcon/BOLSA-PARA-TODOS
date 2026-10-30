@@ -166,8 +166,11 @@ def exigir_login(logo_uri: str = "", nome: str = "Bússola B3"):
             f'<div class="lg-chips"><span>📈 Preço justo</span><span>🧭 Análise técnica</span>'
             f'<span>💼 Carteira</span><span>🪙 Cripto</span></div></div>',
             unsafe_allow_html=True)
-        st.button("Entrar com Google", icon=":material/login:", type="primary", width="stretch",
-                  on_click=st.login, args=("google",))
+        if st.button("Entrar com Google", icon=":material/login:", type="primary", width="stretch"):
+            try:
+                st.login("google")
+            except Exception as e:  # mostra o motivo real (o Streamlit esconde a mensagem quando o erro não é tratado)
+                st.error(f"Não foi possível iniciar o login: {e}")
         st.markdown('<div class="lg-foot">Usamos só o seu nome e e-mail para identificar você. '
                     'Ferramenta educacional, sem recomendação de investimento.</div>', unsafe_allow_html=True)
     st.stop()
@@ -221,3 +224,74 @@ def menu_conta(sufixo: str = "d"):
     st.markdown(f"**{u['nome']}**")
     st.caption(u["email"])
     st.button("Sair", icon="🚪", on_click=st.logout, width="stretch", key=f"sair_{sufixo}")
+
+
+def _apagar(email: str) -> bool:
+    sb = _supabase()
+    try:
+        if sb:
+            url, key = sb
+            r = requests.delete(f"{url}/rest/v1/perfis?email=eq.{quote(email)}", headers=_cab(key), timeout=10)
+            r.raise_for_status()
+            return True
+        with sqlite3.connect(_DB) as con:
+            con.execute("create table if not exists perfis (email text primary key, dados text, atualizado text)")
+            con.execute("delete from perfis where email=?", (email,))
+        return True
+    except Exception as e:
+        st.error(f"Não consegui apagar seus dados ({e.__class__.__name__}).")
+        return False
+
+
+def pagina_conta():
+    """Página 'Minha conta': dados do perfil, o que está salvo, sair e apagar dados."""
+    st.markdown('<div class="pghead"><div class="pgt">Minha conta</div>'
+                '<div class="pgsub">Seus dados, o que fica guardado e como sair.</div></div>', unsafe_allow_html=True)
+    u = usuario()
+    if not u:
+        st.info("O login ainda não está ativo neste app, então você está como visitante e nada fica salvo.")
+        return
+    foto = ""
+    try:
+        foto = st.user.get("picture") or ""
+    except Exception:
+        pass
+    avatar = (f'<img src="{foto}" width="64" height="64" referrerpolicy="no-referrer" '
+              f'style="border-radius:50%;flex-shrink:0;">' if foto else
+              '<div style="width:64px;height:64px;border-radius:50%;background:#1F7A55;color:#fff;display:flex;'
+              'align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;flex-shrink:0;">'
+              f'{u["nome"][:1].upper()}</div>')
+    st.markdown(f'<div class="card" style="display:flex;gap:14px;align-items:center;">{avatar}'
+                f'<div><div class="tk">{u["nome"]}</div><div class="nm" style="margin:0;">{u["email"]}</div></div></div>',
+                unsafe_allow_html=True)
+
+    ss = st.session_state
+    lotes = len(ss.get("cart_ficticia", [])) + len(ss.get("cart_real", []))
+    c1, c2, c3, c4 = st.columns(4)
+    for col, rot, val in ((c1, "Empresas em análise", len(ss.get("sel_ativos", []))),
+                          (c2, "Perfil", ss.get("perfil", "—")),
+                          (c3, "Moedas cripto", len(ss.get("cripto_ativos", []))),
+                          (c4, "Compras na carteira", lotes)):
+        col.markdown(f'<div class="kpi"><div class="lbl">{rot}</div><div class="v">{val}</div></div>',
+                     unsafe_allow_html=True)
+
+    if _supabase():
+        st.caption("☁️ Seus dados ficam guardados na nuvem e acompanham você em qualquer aparelho. "
+                   "Tudo é salvo automaticamente.")
+    else:
+        st.warning("Seus dados estão sendo guardados só neste servidor e podem se perder quando o app for atualizado.")
+
+    st.markdown("#### Sessão")
+    st.button("Sair da conta", icon=":material/logout:", on_click=st.logout, type="primary", key="sair_conta")
+
+    with st.expander("Apagar meus dados salvos"):
+        st.write("Remove do banco as empresas em análise, o perfil, as moedas e as carteiras guardadas. "
+                 "Isso não pode ser desfeito.")
+        ok = st.checkbox("Entendi, quero apagar tudo", key="conf_apagar")
+        if st.button("Apagar agora", disabled=not ok, key="btn_apagar"):
+            if _apagar(u["email"]):
+                for k in list(ss.keys()):
+                    if isinstance(k, str) and (k in CHAVES or k.startswith(PREFIXOS)):
+                        del ss[k]
+                ss["_salvo"] = _chave(_snapshot())
+                st.success("Dados apagados. Recarregue a página para começar do zero.")
