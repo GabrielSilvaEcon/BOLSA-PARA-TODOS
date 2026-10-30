@@ -25,11 +25,20 @@ _DB = Path(__file__).with_name("usuarios.db")
 
 # ------------------------------------------------------------------ armazenamento
 def _supabase():
+    """(url, chave) do Supabase nos secrets, com a URL corrigida se vier sem https:// ou com /rest/v1 no fim."""
     try:
         cfg = st.secrets["supabase"]
-        return cfg["url"].rstrip("/"), cfg["key"]
+        url = str(cfg["url"]).strip().strip("\"'").rstrip("/")
+        key = str(cfg["key"]).strip().strip("\"'")
     except Exception:
         return None
+    if url.endswith("/rest/v1"):
+        url = url[: -len("/rest/v1")]
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    if "." not in url.split("//", 1)[1]:  # só o código do projeto
+        url += ".supabase.co"
+    return url, key
 
 
 def _cab(key: str) -> dict:
@@ -55,7 +64,7 @@ def _ler(email: str) -> dict:
             lin = con.execute("select dados from perfis where email=?", (email,)).fetchone()
             return json.loads(lin[0]) if lin else {}
     except Exception as e:
-        st.toast(f"Não consegui carregar seus dados salvos ({e.__class__.__name__}).", icon="⚠️")
+        st.toast(f"Não consegui carregar seus dados salvos ({e.__class__.__name__}: {str(e)[:110]}).", icon="⚠️")
         return {}
 
 
@@ -78,7 +87,7 @@ def _gravar(email: str, dados: dict) -> bool:
                         (email, json.dumps(dados, ensure_ascii=False), agora))
         return True
     except Exception as e:
-        st.toast(f"Não consegui salvar seus dados ({e.__class__.__name__}).", icon="⚠️")
+        st.toast(f"Não consegui salvar seus dados ({e.__class__.__name__}: {str(e)[:110]}).", icon="⚠️")
         return False
 
 
