@@ -32,13 +32,21 @@ def _supabase():
         return None
 
 
+def _cab(key: str) -> dict:
+    """Cabeçalhos do Supabase. Chaves novas (sb_secret_...) vão só em apikey; a service_role antiga (JWT) também em Authorization."""
+    h = {"apikey": key}
+    if key.startswith("eyJ"):
+        h["Authorization"] = f"Bearer {key}"
+    return h
+
+
 def _ler(email: str) -> dict:
     sb = _supabase()
     try:
         if sb:
             url, key = sb
             r = requests.get(f"{url}/rest/v1/perfis?email=eq.{quote(email)}&select=dados",
-                             headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=10)
+                             headers=_cab(key), timeout=10)
             r.raise_for_status()
             linhas = r.json()
             return linhas[0]["dados"] if linhas else {}
@@ -58,8 +66,7 @@ def _gravar(email: str, dados: dict) -> bool:
         if sb:
             url, key = sb
             r = requests.post(f"{url}/rest/v1/perfis?on_conflict=email",
-                              headers={"apikey": key, "Authorization": f"Bearer {key}",
-                                       "Content-Type": "application/json",
+                              headers={**_cab(key), "Content-Type": "application/json",
                                        "Prefer": "resolution=merge-duplicates"},
                               json={"email": email, "dados": dados, "atualizado": agora}, timeout=10)
             r.raise_for_status()
