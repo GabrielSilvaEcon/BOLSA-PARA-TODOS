@@ -358,6 +358,14 @@ a[aria-current="page"] [data-testid="stIconMaterial"] {color:var(--brand-d);}
 .st-key-nav_bottom [data-testid="stIconMaterial"] {font-size:1.5rem !important;}
 .st-key-nav_bottom a[aria-current="page"] [data-testid="stIconMaterial"], .st-key-nav_bottom a[aria-current="page"] p {color:var(--brand-d) !important;}
 
+/* preço atual ao escolher a ação (carteira) */
+.pv {display:flex; align-items:center; gap:12px; margin:8px 0; padding:12px 16px; border-radius:14px;
+  border:1px solid var(--line); background:linear-gradient(135deg,rgba(31,122,85,.09),rgba(59,107,196,.09));}
+.pv .dot {flex-shrink:0; width:9px; height:9px; border-radius:50%; background:var(--brand); animation:pvpulse 1.8s infinite;}
+.pv-t {font-weight:800; color:var(--t1);} .pv-s {color:var(--t2); font-size:.9rem; line-height:1.5;}
+.pv-s b {font-family:var(--mono); color:var(--t1);}
+@keyframes pvpulse {0% {box-shadow:0 0 0 0 rgba(31,122,85,.55);} 70% {box-shadow:0 0 0 9px rgba(31,122,85,0);} 100% {box-shadow:0 0 0 0 rgba(31,122,85,0);}}
+
 /* ---------- acessibilidade ---------- */
 @media (prefers-reduced-motion: reduce) {* {transition:none !important; animation:none !important;}}
 @media (max-width:768px) {

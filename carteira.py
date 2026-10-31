@@ -113,35 +113,87 @@ def _evolucao(lotes: list):
 
 
 # ---------------------------------------------------------------- interface
-def _form(chave: str, caixa):
-    with st.form(f"form_{chave}", clear_on_submit=True):
-        c1, c2, c3, c4 = st.columns([2, 1, 1.2, 1.2])
-        termo = c1.text_input("Empresa ou ticker", placeholder="Ex.: Petrobras ou PETR4")
-        qtd = c2.number_input("Quantidade", min_value=1, step=1, value=100)
-        pm = c3.number_input("Preço pago (R$)", min_value=0.0, step=0.01, format="%.2f",
-                             help="Deixe 0 para usar o preço atual da ação.")
-        dt = c4.date_input("Data da compra", value=date.today(), max_value=date.today(), format="DD/MM/YYYY")
-        ok = st.form_submit_button("➕ Adicionar à carteira")
-    if not ok:
-        return
-    tk = _resolver(termo)
+def _rotulo_opcao(t) -> str:
+    """Texto de cada opção da lista (ex.: 'PETR4 · Petrobras'); aceita também o que a pessoa digitou."""
+    try:
+        return rec.rotulo(t) if rec is not None else str(t)
+    except Exception:
+        return str(t)
+
+
+def _ao_escolher(chave: str):
+    """Ao escolher a empresa: busca o preço atual e já o coloca no campo 'Preço pago'."""
+    sel = st.session_state.get(f"sel_{chave}")
+    tk = _resolver(sel) if sel else None
+    atual = _preco_atual(tk)[0] if tk else None
+    st.session_state[f"pm_{chave}"] = round(float(atual), 2) if atual else 0.0
+
+
+def _registrar(chave: str, caixa):
+    """Valida a compra e a adiciona à carteira; deixa o aviso em session_state para aparecer uma vez."""
+    ss = st.session_state
+    sel = ss.get(f"sel_{chave}")
+    tk = _resolver(sel) if sel else None
     if not tk:
-        st.warning("Digite o nome ou o ticker da empresa.")
+        ss[f"flash_{chave}"] = ("warn", "Escolha a empresa na lista ou digite o ticker.")
         return
-    preco = pm
+    qtd = int(ss.get(f"qtd_{chave}") or 0)
+    preco = float(ss.get(f"pm_{chave}") or 0.0)
+    dt = ss.get(f"dt_{chave}") or date.today()
+    if qtd < 1:
+        ss[f"flash_{chave}"] = ("warn", "A quantidade precisa ser de pelo menos 1.")
+        return
     if preco <= 0:
         atual, _ = _preco_atual(tk)
         if not atual:
-            st.error(f"Não consegui o preço atual de {tk}. Confira o ticker ou informe o preço pago.")
+            ss[f"flash_{chave}"] = ("err", f"Não consegui o preço atual de {tk}. Confira o ticker ou informe o preço pago.")
             return
         preco = float(atual)
     custo = qtd * preco
     if caixa is not None and custo > caixa + 1e-9:
-        st.error(f"Essa compra custa {brl(custo)}, mas o caixa disponível é {brl(caixa)}.")
+        ss[f"flash_{chave}"] = ("err", f"Essa compra custa {brl(custo)}, mas o caixa disponível é {brl(caixa)}.")
         return
-    st.session_state[chave].append({"ticker": tk, "qtd": int(qtd), "preco_medio": float(preco),
-                                    "data": dt.isoformat()})
-    st.rerun()
+    ss[chave].append({"ticker": tk, "qtd": qtd, "preco_medio": preco, "data": dt.isoformat()})
+    ss[f"sel_{chave}"], ss[f"qtd_{chave}"], ss[f"pm_{chave}"] = None, 100, 0.0
+    ss[f"flash_{chave}"] = ("ok", f"{tk} adicionada: {qtd} × {brl(preco)} = {brl(custo)}.")
+
+
+def _form(chave: str, caixa):
+    opcoes = list(getattr(rec, "TODOS_TICKERS", []) or []) if rec is not None else []
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns([2.2, 1, 1.2, 1.2])
+        c1.selectbox("Empresa ou ticker", opcoes, index=None, key=f"sel_{chave}", format_func=_rotulo_opcao,
+                     accept_new_options=True, placeholder="Digite o nome ou o ticker: petr, vale, itau…",
+                     on_change=_ao_escolher, args=(chave,),
+                     help="Comece a digitar e escolha na lista. Ticker fora da lista também vale.")
+        c2.number_input("Quantidade", min_value=1, step=1, value=100, key=f"qtd_{chave}")
+        c3.number_input("Preço pago (R$)", min_value=0.0, step=0.01, format="%.2f", value=0.0, key=f"pm_{chave}",
+                        help="Já vem com o preço atual da ação. Altere se pagou outro valor; 0 usa o preço atual.")
+        c4.date_input("Data da compra", value=date.today(), max_value=date.today(), format="DD/MM/YYYY",
+                      key=f"dt_{chave}")
+
+        sel = st.session_state.get(f"sel_{chave}")
+        tk = _resolver(sel) if sel else None
+        if tk:
+            with st.spinner("Buscando o preço atual…"):
+                atual, nome = _preco_atual(tk)
+            if atual:
+                qtd = int(st.session_state.get(f"qtd_{chave}") or 0)
+                ref = float(st.session_state.get(f"pm_{chave}") or 0.0) or float(atual)
+                extra = f" · caixa disponível {brl(caixa)}" if caixa is not None else ""
+                st.markdown(
+                    f"<div class='pv'><span class='dot'></span><div><div class='pv-t'>{tk}"
+                    f"{' · ' + str(nome) if nome else ''}</div><div class='pv-s'>Preço atual "
+                    f"<b>{brl(float(atual))}</b> · custo desta compra <b>{brl(qtd * ref)}</b>{extra}</div></div></div>",
+                    unsafe_allow_html=True)
+            else:
+                st.warning(f"Não consegui o preço atual de {tk} agora. Informe o preço pago ou tente de novo.")
+        st.button("Adicionar à carteira", icon=":material/add:", type="primary", key=f"add_{chave}",
+                  on_click=_registrar, args=(chave, caixa))
+
+    flash = st.session_state.pop(f"flash_{chave}", None)
+    if flash:
+        {"ok": st.success, "warn": st.warning, "err": st.error}.get(flash[0], st.info)(flash[1])
 
 
 def _arquivo(chave: str):
