@@ -570,4 +570,70 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] {border-radius:14px 
   color:#16202B !important; -webkit-text-fill-color:#16202B !important;}
 .cartao {padding:var(--s3); margin-bottom:var(--s2);}
 .cartao h1,.cartao h2,.cartao h3,.cartao h4 {margin-top:0;}
+
+/* ================= etapa 3: BOTÕES ================= */
+:root {--btn:#125C51; --btn-hover:#DDA735; --btn-ink:#0B1C33;}
+/* principais: verde-petróleo, texto branco, pílula; no hover ficam dourados como o selo B3 */
+.stApp .stButton > button[data-testid^="stBaseButton-primary"],
+.stApp .stFormSubmitButton > button[data-testid^="stBaseButton-primary"] {
+  background:var(--btn) !important; color:#FFFFFF !important; border:1px solid rgba(255,255,255,.16) !important;
+  border-radius:25px !important; min-height:46px; padding:0 24px; font-weight:800; letter-spacing:.02em;
+  box-shadow:0 10px 22px -10px rgba(18,92,81,.9) !important; transition:all .2s ease-in-out;}
+.stApp .stButton > button[data-testid^="stBaseButton-primary"] :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .stFormSubmitButton > button[data-testid^="stBaseButton-primary"] :is(p, span, [data-testid="stIconMaterial"]) {color:#FFFFFF !important;}
+.stApp .stButton > button[data-testid^="stBaseButton-primary"]:hover,
+.stApp .stFormSubmitButton > button[data-testid^="stBaseButton-primary"]:hover {
+  background:var(--btn-hover) !important; border-color:var(--btn-hover) !important; filter:none; transform:translateY(-1px);
+  box-shadow:0 14px 26px -10px rgba(221,167,53,.75) !important;}
+.stApp .stButton > button[data-testid^="stBaseButton-primary"]:hover :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .stFormSubmitButton > button[data-testid^="stBaseButton-primary"]:hover :is(p, span, [data-testid="stIconMaterial"]) {color:var(--btn-ink) !important;}
+
+/* secundários e atalhos: pílulas flutuantes, fundo escuro translúcido */
+.stApp .stButton > button[data-testid^="stBaseButton-secondary"],
+.stApp .stFormSubmitButton > button[data-testid^="stBaseButton-secondary"],
+.stApp .stDownloadButton > button,
+.stApp .stLinkButton > a,
+.stApp button[data-testid="stPopoverButton"],
+.stApp [data-testid="stMain"] a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]),
+.stApp .st-key-trilha_bar a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]),
+.stApp button[data-testid="stBaseButton-segmented_control"] {
+  background:rgba(17,41,77,.55) !important; color:#FFFFFF !important; border:1px solid rgba(160,174,192,.30) !important;
+  border-radius:25px !important; min-height:42px; padding:0 20px; font-weight:700; backdrop-filter:blur(8px);
+  box-shadow:0 10px 22px -8px rgba(0,0,0,.45) !important; transition:all .2s ease-in-out;}
+.stApp .stButton > button[data-testid^="stBaseButton-secondary"] :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .stFormSubmitButton > button[data-testid^="stBaseButton-secondary"] :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .stDownloadButton > button :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .stLinkButton > a :is(p, span, [data-testid="stIconMaterial"]),
+.stApp button[data-testid="stPopoverButton"] :is(p, span, [data-testid="stIconMaterial"]),
+.stApp [data-testid="stMain"] a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]) :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .st-key-trilha_bar a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]) :is(p, span, [data-testid="stIconMaterial"]),
+.stApp button[data-testid="stBaseButton-segmented_control"] :is(p, span, [data-testid="stIconMaterial"]) {color:#FFFFFF !important;}
+.stApp .stButton > button[data-testid^="stBaseButton-secondary"]:hover,
+.stApp .stFormSubmitButton > button[data-testid^="stBaseButton-secondary"]:hover,
+.stApp .stDownloadButton > button:hover,
+.stApp .stLinkButton > a:hover,
+.stApp button[data-testid="stPopoverButton"]:hover,
+.stApp [data-testid="stMain"] a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]):hover,
+.stApp .st-key-trilha_bar a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]):hover,
+.stApp button[data-testid="stBaseButton-segmented_control"]:hover {
+  background:rgba(221,167,53,.14) !important; border-color:var(--btn-hover) !important; transform:translateY(-1px);
+  box-shadow:0 14px 26px -8px rgba(0,0,0,.55), 0 0 0 3px rgba(221,167,53,.16) !important;}
+.stApp .stButton > button[data-testid^="stBaseButton-secondary"]:hover :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .stFormSubmitButton > button[data-testid^="stBaseButton-secondary"]:hover :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .stDownloadButton > button:hover :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .stLinkButton > a:hover :is(p, span, [data-testid="stIconMaterial"]),
+.stApp button[data-testid="stPopoverButton"]:hover :is(p, span, [data-testid="stIconMaterial"]),
+.stApp [data-testid="stMain"] a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]):hover :is(p, span, [data-testid="stIconMaterial"]),
+.stApp .st-key-trilha_bar a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]):hover :is(p, span, [data-testid="stIconMaterial"]),
+.stApp button[data-testid="stBaseButton-segmented_control"]:hover :is(p, span, [data-testid="stIconMaterial"]) {color:var(--btn-hover) !important;}
+/* controle segmentado: opção ativa em verde-petróleo */
+.stApp button[data-testid="stBaseButton-segmented_controlActive"] {background:var(--btn) !important; color:#FFFFFF !important;
+  border:1px solid rgba(255,255,255,.16) !important; border-radius:25px !important; box-shadow:0 10px 22px -10px rgba(18,92,81,.9) !important;}
+.stApp button[data-testid="stBaseButton-segmented_controlActive"]:hover {background:var(--btn-hover) !important;}
+.stApp button[data-testid="stBaseButton-segmented_controlActive"]:hover p {color:var(--btn-ink) !important;}
+.stApp button:disabled, .stApp button[disabled] {opacity:.5 !important; transform:none !important; box-shadow:none !important;}
+.stApp button:focus-visible, .stApp a:focus-visible {outline:2px solid var(--btn-hover) !important; outline-offset:2px !important;}
+/* menu lateral: botões da conta em pílula translúcida */
+section[data-testid="stSidebar"] .stButton > button {background:rgba(255,255,255,.12) !important; border:1px solid rgba(255,255,255,.26) !important;
+  border-radius:25px !important; box-shadow:none !important;}
 </style>"""
