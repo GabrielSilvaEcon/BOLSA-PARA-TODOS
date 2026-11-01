@@ -70,6 +70,20 @@ def card_status(label: str, valor: str, cls: str = "info", detalhe: str = "", di
             f"<div class='sc-v'>{html.escape(valor)}</div>{d}</div>")
 
 
+def legenda_tendencia() -> str:
+    """Selos que explicam Alta / Lateral / Baixa, no padrão de cores do app."""
+    itens = [("good", "▲", "Alta", "subindo"), ("fair", "►", "Lateral", "de lado"), ("bad", "▼", "Baixa", "caindo")]
+    chips = "".join(f"<span class='lg {c}'><i>{ic}</i><b>{n}</b><em>{d}</em></span>" for c, ic, n, d in itens)
+    return (f"<div class='legenda'>{chips}<span class='lg-nota'>Sinais são indicadores técnicos e podem errar. "
+            "Não são recomendação.</span></div>")
+
+
+def cartao(conteudo: str, extra: str = "") -> str:
+    """Envolve HTML no card padrão (gradiente azul-marinho → azul-petróleo, raio 20px, sombra suave).
+    Uso: st.markdown(tema.cartao("<h4>Título</h4><p>Texto</p>"), unsafe_allow_html=True)"""
+    return f"<div class='cartao {extra}'>{conteudo}</div>"
+
+
 def css() -> str:
     return """<style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap');
@@ -466,4 +480,94 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary p, section[d
   color:#fff !important; font-weight:800;}
 .nav-sec {margin:var(--s2) 0 4px 12px; font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; text-transform:uppercase;
   font-weight:700; color:#C9A227;}
+
+/* ================= marca em texto (logotipo) ================= */
+.wm {display:flex; align-items:center; gap:10px; line-height:1.15; padding:2px 0; overflow:visible;}
+.wm svg {flex-shrink:0; filter:drop-shadow(0 4px 8px rgba(31,122,85,.30));}
+.wm-t {font-weight:800; font-size:1.3rem; letter-spacing:-.025em; white-space:nowrap;
+  background:linear-gradient(95deg,#0E2A5C 10%,#1F7A55 90%); -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; color:transparent; display:inline-flex; align-items:center;}
+.wm-t b {font-family:var(--mono); font-size:.62em; font-weight:700; letter-spacing:.06em; margin-left:8px; padding:3px 8px;
+  border-radius:8px; background:linear-gradient(135deg,#0E2A5C,#1F7A55); -webkit-text-fill-color:#fff; color:#fff;
+  box-shadow:0 6px 14px -6px rgba(14,42,92,.6);}
+section[data-testid="stSidebar"] .wm-t {background:none; -webkit-text-fill-color:#fff; color:#fff;}
+section[data-testid="stSidebar"] .wm-t b {background:linear-gradient(135deg,#C9A227,#E3C55A); -webkit-text-fill-color:#0E2A5C; color:#0E2A5C;}
+.st-key-nav_mobile {overflow:visible !important; padding:10px 16px !important;}
+.st-key-nav_mobile [data-testid="stColumn"], .st-key-nav_mobile [data-testid="column"] {overflow:visible !important;}
+
+/* legenda Alta / Lateral / Baixa */
+.legenda {display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:-8px 0 var(--s2);}
+.lg {display:inline-flex; align-items:center; gap:8px; padding:6px 14px 6px 10px; border-radius:var(--r-pill);
+  border:1px solid var(--c-line); background:linear-gradient(135deg,var(--c-bg),#fff 85%); box-shadow:var(--sh1);}
+.lg i {font-style:normal; display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
+  border-radius:50%; background:var(--c); color:#fff; font-size:.7rem;}
+.lg b {color:var(--c); font-weight:800; font-size:.92rem;}
+.lg em {font-style:normal; color:var(--t2); font-size:.85rem; font-weight:600;}
+.lg.good {--c:var(--good); --c-bg:rgba(31,122,85,.13); --c-line:rgba(31,122,85,.30);}
+.lg.fair {--c:var(--fair); --c-bg:rgba(183,121,31,.14); --c-line:rgba(183,121,31,.32);}
+.lg.bad {--c:var(--bad); --c-bg:rgba(192,57,43,.12); --c-line:rgba(192,57,43,.30);}
+.lg-nota {font-size:.8rem; color:var(--t3); font-weight:600; margin-left:4px;}
+.nav-user {margin:0 0 4px 12px; color:#fff; font-weight:800; font-size:.95rem;}
+section[data-testid="stSidebar"] .stButton > button {background:rgba(255,255,255,.14) !important; border:1px solid rgba(255,255,255,.28) !important;
+  box-shadow:none !important;}
+section[data-testid="stSidebar"] .stButton > button p, section[data-testid="stSidebar"] .stButton > button [data-testid="stIconMaterial"] {color:#fff !important;}
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {color:rgba(255,255,255,.72) !important;}
+
+/* ================= IDENTIDADE ESCURA · etapa 1: fundo azul-marinho e texto claro ================= */
+:root {--bg:#0B1C33; --t1:#FFFFFF; --t2:#A0AEC0; --t3:#A0AEC0;
+  --line:rgba(160,174,192,.18); --line-2:rgba(160,174,192,.30);}
+html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stBottom"] > div {
+  background:#0B1C33 !important; background-image:none !important;}
+.stApp::before, .stApp::after {display:none !important;}
+header[data-testid="stHeader"] {background:rgba(11,28,51,.92) !important; border-bottom:1px solid var(--line) !important;
+  box-shadow:none !important;}
+
+/* títulos em branco, texto de apoio em azul-cinza claro */
+.stApp :is(h1,h2,h3,h4,h5,h6), .stApp .sec, .stApp .sec-sub, .stApp .tk, .stApp .val {color:#FFFFFF !important;}
+.stApp :is(p, li, label) {color:#FFFFFF;}
+.stApp [data-testid="stCaptionContainer"], .stApp small, .stApp .pgsub, .stApp .nm, .stApp .lbl, .stApp .lg-nota,
+.stApp [data-testid="stCaptionContainer"] p {color:#A0AEC0 !important;}
+.pgt, .hero2 h1 {background:none !important; -webkit-text-fill-color:#FFFFFF !important; color:#FFFFFF !important;}
+.pghead {background:linear-gradient(135deg,rgba(31,122,85,.20),rgba(59,107,196,.16)) !important; border:1px solid var(--line) !important;}
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"], section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+  color:#A0AEC0 !important;}
+
+/* ================= etapa 2: CARD reutilizável (.cartao) e aplicação nos blocos de destaque ================= */
+:root {--good:#3DDC97; --fair:#F2B84B; --bad:#FF6B6B; --info:#6EA8FF; --na:#A0AEC0;
+  --card-bg:linear-gradient(180deg,#11294D 0%,#0D3546 100%); --card-sh:0px 10px 25px rgba(0,0,0,.3);}
+.cartao,.card,.kpi,.mini,.ctx,.sc,.lg,.vazio,.pv,[data-testid="stMetric"],[data-testid="stExpander"],[data-testid="stForm"],[class*="st-key-form_"],.st-key-ctx_bar,.st-key-trilha_bar,.st-key-nav_mobile,.st-key-home_busca_box {
+  background:var(--card-bg) !important; border:1px solid rgba(160,174,192,.14) !important;
+  border-radius:20px !important; box-shadow:var(--card-sh) !important; backdrop-filter:none;}
+.card,.kpi,.mini {box-shadow:inset 0 3px 0 rgba(61,220,151,.55), var(--card-sh) !important;}
+.mini {box-shadow:inset 0 3px 0 rgba(110,168,255,.55), var(--card-sh) !important;}
+:is(.cartao,.card,.kpi,.mini,.ctx,.sc,.lg,.vazio,.pv,[data-testid="stMetric"],[data-testid="stExpander"],[data-testid="stForm"],[class*="st-key-form_"],.st-key-ctx_bar,.st-key-trilha_bar,.st-key-nav_mobile,.st-key-home_busca_box):not(section[data-testid="stSidebar"] *):hover {border-color:rgba(160,174,192,.32) !important;
+  box-shadow:0px 14px 32px rgba(0,0,0,.42) !important; transform:translateY(-1px);}
+[data-testid="stExpander"] summary:hover {background:rgba(255,255,255,.05) !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] {border-radius:14px !important; box-shadow:none !important;
+  background:rgba(255,255,255,.06) !important; border:1px solid rgba(255,255,255,.14) !important;}
+/* cartões de status e selos: o tom da cor entra por cima do gradiente */
+.sc {background:linear-gradient(135deg,var(--c-bg) 0%,transparent 70%), var(--card-bg) !important; border-color:var(--c-line) !important;}
+.lg {background:linear-gradient(135deg,var(--c-bg) 0%,transparent 85%), var(--card-bg) !important; border-radius:999px !important;
+  box-shadow:0 4px 12px rgba(0,0,0,.25) !important;}
+.sc.good {--c-bg:rgba(61,220,151,.16); --c-line:rgba(61,220,151,.38);}
+.sc.fair, .lg.fair {--c-bg:rgba(242,184,75,.16); --c-line:rgba(242,184,75,.38);}
+.sc.bad, .lg.bad {--c-bg:rgba(255,107,107,.16); --c-line:rgba(255,107,107,.38);}
+.sc.info {--c-bg:rgba(110,168,255,.16); --c-line:rgba(110,168,255,.38);}
+.lg.good {--c-bg:rgba(61,220,151,.16); --c-line:rgba(61,220,151,.38);}
+.sc.na {--c-bg:rgba(160,174,192,.10); --c-line:rgba(160,174,192,.26);}
+[data-testid="stMetric"]::before {opacity:.9;}
+[data-testid="stMetricValue"], [data-testid="stMetricValue"] div {color:#FFFFFF !important;}
+[class*="st-key-form_"] label p, [class*="st-key-form_"] [data-testid="stWidgetLabel"] p {color:#FFFFFF !important;}
+.vazio h4 {color:#FFFFFF !important;} .vazio p {color:#A0AEC0 !important;}
+.sec-sub {color:#FFFFFF;}
+.wm-t {background:linear-gradient(95deg,#FFFFFF 10%,#9FE3C4 95%) !important; -webkit-background-clip:text !important;
+  background-clip:text !important; -webkit-text-fill-color:transparent !important;}
+.wm-t b {background:linear-gradient(135deg,#C9A227,#E3C55A) !important; -webkit-text-fill-color:#0B1C33 !important; color:#0B1C33 !important;}
+/* gráficos, alertas e tabelas: mesmo raio e sombra (o conteúdo interno continua claro) */
+[data-testid="stPlotlyChart"],[data-testid="stAlert"],[data-testid="stDataFrame"],[data-testid="stTable"] {border-radius:20px !important; box-shadow:var(--card-sh) !important; overflow:hidden;}
+[data-testid="stAlert"] {border:1px solid rgba(160,174,192,.18) !important;}
+[data-baseweb="input"] input, [data-baseweb="textarea"] textarea, [data-baseweb="select"] * {
+  color:#16202B !important; -webkit-text-fill-color:#16202B !important;}
+.cartao {padding:var(--s3); margin-bottom:var(--s2);}
+.cartao h1,.cartao h2,.cartao h3,.cartao h4 {margin-top:0;}
 </style>"""
