@@ -664,4 +664,48 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {backg
 .hero2.com-abas {padding-top:var(--s5);}
 .hero2.com-abas h1 {margin-top:var(--s2);}
 @media (max-width:640px) {.st-key-home_modo button {padding:0 12px; min-height:38px;} .st-key-home_modo button p {font-size:.82rem;}}
+/* ================= Sidebar estática: navy sólido, hierarquia em 3 blocos, sem badges amarelos nem bordas pesadas ================= */
+section[data-testid="stSidebar"] {background:#0B1C33 !important; border-right:1px solid rgba(160,174,192,.14) !important; box-shadow:none !important;}
+section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {padding:20px 12px 8px !important;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap:2px !important;}
+section[data-testid="stSidebar"] hr {margin:14px 6px !important; border:none !important; border-top:1px solid rgba(160,174,192,.16) !important;}
+/* marca + subtítulo */
+section[data-testid="stSidebar"] .wm {padding:0 6px;}
+section[data-testid="stSidebar"] .wm-t b {background:rgba(18,92,81,.55) !important; -webkit-text-fill-color:#9FE3C4 !important; color:#9FE3C4 !important;
+  border:1px solid rgba(159,227,196,.28); box-shadow:none;}
+.nav-sub {margin:4px 0 0 52px; font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:#718096; font-weight:600;}
+/* legendas de seção (caption em caixa alta) */
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"], section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+  color:#718096 !important; font-size:.66rem !important; letter-spacing:.14em; font-weight:700 !important; margin:10px 0 2px 10px !important;}
+/* itens: ícone nítido, padding confortável, sem caixas */
+section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {background:transparent !important; border:none !important; box-shadow:none !important;
+  border-radius:10px !important; padding:.5rem .7rem !important; margin:0 !important; min-height:38px; gap:.7rem;}
+section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] p {color:#CBD5E0 !important; font-weight:600 !important; font-size:.92rem !important;}
+section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] [data-testid="stIconMaterial"] {color:#8FA3BF !important; font-size:1.25rem !important;}
+section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"]:hover {background:rgba(160,174,192,.10) !important;}
+section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"]:hover p {color:#FFFFFF !important;}
+/* item ativo: fundo teal suave, sem barra amarela */
+section[data-testid="stSidebar"] [class*="st-key-nav_on_"] a[data-testid="stPageLink-NavLink"] {background:rgba(18,92,81,.45) !important; box-shadow:none !important;}
+section[data-testid="stSidebar"] [class*="st-key-nav_on_"] a p {color:#FFFFFF !important; font-weight:700 !important;}
+section[data-testid="stSidebar"] [class*="st-key-nav_on_"] a [data-testid="stIconMaterial"] {color:#3DDC97 !important;}
+/* grupos recolhíveis (sub-itens) */
+section[data-testid="stSidebar"] [class*="st-key-nav_grp_"] [data-testid="stExpander"] {background:transparent !important; border:none !important;
+  box-shadow:none !important; border-radius:10px !important; margin:0 !important;}
+section[data-testid="stSidebar"] [class*="st-key-nav_grp_on"] [data-testid="stExpander"] {background:rgba(160,174,192,.06) !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary {padding:.5rem .7rem !important; min-height:38px;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {color:#CBD5E0 !important; font-weight:600 !important; font-size:.92rem !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary svg, section[data-testid="stSidebar"] [data-testid="stExpander"] summary [data-testid="stIconMaterial"] {color:#8FA3BF !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stExpanderDetails"] {padding:0 0 4px 12px !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] a[data-testid="stPageLink-NavLink"] {min-height:34px;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] a[data-testid="stPageLink-NavLink"] p {font-size:.86rem !important; font-weight:500 !important;}
+/* rodapé fixo com a conta */
+section[data-testid="stSidebar"] .st-key-nav_rodape {position:sticky; bottom:0; z-index:5; background:#0B1C33; padding-bottom:10px; margin-top:8px;}
+.nav-user {display:flex; align-items:center; gap:8px; margin:0 0 2px 10px; color:#E2E8F0; font-weight:700; font-size:.88rem;}
+.nav-user i {width:8px; height:8px; border-radius:50%; background:#3DDC97; display:inline-block;}
+section[data-testid="stSidebar"] .stButton > button[kind="tertiary"], section[data-testid="stSidebar"] .stButton > button {
+  background:transparent !important; border:none !important; box-shadow:none !important; justify-content:flex-start; padding:.35rem .6rem !important; min-height:34px;}
+section[data-testid="stSidebar"] .stButton > button p {color:#A0AEC0 !important; font-weight:600 !important; font-size:.85rem !important;}
+section[data-testid="stSidebar"] .stButton > button [data-testid="stIconMaterial"] {color:#8FA3BF !important;}
+section[data-testid="stSidebar"] .stButton > button:hover {background:rgba(160,174,192,.10) !important;}
+section[data-testid="stSidebar"] .stButton > button:hover p {color:#FFFFFF !important;}
 </style>"""
