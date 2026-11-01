@@ -636,4 +636,15 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] {border-radius:14px 
 /* menu lateral: botões da conta em pílula translúcida */
 section[data-testid="stSidebar"] .stButton > button {background:rgba(255,255,255,.12) !important; border:1px solid rgba(255,255,255,.26) !important;
   border-radius:25px !important; box-shadow:none !important;}
+
+/* menu lateral: item da página aberta em destaque; grupo "Análise fundamentalista" neutro quando fechado */
+section[data-testid="stSidebar"] [class*="st-key-nav_on_"] a[data-testid="stPageLink-NavLink"] {
+  background:rgba(255,255,255,.20) !important; box-shadow:inset 3px 0 0 #C9A227 !important;}
+section[data-testid="stSidebar"] [class*="st-key-nav_on_"] a p {color:#FFFFFF !important;}
+section[data-testid="stSidebar"] [class*="st-key-nav_"] {margin:0 !important;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap:.25rem;}
+section[data-testid="stSidebar"] .st-key-nav_grp_off [data-testid="stExpander"] {background:transparent !important; border:1px solid transparent !important;}
+section[data-testid="stSidebar"] .st-key-nav_grp_on [data-testid="stExpander"] {background:rgba(255,255,255,.07) !important;
+  border:1px solid rgba(255,255,255,.18) !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {background:rgba(255,255,255,.10) !important;}
 </style>"""
