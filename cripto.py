@@ -1,5 +1,7 @@
 """
 Análise fundamentalista de criptoativos (páginas do Streamlit): visão geral e tokenomics, adoção on-chain, receitas e emissão.
+Cada ativo é classificado (setorial.py) em Reserva de Valor, L1 de contratos, L1 de alta performance, DeFi ou Outros, e a
+análise usa as métricas, os pesos e os limites da sua categoria. As três páginas são três visões do mesmo motor.
 
 Fontes gratuitas, sem chave:
   - DefiLlama (https://api.llama.fi): TVL, taxas e volume dos protocolos DeFi
@@ -12,7 +14,7 @@ Uso no app.py:
     PG_ONCHAIN = st.Page(cripto.pagina_onchain, title="Adoção & On-Chain", url_path="cripto-onchain")
     PG_RECEITAS = st.Page(cripto.pagina_receitas, title="Receitas & Emissão", url_path="cripto-receitas")
 
-Não depende de nenhum outro módulo do projeto (só requests, pandas, plotly e streamlit).
+Depende só de setorial.py e tema.py, além de requests, pandas, plotly e streamlit.
 Ferramenta educacional, não é recomendação de investimento.
 """
 from __future__ import annotations
@@ -23,12 +25,14 @@ import re
 import time
 import unicodedata
 from math import sqrt
+from urllib.parse import quote
 
 import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
 
+import setorial
 import tema
 
 LLAMA = "https://api.llama.fi"
@@ -235,34 +239,6 @@ def analisar_protocolo(slug: str) -> dict:
     }
 
 
-def alertas(a: dict) -> list[tuple[str, str]]:
-    """Lista de (nível, texto). Níveis: ok, aviso, ruim, info."""
-    out = []
-    mt, mf, pt = a["mc_tvl"], a["mc_fdv"], a["p_taxas"]
-    if mt is None:
-        out.append(("info", "Sem dados suficientes para avaliar Market Cap / TVL."))
-    elif mt < 1:
-        out.append(("ok", f"**Aparenta estar descontado:** Market Cap / TVL = {mt:.2f} (abaixo de 1). "
-                          "O mercado avalia o token por menos do que o capital depositado no protocolo."))
-    elif mt <= 3:
-        out.append(("info", f"**Valuation razoável:** Market Cap / TVL = {mt:.2f} (entre 1 e 3)."))
-    else:
-        out.append(("aviso", f"**Negocia com ágio:** Market Cap / TVL = {mt:.2f} (acima de 3). "
-                             "O mercado paga bem mais que o TVL, então espera muito crescimento."))
-    if mf is not None:
-        if mf < 0.5:
-            out.append(("ruim", f"**Risco de diluição alto:** só {mf:.0%} do FDV está em circulação. "
-                                "Novos tokens ainda vão entrar no mercado e podem pressionar o preço."))
-        elif mf < 0.8:
-            out.append(("aviso", f"**Diluição moderada:** {mf:.0%} do FDV já circula."))
-        else:
-            out.append(("ok", f"**Baixo risco de diluição:** {mf:.0%} do FDV já circula."))
-    if pt is not None:
-        if pt < 15:
-            out.append(("ok", f"**Preço/Taxas baixo ({pt:.1f}x):** o protocolo gera muita taxa frente ao valor de mercado."))
-        elif pt > 50:
-            out.append(("aviso", f"**Preço/Taxas alto ({pt:.1f}x):** o valor de mercado depende de grande crescimento das taxas."))
-    return out
 
 
 # ------------------------------------------------------------------ formatação
@@ -418,25 +394,6 @@ def _html_card(c: dict) -> str:
         f'<div style="font-size:.86rem;color:{TEXT};line-height:1.45;margin-top:12px;">{esc(c["texto"])}</div></div>')
 
 
-def _resumo_geral(cards: list[dict]):
-    """Faixa no topo: quantos indicadores são positivos."""
-    n = sum(c["status"] != "Sem dados" for c in cards)
-    pos = sum(c["status"] == "Positivo" for c in cards)
-    neg = sum(c["status"] == "Negativo" for c in cards)
-    if n == 0:
-        cls, titulo = "na", "Sem dados suficientes para resumir"
-    elif neg * 2 >= n:
-        cls, titulo = "bad", "Quadro desfavorável"
-    elif pos / n >= 0.6 and neg == 0:
-        cls, titulo = "good", "Quadro favorável"
-    else:
-        cls, titulo = "fair", "Quadro misto"
-    cor, _ = COR_CLS[cls]
-    detalhe = (f"{pos} de {n} indicadores positivos · {neg} negativo(s) · {n - pos - neg} neutro(s) ou de atenção"
-               if n else "CoinGecko ou DefiLlama sem resposta para este protocolo.")
-    _md(f'<div style="background:{SURFACE};border:1px solid {BORDER};border-left:5px solid {cor};border-radius:12px;'
-        f'padding:12px 16px;margin:6px 0 12px;"><div style="font-weight:800;font-size:1.05rem;color:{cor};">{titulo}</div>'
-        f'<div style="font-size:.85rem;color:{MUTED};margin-top:3px;">{detalhe}</div></div>')
 
 
 # ----------------------------------------------------------------------- busca
@@ -658,6 +615,7 @@ def analisar_moeda(gecko_id: str) -> dict:
         "id": gecko_id, "nome": d.get("name") or gecko_id, "simbolo": (d.get("symbol") or "").upper(),
         "logo": (d.get("image") or {}).get("small") or "", "rank": d.get("market_cap_rank"),
         "categorias": [c for c in (d.get("categories") or []) if c][:3],
+        "categorias_todas": [c for c in (d.get("categories") or []) if c], "circ": circ,
         "preco": preco, "mcap": mc, "fdv": fdv, "mc_fdv": _razao(mc, fdv), "maximo": maximo,
         "vol24": usd_("total_volume"),
         "var7": m.get("price_change_percentage_7d"), "var30": m.get("price_change_percentage_30d"),
@@ -829,56 +787,18 @@ def _grafico_tvl(hist: list) -> go.Figure | None:
     return fig
 
 
-def _mostrar_alerta(nivel: str, texto: str):
-    {"ok": st.success, "aviso": st.warning, "ruim": st.error, "info": st.info}[nivel](texto)
 
 
-def _cls_valuation(v, bom, ruim, menor_melhor=True):
-    """Cor do card pela regra educacional: good/fair/bad, ou na sem dado."""
-    if v is None:
-        return "na"
-    if menor_melhor:
-        return "good" if v < bom else ("bad" if v > ruim else "fair")
-    return "good" if v > bom else ("bad" if v < ruim else "fair")
 
 
-def _tem(v):
-    return "info" if v is not None else "na"
 
 
-def _grupo_cards(titulo: str, itens: list, cls_sec: str = ""):
-    """Título de seção + uma fileira de cards de status. itens = [(rótulo, valor, classe, dica)]."""
-    st.markdown(f"<div class='sec-sub {cls_sec}'>{titulo}</div>", unsafe_allow_html=True)
-    for col, (rot, val, cls, dica) in zip(st.columns(3), itens):
-        col.markdown(tema.card_status(rot, val, cls, dica=dica), unsafe_allow_html=True)
 
 
-def _cards_onchain(a: dict):
-    _grupo_cards("On-chain", [
-        ("TVL atual", usd(a["tvl"]), _tem(a["tvl"]), "Total Value Locked: valor depositado no protocolo."),
-        ("Volume (30 dias)", usd(a["vol30"]), _tem(a["vol30"]), "Só existe para corretoras descentralizadas (DEX)."),
-        ("Market Cap / TVL", _x(a["mc_tvl"], 2), _cls_valuation(a["mc_tvl"], 1, 3),
-         "Abaixo de 1: o token vale menos que o capital depositado. Verde < 1; vermelho > 3."),
-    ])
 
 
-def _cards_receitas(a: dict):
-    _grupo_cards("Receitas e valuation", [
-        ("Taxas (30 dias)", usd(a["fees30"]), "good" if (a["fees30"] or 0) > 0 else ("bad" if a["fees30"] == 0 else "na"),
-         "Taxas pagas pelos usuários do protocolo nos últimos 30 dias."),
-        ("Taxas anualizadas", usd(a["fees_anuais"]), _tem(a["fees_anuais"]), "Taxas de 30 dias × 365/30."),
-        ("Preço/Taxas", _x(a["p_taxas"], 1), _cls_valuation(a["p_taxas"], 15, 50),
-         "Market Cap ÷ taxas anuais. Parecido com o P/L das ações: quanto menor, mais barato. Verde < 15x; vermelho > 50x."),
-    ], "v")
 
 
-def _detalhes_defi(a: dict):
-    """Alertas de valuation e números detalhados do protocolo ligado à moeda."""
-    st.markdown("**Alertas de valuation**")
-    for nivel, texto in alertas(a):
-        _mostrar_alerta(nivel, texto)
-    _cards_onchain(a)
-    _cards_receitas(a)
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -898,9 +818,185 @@ def inflacao_anual(gecko_id: str) -> float | None:
     return (fim / ini - 1) * 100 if ini > 0 else None
 
 
+
+
+# ------------------------------------------------------- dados do motor setorial
+def _segredo(nome: str) -> str:
+    try:
+        v = st.secrets.get(nome)
+        if v:
+            return _limpa_chave(v)
+    except Exception:
+        pass
+    return _limpa_chave(os.environ.get(nome) or "")
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _mercado_total_usd() -> float:
+    """Valor de mercado de todas as criptomoedas (CoinGecko /global). Levanta ErroAPI se falhar (não fica em cache)."""
+    v = ((_get_json(f"{GECKO}/global").get("data") or {}).get("total_market_cap") or {}).get("usd")
+    if not v:
+        raise ErroAPI("valor de mercado total indisponível")
+    return float(v)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _cadeias_llama() -> list[dict]:
+    return _get_json(f"{LLAMA}/v2/chains")
+
+
+def _cadeia_da_moeda(gecko_id: str) -> dict | None:
+    """Cadeia do DefiLlama cujo token nativo é esta moeda (ex.: ethereum → Ethereum, solana → Solana)."""
+    try:
+        for c in _cadeias_llama():
+            if c.get("gecko_id") == gecko_id:
+                return c
+    except ErroAPI:
+        pass
+    return None
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _total30_cadeia(tipo: str, cadeia: str, data_type: str | None = None) -> float | None:
+    """Total de 30 dias (taxas, receita ou volume DEX) de uma cadeia inteira."""
+    params = {"excludeTotalDataChart": "true", "excludeTotalDataChartBreakdown": "true"}
+    if data_type:
+        params["dataType"] = data_type
+    try:
+        return _total_30d(_get_json(f"{LLAMA}/overview/{tipo}/{quote(cadeia)}", params, 2))
+    except ErroAPI:
+        return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _tvl_hist_cadeia(cadeia: str) -> list[tuple]:
+    try:
+        d = _get_json(f"{LLAMA}/v2/historicalChainTvl/{quote(cadeia)}", None, 2)
+    except ErroAPI:
+        return []
+    return [(pd.to_datetime(x["date"], unit="s"), x["tvl"]) for x in d
+            if isinstance(x, dict) and x.get("tvl") is not None]
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def tps_solana() -> float | None:
+    """Throughput real da Solana: transações que não são votos de validadores, por segundo (RPC público)."""
+    try:
+        r = requests.post("https://api.mainnet-beta.solana.com", headers=HEADERS, timeout=TIMEOUT, json={
+            "jsonrpc": "2.0", "id": 1, "method": "getRecentPerformanceSamples", "params": [30]})
+        amostras = r.json().get("result") or []
+        nv = sum(a["numNonVoteTransactions"] for a in amostras)
+        seg = sum(a["samplePeriodSecs"] for a in amostras)
+    except Exception:
+        return None
+    return nv / seg if seg else None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def dau_rede(simbolo: str) -> float | None:
+    """Endereços ativos diários. Não há fonte gratuita aberta: só funciona se você criar uma consulta no Dune e
+    guardar nos Secrets DUNE_API_KEY e DUNE_QUERY_<SÍMBOLO>_DAU (ex.: DUNE_QUERY_SOL_DAU = id da consulta).
+    A consulta deve devolver o número de endereços ativos do dia mais recente na primeira linha."""
+    chave, qid = _segredo("DUNE_API_KEY"), _segredo(f"DUNE_QUERY_{simbolo.upper()}_DAU")
+    if not chave or not qid:
+        return None
+    try:
+        r = requests.get(f"https://api.dune.com/api/v1/query/{qid}/results", headers={"X-Dune-API-Key": chave},
+                         timeout=TIMEOUT)
+        linhas = (r.json().get("result") or {}).get("rows") or []
+        for v in (linhas[0].values() if linhas else []):
+            if isinstance(v, (int, float)) and v > 0:
+                return float(v)
+    except Exception:
+        pass
+    return None
+
+
+def coletar_dados(gid: str, m: dict, categoria: str, slug_defi: str | None = None) -> tuple[dict, dict, list[str]]:
+    """Reúne só o que a categoria precisa. Retorna (dados para o motor, extras para a tela, avisos)."""
+    avisos: list[str] = []
+    mc = m.get("mcap")
+    d = {"preco": m["preco"], "mcap": mc, "fdv": m["fdv"], "circ": m.get("circ"), "maximo": m["maximo"],
+         "vol24": m["vol24"], "tendencia": m["tendencia"], "queda": m["queda"], "vol": m["vol"],
+         "infl": inflacao_anual(gid), "tem_queima": gid == "ethereum"}
+    extras: dict = {"hist_tvl": [], "protocolo": None}
+
+    if categoria == "reserva":
+        try:
+            d["mcap_total"] = _mercado_total_usd()
+        except ErroAPI:
+            avisos.append("Valor de mercado total indisponível agora: a dominância não pôde ser calculada.")
+
+    elif categoria in ("l1_contratos", "l1_performance"):
+        cad = _cadeia_da_moeda(gid)
+        if cad:
+            nome = cad["name"]
+            extras["cadeia"] = nome
+            d["tvl"] = cad.get("tvl")
+            extras["hist_tvl"] = _tvl_hist_cadeia(nome)
+            d["tvl_var30"] = _var_tvl_30d(extras["hist_tvl"])
+            d["fees30"] = _total30_cadeia("fees", nome)
+            d["dex30"] = _total30_cadeia("dexs", nome)
+            if categoria == "l1_contratos" and d["tem_queima"]:
+                d["rev30"] = _total30_cadeia("fees", nome, "dailyRevenue")
+        else:
+            avisos.append("Esta moeda não aparece como rede no DefiLlama: TVL, taxas e volume DEX ficam sem dados.")
+        if categoria == "l1_performance":
+            if gid == "solana":
+                d["tps"] = tps_solana()
+            d["dau"] = dau_rede(m["simbolo"])
+
+    elif categoria == "defi":
+        try:
+            slugs = [slug_defi] if slug_defi else slugs_defi(gid, listar_protocolos())[:3]
+        except Exception:
+            slugs = []
+            avisos.append("O DefiLlama não respondeu agora: TVL, taxas e receita não puderam ser consultados.")
+        for slug in slugs:
+            try:
+                a = analisar_protocolo(slug)
+            except Exception:
+                continue
+            extras["protocolo"] = a
+            d.update({"tvl": a["tvl"], "fees30": a["fees30"], "mcap": a["mcap"] or mc, "fdv": a["fdv"] or d["fdv"],
+                      "tvl_var30": _var_tvl_30d(a["hist_tvl"])})
+            extras["hist_tvl"] = a["hist_tvl"]
+            d["rev30"] = _total_30d(_resumo_llama("fees", slug, "dailyRevenue"))
+            avisos += [x for x in a["avisos"] if "CoinGecko" not in x]
+            break
+        else:
+            if slugs or not avisos:
+                avisos.append("Não encontrei protocolo DeFi com dados para esta moeda no DefiLlama.")
+    return d, extras, avisos
+
+
+# ------------------------------------------------------------ tela por categoria
+_PAGINA_GRUPOS = {"cripto": ("visao",), "onchain": ("onchain",), "receitas": ("receitas",)}
+_ROTULO_NOTA = {"good": "Forte", "fair": "Equilibrado", "bad": "Frágil", "na": "Sem dados"}
+
+
+def _faixa_veredito(res: dict):
+    cat = res["categoria"]
+    cor = COR_CLS[res["cls"]][0] if res["cls"] in COR_CLS else MUTED
+    nota = "—" if res["nota"] is None else f"{res['nota'] * 100:.0f}/100"
+    _md(f'<div style="background:{SURFACE};border:1px solid {BORDER};border-left:5px solid {cor};border-radius:12px;'
+        f'padding:12px 16px;margin:6px 0 10px;"><div style="font-weight:800;font-size:1.05rem;color:{cor};">'
+        f'{_html.escape(res["veredito"])} · nota {nota}</div>'
+        f'<div style="font-size:.85rem;color:{MUTED};margin-top:3px;"><b>{_html.escape(cat.rotulo)}.</b> '
+        f'{_html.escape(cat.foco)} Cobertura dos dados: {res["cobertura"]:.0%}.</div></div>')
+
+
+def _cards_metricas(metricas: list):
+    for i in range(0, len(metricas), 3):
+        for col, x in zip(st.columns(3), metricas[i:i + 3]):
+            peso = f" · peso {x.peso:g}" if x.peso else " · informativa"
+            col.markdown(tema.card_status(x.nome, x.valor, x.status, x.leitura + peso, dica=x.dica),
+                         unsafe_allow_html=True)
+
+
 def _mostrar_moeda(gid: str, modo: str = "cripto"):
-    """Analisa e exibe uma moeda. modo="cripto": visão geral e tokenomics (indicadores e gráfico de preço);
-    modo="onchain": adoção e uso na rede (TVL, volume); modo="receitas": emissão, diluição, taxas e valuation."""
+    """Analisa uma moeda com a régua da sua categoria. A página (modo) só escolhe quais grupos de métricas mostrar:
+    cripto = visão geral e tokenomics; onchain = adoção; receitas = emissão e receitas."""
     try:
         with st.spinner(f"Consultando a CoinGecko para “{gid}”…"):
             m = analisar_moeda(gid)
@@ -911,104 +1007,61 @@ def _mostrar_moeda(gid: str, modo: str = "cripto"):
         st.error(f"Erro inesperado ao analisar “{gid}”: {e.__class__.__name__}.")
         return
 
-    # protocolo ligado à moeda (TVL e taxas do DefiLlama), só nas páginas que usam esses dados
-    a_defi, aviso_defi = None, ""
-    if modo in ("onchain", "receitas"):
-        try:
-            with st.spinner("Procurando dados DeFi (TVL e taxas) no DefiLlama…"):
-                lista = listar_protocolos()
-                for slug in slugs_defi(gid, lista)[:3]:
-                    try:
-                        a_defi = analisar_protocolo(slug)
-                        break
-                    except Exception:
-                        continue
-        except Exception:
-            aviso_defi = "O DefiLlama não respondeu agora: TVL e taxas não puderam ser consultados."
-
-    gerais = indicadores_moeda(m)
-
     esc = _html.escape
     img = (f'<img src="{esc(m["logo"])}" width="40" height="40" style="border-radius:10px;background:#fff;padding:3px;'
            f'border:1px solid {BORDER};object-fit:contain;flex-shrink:0;">' if m["logo"].startswith("https://") else "")
     sim = f" ({esc(m['simbolo'])})" if m["simbolo"] else ""
-    cats = " · ".join(esc(c) for c in m["categorias"])
     _md(f'<div style="display:flex;align-items:center;gap:12px;margin:6px 0 2px;">{img}<div>'
         f'<div style="font-size:1.2rem;font-weight:800;color:{TEXT};">{esc(m["nome"])}{sim} · {_preco_usd(m["preco"])}</div>'
         f'<div style="font-size:.8rem;color:{MUTED};">{"Ranking #" + str(m["rank"]) if m["rank"] else "Sem ranking"}'
-        f'{" · " + cats if cats else ""}</div></div></div>')
+        f'</div></div></div>')
     for av in m["avisos"]:
         st.warning(av)
 
-    if modo == "cripto":
-        st.markdown("**Resumo dos indicadores**")
-        _resumo_geral(gerais)
-        for linha in (gerais[:3], gerais[3:]):
-            for col, c in zip(st.columns(3), linha):
-                with col:
-                    _md(_html_card(c))
+    # categoria: automática, mas o usuário pode trocar (muda a régua e os campos exibidos)
+    auto = setorial.classificar(gid, m.get("categorias_todas"))
+    chaves = list(setorial.CATEGORIAS)
+    escolha = st.selectbox(
+        "Categoria do ativo", chaves, index=chaves.index(auto), key=f"cat_{gid}_{modo}",
+        format_func=lambda k: setorial.CATEGORIAS[k].rotulo + (" (automática)" if k == auto else ""),
+        help="A categoria define quais métricas e pesos são usados na análise.")
 
+    slug_defi = None
+    if escolha == "defi":  # input próprio de DeFi: qual protocolo analisar
+        try:
+            slugs = slugs_defi(gid, listar_protocolos())[:5]
+        except Exception:
+            slugs = []
+        if len(slugs) > 1:
+            slug_defi = st.selectbox("Protocolo (DefiLlama)", slugs, key=f"slug_{gid}_{modo}")
+
+    with st.spinner("Calculando métricas da categoria…"):
+        dados, extras, avisos = coletar_dados(gid, m, escolha, slug_defi)
+    res = setorial.analisar(escolha, dados)
+    for av in avisos:
+        st.caption(f"ℹ️ {av}")
+
+    _faixa_veredito(res)
+    grupos = _PAGINA_GRUPOS.get(modo, ("visao",))
+    st.markdown(f"**{' · '.join(setorial.GRUPOS[g] for g in grupos)}**")
+    _cards_metricas([x for x in res["metricas"] if x.grupo in grupos])
+
+    if modo == "cripto":
         fig = _grafico_preco(m["hist"])
         if fig:
             st.markdown("**Preço nos últimos 12 meses**")
             st.plotly_chart(fig, width="stretch", key=f"cripto_preco_{gid}", config={"displayModeBar": False})
-        return
+    elif modo == "onchain" and extras["hist_tvl"]:
+        fig = _grafico_tvl(extras["hist_tvl"])
+        if fig:
+            st.markdown("**Evolução do TVL**")
+            st.plotly_chart(fig, width="stretch", key=f"cripto_tvl_{gid}", config={"displayModeBar": False})
 
-    por_titulo = {x["titulo"]: x for x in (indicadores(a_defi) if a_defi else [])}
-
-    if modo == "onchain":
-        st.markdown("**Adoção e uso na rede**")
-        if a_defi:
-            for av in a_defi["avisos"]:
-                if "CoinGecko" not in av:
-                    st.caption(f"ℹ️ {av}")
-            uso = por_titulo.get("Uso do protocolo (TVL)")
-            if uso:
-                _resumo_geral([uso])
-                _md(_html_card(uso))
-            _cards_onchain(a_defi)
-            fig = _grafico_tvl(a_defi["hist_tvl"])
-            if fig:
-                st.markdown("**Evolução do TVL**")
-                st.plotly_chart(fig, width="stretch", key=f"cripto_tvl_{gid}", config={"displayModeBar": False})
-        else:
-            liq = gerais[5]  # porte e liquidez
-            _resumo_geral([liq])
-            _md(_html_card(liq))
-            st.info(aviso_defi or "Esta moeda não tem protocolo com TVL no DefiLlama (é o caso de Bitcoin e de várias "
-                    "moedas de rede). Aqui aparecem porte e liquidez. Para ver TVL, escolha um protocolo como "
-                    "Ethereum, Uniswap, Aave ou Lido DAO.")
-        st.caption("Endereços ativos e transações por segundo exigem um provedor on-chain específico e não fazem "
-                   "parte das fontes gratuitas usadas aqui (CoinGecko e DefiLlama).")
-        return
-
-    # modo == "receitas": emissão e diluição + taxas do protocolo
-    st.markdown("**Emissão e diluição**")
-    infl = inflacao_anual(gid)
-    dil = gerais[4]
-    c1, c2 = st.columns(2)
-    with c1:
-        _md(_html_card(dil))
-    with c2:
-        c2.markdown(tema.card_status(
-            "Inflação anual (estimada)", "n/d" if infl is None else f"{infl:+.2f}%".replace(".", ","), _tem(infl),
-            "Crescimento da oferta em circulação nos últimos 365 dias, calculado por Market Cap ÷ preço (CoinGecko). "
-            "É uma estimativa."), unsafe_allow_html=True)
-        st.caption("Estimativa: cresce a oferta em circulação (Market Cap ÷ preço) nos últimos 12 meses.")
-    st.markdown("**Receitas do protocolo**")
-    if a_defi:
-        _resumo_geral([x for x in (por_titulo.get("Receita (taxas)"), por_titulo.get("Preço/Taxas")) if x])
-        for col, nome in zip(st.columns(2), ("Receita (taxas)", "Preço/Taxas")):
-            if nome in por_titulo:
-                with col:
-                    _md(_html_card(por_titulo[nome]))
-        _cards_receitas(a_defi)
-        with st.expander("Ver alertas de valuation do protocolo"):
-            for nivel, texto in alertas(a_defi):
-                _mostrar_alerta(nivel, texto)
-    else:
-        st.info(aviso_defi or "Esta moeda não tem protocolo com taxas no DefiLlama: receita e Preço/Taxas não se "
-                "aplicam. Escolha um protocolo como Ethereum, Uniswap, Aave ou Lido DAO.")
+    desc = res["categoria"].desconsiderados
+    if desc:
+        with st.expander("O que esta categoria deixa de fora (e por quê)"):
+            for nome, motivo in desc:
+                st.markdown(f"- **{nome}:** {motivo}")
 
 
 def _adicionar_cripto(gid: str, nome: str = ""):
@@ -1123,14 +1176,14 @@ def pagina_cripto(modo: str = "cripto"):
             st.caption("Depois reinicie o app. A chave nunca fica no código nem aparece na tela.")
 
     # ---- busca: alterna entre moeda e setor (mesmo padrão do Ranking)
-    modo = st.segmented_control("Buscar por", ["Moeda", "Setor"], default="Moeda", key="cripto_modo",
+    busca = st.segmented_control("Buscar por", ["Moeda", "Setor"], default="Moeda", key="cripto_modo",
                                 label_visibility="collapsed") or "Moeda"
     sel = st.session_state["cripto_ativos"]
-    if modo == "Moeda":
+    if busca == "Moeda":
         with st.form("form_cripto_busca"):
             c1, c2 = st.columns([5, 1.6], vertical_alignment="center")
             c1.text_input("Buscar moeda", key="cripto_q", label_visibility="collapsed",
-                          placeholder="Nome ou símbolo: Uniswap, Aave, Lido…" if modo in ("onchain", "receitas") else "Nome ou símbolo: Bitcoin, ETH, Solana…")
+                          placeholder="Nome ou símbolo: Bitcoin, ETH, Solana, Uniswap, Aave…")
             c2.form_submit_button("Buscar", type="primary", width="stretch")
         termo = (st.session_state.get("cripto_q") or "").strip()
         if termo:
@@ -1145,8 +1198,8 @@ def pagina_cripto(modo: str = "cripto"):
                 st.caption("Digite pelo menos 2 letras.") if len(_norm(termo)) < 2 else st.info(
                     "Não encontrei essa moeda. Confira o nome ou tente o símbolo.")
         elif not sel:  # atalhos só enquanto ainda não há nenhuma moeda
-            atalhos = [(n, g) for n, g in POPULARES.items() if n in ("Uniswap", "Aave", "Lido DAO", "Ethereum")] \
-                if modo in ("onchain", "receitas") else list(POPULARES.items())[:4]
+            atalhos = [(n, g) for n, g in POPULARES.items() if n in ("Bitcoin", "Ethereum", "Solana", "Uniswap")] \
+                or list(POPULARES.items())[:4]
             for col, (nome, gid) in zip(st.columns(4), atalhos):
                 col.button(nome, key=f"cripto_pop_{gid}", on_click=_adicionar_cripto, args=(gid, nome),
                            width="stretch")
