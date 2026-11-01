@@ -636,4 +636,32 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] {border-radius:14px 
 /* menu lateral: botões da conta em pílula translúcida */
 section[data-testid="stSidebar"] .stButton > button {background:rgba(255,255,255,.12) !important; border:1px solid rgba(255,255,255,.26) !important;
   border-radius:25px !important; box-shadow:none !important;}
+
+/* menu lateral: item da página aberta em destaque; grupo "Análise fundamentalista" neutro quando fechado */
+section[data-testid="stSidebar"] [class*="st-key-nav_on_"] a[data-testid="stPageLink-NavLink"] {
+  background:rgba(255,255,255,.20) !important; box-shadow:inset 3px 0 0 #C9A227 !important;}
+section[data-testid="stSidebar"] [class*="st-key-nav_on_"] a p {color:#FFFFFF !important;}
+section[data-testid="stSidebar"] [class*="st-key-nav_"] {margin:0 !important;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap:.25rem;}
+section[data-testid="stSidebar"] .st-key-nav_grp_off [data-testid="stExpander"] {background:transparent !important; border:1px solid transparent !important;}
+section[data-testid="stSidebar"] .st-key-nav_grp_on [data-testid="stExpander"] {background:rgba(255,255,255,.07) !important;
+  border:1px solid rgba(255,255,255,.18) !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {background:rgba(255,255,255,.10) !important;}
+
+/* ================= Início: abas Ações B3 / Criptomoedas Binance no topo do card principal ================= */
+.st-key-home_modo {position:relative; z-index:4; margin:0 0 -26px !important;}
+.st-key-home_modo [data-testid="stButtonGroup"], .st-key-home_modo [role="radiogroup"] {
+  justify-content:center; width:fit-content; margin:0 auto; padding:4px; gap:4px; flex-wrap:nowrap;
+  background:rgba(11,28,51,.94); border:1px solid rgba(160,174,192,.28); border-radius:999px;
+  box-shadow:0 10px 25px rgba(0,0,0,.35);}
+.st-key-home_modo button {border-radius:999px !important; min-height:40px; padding:0 22px; box-shadow:none !important;
+  background:transparent !important; border:1px solid transparent !important; font-weight:800;}
+.st-key-home_modo button p {color:#A0AEC0 !important; font-weight:800; white-space:nowrap;}
+.st-key-home_modo button[data-testid="stBaseButton-segmented_controlActive"] {
+  background:#125C51 !important; border:1px solid rgba(61,220,151,.55) !important;}
+.st-key-home_modo button[data-testid="stBaseButton-segmented_controlActive"] p {color:#FFFFFF !important;}
+.st-key-home_modo button:hover {background:rgba(221,167,53,.14) !important; border-color:#DDA735 !important;}
+.hero2.com-abas {padding-top:var(--s5);}
+.hero2.com-abas h1 {margin-top:var(--s2);}
+@media (max-width:640px) {.st-key-home_modo button {padding:0 12px; min-height:38px;} .st-key-home_modo button p {font-size:.82rem;}}
 </style>"""

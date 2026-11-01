@@ -1,5 +1,5 @@
 """
-Análise fundamentalista de protocolos DeFi / criptoativos (página do Streamlit).
+Análise fundamentalista de criptoativos (páginas do Streamlit): visão geral e tokenomics, adoção on-chain, receitas e emissão.
 
 Fontes gratuitas, sem chave:
   - DefiLlama (https://api.llama.fi): TVL, taxas e volume dos protocolos DeFi
@@ -8,7 +8,9 @@ Fontes gratuitas, sem chave:
 
 Uso no app.py:
     import cripto
-    PG_DEFI = st.Page(cripto.pagina_cripto, title="Cripto / DeFi", icon="🪙", url_path="defi")
+    PG_CRIPTO = st.Page(cripto.pagina_cripto, title="Visão Geral & Tokenomics", url_path="criptomoedas")
+    PG_ONCHAIN = st.Page(cripto.pagina_onchain, title="Adoção & On-Chain", url_path="cripto-onchain")
+    PG_RECEITAS = st.Page(cripto.pagina_receitas, title="Receitas & Emissão", url_path="cripto-receitas")
 
 Não depende de nenhum outro módulo do projeto (só requests, pandas, plotly e streamlit).
 Ferramenta educacional, não é recomendação de investimento.
@@ -840,37 +842,65 @@ def _cls_valuation(v, bom, ruim, menor_melhor=True):
     return "good" if v > bom else ("bad" if v < ruim else "fair")
 
 
-def _detalhes_defi(a: dict):
-    """Números detalhados e alertas do protocolo DeFi ligado à moeda."""
-    st.markdown("**Alertas de valuation**")
-    for nivel, texto in alertas(a):
-        _mostrar_alerta(nivel, texto)
+def _tem(v):
+    return "info" if v is not None else "na"
 
-    def cards(titulo, itens, cls_sec=""):
-        st.markdown(f"<div class='sec-sub {cls_sec}'>{titulo}</div>", unsafe_allow_html=True)
-        for col, (rot, val, cls, dica) in zip(st.columns(3), itens):
-            col.markdown(tema.card_status(rot, val, cls, dica=dica), unsafe_allow_html=True)
 
-    def tem(v):
-        return "info" if v is not None else "na"
+def _grupo_cards(titulo: str, itens: list, cls_sec: str = ""):
+    """Título de seção + uma fileira de cards de status. itens = [(rótulo, valor, classe, dica)]."""
+    st.markdown(f"<div class='sec-sub {cls_sec}'>{titulo}</div>", unsafe_allow_html=True)
+    for col, (rot, val, cls, dica) in zip(st.columns(3), itens):
+        col.markdown(tema.card_status(rot, val, cls, dica=dica), unsafe_allow_html=True)
 
-    cards("On-chain / DeFi", [
-        ("TVL atual", usd(a["tvl"]), tem(a["tvl"]), "Total Value Locked: valor depositado no protocolo."),
-        ("Taxas (30 dias)", usd(a["fees30"]), "good" if (a["fees30"] or 0) > 0 else ("bad" if a["fees30"] == 0 else "na"),
-         "Taxas pagas pelos usuários do protocolo nos últimos 30 dias."),
-        ("Volume (30 dias)", usd(a["vol30"]), tem(a["vol30"]), "Só existe para corretoras descentralizadas (DEX)."),
-    ])
-    cards("Valuation", [
-        ("Taxas anualizadas", usd(a["fees_anuais"]), tem(a["fees_anuais"]), "Taxas de 30 dias × 365/30."),
-        ("Preço/Taxas", _x(a["p_taxas"], 1), _cls_valuation(a["p_taxas"], 15, 50),
-         "Market Cap ÷ taxas anuais. Parecido com o P/L das ações: quanto menor, mais barato. Verde < 15x; vermelho > 50x."),
+
+def _cards_onchain(a: dict):
+    _grupo_cards("On-chain", [
+        ("TVL atual", usd(a["tvl"]), _tem(a["tvl"]), "Total Value Locked: valor depositado no protocolo."),
+        ("Volume (30 dias)", usd(a["vol30"]), _tem(a["vol30"]), "Só existe para corretoras descentralizadas (DEX)."),
         ("Market Cap / TVL", _x(a["mc_tvl"], 2), _cls_valuation(a["mc_tvl"], 1, 3),
          "Abaixo de 1: o token vale menos que o capital depositado. Verde < 1; vermelho > 3."),
+    ])
+
+
+def _cards_receitas(a: dict):
+    _grupo_cards("Receitas e valuation", [
+        ("Taxas (30 dias)", usd(a["fees30"]), "good" if (a["fees30"] or 0) > 0 else ("bad" if a["fees30"] == 0 else "na"),
+         "Taxas pagas pelos usuários do protocolo nos últimos 30 dias."),
+        ("Taxas anualizadas", usd(a["fees_anuais"]), _tem(a["fees_anuais"]), "Taxas de 30 dias × 365/30."),
+        ("Preço/Taxas", _x(a["p_taxas"], 1), _cls_valuation(a["p_taxas"], 15, 50),
+         "Market Cap ÷ taxas anuais. Parecido com o P/L das ações: quanto menor, mais barato. Verde < 15x; vermelho > 50x."),
     ], "v")
 
 
+def _detalhes_defi(a: dict):
+    """Alertas de valuation e números detalhados do protocolo ligado à moeda."""
+    st.markdown("**Alertas de valuation**")
+    for nivel, texto in alertas(a):
+        _mostrar_alerta(nivel, texto)
+    _cards_onchain(a)
+    _cards_receitas(a)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def inflacao_anual(gecko_id: str) -> float | None:
+    """Inflação do último ano, estimada: quanto cresceu a oferta em circulação (Market Cap ÷ preço) em 365 dias,
+    em %. Usa a mediana de 7 dias em cada ponta para suavizar ruído. None se a CoinGecko não tiver histórico."""
+    try:
+        d = _get_json(f"{GECKO}/coins/{gecko_id}/market_chart", {"vs_currency": "usd", "days": "365"})
+    except Exception:
+        return None
+    precos, caps = d.get("prices") or [], d.get("market_caps") or []
+    oferta = [cap[1] / p[1] for p, cap in zip(precos, caps)
+              if len(p) == 2 and len(cap) == 2 and p[1] and cap[1] and p[1] > 0 and cap[1] > 0]
+    if len(oferta) < 60:
+        return None
+    ini, fim = sorted(oferta[:7])[3], sorted(oferta[-7:])[3]
+    return (fim / ini - 1) * 100 if ini > 0 else None
+
+
 def _mostrar_moeda(gid: str, modo: str = "cripto"):
-    """Analisa e exibe uma moeda. modo="cripto": indicadores e gráfico de preço. modo="defi": TVL, taxas e valuation do protocolo."""
+    """Analisa e exibe uma moeda. modo="cripto": visão geral e tokenomics (indicadores e gráfico de preço);
+    modo="onchain": adoção e uso na rede (TVL, volume); modo="receitas": emissão, diluição, taxas e valuation."""
     try:
         with st.spinner(f"Consultando a CoinGecko para “{gid}”…"):
             m = analisar_moeda(gid)
@@ -881,9 +911,9 @@ def _mostrar_moeda(gid: str, modo: str = "cripto"):
         st.error(f"Erro inesperado ao analisar “{gid}”: {e.__class__.__name__}.")
         return
 
-    # protocolo DeFi ligado à moeda (só na página DeFi)
+    # protocolo ligado à moeda (TVL e taxas do DefiLlama), só nas páginas que usam esses dados
     a_defi, aviso_defi = None, ""
-    if modo == "defi":
+    if modo in ("onchain", "receitas"):
         try:
             with st.spinner("Procurando dados DeFi (TVL e taxas) no DefiLlama…"):
                 lista = listar_protocolos()
@@ -897,7 +927,6 @@ def _mostrar_moeda(gid: str, modo: str = "cripto"):
             aviso_defi = "O DefiLlama não respondeu agora: TVL e taxas não puderam ser consultados."
 
     gerais = indicadores_moeda(m)
-    defi = indicadores(a_defi)[1:] if a_defi else []  # a diluição já está entre os quadrados gerais
 
     esc = _html.escape
     img = (f'<img src="{esc(m["logo"])}" width="40" height="40" style="border-radius:10px;background:#fff;padding:3px;'
@@ -925,27 +954,61 @@ def _mostrar_moeda(gid: str, modo: str = "cripto"):
             st.plotly_chart(fig, width="stretch", key=f"cripto_preco_{gid}", config={"displayModeBar": False})
         return
 
+    por_titulo = {x["titulo"]: x for x in (indicadores(a_defi) if a_defi else [])}
+
+    if modo == "onchain":
+        st.markdown("**Adoção e uso na rede**")
+        if a_defi:
+            for av in a_defi["avisos"]:
+                if "CoinGecko" not in av:
+                    st.caption(f"ℹ️ {av}")
+            uso = por_titulo.get("Uso do protocolo (TVL)")
+            if uso:
+                _resumo_geral([uso])
+                _md(_html_card(uso))
+            _cards_onchain(a_defi)
+            fig = _grafico_tvl(a_defi["hist_tvl"])
+            if fig:
+                st.markdown("**Evolução do TVL**")
+                st.plotly_chart(fig, width="stretch", key=f"cripto_tvl_{gid}", config={"displayModeBar": False})
+        else:
+            liq = gerais[5]  # porte e liquidez
+            _resumo_geral([liq])
+            _md(_html_card(liq))
+            st.info(aviso_defi or "Esta moeda não tem protocolo com TVL no DefiLlama (é o caso de Bitcoin e de várias "
+                    "moedas de rede). Aqui aparecem porte e liquidez. Para ver TVL, escolha um protocolo como "
+                    "Ethereum, Uniswap, Aave ou Lido DAO.")
+        st.caption("Endereços ativos e transações por segundo exigem um provedor on-chain específico e não fazem "
+                   "parte das fontes gratuitas usadas aqui (CoinGecko e DefiLlama).")
+        return
+
+    # modo == "receitas": emissão e diluição + taxas do protocolo
+    st.markdown("**Emissão e diluição**")
+    infl = inflacao_anual(gid)
+    dil = gerais[4]
+    c1, c2 = st.columns(2)
+    with c1:
+        _md(_html_card(dil))
+    with c2:
+        c2.markdown(tema.card_status(
+            "Inflação anual (estimada)", "n/d" if infl is None else f"{infl:+.2f}%".replace(".", ","), _tem(infl),
+            "Crescimento da oferta em circulação nos últimos 365 dias, calculado por Market Cap ÷ preço (CoinGecko). "
+            "É uma estimativa."), unsafe_allow_html=True)
+        st.caption("Estimativa: cresce a oferta em circulação (Market Cap ÷ preço) nos últimos 12 meses.")
+    st.markdown("**Receitas do protocolo**")
     if a_defi:
-        st.markdown("**Resumo dos indicadores DeFi**")
-        _resumo_geral(defi)
-        st.markdown("**Fundamentos DeFi (TVL e taxas)**")
-        for av in a_defi["avisos"]:
-            if "CoinGecko" not in av:
-                st.caption(f"ℹ️ {av}")
-        for col, c in zip(st.columns(4), defi):
-            with col:
-                _md(_html_card(c))
-        fig = _grafico_tvl(a_defi["hist_tvl"])
-        if fig:
-            st.markdown("**Evolução do TVL**")
-            st.plotly_chart(fig, width="stretch", key=f"cripto_tvl_{gid}", config={"displayModeBar": False})
-        with st.expander("Ver números e alertas detalhados do protocolo"):
-            _detalhes_defi(a_defi)
-    elif aviso_defi:
-        st.caption(f"ℹ️ {aviso_defi}")
+        _resumo_geral([x for x in (por_titulo.get("Receita (taxas)"), por_titulo.get("Preço/Taxas")) if x])
+        for col, nome in zip(st.columns(2), ("Receita (taxas)", "Preço/Taxas")):
+            if nome in por_titulo:
+                with col:
+                    _md(_html_card(por_titulo[nome]))
+        _cards_receitas(a_defi)
+        with st.expander("Ver alertas de valuation do protocolo"):
+            for nivel, texto in alertas(a_defi):
+                _mostrar_alerta(nivel, texto)
     else:
-        st.info("Esta moeda não é um protocolo DeFi no DefiLlama: TVL e taxas não se aplicam. "
-                "Escolha um protocolo como Uniswap, Aave ou Lido DAO.")
+        st.info(aviso_defi or "Esta moeda não tem protocolo com taxas no DefiLlama: receita e Preço/Taxas não se "
+                "aplicam. Escolha um protocolo como Ethereum, Uniswap, Aave ou Lido DAO.")
 
 
 def _adicionar_cripto(gid: str, nome: str = ""):
@@ -1029,13 +1092,22 @@ def _secao_setor(sel: list[str]):
         st.button("Ver mais 10", key="cripto_setor_mais", on_click=_mais_do_setor)
 
 
+_TEXTOS_PAGINA = {
+    "cripto": ("🪙", "Visão Geral & Tokenomics",
+               "Busque uma criptomoeda pelo nome ou explore por setor e veja valor de mercado, FDV, oferta em "
+               "circulação, tendência e risco, com dados públicos da CoinGecko."),
+    "onchain": ("🌐", "Adoção & On-Chain",
+                "Quanto dinheiro está depositado e quanto a rede é usada: TVL e volume, com dados do DefiLlama e da "
+                "CoinGecko."),
+    "receitas": ("📈", "Receitas & Emissão",
+                 "Quantos tokens ainda vão entrar no mercado e quanto o protocolo arrecada em taxas, com dados do "
+                 "DefiLlama e da CoinGecko."),
+}
+
+
 def pagina_cripto(modo: str = "cripto"):
-    if modo == "defi":
-        _md(tema.cabecalho("🧭", "DeFi", "Escolha um protocolo (Uniswap, Aave, Lido…) e veja TVL, taxas e valuation "
-                           "com dados públicos do DefiLlama e da CoinGecko."))
-    else:
-        _md(tema.cabecalho("🪙", "Criptomoedas", "Busque uma criptomoeda pelo nome ou explore por setor, adicione quantas "
-                           "quiser e veja a análise com dados públicos da CoinGecko."))
+    ic, titulo, sub = _TEXTOS_PAGINA.get(modo, _TEXTOS_PAGINA["cripto"])
+    _md(tema.cabecalho(ic, titulo, sub))
     st.session_state.setdefault("cripto_ativos", [])
     st.session_state.setdefault("cripto_nomes", {})
 
@@ -1058,7 +1130,7 @@ def pagina_cripto(modo: str = "cripto"):
         with st.form("form_cripto_busca"):
             c1, c2 = st.columns([5, 1.6], vertical_alignment="center")
             c1.text_input("Buscar moeda", key="cripto_q", label_visibility="collapsed",
-                          placeholder="Nome ou símbolo: Uniswap, Aave, Lido…" if modo == "defi" else "Nome ou símbolo: Bitcoin, ETH, Solana…")
+                          placeholder="Nome ou símbolo: Uniswap, Aave, Lido…" if modo in ("onchain", "receitas") else "Nome ou símbolo: Bitcoin, ETH, Solana…")
             c2.form_submit_button("Buscar", type="primary", width="stretch")
         termo = (st.session_state.get("cripto_q") or "").strip()
         if termo:
@@ -1074,7 +1146,7 @@ def pagina_cripto(modo: str = "cripto"):
                     "Não encontrei essa moeda. Confira o nome ou tente o símbolo.")
         elif not sel:  # atalhos só enquanto ainda não há nenhuma moeda
             atalhos = [(n, g) for n, g in POPULARES.items() if n in ("Uniswap", "Aave", "Lido DAO", "Ethereum")] \
-                if modo == "defi" else list(POPULARES.items())[:4]
+                if modo in ("onchain", "receitas") else list(POPULARES.items())[:4]
             for col, (nome, gid) in zip(st.columns(4), atalhos):
                 col.button(nome, key=f"cripto_pop_{gid}", on_click=_adicionar_cripto, args=(gid, nome),
                            width="stretch")
@@ -1084,7 +1156,7 @@ def pagina_cripto(modo: str = "cripto"):
     # ---- moedas em análise (dá para remover pelo x)
     nomes = {**{v: k for k, v in POPULARES.items()}, **st.session_state["cripto_nomes"]}
     opcoes = list(dict.fromkeys(sel + list(POPULARES.values())))
-    st.multiselect("Protocolos em análise" if modo == "defi" else "Moedas em análise", options=opcoes, key="cripto_ativos",
+    st.multiselect("Moedas em análise", options=opcoes, key="cripto_ativos",
                    format_func=lambda g: nomes.get(g) or g.replace("-", " ").title(),
                    placeholder="Nenhuma moeda ainda: busque acima")
     sel = st.session_state["cripto_ativos"]
@@ -1106,5 +1178,9 @@ def pagina_cripto(modo: str = "cripto"):
                "recomendação de investimento. Criptomoedas são muito voláteis e você pode perder todo o valor investido. "
                "Selo verde = positivo; amarelo = neutro ou atenção; vermelho = negativo; cinza = sem dados.")
 
-def pagina_defi():
-    pagina_cripto("defi")
+def pagina_onchain():
+    pagina_cripto("onchain")
+
+
+def pagina_receitas():
+    pagina_cripto("receitas")
