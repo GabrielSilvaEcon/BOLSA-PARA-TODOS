@@ -8,4 +8,3 @@ Fundamentus
 Authlib>=1.3.2
 httpx
 ccxt
-pandas-ta
