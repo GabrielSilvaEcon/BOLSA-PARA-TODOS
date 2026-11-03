@@ -261,7 +261,7 @@ def analisar_dividendos(div, preco: float | None = None) -> dict:
 def classe_dividendo(d: dict) -> tuple[str, list[str]]:
     """Resumo qualitativo da distribuição: ('boa' | 'atencao' | 'fraca' | 'insuficiente', motivos)."""
     if not d.get("ok") or d.get("regularidade") is None:
-        return "insuficiente", [d.get("motivo") or "histórico curto"]
+        return "insuficiente", [d.get("motivo") or "menos de 12 meses de pagamentos: regularidade e DY de 12 meses não se aplicam ainda"]
     motivos, pontos = [], 0
     if d["meses_pagos_12"] >= LIM_REGULARIDADE:
         motivos.append(f"pagou em {d['meses_pagos_12']} dos últimos 12 meses")
