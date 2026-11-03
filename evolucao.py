@@ -99,7 +99,7 @@ def cagr_de_serie(s: pd.Series, periodos=(1, 3, 5, 10), tol: int | None = None) 
 
 
 def resumo_crescimento(df_anual: pd.DataFrame, preco: pd.Series | None = None, retorno_total: pd.Series | None = None,
-                       dividendos_ano: pd.Series | None = None, periodo: int = 3) -> dict:
+                       dividendos_ano: pd.Series | None = None, periodo: int = 3, financeira: bool = False) -> dict:
     """Números de crescimento de um ativo para o motor de comparação: chave → valor em % (ou None)."""
     out: dict = {}
 
@@ -114,7 +114,8 @@ def resumo_crescimento(df_anual: pd.DataFrame, preco: pd.Series | None = None, r
     pega("cagr_div3", dividendos_ano)
     for chave, col in (("cagr_receita3", "Receita líquida"), ("cagr_lucro3", "Lucro líquido"),
                        ("cagr_fcl3", "Fluxo de caixa livre")):
-        pega(chave, df_anual[col] if df_anual is not None and col in df_anual else None)
+        pega(chave, None if financeira and col == "Fluxo de caixa livre"
+             else (df_anual[col] if df_anual is not None and col in df_anual else None))
     if df_anual is not None and "Receita líquida" in df_anual:
         c = cr.consistencia(df_anual["Receita líquida"])
         out["consist_receita"] = c["taxa"]
@@ -148,6 +149,16 @@ def quem_cresceu_mais(linhas: dict[str, dict]) -> list[dict]:
 
 
 # =============================================================================== coleta
+# mesma lista do app (FINANCEIRAS e FINANCEIRAS_EUA): bancos, seguradoras e similares
+_FIN_B3 = ("ITSA", "ITUB", "BBDC", "BBAS", "BPAC", "SANB", "BBSE", "CXSE", "SULA", "INBR", "BRSR", "BPAN", "XPBR", "PSSA", "ROXO", "ABCB")
+_FIN_EUA = {"JPM", "BAC", "WFC", "C", "GS", "MS", "V", "MA", "AXP", "SCHW", "BLK", "USB", "PNC", "COF", "BRK-B", "BRK-A"}
+
+
+def eh_financeira(tk: str) -> bool:
+    tk = str(tk).upper().strip()
+    return tk.startswith(_FIN_B3) if re.fullmatch(r"[A-Z]{4}\d{1,2}", tk) else tk in _FIN_EUA
+
+
 def _yf():
     import yfinance as yf
     return yf
@@ -374,7 +385,7 @@ def coletar_resumo(tk: str, classe_id: str) -> dict:
         d = coletar_demonstrativos(tk)
         df = d["anual"]
         r["avisos"].extend(d["avisos"])
-    r["resumo"] = resumo_crescimento(df, p["preco"], p["ajustado"], div_ano)
+    r["resumo"] = resumo_crescimento(df, p["preco"], p["ajustado"], div_ano, financeira=eh_financeira(tk))
     r["resumo"]["ganho_real3"] = r["resumo"]["pct_cdi3"] = None
     if em_reais(tk) and len(p["ajustado"]):
         b = coletar_bcb()
@@ -486,8 +497,13 @@ GRUPOS = {
 }
 
 
-def _mostrar_demonstrativo(df: pd.DataFrame, anual: bool, chave: str):
+def _mostrar_demonstrativo(df: pd.DataFrame, anual: bool, chave: str, financeira: bool = False):
     d = cr.derivar_indicadores(df)
+    if financeira:
+        d = d.drop(columns=[c for c in ("EBITDA", "Lucro bruto", "Margem bruta", "Margem EBITDA", "Dívida bruta", "Dívida líquida",
+                                        "Dívida líquida/EBITDA", "Capex", "Caixa operacional", "Fluxo de caixa livre", "Caixa")
+                            if c in d.columns])
+        st.caption("Instituição financeira: indicadores de dívida, caixa, EBITDA e fluxo de caixa livre não se aplicam e ficam ocultos.")
     if d.empty:
         st.info("Sem dados para este recorte.")
         return
@@ -824,6 +840,7 @@ def _pagina_acao_fii_etf(tk: str, classe_id: str):
         _secao_real(tk, p)
         return
     anual, trim = d["anual"], d["trim"]
+    fin = eh_financeira(tk)
     abas = st.tabs(["Resumo e análise", "CAGR", "Anual", "Trimestral", "Preço e dividendos"])
     with abas[0]:
         if anual.empty:
@@ -832,7 +849,7 @@ def _pagina_acao_fii_etf(tk: str, classe_id: str):
             st.caption(f"Fonte: {d['fonte']} · {len(anual)} exercícios anuais ({anual.index[0].year}–{anual.index[-1].year})"
                        f"{' · moeda: ' + d['moeda'] if d.get('moeda') else ''} · consultado em "
                        f"{date.fromisoformat(d['data']).strftime('%d/%m/%Y')}")
-            _mostrar_achados(cr.diagnosticar(anual))
+            _mostrar_achados(cr.diagnosticar(anual, financeira=fin))
             st.caption("Regras automáticas e educacionais, baseadas apenas nos números acima; não são recomendação. "
                        "Mudanças contábeis (ex.: adoção de nova norma, reapresentação de balanços) não são detectadas "
                        "pela fonte: confira as notas explicativas da empresa.")
@@ -842,9 +859,12 @@ def _pagina_acao_fii_etf(tk: str, classe_id: str):
         else:
             st.caption("CAGR = (valor final ÷ valor inicial)^(1 ÷ anos) − 1, com anos medidos pelas datas reais. "
                        "Sem ponto de partida no período pedido, aparece \"histórico insuficiente\" (não é trocado por outro período).")
-            st.dataframe(cr.tabela_cagr(anual).set_index("Indicador"), use_container_width=True)
-            num = cagr_numerico(anual, ["Receita líquida", "EBITDA", "Lucro líquido", "Fluxo de caixa livre",
-                                        "Patrimônio líquido"])
+            cols_cagr = (["Receita líquida", "Lucro líquido", "Patrimônio líquido"] if fin else
+                         ["Receita líquida", "EBITDA", "Lucro líquido", "Fluxo de caixa livre", "Patrimônio líquido"])
+            if fin:
+                st.caption("Instituição financeira: EBITDA e fluxo de caixa livre não se aplicam e foram omitidos.")
+            st.dataframe(cr.tabela_cagr(anual, cols_cagr).set_index("Indicador"), use_container_width=True)
+            num = cagr_numerico(anual, cols_cagr)
             if num.notna().any().any() and _alternar(f"ev_{tk}_cagr_vis"):
                 st.plotly_chart(grafico_cagr(num, "CAGR por indicador"), use_container_width=True, key=f"ev_{tk}_cagrg")
             st.caption(NOTA_FONTE_BALANCO)
@@ -856,12 +876,12 @@ def _pagina_acao_fii_etf(tk: str, classe_id: str):
         if anual.empty:
             st.info("Sem dados anuais.")
         else:
-            _mostrar_demonstrativo(anual, True, f"ev_{tk}_a")
+            _mostrar_demonstrativo(anual, True, f"ev_{tk}_a", fin)
     with abas[3]:
         if trim.empty:
             st.info("Sem dados trimestrais na fonte.")
         else:
-            _mostrar_demonstrativo(trim, False, f"ev_{tk}_t")
+            _mostrar_demonstrativo(trim, False, f"ev_{tk}_t", fin)
     with abas[4]:
         _tab_preco(tk, classe_id, p)
         _secao_real(tk, p)
