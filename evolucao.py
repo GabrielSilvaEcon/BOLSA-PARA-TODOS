@@ -705,11 +705,13 @@ def _pagina_fundo(cnpj_txt: str):
     cols = st.columns(4)
     cols[0].metric("Rentabilidade no período", cr._pct(m["acumulado"] * 100))
     cols[1].metric("Volatilidade anual", "n/d" if m["vol_anual"] is None else f"{m['vol_anual'] * 100:.1f}%".replace(".", ","))
-    cols[2].metric("Maior queda", cr._pct(m["queda_max"] * 100))
+    cols[2].metric("Maior queda", "0,0%" if abs(m["queda_max"]) < 0.0005 else cr._pct(m["queda_max"] * 100))
     cols[3].metric("Meses positivos", "n/d" if m["meses_positivos"] is None else f"{m['meses_positivos']:.0f}%")
     st.markdown("**Rentabilidade anualizada**")
     linhas = {f"{n} ano" + ("s" if n > 1 else ""): c.texto for n, c in m["rentabilidade"].items()}
     st.dataframe(pd.DataFrame({"CAGR da cota": linhas}).T, use_container_width=True)
+    if janela == "1 ano":
+        st.caption("Para ver 3 anos, escolha a janela de 3 anos acima (a leitura baixa mais meses da CVM).")
     st.markdown("**Contra o CDI e a inflação (benchmark)**")
     b = coletar_bcb()
     for av in b["avisos"]:
@@ -730,7 +732,7 @@ def _pagina_fundo(cnpj_txt: str):
                "passada não garante resultado futuro.")
     st.markdown("**Patrimônio e cotistas**")
     st.caption("Patrimônio atual: " + _fmt_num(m["pl_atual"]) + " · variação em 12 meses: " + _pct_s(None if m["pl_var12m"] is None else m["pl_var12m"] * 100)
-               + " · cotistas: " + _fmt_num(m["cotistas_atual"]) + " (" + _pct_s(None if m["cotistas_var12m"] is None else m["cotistas_var12m"] * 100) + ")"
+               + " · cotistas: " + ("n/d" if m["cotistas_atual"] is None else f"{m['cotistas_atual']:,.0f}".replace(",", ".")) + " (" + _pct_s(None if m["cotistas_var12m"] is None else m["cotistas_var12m"] * 100) + ")"
                + (" · captação líquida 12m: " + _fmt_num(m["captacao_liquida_12m"]) if m["captacao_liquida_12m"] is not None else ""))
     graf = _alternar("ev_fundo_vis")
     df = f["df"]
