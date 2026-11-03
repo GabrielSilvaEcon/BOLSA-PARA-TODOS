@@ -197,7 +197,7 @@ def coletar_demonstrativos(tk: str) -> dict:
 def coletar_precos(tk: str) -> dict:
     """Todo o histórico diário: Close sem ajuste (preço), Close ajustado (retorno total) e proventos."""
     out = {"preco": pd.Series(dtype=float), "ajustado": pd.Series(dtype=float), "div": pd.Series(dtype=float),
-           "fonte": "Yahoo Finance", "avisos": []}
+           "volume": pd.Series(dtype=float), "fonte": "Yahoo Finance", "avisos": []}
     try:
         h = _yf().Ticker(_sym(tk)).history(period="max", auto_adjust=False)
         if h is not None and not h.empty:
@@ -207,6 +207,8 @@ def coletar_precos(tk: str) -> dict:
             h.index = idx.normalize()
             out["preco"] = h["Close"].dropna()
             out["ajustado"] = (h["Adj Close"] if "Adj Close" in h else h["Close"]).dropna()
+            if "Volume" in h:
+                out["volume"] = h["Volume"]
             if "Dividends" in h:
                 out["div"] = h["Dividends"][h["Dividends"] > 0]
     except Exception as e:
