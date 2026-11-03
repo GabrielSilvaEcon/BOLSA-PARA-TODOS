@@ -249,7 +249,7 @@ def _aba_dividendos(d, precos):
            "insuficiente": "⚪ Histórico insuficiente"}[k]
     st.markdown(f"**{rot}**")
     for m in mot:
-        st.write("• " + m[0].upper() + m[1:] + ".")
+        st.write("• " + (m[0].upper() + m[1:] + ".").replace("$", "\\$"))
     a, b = st.columns(2)
     a.metric("DY 12 meses", _f(div.get("dy_12m"), 1, "%"))
     b.metric("DY sem pagamentos acima do normal", _f(div.get("dy_recorrente"), 1, "%"))
@@ -345,6 +345,15 @@ def _aba_historico(d, precos):
 
 def _mostrar_cvm(d, df, precos):
     ult = df.index[-1]
+    nome = fiis_cvm.nome_do_cnpj(_geral_cvm(date.today().year), st.session_state.get(f"fii_cnpj_{d['tk']}", ""))
+    if nome:
+        st.markdown(f"**Fundo na CVM:** {nome}")
+    ind = d["ind"]
+    if fiis._ok(ind.get("cotacao")) and fiis._ok(d["row"].get("pvp")) and d["row"]["pvp"] > 0 and fiis._ok(df["vp_cota"].iloc[-1]):
+        vp_f = ind["cotacao"] / d["row"]["pvp"]
+        if abs(df["vp_cota"].iloc[-1] / vp_f - 1) > 0.25:
+            st.error(f"Atenção: o valor patrimonial por cota da CVM (R$ {_f(df['vp_cota'].iloc[-1])}) é muito diferente do "
+                     f"implícito no Fundamentus (R$ {_f(vp_f)}). O CNPJ provavelmente não é de {d['tk']}: confira o nome acima.")
     st.caption(f"Informes de {df.index[0]:%m/%Y} a {ult:%m/%Y}. A CVM publica com atraso: o último mês disponível é {ult:%m/%Y}.")
     vista = st.radio("Periodicidade", ["Mensal", "Trimestral", "Anual"], horizontal=True, key=f"fii_vista_{d['tk']}")
     graf = [("pl", "Patrimônio líquido (R$)", "ultimo"), ("vp_cota", "Valor patrimonial por cota (R$)", "ultimo"),
@@ -416,9 +425,9 @@ def _aba_riscos(d):
         ico, nome = NIVEL[r.nivel]
         with st.container(border=True):
             st.markdown(f"{ico} **{r.nome}** · {nome}")
-            st.write(r.texto)
+            st.write(r.texto.replace("$", "\\$"))
             for e in r.evidencias:
-                st.caption(e)
+                st.caption(e.replace("$", "\\$"))
     st.caption("Os limites (vacância acima de 15%, liquidez abaixo de R$ 300 mil/dia etc.) são regras educacionais para "
                "chamar atenção, não uma recomendação. Risco 'sem dado' não significa risco baixo.")
 
@@ -460,7 +469,7 @@ def _aba_analise(d):
             continue
         st.markdown(f"**{titulo}**")
         for l in linhas:
-            st.write("• " + l)
+            st.write("• " + l.replace("$", "\\$"))
     with st.expander("De onde vem cada dado"):
         st.dataframe(pd.DataFrame([{"Indicador": k, "Fonte": v[0], "Referência": _data_br(v[1]) if v[1] else "—"}
                                    for k, v in d["fontes"].items() if k != "pvp_aviso"]), hide_index=True, width="stretch")
