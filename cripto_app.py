@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html as _html
 import re
+from urllib.parse import quote
 from datetime import date, datetime, timezone
 
 import pandas as pd
@@ -97,6 +98,48 @@ def _proto_raw(slug: str):
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
+def _grafico_llama(tipo: str, alvo: str, e_cadeia: bool, data_type: str | None = None):
+    """Série diária do DefiLlama (taxas ou receita) de um protocolo ou de uma rede: lista [[timestamp, valor], ...] ou None."""
+    try:
+        if e_cadeia:
+            params = {"excludeTotalDataChartBreakdown": "true"}
+            if data_type:
+                params["dataType"] = data_type
+            j = cripto._get_json(f"{cripto.LLAMA}/overview/{tipo}/{quote(alvo)}", params, 2)
+        else:
+            j = cripto._get_json(f"{cripto.LLAMA}/summary/{tipo}/{alvo}", {"dataType": data_type} if data_type else None, 2)
+    except Exception:
+        return None
+    g = j.get("totalDataChart") if isinstance(j, dict) else None
+    return g if isinstance(g, list) and len(g) >= 30 else None
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _blockchair(rede: str):
+    """Estatísticas da rede no Blockchair (API pública, sem chave). None se não responder."""
+    try:
+        return cripto._get_json(f"https://api.blockchair.com/{rede}/stats", None, 2)
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _snapshot(espaco: str):
+    """Espaço e últimas propostas no Snapshot (GraphQL público, sem chave). None se não responder."""
+    consulta = ("query($s:String!){space(id:$s){id name followersCount} "
+                "proposals(first:15, where:{space:$s}, orderBy:\"created\", orderDirection:desc)"
+                "{id title state start end scores_total}}")
+    try:
+        import requests
+        r = requests.post("https://hub.snapshot.org/graphql", json={"query": consulta, "variables": {"s": espaco}},
+                          headers=cripto.HEADERS, timeout=cripto.TIMEOUT)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def _github(repo_url: str):
     """Última versão publicada e último push de um repositório público. None se não responder."""
     m = re.match(r"https?://github\.com/([^/]+)/([^/#?]+)", repo_url or "")
@@ -173,7 +216,7 @@ def coletar(gid: str) -> dict:
     chaves = [c["chave"] for c in classes]
     princ = ca.principal(classes)
 
-    proto = proto_raw = cadeia = None
+    proto = proto_raw = cadeia = slug_ok = None
     tvl = fees30 = rev30 = dex30 = None
     hist_tvl: list = []
     if {"defi", "staking", "governanca", "oraculo", "exchange"} & set(chaves):
@@ -191,6 +234,7 @@ def coletar(gid: str) -> dict:
                 proto_raw = _proto_raw(slug)
                 tvl, fees30, hist_tvl = proto.get("tvl"), proto.get("fees30"), proto.get("hist_tvl") or []
                 rev30 = cripto._total_30d(cripto._resumo_llama("fees", slug, "dailyRevenue"))
+                slug_ok = slug
                 break                                      # o primeiro protocolo que responder (como o cripto.coletar_dados)
             except Exception:
                 proto = None
@@ -239,6 +283,23 @@ def coletar(gid: str) -> dict:
 
     infl = cripto.inflacao_anual(gid)
     ev = evolucao.coletar_cripto(gid)
+    # taxas e receita ao longo do tempo (DefiLlama): soma móvel de 30 dias. Bitcoin fica de fora (mesma razão do TVL).
+    alvo, e_cad = (slug_ok, False) if slug_ok else ((cadeia["name"], True) if cadeia else (None, False))
+    if alvo and gid != "bitcoin":
+        extras_s = {}
+        for rotulo, dt in (("Taxas (USD)", None), ("Receita (USD)", "dailyRevenue")):
+            g = _grafico_llama("fees", alvo, e_cad, dt)
+            sr = ca.soma_movel_30d(g) if g else None
+            if sr is not None and len(sr):
+                extras_s[rotulo] = sr.tail(730)
+        if extras_s:
+            ev = {**ev, "series": {**ev.get("series", {}), **extras_s}}
+    if gid in ca.BLOCKCHAIR:
+        bc = ca.ler_blockchair(_blockchair(ca.BLOCKCHAIR[gid]), date.today().isoformat())
+        if bc:
+            onchain_in["transacoes_24h"] = bc
+        else:
+            avisos.append("O Blockchair não respondeu agora: transações de 24 h ficaram sem dados.")
     fund = None
     try:
         tipo = fc._detectar_tipo(gid, m)
@@ -347,13 +408,41 @@ def _aba_mercado(d):
     s = d["ev"]["series"]
     preco = s.get("Preço (USD)")
     if preco is not None and len(preco):
-        st.plotly_chart(evolucao.grafico_linhas({"Preço (USD)": preco}, "Preço (USD), últimos 365 dias"), use_container_width=True)
+        st.plotly_chart(evolucao.grafico_linhas({"Preço (USD)": preco}, "Preço (USD), últimos 365 dias"), width="stretch")
     vol = s.get("Volume diário (USD)")
     if vol is not None and len(vol):
-        st.plotly_chart(evolucao.grafico_linhas({"Volume diário (USD)": vol}, "Volume diário (USD)"), use_container_width=True)
+        st.plotly_chart(evolucao.grafico_linhas({"Volume diário (USD)": vol}, "Volume diário (USD)"), width="stretch")
     st.caption("Dominância = valor de mercado da moeda ÷ valor de mercado total das criptomoedas (CoinGecko). "
                "Liquidez aqui é o giro (volume ÷ valor de mercado); a profundidade do livro de ofertas não tem fonte integrada.")
     _aviso_fonte(d)
+
+
+def _bloco_governanca(d):
+    gid = d["m"]["id"]
+    g = d.get("gov") or {}
+    st.markdown("**Governança (votações no Snapshot)**")
+    if g.get("disponivel"):
+        st.caption(f"Espaço {g['espaco']} ({g['origem']}) · {g['n_90d']} proposta(s) nos últimos 90 dias · fonte: {g['fonte']}.")
+        for p in g["ativas"]:
+            fim = f", termina em {p['dias_ate_fim']} dias" if p.get("dias_ate_fim") is not None and p["dias_ate_fim"] >= 0 else ""
+            st.markdown(f"- 🗳️ **Aberta{fim}:** [{p['titulo']}]({p['url']})")
+        for p in g["recentes"]:
+            st.markdown(f"- {_data_br(p['inicio'])} ({p['estado'] or 'encerrada'}): [{p['titulo']}]({p['url']})")
+        if not g["ativas"] and not g["recentes"]:
+            st.caption("O espaço existe, mas não há propostas listadas.")
+        st.caption("Votação aberta não é sinal de alta nem de baixa: só mostra que há decisão em andamento.")
+    else:
+        st.caption(g.get("motivo") or "Sem dado de governança.")
+    with st.expander("Informar o espaço do Snapshot deste projeto"):
+        st.caption("Está no endereço snapshot.box ou snapshot.org do projeto (ex.: aave.eth). O app confere se o espaço existe.")
+        st.text_input("Espaço do Snapshot", key=f"snap_in_{gid}", placeholder="exemplo.eth")
+        a, b = st.columns(2)
+        a.button("Usar este espaço", key=f"snap_ok_{gid}", on_click=_salvar_espaco, args=(gid,), width="stretch")
+        if (st.session_state.get("cripto_snapshot") or {}).get(gid):
+            b.button("Remover o meu espaço", key=f"snap_rm_{gid}", on_click=_remover_espaco, args=(gid,), width="stretch")
+        if st.session_state.get("snap_erro") == gid:
+            st.warning("Formato inválido. Use só letras minúsculas, números, ponto e hífen (ex.: aave.eth).")
+            st.session_state.pop("snap_erro", None)
 
 
 def _aba_fundamentos(d):
@@ -393,6 +482,7 @@ def _aba_fundamentos(d):
         st.markdown(f"**Auditorias listadas (DefiLlama):** {ra['n']}")
         for l in ra["links"]:
             st.markdown(f"- [{l}]({l})")
+    _bloco_governanca(d)
     with st.expander("O que não conseguimos verificar"):
         for l in f["lacunas"]:
             st.markdown("- " + l)
@@ -470,7 +560,7 @@ def _aba_onchain(d, oc):
             extra = f" · variação ~90 dias: {fmt(i['var_90d'], 'pct_s')}" if i.get("var_90d") is not None else ""
             st.markdown(f"- **{i['rotulo']}:** {fmt(i['valor'], i['fmt'])}{extra} — _{i['fonte']}_")
     else:
-        st.caption("Nenhum indicador lido direto da blockchain para este ativo. Só a rede Bitcoin (blockchain.com) e a Solana (RPC) estão integradas.")
+        st.caption("Nenhum indicador lido direto da blockchain para este ativo. Estão integradas a rede Bitcoin (blockchain.com), a Solana (RPC) e as redes cobertas pelo Blockchair (contagem de transações).")
     st.markdown("**Estimativas e agregações de provedores** (metodologia do provedor)")
     if oc["estimativas"]:
         for i in oc["estimativas"]:
@@ -481,7 +571,8 @@ def _aba_onchain(d, oc):
     if var30 is not None:
         st.caption(f"TVL: variação em 30 dias {fmt(var30, 'pct_s')} (DefiLlama).")
     so_de = {"tps": "solana", "hash_rate": "bitcoin", "enderecos_ativos": "bitcoin"}
-    aus = [a for a in oc["ausentes"] if so_de.get(a["chave"], d["m"]["id"]) == d["m"]["id"]]
+    aus = [a for a in oc["ausentes"] if so_de.get(a["chave"], d["m"]["id"]) == d["m"]["id"]
+           and (a["chave"] != "transacoes_24h" or d["m"]["id"] in ca.BLOCKCHAIR)]
     if gid_btc(d):
         st.caption("Bitcoin: TVL, taxas e volume em DEXs do DefiLlama não são usados (medem BTC embrulhado em outras redes, não a rede Bitcoin).")
     if aus:
@@ -599,17 +690,29 @@ def _aba_historico(d, h):
     for nome, tit in graficos:
         ser = s.get(nome)
         if ser is not None and len(ser):
-            st.plotly_chart(evolucao.grafico_linhas({nome: ser}, tit), use_container_width=True)
+            st.plotly_chart(evolucao.grafico_linhas({nome: ser}, tit), width="stretch")
     if h["oferta"]:
         st.caption(h["oferta"]["nota"])
     tvl = d["ev"].get("tvl")
     if tvl is not None and len(tvl):
-        st.plotly_chart(evolucao.grafico_linhas({"TVL (USD)": tvl}, "Histórico de TVL"), use_container_width=True)
+        st.plotly_chart(evolucao.grafico_linhas({"TVL (USD)": tvl}, "Histórico de TVL"), width="stretch")
         if h["tvl"]:
             st.caption(f"TVL: 30 dias {fmt(h['tvl']['var_30'], 'pct_s')} · 90 dias {fmt(h['tvl']['var_90'], 'pct_s')} · 12 meses {fmt(h['tvl']['var_365'], 'pct_s')}.")
     else:
         st.caption("Histórico de TVL: sem dados para este ativo.")
-    st.caption("Histórico de receitas/taxas e de atividade da rede por período: sem série diária integrada (só o total de 30 dias). "
+    for chave, nome, tit in (("taxas", "Taxas (USD)", "Taxas geradas (soma móvel de 30 dias)"),
+                             ("receita", "Receita (USD)", "Receita do protocolo (soma móvel de 30 dias)")):
+        ser = s.get(nome)
+        if ser is not None and len(ser):
+            st.plotly_chart(evolucao.grafico_linhas({nome: ser}, tit), width="stretch")
+            if h.get(chave):
+                x = h[chave]
+                st.caption(f"{tit.split(' (')[0]}: 30 dias {fmt(x['var_30'], 'pct_s')} · 90 dias {fmt(x['var_90'], 'pct_s')}"
+                           f" · 12 meses {fmt(x['var_365'], 'pct_s')}. Fonte: DefiLlama (estimativa do provedor); "
+                           "cada ponto soma os 30 dias até aquela data.")
+    if not (s.get("Taxas (USD)") is not None and len(s.get("Taxas (USD)"))):
+        st.caption("Histórico de taxas e receita: sem série para este ativo no DefiLlama (ou Bitcoin, que não usa esses dados).")
+    st.caption("Atividade da rede ao longo do tempo (endereços, transações por dia): sem série diária gratuita integrada. "
                "Valor de mercado, volume e oferta: a CoinGecko gratuita entrega 365 dias.")
     if p["usou_longo"]:
         st.caption("O CAGR usa o histórico longo do Yahoo Finance, conferido com a CoinGecko.")
@@ -673,6 +776,38 @@ def _aba_analise(d, rel, alertas):
 
 
 # =============================================================================== página
+def _espaco_snapshot(gid: str):
+    """(espaço, origem): o que você informou tem prioridade sobre a lista do app."""
+    meu = (st.session_state.get("cripto_snapshot") or {}).get(gid)
+    if meu:
+        return meu, "informado por você"
+    if gid in ca.SNAPSHOT_ESPACOS:
+        return ca.SNAPSHOT_ESPACOS[gid], "lista do app"
+    return None, None
+
+
+def _governanca(gid: str) -> dict:
+    esp, origem = _espaco_snapshot(gid)
+    if not esp:
+        return {"disponivel": False, "espaco": None, "origem": None, "ativas": [], "recentes": [], "n_90d": 0,
+                "motivo": "Sem espaço do Snapshot conhecido para este projeto."}
+    g = ca.governanca(_snapshot(esp), esp)
+    g["origem"] = origem
+    return g
+
+
+def _salvar_espaco(gid: str):
+    esp = ca.espaco_valido(st.session_state.get(f"snap_in_{gid}"))
+    if esp:
+        st.session_state.setdefault("cripto_snapshot", {})[gid] = esp
+    else:
+        st.session_state["snap_erro"] = gid
+
+
+def _remover_espaco(gid: str):
+    (st.session_state.get("cripto_snapshot") or {}).pop(gid, None)
+
+
 def _preparar(gid: str) -> dict:
     d = coletar(gid)
     d = dict(d)
@@ -692,6 +827,7 @@ def _preparar(gid: str) -> dict:
         "classes": d["chaves"], "princ": d["princ"], "mcap": c["mcap"], "giro": c["giro"], "fdv_mc": c["fdv_mc"],
         "eh_stable": d["eh_stable"], "tipo_stable": d["tipo_stable"], "peg_desvio": d["peg"], "exploits": d["expl"],
         "auditorias": d["aud"], "plataforma": d["plataforma"], "ponte": d["ponte"], "gid": gid})
+    d["gov"] = _governanca(gid)
     vol = d["ev"]["series"].get("Volume diário (USD)")
     vol_media30 = float(vol.tail(31).head(30).mean()) if vol is not None and len(vol) >= 31 else None
     oferta = d["ev"]["series"].get("Oferta circulante (calculada)")
@@ -703,11 +839,12 @@ def _preparar(gid: str) -> dict:
         "tvl_var30": ca.variacao(tvl_s, 30) if tvl_s is not None and len(tvl_s) >= 30 else None,
         "eh_stable": d["eh_stable"], "peg_desvio": d["peg"], "exploits": d["expl"], "desbloqueios": d["desb"],
         "release": {"tag": rel.get("tag"), "dias": rel.get("dias"), "url": rel.get("release_url")} if rel.get("tag") else None,
+        "governanca": d["gov"], "taxas_var30": (h.get("taxas") or {}).get("var_30"),
         "data": d["mercado"]["data"] or date.today().isoformat()})
     d["relatorio"] = ca.relatorio({
         "nome": d["m"]["nome"], "simbolo": d["m"]["simbolo"], "classes": d["classes"], "mercado": c, "tokenomics": tk,
         "onchain": d["oc"], "valuation": d["val"], "riscos": d["riscos"], "historico": h,
-        "pares": [p["nome"] for p in d["pares_lista"]], "nota": (d.get("fund") or {}).get("nota"), "alertas": d["alertas"],
+        "governanca": d["gov"], "pares": [p["nome"] for p in d["pares_lista"]], "nota": (d.get("fund") or {}).get("nota"), "alertas": d["alertas"],
         "fundamentos": ca.fundamentos(d["raw"], d["dev"], d["github"], d["proto_raw"], d["chaves"])})
     return d
 
@@ -715,6 +852,7 @@ def _preparar(gid: str) -> dict:
 def _adicionar_e_escolher(gid: str, nome: str):
     cripto._adicionar_cripto(gid, nome)
     st.session_state["cripto_av_gid"] = gid
+    st.session_state["cripto_av_q"] = ""          # limpa a busca: a lista de resultados some depois de escolher
 
 
 def _resultados(res: list[dict], sel: list[str]):
