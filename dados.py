@@ -32,6 +32,11 @@ try:
 except Exception:  # biblioteca ausente ou quebrada: o app segue com a leitura direta da página
     fundamentus = None
 
+try:
+    import fonte_reserva  # reserva (Financial Modeling Prep) para ações americanas
+except Exception:  # arquivo ausente ou quebrado: o app segue só com o Yahoo
+    fonte_reserva = None
+
 
 def normaliza(t: str) -> str:
     return str(t).upper().strip().replace(".SA", "")
@@ -782,14 +787,26 @@ def _yahoo_ok(tk: str) -> dict:
     return d
 
 
+def _reserva(d: dict, tk: str, falhou: bool) -> dict:
+    """Ações americanas: se o Yahoo falhar (ou vier sem LPA e VPA), recorre à fonte reserva (fonte_reserva.py).
+    Nunca levanta exceção: qualquer problema na reserva devolve o resultado do Yahoo como estava."""
+    if fonte_reserva is None or eh_b3(tk):
+        return d
+    try:
+        return fonte_reserva.recorrer(d, tk, falhou)
+    except Exception:
+        return d
+
+
 def buscar_yahoo(ticker: str) -> dict:
     tk = normaliza(ticker)
     try:
-        return _yahoo_ok(tk)
+        d = _yahoo_ok(tk)
     except Exception as e:
         d = dict_base(tk)
         d["erro"] = str(e) if str(e).startswith("Erro Yahoo") else f"Yahoo Finance: {e}"
-        return d
+        return _reserva(d, tk, True)
+    return _reserva(d, tk, False)
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -822,11 +839,22 @@ def _caixa_yahoo_ok(tk: str) -> pd.DataFrame:
     return out.dropna(how="all").sort_index()
 
 
-def buscar_caixa_yahoo(ticker: str) -> pd.DataFrame:
+def _caixa_reserva(tk: str) -> pd.DataFrame:
+    """Fluxo de caixa anual da fonte reserva (só ações americanas). Vazio se indisponível."""
+    if fonte_reserva is None or eh_b3(tk):
+        return pd.DataFrame()
     try:
-        return _caixa_yahoo_ok(normaliza(ticker))
+        return fonte_reserva.buscar_caixa_fmp(tk)
     except Exception:
         return pd.DataFrame()
+
+
+def buscar_caixa_yahoo(ticker: str) -> pd.DataFrame:
+    tk = normaliza(ticker)
+    try:
+        return _caixa_yahoo_ok(tk)
+    except Exception:
+        return _caixa_reserva(tk)
 
 
 @st.cache_data(ttl=900, show_spinner=False)
