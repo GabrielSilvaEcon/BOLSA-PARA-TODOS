@@ -1104,6 +1104,12 @@ def relatorio(ctx: dict) -> dict:
     for a in ctx.get("alertas") or []:
         atencao.append(a["titulo"])
     sec.append({"titulo": "Indicadores que merecem atenção", "itens": list(dict.fromkeys(atencao)) or ["Nenhum no momento."]})
+    def _virgula(t):                      # números do relatório no padrão brasileiro (o texto do projeto fica como veio)
+        return t if t.startswith("Objetivo") else re.sub(r"(?<=\d)\.(?=\d)", ",", t)
+    for s_ in sec:
+        s_["itens"] = [_virgula(i) for i in s_["itens"]]
+    pos, neg = [_virgula(x) for x in pos], [_virgula(x) for x in neg]
+    atencao = [_virgula(x) for x in atencao]
     return {"secoes": sec, "positivos": pos, "negativos": neg, "atencao": list(dict.fromkeys(atencao)),
             "aviso": "Relatório gerado por regras sobre dados públicos. É informação educacional, não recomendação de compra ou venda."}
 
