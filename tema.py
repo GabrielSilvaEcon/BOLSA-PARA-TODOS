@@ -577,7 +577,12 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] {border-radius:14px 
 [data-baseweb="input"] input, [data-baseweb="textarea"] textarea, [data-baseweb="select"] * {
   color:#16202B !important; -webkit-text-fill-color:#16202B !important;}
 /* lista aberta do selectbox: fundo escuro, então o texto das opções precisa ser claro */
-[data-baseweb="popover"] :is(li, [role="option"], [role="option"] *, ul *) {color:#E8EEF5 !important; -webkit-text-fill-color:#E8EEF5 !important;}
+html body [data-baseweb="popover"] :is(ul, li, [role="listbox"], [role="option"]),
+html body [data-baseweb="popover"] :is(ul, li, [role="listbox"], [role="option"]) *,
+html body [data-testid="stSelectboxVirtualDropdown"] *, html body [data-baseweb="menu"] * {
+  color:#E8EEF5 !important; -webkit-text-fill-color:#E8EEF5 !important; opacity:1 !important;}
+html body [data-baseweb="popover"] [role="option"][aria-selected="true"],
+html body [data-baseweb="popover"] [role="option"]:hover {background:#2A4468 !important;}
 .cartao {padding:var(--s3); margin-bottom:var(--s2);}
 .cartao h1,.cartao h2,.cartao h3,.cartao h4 {margin-top:0;}
 
