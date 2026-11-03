@@ -576,6 +576,8 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] {border-radius:14px 
 [data-testid="stAlert"] {border:1px solid rgba(160,174,192,.18) !important;}
 [data-baseweb="input"] input, [data-baseweb="textarea"] textarea, [data-baseweb="select"] * {
   color:#16202B !important; -webkit-text-fill-color:#16202B !important;}
+/* lista aberta do selectbox: fundo escuro, então o texto das opções precisa ser claro */
+[data-baseweb="popover"] :is(li, [role="option"], [role="option"] *, ul *) {color:#E8EEF5 !important; -webkit-text-fill-color:#E8EEF5 !important;}
 .cartao {padding:var(--s3); margin-bottom:var(--s2);}
 .cartao h1,.cartao h2,.cartao h3,.cartao h4 {margin-top:0;}
 
