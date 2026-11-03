@@ -148,7 +148,8 @@ def preparar(tk: str, lista: pd.DataFrame, snap: dict | None, precos: dict | Non
         fontes["dy_rec"] = ("calculado (Yahoo Finance)", div.get("ultimo"))
     peers, desc = fiis.pares(lista, tk) if row else (pd.DataFrame(), "sem lista de FIIs")
     pinfo = {"descricao": desc, "dy_mediana": fiis.mediana_pares(peers, "dy"), "pvp_mediana": fiis.mediana_pares(peers, "pvp"),
-             "vacancia_mediana": fiis.mediana_pares(peers, "vacancia")}
+             "vacancia_mediana": fiis.mediana_pares(
+                 peers[peers["qtd_imoveis"] > 0] if len(peers) and "qtd_imoveis" in peers else peers, "vacancia")}
     riscos = fiis.avaliar_riscos(cls, ind, div, pinfo)
     datas = {f"{k}": f"{v[0]}" + (f" ({_data_br(v[1])})" if v[1] else "") for k, v in fontes.items() if k != "pvp_aviso"}
     rel = fiis.montar_relatorio(tk, cls, ind, div, riscos, pinfo, datas)
