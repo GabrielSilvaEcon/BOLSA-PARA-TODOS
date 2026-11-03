@@ -1,671 +1,564 @@
 """
-FIIs: classificação, leitura da lista do Fundamentus, qualidade dos dividendos, riscos, pares, relatório e carteira.
+Página de FIIs (passo 8): coleta, preparação dos dados e telas. A lógica de análise está em fiis.py e fiis_cvm.py (puros).
 
-Módulo PURO (sem Streamlit e sem rede): recebe dados já coletados. Regras do passo 8:
-  - só usa dado que existe; o que a fonte não entrega aparece como "indisponível", nunca como estimativa;
-  - Dividend Yield alto NÃO é tratado como positivo: ele só pontua dentro de uma faixa e é confrontado com os pares;
-  - fundos de estratégias diferentes (tijolo, papel, FOF...) não são ranqueados entre si;
-  - os limites abaixo (LIM_*) são regras educacionais para chamar atenção, não recomendação.
+Fontes: lista de FIIs e fotografia atual do Fundamentus; preços e proventos do Yahoo Finance; informe mensal oficial da
+CVM (histórico de patrimônio, valor patrimonial, cotistas e passivo). O que nenhuma dessas fontes entrega aparece como
+"indisponível", com a explicação. Nada é estimado.
 """
 from __future__ import annotations
 
-import html as _html
-import math
 import re
-import unicodedata
-from dataclasses import dataclass, field
+from datetime import date
 
 import pandas as pd
+import streamlit as st
 
+import comparador
 import crescimento as cr
+import evolucao
+import fiis
+import fiis_cvm
+import tema
 
-# --------------------------------------------------------------------------- limites educacionais
-LIM_VACANCIA_ALTA = 15.0       # % — acima disso, vacância alta
-LIM_VACANCIA_MEDIA = 8.0
-LIM_LIQ_ALTA = 300_000         # R$/dia — abaixo disso, risco de liquidez alto
-LIM_LIQ_MEDIA = 1_000_000
-LIM_IMOVEIS_ALTO = 2           # fundos de tijolo com até 2 imóveis: concentração alta
-LIM_IMOVEIS_MEDIO = 5
-LIM_PVP_AGIO = 1.15
-LIM_PVP_DESCONTO = 0.70        # desconto muito grande: o mercado pode estar enxergando um problema
-LIM_DY_ALTO = 14.0             # % ao ano
-LIM_DY_VS_PARES = 1.5          # DY acima de 1,5× a mediana dos pares chama atenção
-LIM_EXTRA = 1.5                # pagamento acima de 1,5× a mediana recente = candidato a extraordinário
-LIM_REGULARIDADE = 10          # meses pagos em 12 abaixo disso = distribuição irregular
-LIM_QUEDA_DIV = -0.15
-LIM_PESO_ATIVO = 25.0          # % da carteira num único FII
-LIM_PESO_SEGMENTO = 50.0       # % da carteira num segmento
+try:
+    import requests
+except Exception:                         # pragma: no cover
+    requests = None
+
+URL_LISTA = "https://www.fundamentus.com.br/fii_resultado.php"
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+      "Referer": "https://www.fundamentus.com.br/"}
+NIVEL = {"alto": ("🔴", "Alto"), "medio": ("🟡", "Médio"), "baixo": ("🟢", "Baixo"), "indisponivel": ("⚪", "Sem dado")}
 
 
-def _ok(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+# =============================================================================== formatação
+def _f(v, casas: int = 2, suf: str = "", pre: str = "") -> str:
+    if not fiis._ok(v):
+        return "n/d"
+    t = f"{v:,.{casas}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{pre}{t}{suf}"
 
 
-def _chave(s) -> str:
-    s = unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode()
-    return re.sub(r"[^a-z0-9]", "", s.lower())
+def _brl_g(v) -> str:
+    if not fiis._ok(v):
+        return "n/d"
+    for lim, suf in ((1e9, " bi"), (1e6, " mi"), (1e3, " mil")):
+        if abs(v) >= lim:
+            return _f(v / lim, 2, suf, "R$ ")
+    return _f(v, 2, "", "R$ ")
 
 
-# =============================================================================== classificação
-ESTRATEGIAS = {"tijolo": "Tijolo (imóveis físicos)", "papel": "Papel (recebíveis/CRIs)", "hibrido": "Híbrido",
-               "fof": "Fundo de fundos (FOF)", "desenvolvimento": "Desenvolvimento", "outros": "Outros / não classificado"}
-
-# (palavra-chave no segmento normalizado, estratégia, segmento exibido). Vale a primeira que bater.
-REGRAS_SEGMENTO = [
-    ("fundodefundos", "fof", "Fundo de fundos"), ("fof", "fof", "Fundo de fundos"),
-    ("titulos", "papel", "Papel (CRI/LCI)"), ("valoresmob", "papel", "Papel (CRI/LCI)"), ("recebiv", "papel", "Papel (CRI/LCI)"),
-    ("papel", "papel", "Papel (CRI/LCI)"), ("hibrido", "hibrido", "Híbrido"), ("misto", "hibrido", "Híbrido"), ("multicateg", "hibrido", "Híbrido (multicategoria)"),
-    ("desenvolv", "desenvolvimento", "Desenvolvimento"),
-    ("shopping", "tijolo", "Shopping centers"), ("logist", "tijolo", "Logística"), ("industrial", "tijolo", "Logística"),
-    ("laje", "tijolo", "Lajes corporativas"), ("corporativ", "tijolo", "Lajes corporativas"),
-    ("escritorio", "tijolo", "Lajes corporativas"), ("hotel", "tijolo", "Hotéis"), ("agencia", "tijolo", "Agências bancárias"),
-    ("urbana", "tijolo", "Renda urbana"), ("varejo", "tijolo", "Renda urbana"), ("hospital", "tijolo", "Hospitais"),
-    ("educacion", "tijolo", "Educacional"), ("residenc", "tijolo", "Residencial"), ("terras", "tijolo", "Terras e fazendas"),
-    ("fazenda", "tijolo", "Terras e fazendas"),
-]
-
-
-@dataclass
-class ClasseFii:
-    estrategia: str                # chave de ESTRATEGIAS
-    segmento: str                  # nome exibido
-    confianca: str                 # "alta" (segmento reconhecido) | "baixa" (não reconhecido)
-    origem: str
-
-    @property
-    def rotulo(self) -> str:
-        return f"{ESTRATEGIAS[self.estrategia]} · {self.segmento}"
-
-
-def classificar(segmento_fonte: str | None, nome: str | None = None, origem: str = "Fundamentus") -> ClasseFii:
-    """Classifica pelo segmento informado pela fonte. Segmento desconhecido ou 'Outros' fica "outros" com confiança
-    baixa: não se adivinha. (O nome do fundo só serve para o caso de agências/renda urbana, quando traz a palavra.)"""
-    seg = _chave(segmento_fonte or "")
-    for chave, est, nome_seg in REGRAS_SEGMENTO:
-        if chave in seg:
-            return ClasseFii(est, nome_seg, "alta", origem)
-    n = _chave(nome or "")
-    for chave, est, nome_seg in (("agencia", "tijolo", "Agências bancárias"), ("urbana", "tijolo", "Renda urbana")):
-        if chave in n:
-            return ClasseFii(est, nome_seg, "baixa", "nome do fundo")
-    return ClasseFii("outros", (segmento_fonte or "Não informado").strip() or "Não informado", "baixa", origem)
-
-
-def comparaveis(a: ClasseFii, b: ClasseFii) -> tuple[bool, str]:
-    """Dois FIIs podem ser comparados indiscriminadamente? Mesma estratégia é o mínimo; tijolo de segmentos diferentes
-    (shopping × logística) só compara critérios gerais."""
-    if "outros" in (a.estrategia, b.estrategia):
-        return False, "Um dos fundos não tem segmento identificado: a comparação direta pode enganar."
-    if a.estrategia != b.estrategia:
-        return False, (f"Estratégias diferentes ({ESTRATEGIAS[a.estrategia]} × {ESTRATEGIAS[b.estrategia]}): risco, renda e "
-                       "valuation seguem lógicas distintas. Compare só liquidez, retorno e volatilidade.")
-    if a.estrategia == "tijolo" and a.segmento != b.segmento:
-        return True, (f"Segmentos de tijolo diferentes ({a.segmento} × {b.segmento}): vacância e P/VP não têm o mesmo patamar "
-                      "normal em cada segmento.")
-    return True, ""
-
-
-# =============================================================================== lista do Fundamentus
-CAMPOS_LISTA = {
-    "papel": ("papel",), "segmento": ("segmento",), "cotacao": ("cotacao",), "ffo_yield": ("ffoyield",),
-    "dy": ("dividendyield", "divyield"), "pvp": ("pvp",), "valor_mercado": ("valordemercado",), "liquidez": ("liquidez",),
-    "qtd_imoveis": ("qtddeimoveis", "qtdimoveis"), "preco_m2": ("precodom2", "precom2"),
-    "aluguel_m2": ("aluguelporm2", "aluguelm2"), "cap_rate": ("caprate",), "vacancia": ("vacanciamedia",),
-}
-
-
-class LayoutInesperado(Exception):
-    pass
-
-
-def num_br(txt) -> float | None:
-    """'1.234,56' → 1234.56 ; '8,9%' → 8.9 ; vazio, '-' ou texto → None. Padrão brasileiro."""
-    if txt is None:
-        return None
-    s = re.sub(r"[^0-9,.\-]", "", str(txt))
-    if s in ("", "-", ".", ","):
-        return None
+def _data_br(iso) -> str:
     try:
-        v = float(s.replace(".", "").replace(",", "."))
-    except ValueError:
-        return None
-    return v if math.isfinite(v) else None
+        return pd.Timestamp(iso).strftime("%d/%m/%Y")
+    except Exception:
+        return "—"
 
 
-_TR = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
-_TC = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
-
-
-def _texto(h: str) -> str:
-    return _html.unescape(re.sub(r"<[^>]+>", "", h)).strip()
-
-
-def ler_lista_fundamentus(conteudo: str) -> pd.DataFrame:
-    """Tabela de todos os FIIs (fii_resultado.php). Índice = código. Colunas numéricas em float (None quando a fonte
-    traz '-' ou texto). Levanta LayoutInesperado se não achar a coluna do código (o site pode ter mudado)."""
-    linhas = [[_texto(c) for c in _TC.findall(tr)] for tr in _TR.findall(conteudo)]
-    linhas = [l for l in linhas if len(l) >= 3]
-    cab_i = next((i for i, l in enumerate(linhas) if any(_chave(c) == "papel" for c in l)), None)
-    if cab_i is None:
-        raise LayoutInesperado("coluna 'Papel' não encontrada na tabela de FIIs")
-    cab = [_chave(c) for c in linhas[cab_i]]
-    pos = {}
-    for campo, nomes in CAMPOS_LISTA.items():
-        for n in nomes:
-            if n in cab:
-                pos[campo] = cab.index(n)
-                break
-    if "papel" not in pos:
-        raise LayoutInesperado("coluna 'Papel' não encontrada")
-    registros = []
-    for l in linhas[cab_i + 1:]:
-        if len(l) <= pos["papel"]:
-            continue
-        tk = l[pos["papel"]].strip().upper()
-        if not re.fullmatch(r"[A-Z]{4}\d{1,2}", tk):
-            continue
-        reg = {"papel": tk}
-        for campo, i in pos.items():
-            if campo == "papel" or i >= len(l):
-                continue
-            reg[campo] = l[i].strip() if campo == "segmento" else num_br(l[i])
-        registros.append(reg)
-    if not registros:
-        raise LayoutInesperado("nenhum FII encontrado na tabela")
-    df = pd.DataFrame(registros).drop_duplicates("papel").set_index("papel")
-    return df
-
-
-def classificar_lista(df: pd.DataFrame) -> pd.DataFrame:
-    """Acrescenta estrategia/segmento_nome/confianca à lista."""
-    if df is None or df.empty:
-        return df
-    out = df.copy()
-    cls = [classificar(out["segmento"].get(tk) if "segmento" in out else None) for tk in out.index]
-    out["estrategia"] = [c.estrategia for c in cls]
-    out["segmento_nome"] = [c.segmento for c in cls]
-    out["confianca"] = [c.confianca for c in cls]
-    return out
-
-
-# =============================================================================== dividendos
-@dataclass
-class Extraordinario:
-    mes: str
-    valor: float
-    razao: float                   # valor ÷ mediana recente
-
-
-def analisar_dividendos(div, preco: float | None = None) -> dict:
-    """Qualidade dos rendimentos a partir da série de proventos por cota (índice = data). Mede regularidade, estabilidade,
-    tendência e candidatos a rendimento extraordinário. NÃO sabe se o fundo usou reserva ou se o resultado cobre a
-    distribuição (isso exige o informe trimestral/relatório gerencial): esses campos vêm como None e a tela explica."""
-    s = cr.serie_limpa(div)
-    s = s[s > 0]
-    out = {"ok": False, "n_pagamentos": int(len(s)), "motivo": None}
-    if len(s) < 6:
-        out["motivo"] = "menos de 6 pagamentos no histórico: análise de regularidade não se aplica"
+# =============================================================================== coleta (rede, com cache)
+@st.cache_data(ttl=6 * 3600, show_spinner=False)
+def lista_fiis() -> dict:
+    """Todos os FIIs do Fundamentus, já classificados. Falha = df vazio + aviso (nunca dado inventado)."""
+    out = {"df": pd.DataFrame(), "data": date.today().isoformat(), "aviso": None}
+    if requests is None:
+        out["aviso"] = "Biblioteca de rede indisponível."
         return out
-    mensal = s.groupby(s.index.to_period("M")).sum()
-    meses = pd.period_range(mensal.index.min(), mensal.index.max(), freq="M")
-    mensal = mensal.reindex(meses, fill_value=0.0)
-    ult12, ant12 = mensal.iloc[-12:], mensal.iloc[-24:-12] if len(mensal) >= 24 else None
-    pagos12 = int((ult12 > 0).sum())
-    base = ult12[ult12 > 0]
-    med = float(base.median()) if len(base) else None
-    out.update({"ok": True, "primeiro": str(mensal.index[0]), "ultimo": str(mensal.index[-1]), "meses_historico": len(mensal),
-                "meses_pagos_12": pagos12 if len(mensal) >= 12 else None,
-                "regularidade": pagos12 / 12 * 100 if len(mensal) >= 12 else None,
-                "soma_12m": float(ult12.sum()) if len(mensal) >= 12 else None,
-                "mediana_12m": med, "ultimo_valor": float(mensal.iloc[-1]),
-                "cv": float(base.std() / base.mean() * 100) if len(base) >= 3 and base.mean() > 0 else None})
-    # candidatos a extraordinário: acima de 1,5× a mediana dos 12 meses anteriores ao pagamento, isolados
-    extras = []
-    for i in range(len(mensal)):
-        v = float(mensal.iloc[i])
-        if v <= 0 or i < 6:
-            continue
-        ref = mensal.iloc[max(0, i - 12):i]
-        ref = ref[ref > 0]
-        if len(ref) < 4:
-            continue
-        m = float(ref.median())
-        prox = float(mensal.iloc[i + 1]) if i + 1 < len(mensal) else None
-        if m > 0 and v > LIM_EXTRA * m and (prox is None or prox <= LIM_EXTRA * m):
-            extras.append(Extraordinario(str(mensal.index[i]), v, v / m))
-    recentes = [e for e in extras if pd.Period(e.mes) >= mensal.index[-1] - 11]
-    out["extraordinarios"] = extras
-    out["extraordinarios_12m"] = recentes
-    soma_extra = sum(e.valor - (med or 0) for e in recentes) if med else 0.0
-    out["soma_recorrente_12m"] = (out["soma_12m"] - soma_extra) if out["soma_12m"] is not None else None
-    out["peso_extra_12m"] = (soma_extra / out["soma_12m"] * 100) if out["soma_12m"] and soma_extra > 0 else 0.0
-    if ant12 is not None and ant12.sum() > 0:
-        out["var_12m"] = float(ult12.sum() / ant12.sum() - 1)
-    else:
-        out["var_12m"] = None
-    out["queda_ultimo"] = (float(mensal.iloc[-1] / med - 1) if med and mensal.iloc[-1] > 0 else (-1.0 if med else None))
-    ultimo_mes_pago = mensal.iloc[-1] > 0
-    out["ultimo_mes_sem_pagar"] = not bool(ultimo_mes_pago)
-    if preco and _ok(preco) and preco > 0 and out["soma_12m"] is not None:
-        out["dy_12m"] = out["soma_12m"] / preco * 100
-        out["dy_recorrente"] = out["soma_recorrente_12m"] / preco * 100
-    else:
-        out["dy_12m"] = out["dy_recorrente"] = None
-    out["anuais"] = cr.serie_limpa(mensal.groupby(mensal.index.year).sum().rename(lambda a: pd.Timestamp(f"{a}-12-31")))
-    # sem dado na fonte (Yahoo só traz data do pagamento e valor)
-    out["indisponivel"] = ["Resultado recorrente × distribuição", "Uso de reservas para distribuir",
-                           "Dividendo anunciado × efetivamente pago"]
+    try:
+        r = requests.get(URL_LISTA, headers=UA, timeout=25)
+        r.raise_for_status()
+        out["df"] = fiis.classificar_lista(fiis.ler_lista_fundamentus(r.text))
+    except fiis.LayoutInesperado as e:
+        out["aviso"] = f"O layout da lista do Fundamentus mudou ({e})."
+    except Exception as e:
+        out["aviso"] = f"Lista de FIIs indisponível agora ({e.__class__.__name__})."
     return out
 
 
-def classe_dividendo(d: dict) -> tuple[str, list[str]]:
-    """Resumo qualitativo da distribuição: ('boa' | 'atencao' | 'fraca' | 'insuficiente', motivos)."""
-    if not d.get("ok") or d.get("regularidade") is None:
-        return "insuficiente", [d.get("motivo") or "menos de 12 meses de pagamentos: regularidade e DY de 12 meses não se aplicam ainda"]
-    motivos, pontos = [], 0
-    if d["meses_pagos_12"] >= LIM_REGULARIDADE:
-        motivos.append(f"pagou em {d['meses_pagos_12']} dos últimos 12 meses")
-    else:
-        pontos += 2
-        motivos.append(f"pagou só em {d['meses_pagos_12']} dos últimos 12 meses (irregular)")
-    if d["cv"] is not None and d["cv"] > 25:
-        pontos += 1
-        motivos.append(f"valores oscilam muito (variação de {d['cv']:.0f}% em torno da média)")
-    if d["peso_extra_12m"] and d["peso_extra_12m"] >= 15:
-        pontos += 1
-        motivos.append(f"cerca de {d['peso_extra_12m']:.0f}% do total de 12 meses veio de pagamento acima do normal")
-    if d.get("var_12m") is not None and d["var_12m"] <= LIM_QUEDA_DIV:
-        pontos += 1
-        motivos.append(f"total de 12 meses caiu {abs(d['var_12m']) * 100:.0f}% contra os 12 meses anteriores")
-    if d["ultimo_mes_sem_pagar"]:
-        pontos += 1
-        motivos.append("o mês mais recente não teve pagamento")
-    return ("boa" if pontos == 0 else "atencao" if pontos <= 2 else "fraca"), motivos
-
-
-# =============================================================================== riscos
-@dataclass
-class Risco:
-    chave: str
-    nome: str
-    nivel: str                      # "alto" | "medio" | "baixo" | "indisponivel"
-    texto: str
-    evidencias: list = field(default_factory=list)
-
-
-def _niv(v, alto, medio, maior_e_pior=True):
-    if not _ok(v):
-        return "indisponivel"
-    if maior_e_pior:
-        return "alto" if v >= alto else "medio" if v >= medio else "baixo"
-    return "alto" if v <= alto else "medio" if v <= medio else "baixo"
-
-
-def avaliar_riscos(c: ClasseFii, ind: dict, div: dict | None = None, pares: dict | None = None) -> list[Risco]:
-    """Riscos do fundo com base só no que há de dado. `ind`: vacancia, qtd_imoveis, liquidez, pvp, dy, vol, dd_max,
-    alavancagem. Risco sem dado aparece como 'indisponível' com a explicação do que faltaria (nunca vira 'baixo')."""
-    r: list[Risco] = []
-    tijolo = c.estrategia in ("tijolo", "hibrido")
-    papel = c.estrategia in ("papel", "hibrido")
-    div = div or {}
-    pares = pares or {}
-
-    vac = ind.get("vacancia")
-    if tijolo or c.estrategia == "outros":
-        n = _niv(vac, LIM_VACANCIA_ALTA, LIM_VACANCIA_MEDIA)
-        r.append(Risco("vacancia", "Risco de vacância", n,
-                       {"alto": "Vacância alta: imóveis vazios não pagam aluguel e reduzem o rendimento.",
-                        "medio": "Vacância moderada: acompanhe se sobe de um mês para o outro.",
-                        "baixo": "Vacância baixa para o padrão geral (cada segmento tem seu normal).",
-                        "indisponivel": "Vacância não informada pela fonte para este fundo."}[n],
-                       [f"Vacância média: {vac:.1f}%".replace(".", ",")] if _ok(vac) else []))
-    nim = ind.get("qtd_imoveis")
-    if tijolo:
-        n = _niv(nim, LIM_IMOVEIS_ALTO, LIM_IMOVEIS_MEDIO, maior_e_pior=False)
-        r.append(Risco("concentracao_imoveis", "Risco de concentração em imóveis", n,
-                       {"alto": "Poucos imóveis: a perda de um inquilino pesa muito no resultado.",
-                        "medio": "Carteira pequena: a diversificação é limitada.",
-                        "baixo": "Número de imóveis razoável (isso não mede a concentração por inquilino).",
-                        "indisponivel": "Número de imóveis não informado."}[n],
-                       [f"{nim:.0f} imóvel(is)"] if _ok(nim) else []))
-        r.append(Risco("concentracao_inquilinos", "Concentração de inquilinos", "indisponivel",
-                       "O app ainda não lê a lista de inquilinos (está nos relatórios gerenciais). Verifique no relatório do "
-                       "fundo quanto da receita vem do maior inquilino.", []))
-    if papel:
-        r.append(Risco("credito", "Risco de crédito (devedores dos CRIs)", "indisponivel",
-                       "Fundos de papel dependem de os devedores pagarem. O app ainda não lê a carteira de CRIs "
-                       "(devedores, garantias, LTV, inadimplência): consulte o relatório gerencial.", []))
-        r.append(Risco("inadimplencia", "Inadimplência", "indisponivel",
-                       "Sem fonte integrada para inadimplência da carteira.", []))
-        r.append(Risco("juros_inflacao", "Sensibilidade a juros e inflação", "indisponivel",
-                       "Em fundos de papel o rendimento acompanha o indexador (CDI, IPCA ou prefixado). Juros altos "
-                       "costumam elevar o rendimento de CRIs em CDI e derrubar o preço de CRIs prefixados. Os indexadores "
-                       "do fundo não estão disponíveis ao app.", []))
-    elif tijolo:
-        r.append(Risco("juros_inflacao", "Sensibilidade a juros e inflação", "indisponivel",
-                       "Em fundos de tijolo os contratos costumam ser reajustados por IPCA/IGP-M, o que protege da inflação, "
-                       "mas juros altos reduzem o preço das cotas. O app não lê os índices de reajuste dos contratos.", []))
-    aval = ind.get("alavancagem")
-    n = _niv(aval, 0.3, 0.1)
-    r.append(Risco("alavancagem", "Risco de alavancagem e refinanciamento", n,
-                   {"alto": "Passivo relevante frente ao patrimônio: dívida aumenta o risco e depende de refinanciamento.",
-                    "medio": "Algum endividamento: vale conferir prazos e custo da dívida.",
-                    "baixo": "Passivo baixo frente ao patrimônio.",
-                    "indisponivel": "Alavancagem não calculada: o informe da CVM não foi lido para este fundo."}[n],
-                   [f"Passivo ÷ patrimônio líquido: {aval * 100:.0f}%"] if _ok(aval) else []))
-    liq = ind.get("liquidez")
-    n = _niv(liq, LIM_LIQ_ALTA, LIM_LIQ_MEDIA, maior_e_pior=False)
-    r.append(Risco("liquidez", "Risco de liquidez", n,
-                   {"alto": "Pouco volume negociado: vender rápido pode exigir aceitar preço menor.",
-                    "medio": "Liquidez moderada.", "baixo": "Boa liquidez diária.",
-                    "indisponivel": "Liquidez não informada."}[n],
-                   [f"Volume médio diário: R$ {liq:,.0f}".replace(",", ".")] if _ok(liq) else []))
-    # sustentabilidade e valuation entram como riscos de preço/renda
-    dy, med = ind.get("dy"), pares.get("dy_mediana")
-    if _ok(dy):
-        alto = dy >= LIM_DY_ALTO or (_ok(med) and med > 0 and dy >= LIM_DY_VS_PARES * med)
-        r.append(Risco("dy_elevado", "Dividend Yield acima do normal", "medio" if alto else "baixo",
-                       ("DY muito acima do padrão: pode ser preço depreciado, pagamento extraordinário ou distribuição que "
-                        "a carteira não sustenta. DY alto, sozinho, não é sinal de qualidade.") if alto
-                       else "DY dentro do que os pares praticam.",
-                       [f"DY: {dy:.1f}%".replace(".", ",")] + ([f"Mediana dos pares: {med:.1f}%".replace(".", ",")] if _ok(med) else [])))
-    if div.get("ok"):
-        k, mot = classe_dividendo(div)
-        r.append(Risco("distribuicao", "Regularidade dos rendimentos",
-                       {"boa": "baixo", "atencao": "medio", "fraca": "alto", "insuficiente": "indisponivel"}[k],
-                       "; ".join(mot).capitalize() + ".", []))
-    pvp = ind.get("pvp")
-    if _ok(pvp):
-        if pvp >= LIM_PVP_AGIO:
-            r.append(Risco("pvp", "Preço acima do valor patrimonial", "medio",
-                           "A cota custa mais que o patrimônio por cota: o ágio só se justifica por gestão ou renda diferenciada.",
-                           [f"P/VP: {pvp:.2f}".replace(".", ",")]))
-        elif pvp <= LIM_PVP_DESCONTO:
-            r.append(Risco("pvp", "Desconto muito grande sobre o patrimônio", "medio",
-                           "O mercado paga bem menos que o patrimônio declarado: pode ser oportunidade ou sinal de que o valor "
-                           "contábil dos imóveis/recebíveis não é confiável.", [f"P/VP: {pvp:.2f}".replace(".", ",")]))
-    vol, dd = ind.get("vol"), ind.get("dd_max")
-    if _ok(dd):
-        n = _niv(dd, -25, -12, maior_e_pior=False)
-        r.append(Risco("preco", "Oscilação do preço (12 meses)", n,
-                       {"alto": "Queda forte nos últimos 12 meses.", "medio": "Queda moderada.", "baixo": "Oscilação contida.",
-                        "indisponivel": ""}[n],
-                       [f"Maior queda: {dd:.0f}%"] + ([f"Volatilidade anual: {vol:.0f}%"] if _ok(vol) else [])))
-    return r
-
-
-# =============================================================================== pares e rankings
-def pares(lista: pd.DataFrame, tk: str, minimo: int = 3) -> tuple[pd.DataFrame, str]:
-    """Pares do fundo na lista: mesmo segmento (tijolo) ou mesma estratégia. Devolve (df sem o próprio fundo, descrição).
-    Se houver menos de `minimo` pares no segmento, usa a estratégia toda e avisa."""
-    if lista is None or lista.empty or tk not in lista.index or "estrategia" not in lista:
-        return pd.DataFrame(), "sem lista de FIIs"
-    row = lista.loc[tk]
-    mesma = lista[(lista["estrategia"] == row["estrategia"]) & (lista.index != tk)]
-    if row["estrategia"] == "outros":
-        return pd.DataFrame(), "fundo sem segmento identificado"
-    seg = mesma[mesma["segmento_nome"] == row["segmento_nome"]]
-    if row["estrategia"] == "tijolo" and len(seg) >= minimo:
-        return seg, f"{row['segmento_nome']} ({len(seg)} fundos)"
-    return mesma, f"{ESTRATEGIAS[row['estrategia']]} ({len(mesma)} fundos)" + (
-        " — poucos pares no mesmo segmento" if row["estrategia"] == "tijolo" else "")
-
-
-def mediana_pares(df: pd.DataFrame, coluna: str, liq_min: float = 100_000) -> float | None:
-    if df is None or df.empty or coluna not in df:
+@st.cache_data(ttl=24 * 3600, show_spinner=False)
+def _zip_cvm(ano: int):
+    try:
+        c = fiis_cvm.baixar(fiis_cvm.URL_INF_MENSAL.format(ano=ano))
+        return fiis_cvm.ler_zip(c) if c is not None else None
+    except fiis_cvm.LayoutInesperado:
+        raise
+    except Exception:
         return None
-    d = df[df["liquidez"] >= liq_min] if "liquidez" in df else df
-    s = pd.to_numeric(d[coluna], errors="coerce").dropna()
-    return float(s.median()) if len(s) >= 3 else None
 
 
-CRITERIOS_RANKING = {
-    "valuation": ("pvp", True, "P/VP (menor = mais barato frente ao patrimônio)"),
-    "renda": ("dy", False, "Dividend Yield (dentro de uma faixa saudável: veja a nota)"),
-    "liquidez": ("liquidez", False, "Liquidez diária"),
-    "vacancia": ("vacancia", True, "Vacância (menor = melhor)"),
-    "tamanho": ("valor_mercado", False, "Valor de mercado (porte)"),
-}
+@st.cache_data(ttl=24 * 3600, show_spinner=False)
+def historico_cvm(cnpj: str, hoje_ano: int, n_anos: int = 6) -> dict:
+    out = {"df": pd.DataFrame(), "avisos": [], "erro": None, "anos": []}
+    tabs = {}
+    for ano in range(hoje_ano, hoje_ano - n_anos, -1):
+        try:
+            t = _zip_cvm(ano)
+        except fiis_cvm.LayoutInesperado as e:
+            out["erro"] = str(e)
+            return out
+        if t:
+            tabs[ano] = t
+            out["anos"].append(ano)
+    if not tabs:
+        out["avisos"].append("A CVM não devolveu os arquivos de informe mensal agora.")
+        return out
+    try:
+        out["df"] = fiis_cvm.padronizar(fiis_cvm.juntar_anos(tabs), cnpj)
+    except fiis_cvm.LayoutInesperado as e:
+        out["erro"] = str(e)
+        return out
+    if out["df"].empty:
+        out["avisos"].append("Esse CNPJ não aparece nos informes mensais de FIIs da CVM.")
+    out["avisos"] += fiis_cvm.validar(out["df"])
+    return out
 
 
-def ranking(df: pd.DataFrame, criterio: str, liq_min: float = 100_000, topo: int = 10) -> pd.DataFrame:
-    """Ranking SÓ dentro do df recebido (deve ser de uma mesma estratégia/segmento). Fundos com liquidez abaixo do mínimo
-    ficam fora (preço de fundo ilíquido engana). No critério 'renda' o DY acima do limite ou de 1,5× a mediana não
-    sobe no ranking: é movido para o fim, porque DY muito alto costuma ser sinal de problema, não de qualidade."""
-    col, crescente, _ = CRITERIOS_RANKING[criterio]
-    if df is None or df.empty or col not in df:
-        return pd.DataFrame()
-    d = df[df.get("liquidez", pd.Series(dtype=float)) >= liq_min] if "liquidez" in df else df
-    d = d.dropna(subset=[col])
-    if criterio == "valuation":
-        d = d[d[col] > 0]
-    if criterio == "renda" and len(d) >= 3:
-        med = float(d[col].median())
-        suspeito = (d[col] >= LIM_DY_ALTO) | (d[col] >= LIM_DY_VS_PARES * med)
-        d = pd.concat([d[~suspeito].sort_values(col, ascending=False), d[suspeito].sort_values(col)])
-        return d.head(topo)
-    return d.sort_values(col, ascending=crescente).head(topo)
+@st.cache_data(ttl=24 * 3600, show_spinner=False)
+def _geral_cvm(hoje_ano: int):
+    for ano in (hoje_ano, hoje_ano - 1):
+        try:
+            t = _zip_cvm(ano)
+        except Exception:
+            t = None
+        if t and "geral" in t:
+            return t["geral"]
+    return pd.DataFrame()
 
 
-# =============================================================================== relatório automático
-def montar_relatorio(tk: str, c: ClasseFii, ind: dict, div: dict | None, riscos: list[Risco], pares_info: dict | None = None,
-                     datas: dict | None = None) -> dict:
-    """Relatório em seções {titulo: [linhas]} só com o que há de dado. 'indisponivel' lista o que falta."""
-    div = div or {}
-    pares_info = pares_info or {}
-    secoes: dict[str, list] = {}
-    pos, neg, atencao, indisp = [], [], [], []
+# =============================================================================== preparação (testável)
+def preparar(tk: str, lista: pd.DataFrame, snap: dict | None, precos: dict | None, cvm_df: pd.DataFrame | None,
+             hoje: str | None = None) -> dict:
+    """Junta tudo o que a página mostra. Sem Streamlit: recebe os dados já coletados."""
+    hoje = hoje or date.today().isoformat()
+    precos = precos or {}
+    row = lista.loc[tk].to_dict() if lista is not None and not lista.empty and tk in lista.index else {}
+    snap = (snap or {}).get("dados", snap or {}) if isinstance(snap, dict) else {}
+    seg = row.get("segmento") or snap.get("segmento")
+    cls = fiis.classificar(seg)
+    pm = comparador.metricas_preco(precos.get("ajustado", pd.Series(dtype=float)))
+    dist = comparador.metricas_distribuicao(precos.get("div"), precos.get("preco", pd.Series(dtype=float)))
+    ind, fontes = fiis.montar_indicadores(row, snap, pm, dist, cvm_df, hoje)
+    if "liquidez" not in ind:                       # sem a lista do Fundamentus: média de 90 dias do Yahoo
+        liq = comparador.liquidez_diaria(precos.get("preco"), precos.get("volume"))
+        if fiis._ok(liq):
+            ind["liquidez"] = float(liq)
+            fontes["liquidez"] = ("Yahoo Finance (média de 90 dias)", None)
+    div = fiis.analisar_dividendos(precos.get("div"), ind.get("cotacao"))
+    if div.get("ok") and fiis._ok(div.get("dy_recorrente")):
+        ind["dy_rec"] = div["dy_recorrente"]
+        fontes["dy_rec"] = ("calculado (Yahoo Finance)", div.get("ultimo"))
+    peers, desc = fiis.pares(lista, tk) if row else (pd.DataFrame(), "sem lista de FIIs")
+    pinfo = {"descricao": desc, "dy_mediana": fiis.mediana_pares(peers, "dy"), "pvp_mediana": fiis.mediana_pares(peers, "pvp"),
+             "vacancia_mediana": fiis.mediana_pares(
+                 peers[peers["qtd_imoveis"] > 0] if len(peers) and "qtd_imoveis" in peers else peers, "vacancia")}
+    riscos = fiis.avaliar_riscos(cls, ind, div, pinfo)
+    datas = {f"{k}": f"{v[0]}" + (f" ({_data_br(v[1])})" if v[1] else "") for k, v in fontes.items() if k != "pvp_aviso"}
+    rel = fiis.montar_relatorio(tk, cls, ind, div, riscos, pinfo, datas)
+    return {"tk": tk, "row": row, "classe": cls, "ind": ind, "fontes": fontes, "div": div, "pares": peers, "pares_info": pinfo,
+            "riscos": riscos, "relatorio": rel, "pm": pm, "dist": dist, "datas": datas, "tem_lista": bool(row)}
 
-    def f(v, casas=2, suf=""):
-        return "n/d" if not _ok(v) else f"{v:,.{casas}f}{suf}".replace(",", "X").replace(".", ",").replace("X", ".")
-    pvp, dy, vac = ind.get("pvp"), ind.get("dy"), ind.get("vacancia")
-    secoes["Resumo"] = [f"{tk}: {c.rotulo}." + ("" if c.confianca == "alta" else " (classificação de baixa confiança)"),
-                        f"Cota: R$ {f(ind.get('cotacao'))} · P/VP {f(pvp)} · DY {f(dy, 1, '%')} · liquidez R$ {f(ind.get('liquidez'), 0)}/dia."]
-    # carteira
-    carteira = []
+
+def inds_comparador(d: dict) -> dict:
+    """Indicadores no formato do comparador (passo 6)."""
+    I = comparador.Ind
+    ind, fo, pm = d["ind"], d["fontes"], d["pm"]
+    out = comparador.inds_de_preco(pm)
+
+    def mk(k, origem="dado", periodo=None):
+        v = ind.get(k)
+        f = fo.get(k, (None, None))
+        return I(v, origem, periodo, f[1] if isinstance(f[1], str) and re.match(r"\d{4}-\d{2}-\d{2}", f[1] or "") else None)
+    out.update({"dy12m": mk("dy12m", "calculado", "12m"), "meses_pagos": mk("meses_pagos", "calculado", "12m"),
+                "liq": mk("liquidez", "dado", "2 meses"), "pvp": mk("pvp"), "dy_rec": mk("dy_rec", "calculado", "12m"),
+                "cotistas": mk("cotistas"), "qtd_imoveis": mk("qtd_imoveis")})
+    tijolo = d["classe"].estrategia in ("tijolo", "hibrido")
+    out["vacancia"] = mk("vacancia") if tijolo else I(None, aplica=False)
+    return out
+
+
+# =============================================================================== telas
+def _linha_ind(nome, chave, d, fmt):
+    v = d["ind"].get(chave)
+    fonte, data = d["fontes"].get(chave, ("—", None))
+    return {"Indicador": nome, "Valor": fmt(v) if v is not None else "indisponível", "Fonte": fonte if v is not None else "—",
+            "Referência": (_data_br(data) if data else "—") if v is not None else "—"}
+
+
+INDICADORES = [
+    ("Cotação", "cotacao", lambda v: _f(v, 2, "", "R$ ")), ("P/VP", "pvp", lambda v: _f(v, 2)),
+    ("Valor patrimonial por cota", "vp_cota", lambda v: _f(v, 2, "", "R$ ")),
+    ("Dividend Yield (anual, fonte)", "dy", lambda v: _f(v, 1, "%")),
+    ("Dividend Yield 12 meses (calculado)", "dy12m", lambda v: _f(v, 1, "%")),
+    ("Dividend Yield sem pagamentos acima do normal", "dy_rec", lambda v: _f(v, 1, "%")),
+    ("Rendimento do último mês informado", "dy_mes", lambda v: _f(v, 2, "%")),
+    ("Valor de mercado", "valor_mercado", _brl_g), ("Patrimônio líquido", "patrimonio", _brl_g),
+    ("Liquidez média diária", "liquidez", lambda v: _brl_g(v)), ("Número de cotistas", "cotistas", lambda v: _f(v, 0)),
+    ("Número de cotas", "cotas", lambda v: _f(v, 0)), ("Número de imóveis", "qtd_imoveis", lambda v: _f(v, 0)),
+    ("Vacância média", "vacancia", lambda v: _f(v, 1, "%")), ("Cap rate", "cap_rate", lambda v: _f(v, 1, "%")),
+    ("Preço por m²", "preco_m2", lambda v: _f(v, 0, "", "R$ ")), ("Aluguel por m²", "aluguel_m2", lambda v: _f(v, 0, "", "R$ ")),
+    ("FFO Yield", "ffo_yield", lambda v: _f(v, 1, "%")),
+    ("Alavancagem (passivo ÷ patrimônio)", "alavancagem", lambda v: _f(v * 100, 0, "%")),
+    ("Retorno 12 meses (com rendimentos)", "ret12m", lambda v: _f(v, 1, "%")),
+    ("Volatilidade anual", "vol", lambda v: _f(v, 1, "%")), ("Maior queda em 12 meses", "dd_max", lambda v: _f(v, 1, "%")),
+]
+SEM_FONTE_IND = ["Vacância financeira", "Receita imobiliária", "Resultado distribuível", "Reservas acumuladas",
+                 "Concentração de inquilinos", "Concentração geográfica"]
+
+
+def _aba_visao(d):
+    c, ind = d["classe"], d["ind"]
+    st.markdown(f"**{c.rotulo}**" + ("" if c.confianca == "alta" else " · classificação de baixa confiança"))
+    if not d["tem_lista"]:
+        st.warning("Este código não está na lista de FIIs do Fundamentus agora: os indicadores de P/VP, vacância e liquidez "
+                   "podem faltar. Confira o código.")
+    a, b = st.columns(2)
+    a.metric("Cotação", _f(ind.get("cotacao"), 2, "", "R$ "))
+    b.metric("P/VP", _f(ind.get("pvp"), 2))
+    a, b = st.columns(2)
+    a.metric("Dividend Yield (anual)", _f(ind.get("dy"), 1, "%"))
+    b.metric("Liquidez diária", _brl_g(ind.get("liquidez")))
     if c.estrategia in ("tijolo", "hibrido"):
-        carteira.append(f"Imóveis: {f(ind.get('qtd_imoveis'), 0)} · vacância média {f(vac, 1, '%')}.")
-        if _ok(ind.get("cap_rate")):
-            carteira.append(f"Cap rate informado: {f(ind['cap_rate'], 1, '%')}.")
-        if _ok(vac):
-            (neg if vac >= LIM_VACANCIA_ALTA else pos if vac < LIM_VACANCIA_MEDIA else atencao).append(f"Vacância de {f(vac, 1, '%')}.")
+        a, b = st.columns(2)
+        a.metric("Vacância média", _f(ind.get("vacancia"), 1, "%"))
+        b.metric("Imóveis", _f(ind.get("qtd_imoveis"), 0))
+    for k, (txt, _) in d["fontes"].items():
+        if k == "pvp_aviso":
+            st.caption("⚠️ " + txt)
+    altos = [r for r in d["riscos"] if r.nivel == "alto"]
+    if altos:
+        st.error("Pontos de atenção: " + "; ".join(r.nome for r in altos) + ". Veja a aba Riscos.")
+    st.caption("Fontes: Fundamentus (indicadores de hoje), Yahoo Finance (preço e rendimentos) e CVM (informe mensal, quando o "
+               "CNPJ é informado). " + comparador.AVISO_LEGAL)
+
+
+def _aba_indicadores(d):
+    linhas = [_linha_ind(n, k, d, f) for n, k, f in INDICADORES]
+    df = pd.DataFrame(linhas)
+    st.dataframe(df, hide_index=True, width="stretch")
+    st.markdown("**Sem fonte integrada:** " + ", ".join(SEM_FONTE_IND) + ". Estão nos relatórios gerenciais dos fundos.")
+    st.caption("Cada valor mostra de onde veio e a data de referência. Fundamentus traz o valor de hoje; a CVM traz o último "
+               "informe mensal (sai com atraso).")
+
+
+def _aba_dividendos(d, precos):
+    div = d["div"]
+    s = precos.get("div", pd.Series(dtype=float))
+    if not div.get("ok"):
+        st.info(div.get("motivo") or "Sem histórico de rendimentos.")
+        return
+    k, mot = fiis.classe_dividendo(div)
+    rot = {"boa": "🟢 Distribuição regular", "atencao": "🟡 Distribuição com pontos de atenção", "fraca": "🔴 Distribuição fraca",
+           "insuficiente": "⚪ Histórico insuficiente"}[k]
+    st.markdown(f"**{rot}**")
+    for m in mot:
+        st.write("• " + (m[0].upper() + m[1:] + ".").replace("$", "\\$"))
+    a, b = st.columns(2)
+    a.metric("DY 12 meses", _f(div.get("dy_12m"), 1, "%"))
+    b.metric("DY sem pagamentos acima do normal", _f(div.get("dy_recorrente"), 1, "%"))
+    a, b = st.columns(2)
+    a.metric("Meses pagos (12m)", _f(div.get("meses_pagos_12"), 0))
+    b.metric("Variação 12m vs 12m anteriores", _f(div["var_12m"] * 100, 1, "%") if div.get("var_12m") is not None else "n/d")
+    mensal = s.groupby(s.index.to_period("M")).sum()
+    mensal.index = mensal.index.to_timestamp(how="end").normalize()
+    df = pd.DataFrame({"Rendimento por cota (R$)": mensal.tail(36)})
+    st.markdown("**Rendimento por cota (últimos 36 meses, R$)**")
+    st.plotly_chart(evolucao.grafico_barras(df, ["Rendimento por cota (R$)"], "Rendimento por cota (últimos 36 meses)"),
+                    width="stretch", key=f"fii_div_{d['tk']}", config={"displayModeBar": False})
+    if div.get("extraordinarios"):
+        st.markdown("**Pagamentos bem acima do normal (possíveis extraordinários)**")
+        st.dataframe(pd.DataFrame([{"Mês": e.mes, "Valor por cota": _f(e.valor, 2, "", "R$ "), "Vezes a mediana": _f(e.razao, 1, "×")}
+                                   for e in div["extraordinarios"][-8:]]), hide_index=True, width="stretch")
+        st.caption("É um indício estatístico (acima de 1,5× a mediana dos 12 meses anteriores), não uma confirmação.")
+    an = div.get("anuais")
+    if an is not None and len(an) >= 2:
+        st.markdown("**Rendimentos por ano (R$ por cota)**")
+        st.plotly_chart(evolucao.grafico_barras(pd.DataFrame({"Total no ano (R$/cota)": an}), ["Total no ano (R$/cota)"],
+                                                "Rendimentos por ano"), width="stretch", key=f"fii_divan_{d['tk']}",
+                        config={"displayModeBar": False})
+        cg = cr.cagr_periodos(an, (3, 5))
+        st.caption("Crescimento anual dos rendimentos por cota: " + " · ".join(f"{n} anos: {cg[n].texto}" for n in (3, 5)))
+    st.markdown("**Indisponível (precisa do relatório gerencial):** " + ", ".join(div["indisponivel"]) + ".")
+
+
+def _usar_cnpj(chave: str, cn: str):
+    """Callback do botão: roda ANTES do próximo desenho da tela, então pode mudar o valor do campo de CNPJ."""
+    st.session_state[chave] = cn
+    st.session_state[f"in_{chave}"] = cn
+
+
+def _escolher_cnpj(tk: str) -> str | None:
+    chave = f"fii_cnpj_{tk}"
+    atual = st.session_state.get(chave, "")
+    c = st.text_input("CNPJ do fundo (para buscar o histórico oficial na CVM)", value=atual, key=f"in_{chave}",
+                      placeholder="00.000.000/0000-00")
+    if c and fiis_cvm.cnpj_valido(c):
+        st.session_state[chave] = fiis_cvm.formatar_cnpj(c)
+    elif c:
+        st.warning("CNPJ inválido.")
+    with st.expander("Não sei o CNPJ: buscar pelo nome"):
+        nome = st.text_input("Parte do nome do fundo", key=f"nome_{chave}", placeholder="Ex.: logistica, kinea, xp malls")
+        if nome and len(nome.strip()) >= 3:
+            ach = fiis_cvm.buscar_por_nome(_geral_cvm(date.today().year), nome)
+            if not ach:
+                st.caption("Nenhum fundo com esse nome (a CVM usa o nome completo do regulamento).")
+            for cn, nm in ach:
+                st.button(f"{nm} — {cn}", key=f"pick_{chave}_{cn}", on_click=_usar_cnpj, args=(chave, cn))
+    return st.session_state.get(chave)
+
+
+def _recorte(s: pd.Series, vista: str, como: str = "ultimo") -> pd.Series:
+    s = cr.serie_limpa(s)
+    if vista == "Anual":
+        return fiis_cvm.serie_anual(s, como)
+    if vista == "Trimestral":
+        return s[s.index.month.isin([3, 6, 9, 12])]
+    return s
+
+
+def _ligar_cvm(tk: str, cnpj: str):
+    st.session_state[f"fii_cvm_ok_{tk}"] = cnpj
+
+
+def _cvm_do_fundo(tk: str) -> pd.DataFrame | None:
+    cn = st.session_state.get(f"fii_cvm_ok_{tk}")
+    if not cn:
+        return None
+    h = historico_cvm(cn, date.today().year)
+    return h["df"] if not h["df"].empty else None
+
+
+def _aba_historico(d, precos):
+    tk = d["tk"]
+    cnpj = _escolher_cnpj(tk)
+    if not cnpj:
+        st.info("Informe o CNPJ para ver o histórico oficial (patrimônio, valor patrimonial, cotistas, rendimento do mês e passivo).")
+    else:
+        st.button("Carregar histórico da CVM", key=f"fii_cvm_btn_{tk}", type="primary", on_click=_ligar_cvm, args=(tk, cnpj))
+        if st.session_state.get(f"fii_cvm_ok_{tk}") == cnpj:
+            h = historico_cvm(cnpj, date.today().year)
+            if h["erro"]:
+                st.error("O layout do arquivo da CVM não é o esperado: " + h["erro"])
+            for a in h["avisos"]:
+                st.caption("⚠️ " + a)
+            if not h["df"].empty:
+                _mostrar_cvm(d, h["df"], precos)
+        else:
+            st.caption("Toque em **Carregar histórico da CVM** (arquivos grandes: leva alguns segundos na primeira vez).")
+    st.markdown("**Vacância, receita imobiliária e inquilinos ao longo do tempo:** a CVM não publica no informe mensal "
+                "(estão nos relatórios gerenciais), então não há série histórica no app. Só o valor de hoje, na aba Indicadores.")
+
+
+def _mostrar_cvm(d, df, precos):
+    ult = df.index[-1]
+    nome = fiis_cvm.nome_do_cnpj(_geral_cvm(date.today().year), st.session_state.get(f"fii_cnpj_{d['tk']}", ""))
+    if nome:
+        st.markdown(f"**Fundo na CVM:** {nome}")
+    ind = d["ind"]
+    if fiis._ok(ind.get("cotacao")) and fiis._ok(d["row"].get("pvp")) and d["row"]["pvp"] > 0 and fiis._ok(df["vp_cota"].iloc[-1]):
+        vp_f = ind["cotacao"] / d["row"]["pvp"]
+        if abs(df["vp_cota"].iloc[-1] / vp_f - 1) > 0.25:
+            st.error(f"Atenção: o valor patrimonial por cota da CVM (R$ {_f(df['vp_cota'].iloc[-1])}) é muito diferente do "
+                     f"implícito no Fundamentus (R$ {_f(vp_f)}). O CNPJ provavelmente não é de {d['tk']}: confira o nome acima.")
+    st.caption(f"Informes de {df.index[0]:%m/%Y} a {ult:%m/%Y}. A CVM publica com atraso: o último mês disponível é {ult:%m/%Y}.")
+    vista = st.radio("Periodicidade", ["Mensal", "Trimestral", "Anual"], horizontal=True, key=f"fii_vista_{d['tk']}")
+    graf = [("pl", "Patrimônio líquido (R$)", "ultimo"), ("vp_cota", "Valor patrimonial por cota (R$)", "ultimo"),
+            ("cotistas", "Número de cotistas", "ultimo")]
+    for col, titulo, como in graf:
+        if col in df:
+            s = _recorte(df[col], vista, como)
+            if col == "pl":
+                s, titulo = s / 1e9, "Patrimônio líquido (R$ bilhões)"
+            if len(s) >= 2:
+                st.markdown(f"**{titulo}**")
+                st.plotly_chart(evolucao.grafico_linhas({titulo: s}, titulo), width="stretch",
+                                key=f"fii_h_{col}_{d['tk']}_{vista}", config={"displayModeBar": False})
+    if "vp_cota" in df and len(precos.get("preco", [])):
+        pvp = fiis_cvm.pvp_historico(precos["preco"], df["vp_cota"])
+        pvp = _recorte(pvp, vista) if vista != "Anual" else fiis_cvm.serie_anual(pvp, "ultimo")
+        if len(pvp) >= 2:
+            st.markdown("**P/VP no fim de cada período**")
+            st.plotly_chart(evolucao.grafico_linhas({"P/VP": pvp}, "P/VP no fim de cada período"), width="stretch",
+                            key=f"fii_h_pvp_{d['tk']}_{vista}", config={"displayModeBar": False})
+            st.caption("P/VP = último preço do mês ÷ valor patrimonial por cota informado pelo fundo para o mês.")
+    if "dy_mes" in df and vista == "Mensal" and df["dy_mes"].notna().sum() >= 2:
+        st.markdown("**Rendimento do mês (% sobre o valor da cota)**")
+        st.plotly_chart(evolucao.grafico_barras(pd.DataFrame({"Rendimento do mês (%)": df["dy_mes"].tail(36)}),
+                                                ["Rendimento do mês (%)"], "Rendimento do mês (% sobre o valor da cota)"),
+                        width="stretch", key=f"fii_h_dym_{d['tk']}", config={"displayModeBar": False})
+    linhas = []
+    for col, nome in (("pl", "Patrimônio líquido"), ("vp_cota", "Valor patrimonial por cota"), ("cotistas", "Número de cotistas")):
+        if col in df:
+            r = fiis_cvm.cagr_mensal(df[col], (1, 3, 5))
+            linhas.append({"Indicador": nome, **{f"{n} ano" + ("s" if n > 1 else ""): r[n].texto for n in (1, 3, 5)}})
+    if linhas:
+        st.markdown("**Crescimento anual composto (CAGR), mesmo mês de cada ano**")
+        st.dataframe(pd.DataFrame(linhas), hide_index=True, width="stretch")
+        st.caption("Patrimônio líquido cresce também por novas emissões de cotas: o CAGR do valor patrimonial por cota mostra "
+                   "o crescimento sem esse efeito.")
+
+
+def _aba_imoveis(d):
+    c, ind = d["classe"], d["ind"]
+    if c.estrategia in ("tijolo", "hibrido"):
+        st.markdown("**Carteira de imóveis (resumo)**")
+        a, b = st.columns(2)
+        a.metric("Imóveis", _f(ind.get("qtd_imoveis"), 0))
+        b.metric("Vacância média", _f(ind.get("vacancia"), 1, "%"))
+        a, b = st.columns(2)
+        a.metric("Cap rate", _f(ind.get("cap_rate"), 1, "%"))
+        b.metric("Aluguel por m²", _f(ind.get("aluguel_m2"), 0, "", "R$ "))
+        st.metric("Preço por m²", _f(ind.get("preco_m2"), 0, "", "R$ "))
+        st.caption("Dados do Fundamentus (valor de hoje).")
     if c.estrategia in ("papel", "hibrido"):
-        carteira.append("Carteira de CRIs, indexadores, LTV e inadimplência: sem fonte integrada (consulte o relatório gerencial).")
-        indisp.append("Carteira de CRIs (devedores, indexadores, garantias, LTV)")
-    if c.estrategia == "fof":
-        carteira.append("Fundo de fundos: a qualidade depende dos fundos em que investe (composição não integrada ao app).")
-        indisp.append("Composição de um FOF")
-    secoes["Qualidade da carteira"] = carteira or ["Sem dados da carteira para este tipo de fundo."]
-    # dividendos
-    if div.get("ok"):
-        k, mot = classe_dividendo(div)
-        sus = [f"Avaliação geral: {k}. " + "; ".join(mot) + "."]
-        if div.get("dy_recorrente") is not None and div.get("dy_12m") is not None and abs(div["dy_12m"] - div["dy_recorrente"]) > 0.3:
-            sus.append(f"DY de 12 meses {f(div['dy_12m'], 1, '%')}; sem pagamentos acima do normal, {f(div['dy_recorrente'], 1, '%')}.")
-        if div["extraordinarios_12m"]:
-            sus.append("Pagamentos acima do normal: " + ", ".join(
-                f"{e.mes} (×{e.razao:.1f})".replace(".", ",") for e in div["extraordinarios_12m"]) + ". Podem ser extraordinários.")
-        sus.append("Não é possível dizer se o resultado cobre a distribuição nem se há uso de reservas: "
-                   "isso exige o relatório gerencial.")
-        secoes["Sustentabilidade dos rendimentos"] = sus
-        (pos if k == "boa" else neg if k == "fraca" else atencao).append("Distribuição: " + "; ".join(mot) + ".")
-        indisp += div["indisponivel"]
+        st.markdown("**Carteira de recebíveis (CRIs)**")
+    st.markdown("**Ainda sem fonte integrada no app** (estão no relatório gerencial mensal do fundo):")
+    falta = {"tijolo": ["Lista e localização de cada imóvel", "Perfil e concentração de inquilinos", "Prazo médio e tipo dos contratos",
+                        "Reajustes contratuais", "Vacância física × financeira", "Inadimplência de inquilinos"],
+             "papel": ["Lista de CRIs e devedores", "Indexadores (CDI, IPCA, prefixado) e taxas", "Prazo médio dos recebíveis",
+                       "Garantias e LTV", "Concentração por devedor e por setor", "Inadimplência"],
+             "fof": ["Fundos em que investe e peso de cada um"], "desenvolvimento": ["Cronograma e custo das obras"]}
+    chaves = ["tijolo", "papel"] if c.estrategia == "hibrido" else [c.estrategia]
+    itens = [i for k in chaves for i in falta.get(k, ["Composição da carteira"])]
+    for i in dict.fromkeys(itens):
+        st.write("• " + i)
+    st.info("Procure o **relatório gerencial** do fundo no site do gestor ou na B3. Quando o app integrar essa leitura, estes "
+            "campos aparecem aqui.")
+
+
+def _aba_riscos(d):
+    for r in sorted(d["riscos"], key=lambda r: ["alto", "medio", "baixo", "indisponivel"].index(r.nivel)):
+        ico, nome = NIVEL[r.nivel]
+        with st.container(border=True):
+            st.markdown(f"{ico} **{r.nome}** · {nome}")
+            st.write(r.texto.replace("$", "\\$"))
+            for e in r.evidencias:
+                st.caption(e.replace("$", "\\$"))
+    st.caption("Os limites (vacância acima de 15%, liquidez abaixo de R$ 300 mil/dia etc.) são regras educacionais para "
+               "chamar atenção, não uma recomendação. Risco 'sem dado' não significa risco baixo.")
+
+
+def _aba_comparacao(d, atalho_comparar):
+    peers, pi = d["pares"], d["pares_info"]
+    if peers is None or peers.empty:
+        st.info("Sem fundos semelhantes na lista (" + str(pi.get("descricao")) + ").")
+        return
+    st.markdown(f"**Fundos semelhantes:** {pi['descricao']}")
+    a, b, c = st.columns(3)
+    a.metric("P/VP mediano", _f(pi.get("pvp_mediana"), 2), delta=None if not fiis._ok(d["ind"].get("pvp")) or not fiis._ok(pi.get("pvp_mediana"))
+             else _f(d["ind"]["pvp"] - pi["pvp_mediana"], 2) + " este fundo", delta_color="off")
+    b.metric("DY mediano", _f(pi.get("dy_mediana"), 1, "%"))
+    c.metric("Vacância mediana", _f(pi.get("vacancia_mediana"), 1, "%"))
+    crit = st.selectbox("Ranking entre os semelhantes", list(fiis.CRITERIOS_RANKING), key=f"fii_rank_{d['tk']}",
+                        format_func=lambda k: {"valuation": "Valuation (P/VP)", "renda": "Renda (DY)", "liquidez": "Liquidez",
+                                               "vacancia": "Qualidade dos imóveis (vacância)", "tamanho": "Porte"}[k])
+    crit = crit or "valuation"
+    base = pd.concat([peers, pd.DataFrame([d["row"]], index=[d["tk"]])]) if d["row"] else peers
+    rk = fiis.ranking(base, crit)
+    if rk.empty:
+        st.caption("Sem dado suficiente para este ranking.")
     else:
-        secoes["Sustentabilidade dos rendimentos"] = [div.get("motivo") or "Sem histórico de rendimentos."]
-    # patrimonial
-    pat = []
-    if _ok(pvp):
-        txt = ("com ágio sobre o patrimônio" if pvp >= LIM_PVP_AGIO else "com desconto expressivo" if pvp <= LIM_PVP_DESCONTO
-               else "abaixo do patrimônio" if pvp < 0.98 else "próximo do patrimônio")
-        pat.append(f"P/VP {f(pvp)}: cota negociada {txt}.")
-        (atencao if pvp >= LIM_PVP_AGIO or pvp <= LIM_PVP_DESCONTO else pos).append(f"P/VP {f(pvp)}.")
+        col = fiis.CRITERIOS_RANKING[crit][0]
+        tab = pd.DataFrame({"FII": rk.index, fiis.CRITERIOS_RANKING[crit][2].split(" (")[0]: rk[col].map(lambda v: _f(v, 2)).values})
+        tab["FII"] = tab["FII"].map(lambda x: x + " ◀" if x == d["tk"] else x)
+        st.dataframe(tab, hide_index=True, width="stretch")
+        st.caption(fiis.CRITERIOS_RANKING[crit][2] + ". Só entram fundos com liquidez de pelo menos R$ 100 mil/dia. "
+                   "Ranking só entre fundos da mesma estratégia; DY muito acima dos pares vai para o fim da lista.")
+    if atalho_comparar is not None:
+        top = [t for t in fiis.ranking(peers, "liquidez", topo=3).index]
+        atalho_comparar([d["tk"], *top], f"fii_{d['tk']}", "Comparar com os 3 mais líquidos do mesmo grupo")
+
+
+def _aba_analise(d):
+    for titulo, linhas in d["relatorio"].items():
+        if titulo == "Fontes e datas":
+            continue
+        st.markdown(f"**{titulo}**")
+        for l in linhas:
+            st.write("• " + l.replace("$", "\\$"))
+    with st.expander("De onde vem cada dado"):
+        st.dataframe(pd.DataFrame([{"Indicador": k, "Fonte": v[0], "Referência": _data_br(v[1]) if v[1] else "—"}
+                                   for k, v in d["fontes"].items() if k != "pvp_aviso"]), hide_index=True, width="stretch")
+    st.caption("Relatório gerado por regras sobre os dados disponíveis. Não é recomendação de investimento. "
+               + comparador.AVISO_LEGAL)
+
+
+# =============================================================================== página
+def pagina_fii(atalho_comparar=None, atalho_evolucao=None):
+    st.markdown(tema.cabecalho("🏢", "FIIs", "Análise completa de fundos imobiliários: indicadores, rendimentos, riscos e comparação."),
+                unsafe_allow_html=True)
+    L = lista_fiis()
+    lista = L["df"]
+    if L["aviso"]:
+        st.warning(L["aviso"] + " Os indicadores que dependem dessa lista ficam indisponíveis.")
+    pre = st.session_state.pop("fii_pre", None)
+    if pre:
+        st.session_state["fii_tk"] = pre
+    opcoes = sorted(lista.index) if not lista.empty else []
+    if opcoes:
+        tk = st.selectbox("FII", opcoes, key="fii_tk", index=None, placeholder="Digite o código. Ex.: HGLG11, KNCR11",
+                          accept_new_options=True)
     else:
-        pat.append("P/VP indisponível.")
-        indisp.append("P/VP")
-    if _ok(ind.get("vp_cota")):
-        pat.append(f"Valor patrimonial por cota: R$ {f(ind['vp_cota'])}.")
-    if _ok(ind.get("patrimonio")):
-        pat.append(f"Patrimônio líquido: R$ {f(ind['patrimonio'] / 1e9, 2)} bi.")
-    secoes["Avaliação patrimonial"] = pat
-    # desempenho
-    des = []
-    if _ok(ind.get("ret12m")):
-        des.append(f"Retorno total em 12 meses (com rendimentos): {f(ind['ret12m'], 1, '%')}.")
-    if _ok(ind.get("dd_max")):
-        des.append(f"Maior queda em 12 meses: {f(ind['dd_max'], 1, '%')}.")
-    secoes["Histórico de desempenho"] = des or ["Sem histórico de preços."]
-    # riscos
-    secoes["Principais riscos"] = [f"{r.nome} — {r.nivel.upper()}: {r.texto}" for r in riscos if r.nivel in ("alto", "medio")] \
-        or ["Nenhum risco acima do baixo foi identificado com os dados disponíveis (isso não significa ausência de risco)."]
-    for r in riscos:
-        if r.nivel == "alto":
-            neg.append(r.nome + ".")
-        elif r.nivel == "indisponivel":
-            indisp.append(r.nome)
-    # pares
-    if pares_info.get("descricao"):
-        linhas = [f"Comparado com {pares_info['descricao']}."]
-        for k, rot in (("dy", "DY"), ("pvp", "P/VP"), ("vacancia", "vacância")):
-            m = pares_info.get(f"{k}_mediana")
-            v = ind.get(k)
-            if _ok(m) and _ok(v):
-                linhas.append(f"{rot}: {f(v, 2)} contra mediana {f(m, 2)}.")
-        secoes["Comparação com fundos semelhantes"] = linhas
-    secoes["Pontos positivos"] = pos or ["Nenhum ponto positivo claro nos dados disponíveis."]
-    secoes["Pontos negativos"] = neg or ["Nenhum ponto negativo claro nos dados disponíveis."]
-    secoes["Indicadores que merecem atenção"] = atencao or ["Nenhum."]
-    secoes["Não disponível (sem fonte)"] = list(dict.fromkeys(indisp + ["Qualidade da gestão (não há dado verificável integrado)"]))
-    if datas:
-        secoes["Fontes e datas"] = [f"{k}: {v}" for k, v in datas.items()]
-    return secoes
+        tk = st.text_input("Código do FII", key="fii_tk", placeholder="Ex.: HGLG11")
+    m = re.search(r"[A-Z]{4}\d{1,2}", re.sub(r"[^A-Z0-9 ]", " ", (tk or "").upper()))
+    tk = m.group(0) if m else re.sub(r"[^A-Z0-9]", "", (tk or "").upper())
+    if not tk:
+        st.info("Escolha um FII para ver a análise.")
+        return
+    if not re.fullmatch(r"[A-Z]{4}1[0-9]?", tk):
+        st.warning("Código de FII costuma ter 4 letras e o número 11 (ex.: HGLG11).")
+    with st.spinner("Coletando dados do fundo..."):
+        precos = evolucao.coletar_precos(tk)
+        snap = evolucao.coletar_fii_fundamentus(tk)
+        cvm_df = _cvm_do_fundo(tk)
+        d = preparar(tk, lista, snap, precos, cvm_df)
+    for av in precos.get("avisos", []) + snap.get("avisos", []):
+        st.caption("⚠️ " + av)
+    # monitoramento: compara com a última vez que este FII foi aberto NESTA sessão
+    foto = {k: d["ind"].get(k) for k in fiis.LIM_MUDANCA}
+    ant = st.session_state.setdefault("fii_fotos", {}).get(tk)
+    mud = fiis.detectar_mudancas(ant, foto)
+    if mud:
+        st.warning("Mudanças desde a última consulta nesta sessão: " + " ".join(mud))
+    st.session_state["fii_fotos"][tk] = foto
+    abas = st.tabs(["Visão geral", "Indicadores", "Dividendos", "Histórico", "Imóveis ou recebíveis", "Riscos", "Comparação",
+                    "Análise inteligente"])
+    with abas[0]:
+        _aba_visao(d)
+        if atalho_evolucao is not None:
+            atalho_evolucao(tk, "fii", "Evolução e crescimento deste FII")
+    with abas[1]:
+        _aba_indicadores(d)
+    with abas[2]:
+        _aba_dividendos(d, precos)
+    with abas[3]:
+        _aba_historico(d, precos)
+    with abas[4]:
+        _aba_imoveis(d)
+    with abas[5]:
+        _aba_riscos(d)
+    with abas[6]:
+        _aba_comparacao(d, atalho_comparar)
+    with abas[7]:
+        _aba_analise(d)
 
 
 # =============================================================================== carteira
-def analisar_carteira(lotes: list[dict], lista: pd.DataFrame, precos: dict | None = None) -> dict:
-    """FIIs presentes na carteira: peso por fundo, estratégia e segmento, alertas de concentração e renda estimada pelo
-    DY de 12 meses (estimativa de referência, não garantia). `lotes` = [{ticker, qtd, preco_medio}]. Não altera nada."""
-    precos = precos or {}
-    por: dict[str, dict] = {}
-    for l in lotes or []:
-        tk = str(l.get("ticker", "")).upper().strip()
-        if not tk or tk not in (lista.index if lista is not None and not lista.empty else []):
-            continue
-        qtd = float(l.get("qtd") or 0)
-        p = precos.get(tk) or (lista.loc[tk].get("cotacao") if "cotacao" in lista else None) or l.get("preco_medio")
-        e = por.setdefault(tk, {"qtd": 0.0, "valor": 0.0, "custo": 0.0})
-        e["qtd"] += qtd
-        e["valor"] += qtd * float(p or 0)
-        e["custo"] += qtd * float(l.get("preco_medio") or 0)
-    out = {"fiis": [], "total": 0.0, "alertas": [], "por_estrategia": {}, "por_segmento": {}, "renda_mensal_estimada": None,
-           "indisponivel": ["Concentração por gestor", "Concentração por imóvel e por devedor", "Distribuição de rendimentos já paga"]}
-    total = sum(e["valor"] for e in por.values())
-    if total <= 0:
-        out["alertas"].append("Nenhum FII com preço encontrado na carteira.")
-        return out
-    out["total"] = total
-    renda = 0.0
-    tem_renda = False
-    for tk, e in sorted(por.items(), key=lambda x: -x[1]["valor"]):
-        row = lista.loc[tk]
-        peso = e["valor"] / total * 100
-        dy = row.get("dy") if "dy" in lista else None
-        item = {"ticker": tk, "qtd": e["qtd"], "valor": e["valor"], "peso": peso, "estrategia": row.get("estrategia"),
-                "segmento": row.get("segmento_nome"), "dy": dy, "pvp": row.get("pvp") if "pvp" in lista else None}
-        out["fiis"].append(item)
-        out["por_estrategia"][item["estrategia"]] = out["por_estrategia"].get(item["estrategia"], 0) + peso
-        out["por_segmento"][item["segmento"]] = out["por_segmento"].get(item["segmento"], 0) + peso
-        if _ok(dy):
-            renda += e["valor"] * dy / 100 / 12
-            tem_renda = True
-        if peso >= LIM_PESO_ATIVO and len(por) > 1:
-            out["alertas"].append(f"{tk} representa {peso:.0f}% dos seus FIIs: concentração em um único fundo.")
-    for seg, p in out["por_segmento"].items():
-        if p >= LIM_PESO_SEGMENTO and len(por) > 1:
-            out["alertas"].append(f"{p:.0f}% dos seus FIIs estão em {seg}: concentração em um segmento.")
-    if len(por) == 1:
-        out["alertas"].append("Só um FII na carteira: toda a renda depende de um único fundo.")
-    if "outros" in out["por_estrategia"]:
-        out["alertas"].append("Há fundos sem segmento identificado: a distribuição por segmento está incompleta.")
-    out["hhi"] = sum((i["peso"] / 100) ** 2 for i in out["fiis"])
-    out["renda_mensal_estimada"] = renda if tem_renda else None
-    return out
-
-
-# =============================================================================== indicadores consolidados
-def montar_indicadores(row: dict | None, snap: dict | None = None, pm: dict | None = None, dist: dict | None = None,
-                       cvm: pd.DataFrame | None = None, hoje: str | None = None) -> tuple[dict, dict]:
-    """Junta as fontes em um único dicionário de indicadores e devolve também `fontes[chave] = (fonte, data de referência)`.
-    Prioridade: CVM (oficial, tem data do informe) > Fundamentus (valor de hoje) > Yahoo (preço/rendimentos).
-    Nunca preenche com estimativa; o que nenhuma fonte tem fica ausente."""
-    ind: dict = {}
-    fontes: dict = {}
-
-    def put(k, v, fonte, data=None):
-        if _ok(v):
-            ind[k] = float(v)
-            fontes[k] = (fonte, data)
-
-    row = row or {}
-    snap = snap or {}
-    pm = pm or {}
-    dist = dist or {}
-    F = "Fundamentus"
-    # Fundamentus mostra 0 imóveis para fundos sem imóveis (papel, FOF) ou sem dado: 0 não é número de imóveis
-    if _ok(row.get("qtd_imoveis")) and row["qtd_imoveis"] <= 0:
-        row = {**row, "qtd_imoveis": None}
-    if _ok(snap.get("imoveis")) and snap["imoveis"] <= 0:
-        snap = {**snap, "imoveis": None}
-    for k_ind, k_row in (("cotacao", "cotacao"), ("pvp", "pvp"), ("dy", "dy"), ("liquidez", "liquidez"),
-                         ("valor_mercado", "valor_mercado"), ("vacancia", "vacancia"), ("qtd_imoveis", "qtd_imoveis"),
-                         ("cap_rate", "cap_rate"), ("preco_m2", "preco_m2"), ("aluguel_m2", "aluguel_m2"), ("ffo_yield", "ffo_yield")):
-        put(k_ind, row.get(k_row), F, hoje)
-    # a página de detalhe do Fundamentus completa o que a lista não tem
-    put("vp_cota", snap.get("vp_cota"), F, hoje)
-    put("patrimonio", snap.get("pl"), F, hoje)
-    put("cotas", snap.get("cotas"), F, hoje)
-    for k in ("pvp", "dy", "vacancia", "valor_mercado", "qtd_imoveis"):
-        if k not in ind:
-            put(k, snap.get(k if k != "qtd_imoveis" else "imoveis"), F, hoje)
-    for k in ("ret12m", "vol", "dd_max", "ret6m", "ret1m"):
-        put(k, pm.get(k), "Yahoo Finance", hoje)
-    if _ok(dist.get("dy12m")):
-        put("dy12m", dist["dy12m"], "Yahoo Finance (proventos ÷ preço)", dist.get("data_ref"))
-    if _ok(dist.get("meses_pagos")):
-        put("meses_pagos", dist["meses_pagos"], "Yahoo Finance", dist.get("data_ref"))
-    # CVM: último informe mensal sobrepõe o que for do mesmo assunto
-    if cvm is not None and not cvm.empty:
-        ult = cvm.index[-1].date().isoformat()
-        for k_cvm, k_ind in (("pl", "patrimonio"), ("vp_cota", "vp_cota"), ("cotas", "cotas"), ("cotistas", "cotistas"),
-                             ("alavancagem", "alavancagem"), ("dy_mes", "dy_mes")):
-            if k_cvm in cvm.columns and _ok(cvm[k_cvm].iloc[-1]):
-                put(k_ind, cvm[k_cvm].iloc[-1], "CVM (informe mensal)", ult)
-    # P/VP coerente com a cota e o VP mais atual
-    if _ok(ind.get("cotacao")) and _ok(ind.get("vp_cota")) and ind["vp_cota"] > 0:
-        calc = ind["cotacao"] / ind["vp_cota"]
-        if "pvp" in ind and abs(calc / ind["pvp"] - 1) > 0.10:
-            fontes["pvp_aviso"] = (f"P/VP da fonte ({ind['pvp']:.2f}) difere do calculado com o VP da fonte mais recente "
-                                   f"({calc:.2f}): os valores são de datas diferentes.", None)
-        elif "pvp" not in ind:
-            put("pvp", calc, "calculado (cotação ÷ VP por cota)", fontes["vp_cota"][1])
-    return ind, fontes
-
-
-# =============================================================================== monitoramento
-LIM_MUDANCA = {"pvp": 0.10, "vacancia": 2.0, "dy": 1.5, "liquidez": 0.5}   # relativo (pvp, liquidez) ou pontos (vacancia, dy)
-
-
-def detectar_mudancas(antes: dict | None, depois: dict | None) -> list[str]:
-    """Compara duas fotografias de indicadores do mesmo FII e descreve só as mudanças acima do limite. Não age sobre nada."""
-    out = []
-    if not antes or not depois:
-        return out
-    for k, lim in LIM_MUDANCA.items():
-        a, d = antes.get(k), depois.get(k)
-        if not (_ok(a) and _ok(d)):
-            continue
-        if k in ("pvp", "liquidez"):
-            if a > 0 and abs(d / a - 1) >= lim:
-                out.append(f"{'P/VP' if k == 'pvp' else 'Liquidez'} mudou {((d / a - 1) * 100):+.0f}% (de {a:.2f} para {d:.2f}).".replace(".", ","))
-        elif abs(d - a) >= lim:
-            out.append(f"{'Vacância' if k == 'vacancia' else 'DY'} mudou {d - a:+.1f} ponto(s) percentual(is) (de {a:.1f}% para {d:.1f}%).".replace(".", ","))
-    return out
+def painel_carteira(lotes: list):
+    """FIIs dentro da carteira do usuário: concentração e renda estimada. Somente leitura: nada é alterado."""
+    L = lista_fiis()
+    if L["df"].empty:
+        return
+    a = fiis.analisar_carteira(lotes, L["df"])
+    if not a["fiis"]:
+        return
+    st.markdown("#### Meus FIIs")
+    st.dataframe(pd.DataFrame([{"FII": i["ticker"], "Peso": _f(i["peso"], 1, "%"), "Estratégia": fiis.ESTRATEGIAS.get(i["estrategia"], "—"),
+                                "Segmento": i["segmento"], "DY": _f(i["dy"], 1, "%"), "P/VP": _f(i["pvp"], 2)} for i in a["fiis"]]),
+                 hide_index=True, width="stretch")
+    por = pd.DataFrame({"Segmento": list(a["por_segmento"]), "Peso (%)": [round(v, 1) for v in a["por_segmento"].values()]})
+    st.dataframe(por, hide_index=True, width="stretch")
+    for al in a["alertas"]:
+        st.warning(al)
+    if a["renda_mensal_estimada"] is not None:
+        st.metric("Renda mensal de referência", _brl_g(a["renda_mensal_estimada"]))
+        st.caption("Referência: valor atual dos FIIs × Dividend Yield anual da fonte ÷ 12. Não é garantia: os rendimentos variam todo mês.")
+    st.caption("Concentração por gestor, por imóvel e por devedor ainda não tem fonte no app. Esta análise não altera a sua carteira.")
