@@ -523,6 +523,9 @@ def comparar(ativos: list, hoje: date | None = None, extras: list | None = None)
     else:
         specs = list(classe(classes[0]).specs)
     specs += [s for s in extras if s.chave not in {x.chave for x in specs}]
+    if extras and modo == "classes_diferentes":
+        alertas.append("Crescimento histórico: entram os CAGRs disponíveis de cada ativo; quem não tem o dado fica com traço "
+                       "e a comparação vale só entre os que têm.")
     for c in classes:
         cl = classe(c)
         if not cl.suportada:
@@ -539,7 +542,9 @@ def comparar(ativos: list, hoje: date | None = None, extras: list | None = None)
         vals = {a.chave: a.ind.get(s.chave) for a in validos}
         tem = {k: i for k, i in vals.items() if i is not None and i.aplica and _ok(i.valor)}
         for a in validos:
-            if s.chave not in extra_chaves and s.chave not in {x.chave for x in classe(a.classe).specs}:
+            if s.chave in extra_chaves:
+                continue                                  # crescimento histórico é opcional: não entra na lista de faltas
+            if s.chave not in {x.chave for x in classe(a.classe).specs}:
                 continue                                  # a classe do ativo nem mede este indicador
             i = vals[a.chave]
             if i is not None and not i.aplica:
