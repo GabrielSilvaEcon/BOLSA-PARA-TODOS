@@ -360,6 +360,10 @@ def _fmt(v, kind="pct") -> str:
         return f"{v:+.1f} p.p.".replace(".", ",")
     if kind == "x":
         return f"{v:.1f}×".replace(".", ",")
+    a = abs(v)
+    for lim, suf in ((1e12, " tri"), (1e9, " bi"), (1e6, " mi"), (1e3, " mil")):
+        if a >= lim:
+            return f"{v / lim:,.1f}{suf}".replace(".", ",")
     return f"{v:,.0f}".replace(",", ".")
 
 
@@ -367,14 +371,20 @@ def _ano(d) -> str:
     return str(pd.Timestamp(d).year)
 
 
-def diagnosticar(df_anual: pd.DataFrame) -> list[Achado]:
+def diagnosticar(df_anual: pd.DataFrame, financeira: bool = False) -> list[Achado]:
     """Explica, com números, o que aconteceu nos últimos exercícios anuais. Exige pelo menos 3 exercícios; sem isso
-    devolve um único achado dizendo que o histórico é insuficiente (nada é estimado)."""
+    devolve um único achado dizendo que o histórico é insuficiente (nada é estimado). Para bancos e seguradoras
+    (`financeira=True`), EBITDA, margem bruta, dívida líquida e fluxo de caixa livre não são medidas significativas
+    (dívida e caixa são a matéria-prima do negócio), então essas regras não rodam."""
     if df_anual is None or df_anual.empty or len(df_anual) < 3:
         n = 0 if df_anual is None else len(df_anual)
         return [Achado("historico", "neutro", "Histórico insuficiente",
                        f"Só há {n} exercício(s) anual(is) com dados; a análise automática pede pelo menos 3.")]
     df = derivar_indicadores(df_anual)
+    if financeira:
+        df = df.drop(columns=[c for c in ("EBITDA", "Lucro bruto", "Margem bruta", "Margem EBITDA", "Dívida bruta", "Dívida líquida",
+                                          "Dívida líquida/EBITDA", "Fluxo de caixa livre", "Capex", "Caixa operacional")
+                              if c in df.columns])
     ach: list[Achado] = []
 
     # --- receita
@@ -499,6 +509,10 @@ def diagnosticar(df_anual: pd.DataFrame) -> list[Achado]:
         ach.append(Achado("crescimento_com_risco", "atencao", "Crescimento acompanhado de mais risco",
                           f"A receita cresce {_fmt(base.valor)} a.a., mas o risco financeiro aumentou ("
                           + "; ".join(mais_risco).lower() + ").", [f"CAGR da receita ({base.periodo}a): {base.texto}"]))
+    if financeira:
+        ach.append(Achado("financeira", "neutro", "Instituição financeira",
+                          "Em bancos e seguradoras, EBITDA, dívida líquida e fluxo de caixa livre não medem a saúde do negócio "
+                          "(dívida e caixa são a matéria-prima). Por isso a análise usa receita, lucro, margem líquida e ROE.", []))
     if not ach:
         ach.append(Achado("estavel", "neutro", "Sem sinais marcantes",
                           "Nenhuma das regras de alerta ou melhora foi acionada nos últimos exercícios.", []))
