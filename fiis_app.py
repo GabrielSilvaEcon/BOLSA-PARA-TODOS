@@ -478,7 +478,8 @@ def pagina_fii(atalho_comparar=None, atalho_evolucao=None):
                           accept_new_options=True)
     else:
         tk = st.text_input("Código do FII", key="fii_tk", placeholder="Ex.: HGLG11")
-    tk = re.sub(r"[^A-Z0-9]", "", (tk or "").upper())
+    m = re.search(r"[A-Z]{4}\d{1,2}", re.sub(r"[^A-Z0-9 ]", " ", (tk or "").upper()))
+    tk = m.group(0) if m else re.sub(r"[^A-Z0-9]", "", (tk or "").upper())
     if not tk:
         st.info("Escolha um FII para ver a análise.")
         return
