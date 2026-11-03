@@ -253,3 +253,14 @@ def coletar_anos(anos: list[int]) -> dict[int, dict[str, pd.DataFrame]]:
 def juntar_anos(por_ano: dict[int, dict[str, pd.DataFrame]]) -> dict[str, pd.DataFrame]:
     tipos = {t for d in por_ano.values() for t in d}
     return {t: pd.concat([d[t] for d in por_ano.values() if t in d], ignore_index=True) for t in tipos}
+
+
+def nome_do_cnpj(geral: pd.DataFrame, cnpj: str) -> str | None:
+    """Nome do fundo na CVM para o CNPJ (para o usuário conferir se é mesmo o fundo que está analisando)."""
+    if geral is None or geral.empty:
+        return None
+    c_n, c_c = _achar(geral.columns, *CAMPOS["nome"]), _achar(geral.columns, *CAMPOS["cnpj"])
+    if c_n is None or c_c is None:
+        return None
+    ach = geral[geral[c_c].map(so_digitos) == so_digitos(cnpj)][c_n].dropna()
+    return str(ach.iloc[-1]) if len(ach) else None
