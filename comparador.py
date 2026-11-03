@@ -107,6 +107,7 @@ _COMUNS = [
     Spec("dd_max", "Pior queda em 12 meses", "pct_s", +1, True, "Maior queda do pico ao fundo nos últimos 12 meses."),
 ]
 
+PREFIXO_MODELOS = "Modelos diferentes: "      # alertas que a tela destaca (fora da caixa recolhida)
 CLASSES: dict[str, Classe] = {}
 
 
@@ -569,7 +570,7 @@ def comparar(ativos: list, hoje: date | None = None, extras: list | None = None)
     subs = {a.subgrupo: a.subgrupo_nome or a.subgrupo for a in validos if a.subgrupo}
     if modo == "mesma_classe" and len(subs) > 1 and classes and classes[0] == "cripto":
         import cripto_analise
-        alertas += cripto_analise.compatibilidade({a.nome: a.subgrupo for a in validos if a.subgrupo})
+        alertas += [PREFIXO_MODELOS + x for x in cripto_analise.compatibilidade({a.nome: a.subgrupo for a in validos if a.subgrupo})]
     elif modo == "mesma_classe" and len(subs) > 1:
         alertas.append("Estratégias diferentes na mesma classe (" + " × ".join(subs.values()) + "): renda, risco e valuation seguem "
                        "lógicas distintas (por exemplo, vacância só existe em tijolo e risco de crédito só em papel). "
