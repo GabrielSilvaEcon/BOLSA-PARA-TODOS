@@ -17,12 +17,13 @@ Os limites são regras educacionais, não recomendação de investimento.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 
 # --------------------------------------------------------------------------- classificação
 RESERVA = {"bitcoin", "litecoin", "bitcoin-cash", "monero", "dogecoin", "bitcoin-sv", "ethereum-classic", "zcash"}
 L1_CONTRATOS = {"ethereum", "cardano", "polkadot", "cosmos", "algorand", "tezos", "internet-computer",
-                "avalanche-2", "tron", "binancecoin", "the-open-network"}
+                "avalanche-2", "tron", "binancecoin", "the-open-network", "ripple", "stellar", "hedera-hashgraph"}
 L1_PERFORMANCE = {"solana", "sui", "aptos", "near", "sei-network", "fantom", "sonic-3", "hyperliquid", "monad"}
 # avalanche, tron, bnb, ton ficam em contratos "tradicionais" por padrão; o usuário pode trocar a categoria na tela.
 
@@ -42,13 +43,18 @@ def classificar(gecko_id: str, categorias: list[str] | None = None, categoria_ll
     if gid in L1_CONTRATOS:
         return "l1_contratos"
     texto = " | ".join([*(categorias or []), categoria_llama or ""]).lower()
-    if any(t in texto for t in _L1_TERMOS) and not any(t in texto for t in ("lending", "dex")):
+    if _tem(texto, _L1_TERMOS) and not _tem(texto, ("lending", "dex")):
         return "l1_contratos"
-    if any(t in texto for t in _DEFI_TERMOS):
+    if _tem(texto, _DEFI_TERMOS):
         return "defi"
-    if any(t in texto for t in _RESERVA_TERMOS):
+    if _tem(texto, _RESERVA_TERMOS):
         return "reserva"
     return "geral"
+
+
+def _tem(texto: str, termos) -> bool:
+    """Casa palavras inteiras (aceita plural): 'dex' não casa com 'index', nem 'pow' com 'power'."""
+    return any(re.search(rf"(?<![a-z0-9]){re.escape(t)}(?:s|es)?(?![a-z0-9])", texto) for t in termos)
 
 
 # --------------------------------------------------------------------------- formatação
