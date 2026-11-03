@@ -191,7 +191,9 @@ def coletar(gid: str) -> dict:
             except Exception:
                 proto = None
             break
-    if {"layer1", "layer2", "infra"} & set(chaves) or proto is None:
+    if gid != "bitcoin" and ({"layer1", "layer2", "infra"} & set(chaves) or proto is None):
+        # Bitcoin fica de fora: o "TVL" do DefiLlama para a rede Bitcoin é BTC embrulhado em outras redes e as taxas
+        # não são as da rede; usar isso geraria múltiplos sem sentido (ex.: Preço/Taxas de 230 mil vezes).
         cad = cripto._cadeia_da_moeda(gid)
         if cad:
             cadeia = cad
@@ -239,7 +241,7 @@ def coletar(gid: str) -> dict:
         tipo = fc._detectar_tipo(gid, m)
         dados, av = fc.montar_dados(gid, m, tipo, None, {})
         res = fc.mf.analisar(dados)
-        fund = {"nota": None if res.get("nota") is None else res["nota"] * 100, "veredito": res.get("veredito"),
+        fund = {"nota": res.get("nota"), "veredito": res.get("veredito"),
                 "tipo": res.get("tipo_rotulo"), "cobertura": res.get("cobertura")}
     except Exception:
         avisos.append("A nota fundamentalista não pôde ser calculada agora.")
@@ -449,6 +451,10 @@ def _aba_tokenomics(d, tk, desb):
         st.caption(desb["aviso"])
 
 
+def gid_btc(d) -> bool:
+    return d["m"]["id"] == "bitcoin"
+
+
 def _aba_onchain(d, oc):
     st.markdown("**Registrado na blockchain** (lido diretamente da rede)")
     if oc["registrados"]:
@@ -466,9 +472,13 @@ def _aba_onchain(d, oc):
     var30 = ca.variacao(d["ev"].get("tvl"), 30) if d["ev"].get("tvl") is not None and len(d["ev"]["tvl"]) else None
     if var30 is not None:
         st.caption(f"TVL: variação em 30 dias {fmt(var30, 'pct_s')} (DefiLlama).")
-    if oc["ausentes"]:
+    so_de = {"tps": "solana", "hash_rate": "bitcoin", "enderecos_ativos": "bitcoin"}
+    aus = [a for a in oc["ausentes"] if so_de.get(a["chave"], d["m"]["id"]) == d["m"]["id"]]
+    if gid_btc(d):
+        st.caption("Bitcoin: TVL, taxas e volume em DEXs do DefiLlama não são usados (medem BTC embrulhado em outras redes, não a rede Bitcoin).")
+    if aus:
         with st.expander("Indicadores sem dado para este ativo"):
-            for a in oc["ausentes"]:
+            for a in aus:
                 st.markdown(f"- {a['rotulo']} — fonte possível: {a['fonte_possivel']}")
     with st.expander("O que nenhuma fonte gratuita integrada entrega"):
         for l in oc["lacunas"]:
@@ -653,6 +663,22 @@ def _preparar(gid: str) -> dict:
     return d
 
 
+def _adicionar_e_escolher(gid: str, nome: str):
+    cripto._adicionar_cripto(gid, nome)
+    st.session_state["cripto_av_gid"] = gid
+
+
+def _resultados(res: list[dict], sel: list[str]):
+    """Resultados da busca (texto com a cor do tema, legível no fundo escuro)."""
+    for c in res:
+        with st.container(border=True):
+            a, b = st.columns([5, 1.6], vertical_alignment="center")
+            rank = f"Ranking #{c['rank']}" if c.get("rank") else "Sem ranking"
+            a.markdown(f"**{c['nome']} ({c['simbolo']})**  \n{rank}")
+            b.button("Analisar", key=f"cripto_av_add_{c['id']}", on_click=_adicionar_e_escolher, args=(c["id"], c["nome"]),
+                     width="stretch")
+
+
 def pagina_cripto_avancada(atalho_comparar=None):
     st.markdown(tema.cabecalho("🪙", "Criptomoedas: análise avançada",
                                "Classificação, mercado, tokenomics, on-chain, segurança, valuation, histórico e comparação."),
@@ -673,7 +699,7 @@ def pagina_cripto_avancada(atalho_comparar=None):
             achadas = None
             st.warning(f"Não consegui buscar agora ({e}). Tente de novo em instantes.")
         if achadas:
-            cripto._render_resultados(achadas, sel)
+            _resultados(achadas, sel)
         elif achadas is not None:
             st.info("Não encontrei essa moeda. Confira o nome ou tente o símbolo.")
     nomes = {**{v: k for k, v in cripto.POPULARES.items()}, **st.session_state["cripto_nomes"]}
