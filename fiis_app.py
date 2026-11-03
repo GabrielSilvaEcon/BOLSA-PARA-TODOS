@@ -278,6 +278,12 @@ def _aba_dividendos(d, precos):
     st.markdown("**Indisponível (precisa do relatório gerencial):** " + ", ".join(div["indisponivel"]) + ".")
 
 
+def _usar_cnpj(chave: str, cn: str):
+    """Callback do botão: roda ANTES do próximo desenho da tela, então pode mudar o valor do campo de CNPJ."""
+    st.session_state[chave] = cn
+    st.session_state[f"in_{chave}"] = cn
+
+
 def _escolher_cnpj(tk: str) -> str | None:
     chave = f"fii_cnpj_{tk}"
     atual = st.session_state.get(chave, "")
@@ -294,10 +300,7 @@ def _escolher_cnpj(tk: str) -> str | None:
             if not ach:
                 st.caption("Nenhum fundo com esse nome (a CVM usa o nome completo do regulamento).")
             for cn, nm in ach:
-                if st.button(f"{nm} — {cn}", key=f"pick_{chave}_{cn}"):
-                    st.session_state[chave] = cn
-                    st.session_state[f"in_{chave}"] = cn
-                    st.rerun()
+                st.button(f"{nm} — {cn}", key=f"pick_{chave}_{cn}", on_click=_usar_cnpj, args=(chave, cn))
     return st.session_state.get(chave)
 
 
