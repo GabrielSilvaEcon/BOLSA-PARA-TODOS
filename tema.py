@@ -530,8 +530,9 @@ header[data-testid="stHeader"] {background:rgba(11,28,51,.92) !important; border
 .stApp [data-testid="stCaptionContainer"] p {color:#A0AEC0 !important;}
 .pgt, .hero2 h1 {background:none !important; -webkit-text-fill-color:#FFFFFF !important; color:#FFFFFF !important;}
 /* títulos escritos com st.markdown("#### ...") e textos dos gráficos Plotly (cartão branco): cor explícita e legível */
-.stApp [data-testid="stMarkdownContainer"] :is(h1,h2,h3,h4,h5,h6), .stApp [data-testid="stHeading"] :is(h1,h2,h3,h4,h5,h6) {
-  color:#FFFFFF !important; -webkit-text-fill-color:#FFFFFF !important; opacity:1 !important;}
+.stApp [data-testid="stMarkdownContainer"] :is(h1,h2,h3,h4,h5,h6), .stApp [data-testid="stHeading"] :is(h1,h2,h3,h4,h5,h6),
+.stApp [data-testid="stMarkdownContainer"] :is(h1,h2,h3,h4,h5,h6) *, .stApp [data-testid="stHeading"] :is(h1,h2,h3,h4,h5,h6) * {
+  color:#FFFFFF !important; -webkit-text-fill-color:#FFFFFF !important; opacity:1 !important;}   /* inclui o <span> interno, que o app.py pinta de escuro */
 [data-testid="stPlotlyChart"] :is(.xtick, .ytick) text, [data-testid="stPlotlyChart"] :is(.g-xtitle, .g-ytitle, .gtitle) text,
 [data-testid="stPlotlyChart"] .legendtext, [data-testid="stPlotlyChart"] .annotation-text, [data-testid="stPlotlyChart"] .textpoint text,
 [data-testid="stPlotlyChart"] :is(.xtick, .ytick) tspan {fill:#16202B !important; opacity:1 !important;}
