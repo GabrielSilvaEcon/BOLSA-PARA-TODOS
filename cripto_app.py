@@ -185,6 +185,9 @@ def coletar(gid: str) -> dict:
         for slug in slugs:
             try:
                 proto = cripto.analisar_protocolo(slug)
+                if proto.get("tvl") is None and proto.get("fees30") is None:
+                    proto = None
+                    continue                               # resposta vazia (ex.: protocolo-pai): tenta o próximo
                 proto_raw = _proto_raw(slug)
                 tvl, fees30, hist_tvl = proto.get("tvl"), proto.get("fees30"), proto.get("hist_tvl") or []
                 rev30 = cripto._total_30d(cripto._resumo_llama("fees", slug, "dailyRevenue"))
@@ -288,6 +291,8 @@ def linha_comparacao(gid: str) -> dict:
                     a = cripto.analisar_protocolo(sl)
                 except Exception:
                     continue
+                if a.get("tvl") is None and a.get("fees30") is None:
+                    continue                               # resposta vazia (ex.: protocolo-pai): tenta o próximo
                 tvl, fees30 = a.get("tvl"), a.get("fees30")
                 break
     except Exception:
