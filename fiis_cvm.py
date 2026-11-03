@@ -216,16 +216,19 @@ def pvp_historico(precos: pd.Series, vp_cota: pd.Series) -> pd.Series:
     return r
 
 
-def buscar_por_nome(geral: pd.DataFrame, texto: str, limite: int = 15) -> list[tuple[str, str]]:
+def buscar_por_nome(geral: pd.DataFrame, texto: str, limite: int = 40) -> list[tuple[str, str]]:
     """Fundos cujo nome contém o texto (para o usuário escolher o CNPJ quando o ticker não casa sozinho)."""
     if geral is None or geral.empty or not texto or len(texto.strip()) < 3:
         return []
     c_n, c_c = _achar(geral.columns, *CAMPOS["nome"]), _achar(geral.columns, *CAMPOS["cnpj"])
     if c_n is None or c_c is None:
         return []
-    alvo = _chave(texto)
+    palavras = [_chave(p) for p in texto.split() if len(_chave(p)) >= 2]
+    if not palavras:
+        return []
     d = geral[[c_c, c_n]].drop_duplicates(c_c)
-    ach = d[d[c_n].map(_chave).str.contains(alvo, regex=False)]
+    nomes = d[c_n].map(_chave)
+    ach = d[nomes.map(lambda n: all(p in n for p in palavras))]
     return [(formatar_cnpj(r[c_c]), str(r[c_n])) for _, r in ach.head(limite).iterrows()]
 
 
