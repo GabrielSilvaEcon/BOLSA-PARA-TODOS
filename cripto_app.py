@@ -178,7 +178,7 @@ def coletar(gid: str) -> dict:
     hist_tvl: list = []
     if {"defi", "staking", "governanca", "oraculo", "exchange"} & set(chaves):
         try:
-            slugs = cripto.slugs_defi(gid, cripto.listar_protocolos())[:1]
+            slugs = cripto.slugs_defi(gid, cripto.listar_protocolos())[:3]
         except Exception:
             slugs = []
             avisos.append("O DefiLlama não respondeu agora: TVL, taxas e receita do protocolo ficaram sem dados.")
@@ -188,9 +188,9 @@ def coletar(gid: str) -> dict:
                 proto_raw = _proto_raw(slug)
                 tvl, fees30, hist_tvl = proto.get("tvl"), proto.get("fees30"), proto.get("hist_tvl") or []
                 rev30 = cripto._total_30d(cripto._resumo_llama("fees", slug, "dailyRevenue"))
+                break                                      # o primeiro protocolo que responder (como o cripto.coletar_dados)
             except Exception:
                 proto = None
-            break
     if gid != "bitcoin" and ({"layer1", "layer2", "infra"} & set(chaves) or proto is None):
         # Bitcoin fica de fora: o "TVL" do DefiLlama para a rede Bitcoin é BTC embrulhado em outras redes e as taxas
         # não são as da rede; usar isso geraria múltiplos sem sentido (ex.: Preço/Taxas de 230 mil vezes).
@@ -283,10 +283,13 @@ def linha_comparacao(gid: str) -> dict:
             tvl = cad.get("tvl")
             fees30 = cripto._total30_cadeia("fees", cad["name"])
         elif princ in ("defi", "staking", "oraculo", "governanca", "exchange"):
-            sl = cripto.slugs_defi(gid, cripto.listar_protocolos())[:1]
-            if sl:
-                a = cripto.analisar_protocolo(sl[0])
+            for sl in cripto.slugs_defi(gid, cripto.listar_protocolos())[:3]:
+                try:
+                    a = cripto.analisar_protocolo(sl)
+                except Exception:
+                    continue
                 tvl, fees30 = a.get("tvl"), a.get("fees30")
+                break
     except Exception:
         pass
     val = ca.valuation(princ, mc, fdv, tvl, fees30)
