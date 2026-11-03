@@ -941,6 +941,8 @@ def coletar_dados(gid: str, m: dict, categoria: str, slug_defi: str | None = Non
                 a = analisar_protocolo(slug)
             except Exception:
                 continue
+            if a["tvl"] is None and a["fees30"] is None:
+                continue                                   # resposta vazia (ex.: protocolo-pai): tenta o próximo
             extras["protocolo"] = a
             d.update({"tvl": a["tvl"], "fees30": a["fees30"], "mcap": a["mcap"] or mc, "fdv": a["fdv"] or d["fdv"],
                       "tvl_var30": _var_tvl_30d(a["hist_tvl"])})
