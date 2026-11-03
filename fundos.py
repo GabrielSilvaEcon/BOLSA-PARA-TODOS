@@ -70,7 +70,7 @@ def formatar_cnpj(cnpj) -> str:
 
 
 # =============================================================================== informe diário
-CAMPOS_INFORME = {"cnpj": ("CNPJ_FUNDO_CLASSE", "CNPJ_FUNDO"), "data": ("DT_COMP",), "cota": ("VL_QUOTA",),
+CAMPOS_INFORME = {"cnpj": ("CNPJ_FUNDO_CLASSE", "CNPJ_FUNDO"), "data": ("DT_COMPTC", "DT_COMP"), "cota": ("VL_QUOTA",),
                   "pl": ("VL_PATRIM_LIQ",), "cotistas": ("NR_COTST",), "captacao": ("CAPTC_DIA",), "resgate": ("RESG_DIA",)}
 ESSENCIAIS_INFORME = ("cnpj", "data", "cota")
 
