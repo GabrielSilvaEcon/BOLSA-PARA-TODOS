@@ -1,19 +1,79 @@
-# --- Segredos e credenciais (NUNCA enviar ao GitHub) ---
+# ============================================================
+# Segredos e credenciais (NUNCA enviar ao GitHub)
+# O modelo seguro .streamlit/secrets.toml.example PODE ser publicado.
+# ============================================================
 .streamlit/secrets.toml
 **/secrets.toml
+.streamlit/secrets*
+!.streamlit/secrets.toml.example
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+client_secret*.json
+service-account*.json
+*credentials*.json
 
-# --- Dados de usuários gerados localmente (e-mails e carteiras) ---
+# ============================================================
+# Dados privados gerados pelo app (e-mails, carteiras, exportações)
+# ============================================================
 usuarios.db
 *.db
 *.sqlite
 *.sqlite3
+*.csv
+*.xlsx
+*.xls
 
-# --- Python / ambiente ---
+# ============================================================
+# Backups, cópias antigas e arquivos temporários
+# ============================================================
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
+*.bak
+*.old
+*.orig
+*.tmp
+*.swp
+*~
+backup/
+backups/
+tmp/
+temp/
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+
+# ============================================================
+# Python, ambientes virtuais e caches
+# ============================================================
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# ============================================================
+# Sistema e editores
+# ============================================================
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
