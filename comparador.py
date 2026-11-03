@@ -142,8 +142,14 @@ registrar_classe(Classe(
         Spec("liquidez", "Volume ÷ valor de mercado", "pct", +1, dica="Calculado: giro diário em relação ao tamanho."),
         Spec("ret30", "Variação em 30 dias", "pct_s", 0),
         Spec("circ_pct", "Oferta circulante ÷ máxima", "pct", 0, dica="Calculado. Só existe para moedas com oferta máxima."),
+        Spec("mc_fdv", "Valor de mercado ÷ FDV", "pct", +1, dica="Calculado. Perto de 100% = pouca oferta ainda por circular (menos diluição)."),
+        Spec("inflacao", "Crescimento da oferta (12m)", "pct_s", -1, dica="Estimado: variação da oferta circulante (valor de mercado ÷ preço)."),
+        Spec("tvl", "TVL (valor depositado)", "usd", +1, dica="DefiLlama. Só existe para redes e protocolos monitorados."),
+        Spec("mc_tvl", "Valor de mercado ÷ TVL", "x", -1, dica="Só compare dentro da mesma categoria. Múltiplo baixo não significa barato."),
+        Spec("p_taxas", "Preço ÷ Taxas (P/F)", "x", -1, dica="Valor de mercado ÷ taxas de 30 dias anualizadas. Só para quem gera taxas medidas."),
         *_COMUNS],
-    sem_fonte=["Segurança e descentralização (só Bitcoin, via blockchain.com)", "Dominância"],
+    sem_fonte=["Segurança e descentralização (só Bitcoin, via blockchain.com)", "Concentração de carteiras e calendário de desbloqueios",
+               "Endereços ativos e transações (exceto Bitcoin)"],
     criterios="Nota da Análise Fundamentalista de cripto (7 pilares, régua própria por tipo: Bitcoin, stablecoin, blockchain, DeFi)."))
 
 registrar_classe(Classe(
@@ -561,7 +567,10 @@ def comparar(ativos: list, hoje: date | None = None, extras: list | None = None)
         elif cl.parcial:
             alertas.append(f"{cl.nome}: análise parcial, {cl.parcial}")
     subs = {a.subgrupo: a.subgrupo_nome or a.subgrupo for a in validos if a.subgrupo}
-    if modo == "mesma_classe" and len(subs) > 1:
+    if modo == "mesma_classe" and len(subs) > 1 and classes and classes[0] == "cripto":
+        import cripto_analise
+        alertas += cripto_analise.compatibilidade({a.nome: a.subgrupo for a in validos if a.subgrupo})
+    elif modo == "mesma_classe" and len(subs) > 1:
         alertas.append("Estratégias diferentes na mesma classe (" + " × ".join(subs.values()) + "): renda, risco e valuation seguem "
                        "lógicas distintas (por exemplo, vacância só existe em tijolo e risco de crédito só em papel). "
                        "Prefira comparar fundos da mesma estratégia; a nota de um não é diretamente comparável à do outro.")
