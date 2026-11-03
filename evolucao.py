@@ -280,8 +280,10 @@ def coletar_cripto(gid: str) -> dict:
 CAMPOS_FII = {
     "segmento": (("Segmento",), "txt"), "mandato": (("Mandato",), "txt"),
     "vacancia": (("Vacância Média", "Vacancia Media"), "pct"), "imoveis": (("Qtd imóveis", "Qtd imoveis"), "int"),
-    "vp_cota": (("VP/Cota",), "num"), "pvp": (("P/VP",), "num"), "pl": (("Patrimônio Líquido", "Patrimonio Liquido"), "num"),
-    "dy": (("Dividend Yield",), "pct"), "ffo": (("FFO Yield",), "pct"), "cotas": (("Nº de cotas", "N de cotas", "Num de cotas"), "int"),
+    "vp_cota": (("VP/Cota",), "num"), "pvp": (("P/VP",), "num"),
+    "pl": (("Patrim. Líquido", "Patrimônio Líquido", "Patrimonio Liquido", "Patrim Liquido", "Patrimônio do Fundo"), "num"),
+    "dy": (("Div. Yield", "Dividend Yield", "DY"), "pct"), "ffo": (("FFO Yield",), "pct"),
+    "cotas": (("Nro. Cotas", "Nro Cotas", "Nº de cotas", "N de cotas", "Num de cotas", "Número de cotas"), "int"),
     "valor_mercado": (("Valor de mercado",), "num"),
 }
 
@@ -339,6 +341,14 @@ def coletar_fii_fundamentus(tk: str) -> dict:
     return out
 
 
+def em_fim_de_mes(s: pd.Series) -> pd.Series:
+    """O SGS data as séries mensais no dia 1 do mês de referência, mas a taxa só vale no FIM do mês: o índice de
+    setembro só existe depois de 30/09. Sem esta mudança, o IPCA parece 'velho' e a inflação do mês seria contada antes."""
+    s = s.copy()
+    s.index = pd.to_datetime(s.index) + pd.offsets.MonthEnd(0)
+    return s[~s.index.duplicated(keep="last")]
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def coletar_bcb() -> dict:
     """IPCA mensal (SGS 433) e CDI diário (SGS 12) do Banco Central, já como índices acumulados. Reaproveita o
@@ -352,10 +362,15 @@ def coletar_bcb() -> dict:
         i = dados.buscar_macro_bcb(433, 10)
         c = dados.buscar_macro_bcb(12, 9)
         if not i.empty:
-            out["ipca"] = i["valor"]
-            out["ipca_idx"] = cr.indice_de_taxas(i["valor"])
+            out["ipca"] = em_fim_de_mes(i["valor"])
+            out["ipca_idx"] = cr.indice_de_taxas(out["ipca"])
         if not c.empty:
             out["cdi_idx"] = cr.indice_de_taxas(c["valor"])
+        else:                                                     # reserva: CDI acumulado no mês (SGS 4391)
+            m = dados.buscar_macro_bcb(4391, 10)
+            if not m.empty:
+                out["cdi_idx"] = cr.indice_de_taxas(em_fim_de_mes(m["valor"]))
+                out["avisos"].append("CDI diário indisponível: usei o CDI mensal (SGS 4391), com precisão de mês.")
     except Exception as e:
         out["avisos"].append(f"Banco Central não respondeu ({e.__class__.__name__}).")
     if out["ipca_idx"].empty:
@@ -403,8 +418,17 @@ def _fig():
     return go
 
 
+# os gráficos ficam num cartão branco (tema.py): texto escuro, grade clara e cores com bom contraste
 PLOT_BASE = dict(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=10, t=40, b=40),
-                 legend=dict(orientation="h", y=-0.2), height=380)
+                 legend=dict(orientation="h", y=-0.2), height=380, font=dict(color="#16202B"),
+                 colorway=["#1F7A55", "#2563EB", "#D97706", "#7C3AED", "#DC2626", "#0891B2"])
+GRADE = dict(gridcolor="#DDE1E6", zeroline=False, linecolor="#C5CBD3")
+
+
+def _estilo(f):
+    f.update_xaxes(**GRADE)
+    f.update_yaxes(**GRADE)
+    return f
 
 
 def grafico_barras(df: pd.DataFrame, colunas: list[str], titulo: str, pct: bool = False):
@@ -416,6 +440,7 @@ def grafico_barras(df: pd.DataFrame, colunas: list[str], titulo: str, pct: bool 
         if c in df:
             f.add_bar(x=x, y=df[c], name=c)
     f.update_layout(title=titulo, barmode="group", **PLOT_BASE)
+    _estilo(f)
     if pct:
         f.update_yaxes(ticksuffix="%")
     return f
@@ -428,6 +453,7 @@ def grafico_linhas(series: dict[str, pd.Series], titulo: str, ysufixo: str = "")
         if len(s):
             f.add_scatter(x=s.index, y=s.values, name=nome, mode="lines")
     f.update_layout(title=titulo, **PLOT_BASE)
+    _estilo(f)
     if ysufixo:
         f.update_yaxes(ticksuffix=ysufixo)
     return f
@@ -440,6 +466,7 @@ def grafico_cagr(tabela_num: pd.DataFrame, titulo: str):
     for c in tabela_num.columns:
         f.add_bar(x=tabela_num.index, y=tabela_num[c], name=c)
     f.update_layout(title=titulo, barmode="group", **PLOT_BASE)
+    _estilo(f)
     f.update_yaxes(ticksuffix="%")
     return f
 
@@ -557,7 +584,8 @@ def _mostrar_cagr_serie(nome: str, s: pd.Series, unidade: str = ""):
         if not c.ok:
             col.caption(c.texto)
         else:
-            col.caption(f"{c.inicio[0]} → {c.fim[0]} ({c.anos:.1f} anos)")
+            col.caption(f"{pd.Timestamp(c.inicio[0]).strftime('%d/%m/%Y')} → {pd.Timestamp(c.fim[0]).strftime('%d/%m/%Y')} "
+                        f"({c.anos:.1f} anos)".replace(".", ","))
 
 
 _TOM = {"positivo": "✅", "atencao": "⚠️", "neutro": "ℹ️"}
@@ -805,9 +833,25 @@ def _secao_real(tk: str, p: dict):
             st.dataframe(pd.DataFrame(ac).resample("YE").last().round(1).T)
 
 
-ROT_FII = {"segmento": "Segmento", "mandato": "Mandato", "vacancia": "Vacância média (%)", "imoveis": "Nº de imóveis",
-           "vp_cota": "Valor patrimonial por cota (R$)", "pvp": "P/VP", "pl": "Patrimônio líquido (R$)",
-           "dy": "Dividend yield (%)", "ffo": "FFO yield (%)", "cotas": "Nº de cotas", "valor_mercado": "Valor de mercado (R$)"}
+ROT_FII = {"segmento": "Segmento", "mandato": "Mandato", "vacancia": "Vacância média", "imoveis": "Nº de imóveis",
+           "vp_cota": "Valor patrimonial por cota (R$)", "pvp": "P/VP", "pl": "Patrimônio líquido",
+           "dy": "Dividend yield", "ffo": "FFO yield", "cotas": "Nº de cotas", "valor_mercado": "Valor de mercado"}
+
+
+def _fmt_campo_fii(chave: str, v) -> str:
+    """Texto de um campo do FII: % com vírgula, contagens inteiras e valores grandes abreviados."""
+    if v is None:
+        return "não encontrado"
+    if isinstance(v, str):
+        return v
+    tipo = CAMPOS_FII[chave][1]
+    if tipo == "pct":
+        return f"{v:.2f}%".replace(".", ",")
+    if tipo == "int":
+        return f"{v:,.0f}".replace(",", ".")
+    if chave in ("pl", "valor_mercado"):
+        return "R$ " + _fmt_num(v)
+    return f"{v:.2f}".replace(".", ",")
 
 
 def _secao_fii(tk: str):
@@ -819,8 +863,7 @@ def _secao_fii(tk: str):
     d = f["dados"]
     if not d:
         return
-    linhas = {ROT_FII[k]: ("não encontrado" if d.get(k) is None else
-                           (d[k] if isinstance(d[k], str) else _fmt_num(d[k]))) for k in ROT_FII}
+    linhas = {ROT_FII[k]: _fmt_campo_fii(k, d.get(k)) for k in ROT_FII}
     st.dataframe(pd.DataFrame({"Valor": linhas}), use_container_width=True)
     st.caption(f"Fonte: {f['fonte']} · lido em {date.fromisoformat(f['data']).strftime('%d/%m/%Y')} · valores de HOJE: "
                "o app ainda não guarda o histórico de vacância, patrimônio e VP/cota, então não há CAGR deles.")
@@ -976,6 +1019,7 @@ def _pagina_comparacao(base_tk: str, classe_base: str):
             for tk in pct.columns:
                 f.add_bar(x=pct.index, y=pct[tk], name=tk)
             f.update_layout(title="Crescimento anual composto (3 anos), %", barmode="group", **PLOT_BASE)
+            _estilo(f)
             st.plotly_chart(f, use_container_width=True, key="ev_cmp_barras")
         st.plotly_chart(grafico_linhas(series_ac, "Crescimento acumulado do preço (base 100 no início de cada histórico)"),
                         use_container_width=True, key="ev_cmp_lin")
