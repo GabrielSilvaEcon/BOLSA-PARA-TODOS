@@ -512,6 +512,41 @@ def _aba_seguranca(d, rk):
     st.caption(d["aud"].get("aviso") or "")
 
 
+def diagnostico_defi(gid: str, nome: str = "") -> list[str]:
+    """Mostra, passo a passo, o que o app achou no DefiLlama para a moeda (sem cache). Só para conferência."""
+    out: list[str] = []
+    try:
+        lista = cripto._get_json(f"{cripto.LLAMA}/protocols", tentativas=1)
+    except Exception as e:
+        return [f"Lista de protocolos do DefiLlama: falhou ({e})."]
+    out.append(f"Lista de protocolos do DefiLlama: {len(lista)} itens.")
+    alvo = (nome or gid).lower()
+    achados = [p for p in lista if isinstance(p, dict) and (p.get("gecko_id") == gid or alvo in str(p.get("name", "")).lower()
+                                                           or alvo in str(p.get("slug", "")).lower())]
+    if not achados:
+        out.append(f"Nenhum protocolo com gecko_id '{gid}' ou nome parecido com '{alvo}'.")
+    for p in achados[:6]:
+        out.append(f"- {p.get('slug')}: gecko_id={p.get('gecko_id')!r}, pai={p.get('parentProtocol')!r}, TVL={p.get('tvl')}")
+    try:
+        slugs = cripto.slugs_defi(gid, cripto.listar_protocolos())
+    except Exception as e:
+        slugs = []
+        out.append(f"slugs_defi falhou: {e}")
+    out.append(f"Protocolos que o app tenta (nesta ordem): {slugs or 'nenhum'}.")
+    for sl in slugs[:3]:
+        try:
+            a = cripto.analisar_protocolo(sl)
+            out.append(f"- {sl}: TVL={a.get('tvl')}, taxas 30d={a.get('fees30')}")
+        except Exception as e:
+            out.append(f"- {sl}: erro ({e})")
+    try:
+        cad = cripto._cadeia_da_moeda(gid)
+        out.append(f"Rede ligada à moeda no DefiLlama: {cad.get('name') + ' (TVL ' + str(cad.get('tvl')) + ')' if cad else 'nenhuma'}.")
+    except Exception as e:
+        out.append(f"Rede: erro ({e})")
+    return out
+
+
 def _aba_valuation(d, va):
     c = d["mercado"]["calc"]
     if d["pares_lista"] and st.checkbox("Comparar com os concorrentes da categoria (consulta até 6 projetos; demora mais)",
@@ -533,6 +568,12 @@ def _aba_valuation(d, va):
             for n in va["nao_aplicaveis"]:
                 st.markdown("- " + n)
     st.caption(va["aviso"])
+    if d["tvl"] is None and d["princ"] in ("defi", "staking", "oraculo", "governanca", "exchange"):
+        with st.expander("Diagnóstico: por que não há TVL?"):
+            if st.button("Rodar diagnóstico", key=f"diag_{d['m']['id']}"):
+                with st.spinner("Consultando o DefiLlama..."):
+                    for linha in diagnostico_defi(d["m"]["id"], d["m"].get("nome", "")):
+                        st.markdown(linha)
 
 
 def _aba_historico(d, h):
