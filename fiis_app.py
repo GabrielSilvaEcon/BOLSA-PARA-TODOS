@@ -259,6 +259,7 @@ def _aba_dividendos(d, precos):
     mensal = s.groupby(s.index.to_period("M")).sum()
     mensal.index = mensal.index.to_timestamp(how="end").normalize()
     df = pd.DataFrame({"Rendimento por cota (R$)": mensal.tail(36)})
+    st.markdown("**Rendimento por cota (últimos 36 meses, R$)**")
     st.plotly_chart(evolucao.grafico_barras(df, ["Rendimento por cota (R$)"], "Rendimento por cota (últimos 36 meses)"),
                     width="stretch", key=f"fii_div_{d['tk']}", config={"displayModeBar": False})
     if div.get("extraordinarios"):
@@ -268,6 +269,7 @@ def _aba_dividendos(d, precos):
         st.caption("É um indício estatístico (acima de 1,5× a mediana dos 12 meses anteriores), não uma confirmação.")
     an = div.get("anuais")
     if an is not None and len(an) >= 2:
+        st.markdown("**Rendimentos por ano (R$ por cota)**")
         st.plotly_chart(evolucao.grafico_barras(pd.DataFrame({"Total no ano (R$/cota)": an}), ["Total no ano (R$/cota)"],
                                                 "Rendimentos por ano"), width="stretch", key=f"fii_divan_{d['tk']}",
                         config={"displayModeBar": False})
@@ -350,17 +352,22 @@ def _mostrar_cvm(d, df, precos):
     for col, titulo, como in graf:
         if col in df:
             s = _recorte(df[col], vista, como)
+            if col == "pl":
+                s, titulo = s / 1e9, "Patrimônio líquido (R$ bilhões)"
             if len(s) >= 2:
+                st.markdown(f"**{titulo}**")
                 st.plotly_chart(evolucao.grafico_linhas({titulo: s}, titulo), width="stretch",
                                 key=f"fii_h_{col}_{d['tk']}_{vista}", config={"displayModeBar": False})
     if "vp_cota" in df and len(precos.get("preco", [])):
         pvp = fiis_cvm.pvp_historico(precos["preco"], df["vp_cota"])
         pvp = _recorte(pvp, vista) if vista != "Anual" else fiis_cvm.serie_anual(pvp, "ultimo")
         if len(pvp) >= 2:
+            st.markdown("**P/VP no fim de cada período**")
             st.plotly_chart(evolucao.grafico_linhas({"P/VP": pvp}, "P/VP no fim de cada período"), width="stretch",
                             key=f"fii_h_pvp_{d['tk']}_{vista}", config={"displayModeBar": False})
             st.caption("P/VP = último preço do mês ÷ valor patrimonial por cota informado pelo fundo para o mês.")
     if "dy_mes" in df and vista == "Mensal" and df["dy_mes"].notna().sum() >= 2:
+        st.markdown("**Rendimento do mês (% sobre o valor da cota)**")
         st.plotly_chart(evolucao.grafico_barras(pd.DataFrame({"Rendimento do mês (%)": df["dy_mes"].tail(36)}),
                                                 ["Rendimento do mês (%)"], "Rendimento do mês (% sobre o valor da cota)"),
                         width="stretch", key=f"fii_h_dym_{d['tk']}", config={"displayModeBar": False})
