@@ -84,6 +84,8 @@ class Ativo:
     pontuacao: Pontuacao | None = None
     avisos: list = field(default_factory=list)
     erro: str | None = None
+    subgrupo: str = ""                   # estratégia dentro da classe (ex.: FII "tijolo"/"papel"); vazio = não se aplica
+    subgrupo_nome: str = ""
 
 
 @dataclass
@@ -150,14 +152,20 @@ registrar_classe(Classe(
              "DY muito alto pode indicar queda forte do preço ou rendimento extraordinário."),
         Spec("meses_pagos", "Meses com distribuição (12m)", "int", +1, dica="Quantos dos últimos 12 meses tiveram rendimento pago."),
         Spec("liq", "Liquidez média diária (90d)", "brl_g", +1, dica="Média de preço × volume negociado por dia, últimos 90 dias."),
-        Spec("pvp", "P/VP", "x", -1, dica="Exige o valor patrimonial da cota (informe mensal da CVM): ainda sem fonte no app."),
+        Spec("pvp", "P/VP", "x", -1, dica="Preço da cota ÷ valor patrimonial por cota (Fundamentus, valor de hoje). Muito abaixo "
+             "de 0,7 não é tratado como vantagem: pode indicar problema no patrimônio."),
+        Spec("dy_rec", "DY sem pagamentos acima do normal (12m)", "pct", +1,
+             dica="DY de 12 meses descontando pagamentos que superaram 1,5× a mediana: aproxima o rendimento recorrente."),
+        Spec("vacancia", "Vacância média", "pct", -1, dica="Só FIIs de tijolo. Fonte: Fundamentus (valor de hoje)."),
+        Spec("cotistas", "Número de cotistas", "int", +1, dica="Último informe mensal da CVM (precisa do CNPJ na página do FII)."),
         *_COMUNS],
-    parcial="sem P/VP, valor patrimonial, vacância, contratos e concentração de imóveis (sem fonte de dados no app). "
-            "Indicadores calculados a partir do Yahoo Finance (preço, volume e rendimentos).",
-    sem_fonte=["P/VP e valor patrimonial por cota", "Vacância física e financeira", "Prazo dos contratos",
-               "Diversificação de imóveis e inquilinos", "Qualidade dos ativos", "Riscos de concentração"],
-    criterios="Renda (25%), liquidez (10%), risco (20%), retorno (10%); P/VP (20%) e qualidade dos ativos (15%) sem fonte: "
-              "a nota é sempre provisória."))
+    parcial="sem contratos, concentração de inquilinos, carteira de CRIs e qualidade da gestão (sem fonte de dados no app). "
+            "Rendimentos e preços vêm do Yahoo Finance; P/VP e vacância do Fundamentus (valor de hoje).",
+    sem_fonte=["Prazo dos contratos", "Diversificação de inquilinos", "Carteira de CRIs, LTV e inadimplência",
+               "Qualidade da gestão", "Concentração por devedor"],
+    criterios="Renda (25%), liquidez (10%), risco (20%), retorno (10%), P/VP (20%) e qualidade dos ativos (15%, só tijolo, "
+              "pela vacância e nº de imóveis). Sem dado, o pilar fica fora da nota e ela é marcada como provisória. "
+              "DY muito alto não aumenta a nota."))
 registrar_classe(Classe(
     "fundo", "Fundos de investimento", list(_COMUNS), suportada=False,
     motivo="Os dados de fundos viriam da CVM (cadastro e informe diário), que ainda não está integrada.",
@@ -430,24 +438,44 @@ def liquidez_diaria(close, volume, dias: int = 90) -> float | None:
 FII_PESOS = {"Renda": 25, "Liquidez": 10, "Risco": 20, "Retorno": 10, "Valuation (P/VP)": 20, "Qualidade dos ativos": 15}
 
 
+def _dy_faixa(dy):
+    """DY só pontua dentro de uma faixa: até 12% quanto maior melhor; acima disso a nota cai (DY muito alto costuma vir de
+    preço depreciado, pagamento extraordinário ou distribuição que a carteira não sustenta)."""
+    if not _ok(dy):
+        return None
+    if dy <= 12:
+        return escala(dy, 4, 12)
+    return max(40.0, 100.0 - (dy - 12) * 30.0)
+
+
+def _pvp_faixa(pvp):
+    """P/VP: quanto menor melhor até 0,7; abaixo disso o desconto é suspeito e a nota não sobe."""
+    if not _ok(pvp) or pvp <= 0:
+        return None
+    if pvp < 0.7:
+        return 50.0
+    return escala(pvp, 1.3, 0.9)
+
+
 def pontuar_fii(ind: dict) -> Pontuacao:
     """FII: renda, liquidez, risco e retorno (calculados do preço/rendimentos). P/VP e qualidade dos ativos ainda não têm
     fonte: ficam fora da nota (sem penalizar) e a nota fica PROVISÓRIA, porque falta metade do que importa num FII.
     Se um dia o P/VP chegar em ind["pvp"], ele entra na nota sem mudar mais nada. Limites são regras educacionais."""
     v = {k: (i.valor if isinstance(i, Ind) else i) for k, i in ind.items()}
     pil = {
-        "Renda": _media([escala(v.get("dy12m"), 4, 12), escala(v.get("meses_pagos"), 6, 12)]),
+        "Renda": _media([_dy_faixa(v.get("dy12m")), escala(v.get("meses_pagos"), 6, 12)]),
         "Liquidez": escala(v.get("liq"), 200_000, 3_000_000),
         "Risco": _media([escala(v.get("vol"), 25, 8), escala(v.get("dd_max"), -30, -5)]),
         "Retorno": escala(v.get("ret12m"), 0, 20),
-        "Valuation (P/VP)": escala(v.get("pvp"), 1.3, 0.9),
-        "Qualidade dos ativos": None,
+        "Valuation (P/VP)": _pvp_faixa(v.get("pvp")),
+        "Qualidade dos ativos": _media([escala(v.get("vacancia"), 20, 3), escala(v.get("qtd_imoveis"), 1, 10)]),
     }
     txt = {"Renda": "DY de 12 meses e regularidade das distribuições (DY muito alto pode ser sinal de queda do preço).",
            "Liquidez": "Volume financeiro médio negociado por dia.", "Risco": "Volatilidade e pior queda em 12 meses.",
            "Retorno": "Retorno em 12 meses com proventos reinvestidos (preço ajustado).",
-           "Valuation (P/VP)": "Preço contra o valor patrimonial da cota.", "Qualidade dos ativos": "Vacância, contratos e concentração."}
-    return _pontuar(pil, FII_PESOS, txt, "FII: renda, liquidez, risco e retorno (parcial)")
+           "Valuation (P/VP)": "Preço contra o valor patrimonial da cota.",
+           "Qualidade dos ativos": "Vacância e número de imóveis (só FIIs de tijolo; contratos e inquilinos não têm fonte)."}
+    return _pontuar(pil, FII_PESOS, txt, "FII: renda, liquidez, risco, retorno, P/VP e qualidade dos ativos (parcial)")
 
 
 # =============================================================================== comparação
@@ -532,6 +560,11 @@ def comparar(ativos: list, hoje: date | None = None, extras: list | None = None)
             alertas.append(f"{cl.nome}: {cl.motivo} Só os indicadores de preço (comuns) são mostrados.")
         elif cl.parcial:
             alertas.append(f"{cl.nome}: análise parcial, {cl.parcial}")
+    subs = {a.subgrupo: a.subgrupo_nome or a.subgrupo for a in validos if a.subgrupo}
+    if modo == "mesma_classe" and len(subs) > 1:
+        alertas.append("Estratégias diferentes na mesma classe (" + " × ".join(subs.values()) + "): renda, risco e valuation seguem "
+                       "lógicas distintas (por exemplo, vacância só existe em tijolo e risco de crédito só em papel). "
+                       "Prefira comparar fundos da mesma estratégia; a nota de um não é diretamente comparável à do outro.")
     if modo == "mesma_classe" and not classe(classes[0]).suportada:
         specs = list(_COMUNS) + [s for s in extras if s.chave not in {x.chave for x in _COMUNS}]
 
