@@ -54,7 +54,7 @@ ESTRATEGIAS = {"tijolo": "Tijolo (imóveis físicos)", "papel": "Papel (recebív
 REGRAS_SEGMENTO = [
     ("fundodefundos", "fof", "Fundo de fundos"), ("fof", "fof", "Fundo de fundos"),
     ("titulos", "papel", "Papel (CRI/LCI)"), ("valoresmob", "papel", "Papel (CRI/LCI)"), ("recebiv", "papel", "Papel (CRI/LCI)"),
-    ("papel", "papel", "Papel (CRI/LCI)"), ("hibrido", "hibrido", "Híbrido"), ("misto", "hibrido", "Híbrido"),
+    ("papel", "papel", "Papel (CRI/LCI)"), ("hibrido", "hibrido", "Híbrido"), ("misto", "hibrido", "Híbrido"), ("multicateg", "hibrido", "Híbrido (multicategoria)"),
     ("desenvolv", "desenvolvimento", "Desenvolvimento"),
     ("shopping", "tijolo", "Shopping centers"), ("logist", "tijolo", "Logística"), ("industrial", "tijolo", "Logística"),
     ("laje", "tijolo", "Lajes corporativas"), ("corporativ", "tijolo", "Lajes corporativas"),
