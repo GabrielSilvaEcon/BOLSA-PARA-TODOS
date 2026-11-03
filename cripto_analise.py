@@ -1062,8 +1062,9 @@ def relatorio(ctx: dict) -> dict:
     s_it = []
     for r in rk.get("riscos", []):
         if r["nivel"] in ("alto", "medio"):
-            s_it.append(f"{r['rotulo']} — {r['nivel']}: {r['texto']}")
-            (neg if r["nivel"] == "alto" else atencao).append(f"{r['rotulo']}: {r['nivel']}.")
+            nv = "médio" if r["nivel"] == "medio" else r["nivel"]
+            s_it.append(f"{r['rotulo']} — {nv}: {r['texto']}")
+            (neg if r["nivel"] == "alto" else atencao).append(f"{r['rotulo']}: {nv}.")
     s_it.append(rk.get("aviso") or "")
     sec.append({"titulo": "Segurança", "itens": [x for x in s_it if x]})
 
@@ -1105,7 +1106,7 @@ def relatorio(ctx: dict) -> dict:
         atencao.append(a["titulo"])
     sec.append({"titulo": "Indicadores que merecem atenção", "itens": list(dict.fromkeys(atencao)) or ["Nenhum no momento."]})
     def _virgula(t):                      # números do relatório no padrão brasileiro (o texto do projeto fica como veio)
-        return t if t.startswith("Objetivo") else re.sub(r"(?<=\d)\.(?=\d)", ",", t)
+        return t if t.startswith("Objetivo") else re.sub(r"(?<![\w.])(\d+)\.(\d+)", r"\1,\2", t)
     for s_ in sec:
         s_["itens"] = [_virgula(i) for i in s_["itens"]]
     pos, neg = [_virgula(x) for x in pos], [_virgula(x) for x in neg]
