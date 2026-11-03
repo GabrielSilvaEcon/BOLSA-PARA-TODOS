@@ -297,7 +297,7 @@ def linha_comparacao(gid: str) -> dict:
     return {"gid": gid, "nome": m["nome"], "simbolo": m["simbolo"], "princ": princ, "mcap": mc,
             "giro": (v24 / mc) if mc and v24 is not None else None, "var30": m.get("var30"), "var1a": m.get("var1a"),
             "vol_anual": ca.volatilidade(s), "dd_max": ca.drawdown_maximo(s), "mc_fdv": (mc / fdv) if mc and fdv else None,
-            "tvl": tvl if tvl and tvl > 0 else None, "mc_tvl": vd.get("mc_tvl"), "p_taxas": vd.get("p_taxas")}
+            "tvl": tvl if tvl and tvl > 0 else None, "fees30": fees30, "mc_tvl": vd.get("mc_tvl"), "p_taxas": vd.get("p_taxas")}
 
 
 # =============================================================================== telas
