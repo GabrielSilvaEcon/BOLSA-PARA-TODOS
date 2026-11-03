@@ -356,6 +356,7 @@ a[data-testid="stPageLink-NavLink"]:not(.nav-x):hover, button[data-testid="stPop
 .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {display:none !important;}
 .stTabs [data-baseweb="tab"] {border-radius:var(--r-pill); padding:6px 16px; height:auto;}
 .stTabs [aria-selected="true"] {background:#fff; color:var(--brand-d) !important; box-shadow:0 2px 6px rgba(22,32,43,.10), 0 0 0 1px var(--line);}
+.stTabs [aria-selected="true"] *, .stTabs [aria-selected="true"] p {color:#17604A !important;}   /* texto legível sobre o fundo branco, também no tema escuro */
 button[data-testid^="stBaseButton-segmented_control"] {border-radius:var(--r-pill) !important; min-height:40px; font-weight:700;
   border:1px solid var(--line-2) !important; background:rgba(255,255,255,.85) !important; transition:var(--ease);}
 button[data-testid="stBaseButton-segmented_controlActive"] {background:linear-gradient(135deg,#1F7A55,#17604A) !important;
