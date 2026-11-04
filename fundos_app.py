@@ -209,7 +209,7 @@ def _taxa_do_yahoo(info: dict) -> float | None:
     return None
 
 
-VERSAO = "10.5"
+VERSAO = "10.7"
 
 
 def preparar_etf(tk: str) -> dict:
@@ -223,9 +223,7 @@ def preparar_etf(tk: str) -> dict:
     if h.empty or len(h) < 30:
         fx["erro"] = "sem histórico de preços suficiente no Yahoo Finance"
         return fx
-    rot0 = fa.classificar_etf(tk, fx["nome"], info.get("category") or "")
-    renda_fixa = bool(rot0) and fa.categoria_principal(rot0) in ("renda_fixa", "referenciado_di")
-    close, limpeza = fa.limpar_serie(h["Close"], excursoes=renda_fixa)
+    close, limpeza = fa.limpar_serie(h["Close"])
     adj = fa.serie(h["Adj Close"]).reindex(close.index).dropna() if "Adj Close" in h else close
     if limpeza["aviso"]:
         fx["avisos"].append(limpeza["aviso"])
@@ -248,8 +246,15 @@ def preparar_etf(tk: str) -> dict:
     fx["cdi_idx"], fx["ipca_idx"] = bcb.get("cdi_idx"), bcb.get("ipca_idx")
     fx["rf_idx"] = fx["cdi_idx"] if fx["moeda"] == "BRL" else _rf_usd()
     fx["rf_nome"] = "CDI" if fx["moeda"] == "BRL" else "T-bill de 13 semanas (^IRX)"
-    fx["ref"], fx["ref_nome"], fx["ref_freq"] = None, ref["nome"], "D"
-    if ref["yahoo"]:
+    fx["ref"], fx["ref_nome"], fx["ref_freq"], fx["ref_tipo"] = None, ref["nome"], "D", "preço"
+    if ref.get("yahoo_tr"):
+        # ETF que distribui dividendos: compara retorno total do ETF com o índice de RETORNO TOTAL (dividendos reinvestidos).
+        # Preço contra índice de preço erra no dia da data-com do ETF (o preço cai pelo dividendo, o índice não).
+        rtr = _serie_yahoo(ref["yahoo_tr"])
+        if len(rtr) >= 250 and (adj.index[-1] - rtr.index[-1]).days <= 10:
+            fx["ref"], fx["serie_tracking"], fx["ref_tipo"] = rtr, adj, "retorno total"
+            fx["ref_nome"] = f"{ref['nome']} (retorno total)"
+    if fx["ref"] is None and ref["yahoo"]:
         r = _serie_yahoo(ref["yahoo"])
         if len(r):
             if ref["em_reais"]:
@@ -265,6 +270,8 @@ def preparar_etf(tk: str) -> dict:
             fx["ref"] = r if len(r) else None
         if fx["ref"] is None:
             fx["avisos"].append(f"Série do índice de referência ({ref['nome']}) indisponível agora: tracking não calculado.")
+    elif fx["ref"] is not None:
+        pass
     elif ref["nome"]:
         fx["avisos"].append(f"Índice de referência: {ref['nome']}. Não há série gratuita deste índice no app, então tracking "
                             "error e tracking difference ficam sem cálculo.")
@@ -299,41 +306,105 @@ def _colunas_cadastro(cab) -> list:
     return [c for c in cab if c in quer]
 
 
+def _ler_cad_fi() -> pd.DataFrame:
+    """Cadastro ANTIGO (cad_fi.csv). Desde a Resolução CVM 175 os fundos adaptados saem dele ou aparecem como CANCELADA;
+    serve só para fundos ainda não adaptados e como fonte de taxas antigas. Lê tudo (inclusive cancelados)."""
+    conteudo = fd.baixar(URL_CAD, timeout=120)
+    if conteudo is None:
+        return pd.DataFrame()
+    cab = pd.read_csv(io.BytesIO(conteudo), sep=";", encoding="latin1", dtype=str, nrows=0)
+    return pd.read_csv(io.BytesIO(conteudo), sep=";", encoding="latin1", dtype=str, usecols=_colunas_cadastro(cab.columns),
+                       quoting=3, on_bad_lines="skip")   # quoting=3: aspas soltas em campos de texto não "engolem" o arquivo
+
+
+def _ler_registro() -> pd.DataFrame:
+    """Cadastro NOVO (registro_fundo_classe.zip, Resolução CVM 175): uma linha por CLASSE (o CNPJ que aparece no informe
+    diário), com gestor e administrador vindos do registro do fundo."""
+    conteudo = fd.baixar(URL_REGISTRO, timeout=120)
+    if conteudo is None:
+        return pd.DataFrame()
+    with zipfile.ZipFile(io.BytesIO(conteudo)) as z:
+        nomes = {n.lower(): n for n in z.namelist()}
+        n_cls = next((n for k, n in nomes.items() if "registro_classe" in k and k.endswith(".csv")), None)
+        n_fun = next((n for k, n in nomes.items() if "registro_fundo" in k and "classe" not in k and k.endswith(".csv")), None)
+        if not n_cls:
+            return pd.DataFrame()
+        with z.open(n_cls) as f:
+            cls = pd.read_csv(f, sep=";", encoding="latin1", dtype=str, quoting=3, on_bad_lines="skip")
+        fun = None
+        if n_fun:
+            with z.open(n_fun) as f:
+                fun = pd.read_csv(f, sep=";", encoding="latin1", dtype=str, quoting=3, on_bad_lines="skip")
+    cols = _colunas_cadastro(cls.columns)
+    id_f = fd._achar(cls.columns, "ID_Registro_Fundo")
+    if fun is not None and id_f and fd._achar(fun.columns, "ID_Registro_Fundo"):
+        extra = [c for c in ("Gestor", "Administrador") if c in fun.columns and c not in cls.columns]
+        if extra:
+            f2 = fun[[fd._achar(fun.columns, "ID_Registro_Fundo")] + extra].drop_duplicates()
+            f2.columns = [id_f] + extra
+            cls = cls.merge(f2, on=id_f, how="left")
+            cols += extra
+    return cls[cols]
+
+
+DE_ANTIGO_PARA_NOVO = {"CNPJ_FUNDO": "CNPJ_Classe", "DENOM_SOCIAL": "Denominacao_Social", "CLASSE": "Classificacao",
+                       "CLASSE_ANBIMA": "Classificacao_Anbima", "SIT": "Situacao", "RENTAB_FUNDO": "Indicador_Desempenho",
+                       "PUBLICO_ALVO": "Publico_Alvo", "CONDOM": "Forma_Condominio", "FUNDO_EXCLUSIVO": "Exclusivo",
+                       "GESTOR": "Gestor", "ADMIN": "Administrador", "VL_PATRIM_LIQ": "Patrimonio_Liquido",
+                       "DT_PATRIM_LIQ": "Data_Patrimonio_Liquido"}
+
+
+def _funcionando(df: pd.DataFrame) -> pd.DataFrame:
+    sit = fd._achar(df.columns, "Situacao", "SIT")
+    return df[df[sit].fillna("").str.upper().str.contains("FUNCIONAMENTO")] if sit else df
+
+
 @st.cache_data(ttl=24 * 3600, show_spinner=False)
 def _cadastro() -> dict:
-    """Cadastro de fundos em funcionamento (CVM). Layout antigo (cad_fi.csv) primeiro; se falhar, o novo (registro de classes).
+    """Cadastro de fundos em funcionamento (CVM). Fonte principal: registro novo de classes (Resolução CVM 175), onde estão
+    os fundos ativos. Complemento: cad_fi.csv antigo, para fundos ainda não adaptados e para a taxa de administração e de
+    performance (o registro novo não traz taxas; as do cadastro antigo são marcadas como possivelmente desatualizadas).
     Devolve {df, fonte, avisos}; df vazio se nada pôde ser lido."""
     out = {"df": pd.DataFrame(), "fonte": "CVM (cadastro de fundos)", "avisos": []}
+    novo = antigo = pd.DataFrame()
     try:
-        conteudo = fd.baixar(URL_CAD, timeout=120)
-        if conteudo is not None:
-            cab = pd.read_csv(io.BytesIO(conteudo), sep=";", encoding="latin1", dtype=str, nrows=0)
-            df = pd.read_csv(io.BytesIO(conteudo), sep=";", encoding="latin1", dtype=str, usecols=_colunas_cadastro(cab.columns))
-            sit = fd._achar(df.columns, "SIT", "Situacao")
-            if sit:
-                df = df[df[sit].fillna("").str.upper().str.contains("FUNCIONAMENTO")]
-            out["df"] = df.reset_index(drop=True)
-            return out
-    except Exception as e:
-        out["avisos"].append(f"cad_fi.csv indisponível ({e.__class__.__name__}).")
-    try:
-        conteudo = fd.baixar(URL_REGISTRO, timeout=120)
-        if conteudo is not None:
-            with zipfile.ZipFile(io.BytesIO(conteudo)) as z:
-                nome = next((n for n in z.namelist() if "registro_classe" in n.lower() and n.lower().endswith(".csv")), None)
-                if nome:
-                    with z.open(nome) as f:
-                        df = pd.read_csv(f, sep=";", encoding="latin1", dtype=str)
-                    df = df[_colunas_cadastro(df.columns)]
-                    sit = fd._achar(df.columns, "Situacao", "SIT")
-                    if sit:
-                        df = df[df[sit].fillna("").str.upper().str.contains("FUNCIONAMENTO")]
-                    out["df"] = df.reset_index(drop=True)
-                    out["avisos"].append("Usei o cadastro novo da CVM (classes de fundos): taxas e benchmark podem faltar.")
-                    return out
+        novo = _ler_registro()
     except Exception as e:
         out["avisos"].append(f"Registro de classes da CVM indisponível ({e.__class__.__name__}).")
-    out["avisos"].append("Não consegui ler o cadastro da CVM agora. Você ainda pode digitar o CNPJ do fundo.")
+    try:
+        antigo = _ler_cad_fi()
+    except Exception as e:
+        out["avisos"].append(f"Cadastro antigo da CVM indisponível ({e.__class__.__name__}).")
+    if novo.empty and antigo.empty:
+        out["avisos"].append("Não consegui ler o cadastro da CVM agora. Você ainda pode digitar o CNPJ do fundo.")
+        return out
+    if novo.empty:
+        out["df"] = _funcionando(antigo).reset_index(drop=True)
+        out["avisos"].append("Só o cadastro antigo da CVM respondeu: fundos já adaptados à Resolução CVM 175 podem não aparecer.")
+        return out
+    novo = _funcionando(novo).copy()
+    c_n = fd._achar(novo.columns, "CNPJ_Classe", "CNPJ_FUNDO_CLASSE", "CNPJ_FUNDO")
+    novo["_cnpj"] = novo[c_n].map(fd.so_digitos)
+    if not antigo.empty:
+        c_a = fd._achar(antigo.columns, "CNPJ_FUNDO", "CNPJ_FUNDO_CLASSE")
+        antigo = antigo.copy()
+        antigo["_cnpj"] = antigo[c_a].map(fd.so_digitos)
+        taxas = [c for c in ("TAXA_ADM", "TAXA_PERFM") if c in antigo.columns and c not in novo.columns]
+        if taxas:                                               # taxas do cadastro antigo, pelo mesmo CNPJ
+            t = antigo.dropna(subset=taxas, how="all").drop_duplicates("_cnpj", keep="last")[["_cnpj"] + taxas]
+            novo = novo.merge(t, on="_cnpj", how="left")
+            novo["ORIGEM_TAXA"] = novo[taxas].notna().any(axis=1).map(
+                {True: "cadastro antigo da CVM (pode estar desatualizada: confira a lâmina)", False: None})
+        ativos_antigos = _funcionando(antigo)
+        so_antigos = ativos_antigos[~ativos_antigos["_cnpj"].isin(novo["_cnpj"])]
+        if len(so_antigos):                                     # fundos ainda não adaptados à 175, com os nomes de coluna novos
+            so_antigos = so_antigos.rename(columns={k: v for k, v in DE_ANTIGO_PARA_NOVO.items() if v in novo.columns or k == c_a})
+            if c_a in DE_ANTIGO_PARA_NOVO and DE_ANTIGO_PARA_NOVO[c_a] != c_n:
+                so_antigos = so_antigos.rename(columns={DE_ANTIGO_PARA_NOVO[c_a]: c_n})
+            if "TAXA_ADM" in so_antigos.columns and "ORIGEM_TAXA" in novo.columns:
+                so_antigos["ORIGEM_TAXA"] = so_antigos["TAXA_ADM"].notna().map({True: "cadastro da CVM", False: None})
+            novo = pd.concat([novo, so_antigos], ignore_index=True)
+    out["df"] = novo.drop(columns="_cnpj").reset_index(drop=True)
     return out
 
 
@@ -481,7 +552,9 @@ def preparar_fundo(cnpj: str, meses: int = 37) -> dict:
     ta, tp = cad.get("taxa_adm"), cad.get("taxa_perf")
     ta = ta if fa._ok(ta) and 0 <= ta < 20 else None
     tp = tp if fa._ok(tp) and 0 <= tp <= 100 else None
-    fx["custos"] = {"taxa_adm": ta, "taxa_perf": tp, "fonte": "cadastro da CVM" if (ta is not None or tp is not None) else "sem dado na fonte"}
+    fx["custos"] = {"taxa_adm": ta, "taxa_perf": tp,
+                    "fonte": (cad.get("taxa_origem") or "cadastro da CVM") if (ta is not None or tp is not None) else
+                    "sem dado na fonte: o cadastro novo da CVM não traz taxas; confira a lâmina do fundo"}
     m = fd.metricas_fundo(df)
     fx["metricas"] = m
     fx["pl"] = m.get("pl_atual")
@@ -543,8 +616,9 @@ def _aba_visao(fx, an, atalho_comparar):
               f"cobertura {nota['cobertura'] * 100:.0f}%" + (" · provisória" if nota["provisoria"] else ""),
               "Média ponderada de retorno, risco, consistência, custos e porte, só com os pilares que têm dado."),
              ("Retorno 12 meses", _p(j.get("12 meses")), _cls_ret(j.get("12 meses"))),
-             ("Contra a referência", "n/d" if not ref.get("ok") else f"{ref['dif_pp']:+.1f} p.p.".replace(".", ","),
-              "na" if not ref.get("ok") else ("good" if ref["dif_pp"] > 0 else "bad"),
+             ("Contra a referência", "n/d" if not ref.get("ok") else
+              ("0,0 p.p." if abs(ref["dif_pp"]) < 0.05 else f"{ref['dif_pp']:+.1f}".replace(".", ",") + " p.p."),
+              "na" if not ref.get("ok") else ("good" if ref["dif_pp"] >= 0.5 else "bad" if ref["dif_pp"] <= -0.5 else "info"),
               f"{ref['nome']} · {ref['anos']} ano(s)" if ref.get("ok") else ref.get("motivo", "")),
              ("Volatilidade anual", _p(rk["vol"], 1, False), "na" if rk["vol"] is None else "info"),
              ("Pior queda", _p(rk["dd"]["max"]), "na" if rk["dd"]["max"] is None else "info"),
@@ -579,8 +653,15 @@ def _aba_indicadores(fx, an):
         L("Porte", "Moeda de negociação", fx["moeda"])
         L("Estratégia", "Distribuição de rendimentos", fx["distribuicao"]["rotulo"], fx["distribuicao"]["nota"])
         L("Estratégia", "Índice de referência", (fx["indice"]["nome"] or "n/d"), fx["indice"]["fonte"])
-        L("Custos", "Tracking error (a.a.)", _p(rk.get("te"), 2, False), "Volatilidade da diferença contra o índice de preço." if rk.get("te") is not None else rk["motivos"].get("ref", ""))
-        L("Custos", "Tracking difference", _p(rk.get("td"), 2), "Diferença acumulada contra o índice na mesma janela." if rk.get("td") is not None else "")
+        jan = rk.get("janela_ref")
+        jan_txt = f" Janela: {_data(jan[0])} a {_data(jan[1])}." if jan else ""
+        sem = " Retornos semanais (datas desencontradas na fonte)." if rk.get("freq_ref_usada") == "W" else ""
+        L("Custos", "Tracking error (a.a.)", _p(rk.get("te"), 2, False),
+          (f"Volatilidade da diferença contra o índice ({fx.get('ref_tipo', 'preço')})." + jan_txt + sem) if rk.get("te") is not None else rk["motivos"].get("ref", ""))
+        L("Custos", "Tracking difference (acumulada)", _p(rk.get("td"), 2),
+          ("Retorno do ETF menos o do índice." + jan_txt) if rk.get("td") is not None else "")
+        L("Custos", "Tracking difference (ao ano)", _p(rk.get("td_anual"), 2),
+          "Quanto o ETF fica atrás (ou à frente) do índice por ano; o normal é perto da taxa de administração." if rk.get("td_anual") is not None else "")
     else:
         m = fx["metricas"]
         L("Porte", "Cotistas", f"{m['cotistas_atual']:,.0f}".replace(",", ".") if m.get("cotistas_atual") else "n/d")
@@ -987,6 +1068,11 @@ def pagina_etfs(atalho_comparar=None, atalho_evolucao=None):
             import assistente
             import mercados
             ind = mercados.indicadores_eua(fx["preco"])
+            cu, dist = fx.get("custos") or {}, fx.get("distribuicao") or {}
+            ind.update(taxa_txt=None if cu.get("taxa_adm") is None else _pp(cu["taxa_adm"]) + " ao ano",
+                       pl_txt=fx.get("pl_texto"),
+                       comp_txt=(f"divulgadas as {len(fx['pesos'])} maiores posições" if fx.get("pesos") else None),
+                       div_txt=(dist.get("rotulo") if dist.get("tipo") == "distribuicao" else None), moeda=fx.get("moeda"))
             assistente.painel_resumo_auto(tk, lambda: assistente.resumo_etf(tk, ind))
         except Exception:
             pass
@@ -1163,7 +1249,7 @@ def painel_carteira(lotes: list, valores: dict | None = None):
             ind = [k for k in diretos if k in ex["ativos"].index and any(k in (p["pesos"] or {}) for p in pos_pesos)]
             if ind:
                 st.warning("Exposição indireta a ativos que você já tem diretamente: " + ", ".join(ind) + ". Você está mais concentrado neles do que parece.")
-            st.caption(f"{ex['sem_composicao_pct']:.0f}% do valor está em posições sem composição divulgada (não entram nas exposições).".replace(".", ","))
+            st.caption(f"{ex['sem_composicao_pct']:.0f}% do valor está em posições sem composição divulgada (não entram nas exposições).")
     if len(pos_pesos) >= 2:
         linhas = []
         for i in range(len(pos_pesos)):
