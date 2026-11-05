@@ -11,3 +11,6 @@ ccxt
 openpyxl
 reportlab
 argon2-cffi
+numpy
+pillow
+cryptography
