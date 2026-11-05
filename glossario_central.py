@@ -318,6 +318,125 @@ _t("Come-cotas", "Come-cotas", "Semiannual fund tax",
    "Reduz a quantidade de cotas, não o valor investido.", "Alíquotas de 15% ou 20% conforme o tipo de fundo.", "", "", "", "", ("fundos",))
 
 
+# ------------------------------------------------------------------------------------------------ economia: indicadores do cenário (página Economia)
+_E = ("economia",)
+_t("IPCA-15", "Índice de Preços ao Consumidor Amplo 15 (IPCA-15)", "Mid-month consumer price index",
+   "Prévia da inflação oficial, medida do dia 16 de um mês ao dia 15 do seguinte.",
+   "É um adiantamento do IPCA: mostra para onde a inflação do mês provavelmente caminha.",
+   "Antecipa o IPCA do mês. Surpresas em relação às expectativas costumam mexer com juros futuros e câmbio.",
+   "Mesma metodologia do IPCA, com período de coleta deslocado. Útil para ajustar projeções de curto prazo do IPCA e da Selic.",
+   "", "", "Se vier acima do esperado, aumenta a chance de juros altos por mais tempo.", "É uma prévia: o IPCA final pode diferir.", _E)
+_t("INPC", "Índice Nacional de Preços ao Consumidor (INPC)", "National consumer price index (low-income households)",
+   "Inflação medida para famílias com renda de 1 a 5 salários mínimos.",
+   "Mostra a alta de preços para famílias de renda menor, em que alimentos e transporte pesam mais.",
+   "Usado em reajustes de salários e benefícios. Costuma diferir do IPCA quando alimentos sobem mais que serviços.",
+   "Cesta de consumo ponderada pelo perfil de renda de 1 a 5 salários mínimos, 100% urbana.", "", "", "Se estiver bem acima do IPCA, o consumo de baixa renda tende a sofrer mais.", "Não representa famílias de renda mais alta.", _E)
+_t("IGP-M", "Índice Geral de Preços do Mercado (IGP-M)", "General market price index",
+   "Índice de preços da FGV que combina preços no atacado, no consumidor e na construção.",
+   "É muito usado para reajustar aluguéis e contratos. Reflete preços no atacado, por isso oscila mais que o IPCA.",
+   "Composição: 60% IPA (atacado), 30% IPC e 10% INCC. Indexa aluguéis, contratos de energia e parte dos FIIs.",
+   "Sensível a commodities e câmbio por causa do IPA. Pode divergir bastante do IPCA em períodos de câmbio volátil.",
+   "IGP-M = 0,6 x IPA + 0,3 x IPC + 0,1 x INCC", "", "Quando o IGP-M sobe mais que o IPCA, contratos indexados a ele reajustam mais.", "Mais volátil que o IPCA; o período de coleta é do dia 21 ao dia 20.", ("economia", "fiis"))
+_t("INCC", "Índice Nacional de Custo da Construção (INCC)", "National construction cost index",
+   "Mede a variação do custo da construção de imóveis residenciais (materiais e mão de obra).",
+   "Mostra se construir ficou mais caro. Pressiona construtoras e incorporadoras.",
+   "Corrige contratos de imóveis na planta. Alta do INCC reduz a margem de incorporadoras que já venderam a preço fixo.",
+   "Componente de 10% do IGP-M. Mão de obra costuma ser o maior peso e responde a acordos coletivos (maio e junho).", "", "", "Alta forte do INCC pressiona margens de construtoras.", "Não mede o custo de obras comerciais ou de infraestrutura.", ("economia", "acoes_br", "fiis"))
+_t("Núcleo da inflação", "Núcleo da inflação", "Core inflation",
+   "Inflação calculada sem os preços mais voláteis ou pontuais.",
+   "Tira do cálculo o que oscila demais (como alguns alimentos) para mostrar a tendência de fundo dos preços.",
+   "O Banco Central acompanha vários núcleos (médias aparadas, exclusão, dupla ponderação). Ajuda a separar choques passageiros de inflação persistente.",
+   "Medida de tendência: média aparada com suavização remove os extremos da distribuição de variações de preços e suaviza a série.", "", "", "Núcleo alto por vários meses sinaliza inflação mais persistente.", "Não existe núcleo único; cada método tem vantagens e vieses.", _E)
+_t("IBC-Br", "Índice de Atividade Econômica do Banco Central (IBC-Br)", "Central Bank economic activity index",
+   "Indicador mensal da atividade econômica, considerado uma prévia do PIB.",
+   "Funciona como um termômetro mensal: mostra se a economia está crescendo ou esfriando.",
+   "Combina produção da indústria, comércio, serviços e agropecuária. Pode ser revisado e serve de guia para o PIB do trimestre.",
+   "Índice construído a partir de proxies de produção e massa salarial; versão dessazonalizada é a mais usada. Revisões são frequentes.", "", "", "Queda por vários meses sugere desaceleração da economia.", "É estimativa: pode divergir do PIB oficial do IBGE.", _E)
+_t("PIM-PF", "Pesquisa Industrial Mensal - Produção Física (PIM-PF)", "Monthly industrial production survey",
+   "Pesquisa do IBGE que mede a produção física da indústria.",
+   "Mostra se as fábricas estão produzindo mais ou menos.",
+   "Indicador de ciclo da indústria; costuma antecipar investimentos e emprego industrial.",
+   "Série com ajuste sazonal em número-índice (base 2022=100) é a mais usada para comparar meses seguidos.", "", "", "Produção em queda pesa em indústria, bens de capital e transporte.", "Greves, calendário e clima distorcem um mês isolado.", _E)
+_t("PMC", "Pesquisa Mensal de Comércio (PMC)", "Monthly retail trade survey",
+   "Pesquisa do IBGE que mede o volume de vendas do varejo.",
+   "Mostra se as pessoas estão comprando mais ou menos nas lojas.",
+   "Termômetro do consumo. O varejo ampliado inclui veículos e materiais de construção.",
+   "Índice de volume (descontada a inflação), com ajuste sazonal; revisado nas divulgações seguintes.", "", "", "Vendas fracas pesam em varejistas e shoppings.", "Datas promocionais deslocam vendas de um mês para outro.", ("economia", "acoes_br", "fiis"))
+_t("PMS", "Pesquisa Mensal de Serviços (PMS)", "Monthly services survey",
+   "Pesquisa do IBGE que mede o volume de receita do setor de serviços.",
+   "Serviços respondem por cerca de dois terços da economia. A pesquisa mostra se estão em alta ou em queda.",
+   "Inclui transportes, serviços profissionais, informação e comunicação, entre outros.", "Índice de volume com ajuste sazonal; revisado nas divulgações seguintes.", "", "", "", "", _E)
+_t("PIB", "Produto Interno Bruto (PIB)", "Gross domestic product (GDP)",
+   "Soma de tudo que o país produz em bens e serviços em um período.",
+   "É o tamanho da economia. Quando cresce, tende a haver mais emprego, renda e lucro das empresas.",
+   "Divulgado pelo IBGE a cada trimestre. A comparação com o mesmo trimestre do ano anterior reduz o efeito das estações.",
+   "Cresce pelo consumo, investimento, gastos do governo e saldo externo. Revisões são comuns.", "", "", "Crescimento acima do potencial pode pressionar a inflação.", "Sai com atraso de cerca de dois meses.", _E)
+_t("ICC", "Índice de Confiança do Consumidor (ICC)", "Consumer confidence index",
+   "Pesquisa da FGV sobre a disposição das famílias de consumir.",
+   "Mostra se as pessoas estão otimistas ou pessimistas para gastar.",
+   "Antecipa o comportamento do varejo. Acima de 100 indica otimismo relativo, abaixo, pessimismo.", "Resultado de pesquisa de opinião; sensível a notícias e ao humor, não a vendas efetivas.", "", "", "Queda forte da confiança costuma anteceder freio no varejo.", "É opinião, não dado de consumo.", _E)
+_t("PNAD", "Pesquisa Nacional por Amostra de Domicílios Contínua (PNAD)", "National household sample survey",
+   "Pesquisa do IBGE que mede desemprego, renda e informalidade.",
+   "Mostra quantas pessoas que querem trabalhar estão sem emprego e quanto ganham.",
+   "A taxa de desocupação é medida em trimestres móveis. Desemprego baixo sustenta o consumo, mas pode pressionar salários.",
+   "Amostra de domicílios; taxa de desocupação = desocupados / força de trabalho. Trimestre móvel suaviza a série.", "", "", "Desemprego em queda e renda em alta fortalecem varejo e consumo.", "Não mede qualidade do emprego nem subocupação.", _E)
+_t("Inadimplência", "Inadimplência", "Default rate",
+   "Parcela dos empréstimos com atraso no pagamento acima de 90 dias.",
+   "Mostra quantas pessoas e empresas estão deixando de pagar suas dívidas.",
+   "Inadimplência alta eleva as provisões dos bancos e reduz o consumo. O Banco Central divulga a carteira total e por segmento.",
+   "Razão entre o saldo em atraso acima de 90 dias e o saldo da carteira de crédito.", "", "", "Alta contínua pressiona bancos, varejo e FIIs de papel.", "Muda com a composição da carteira (crédito rural, imobiliário, pessoal).", ("economia", "acoes_br", "fiis"))
+_t("DBGG", "Dívida Bruta do Governo Geral (DBGG)", "Gross general government debt",
+   "Total que o governo (federal, estados e municípios) deve, em proporção do PIB.",
+   "Mostra o tamanho da dívida pública em relação ao que o país produz.",
+   "Dívida alta e crescente eleva os juros longos e o risco-país, e reduz a margem de manobra do governo.",
+   "Indicador de sustentabilidade fiscal junto com o resultado primário e a trajetória dos juros.", "DBGG (% do PIB) = dívida bruta / PIB x 100", "", "Trajetória crescente costuma pressionar câmbio e juros.", "A DBGG não desconta ativos do governo (ao contrário da dívida líquida).", _E)
+_t("Resultado primário", "Resultado primário", "Primary balance",
+   "Diferença entre receitas e despesas do governo, sem contar os juros da dívida.",
+   "Se positivo, o governo gastou menos do que arrecadou e sobra dinheiro para pagar dívida. Se negativo, falta.",
+   "Resultado primário negativo contínuo aumenta a dívida e preocupa o mercado. Costuma ser acompanhado em 12 meses, em % do PIB.",
+   "Exclui despesas com juros; o resultado nominal inclui. Depende de arrecadação e do regime fiscal vigente.", "", "", "Déficits persistentes pesam sobre juros longos e câmbio.", "Receitas pontuais podem melhorar o número sem mudar a tendência.", _E)
+_t("Câmbio", "Taxa de câmbio (dólar)", "Exchange rate",
+   "Quantos reais são necessários para comprar um dólar.",
+   "Dólar alto encarece produtos importados e viagens, e ajuda empresas que vendem para o exterior.",
+   "Exportadoras ganham com dólar alto; importadoras e empresas com dívida em dólar sofrem. Reage a juros, risco fiscal e cenário global.",
+   "Determinado por fluxo de capital, diferencial de juros, termos de troca e aversão a risco.", "", "", "", "Previsões de câmbio têm baixo acerto.", _E)
+_t("Risco-país", "Risco-país (EMBI+ Brasil)", "Country risk spread (EMBI+)",
+   "Sobretaxa de juros que o Brasil paga, em relação aos EUA, para se endividar em dólar.",
+   "Mostra o quanto os investidores exigem a mais para emprestar ao Brasil. Quanto maior, maior a desconfiança.",
+   "Medido em pontos-base (100 pontos = 1 ponto percentual). Sobe com incerteza fiscal e política.", "Diferença entre o rendimento de títulos brasileiros em dólar e o dos Treasuries.", "", "", "Alta forte costuma vir com dólar mais alto e bolsa mais pressionada.", "Reflete percepção de mercado, que muda rápido.", _E)
+_t("Fed Funds", "Taxa de juros básica dos EUA (Fed Funds)", "Federal funds rate",
+   "Juro de referência da economia americana, definido pelo Federal Reserve (Fed).",
+   "Quando os juros dos EUA sobem, o dinheiro tende a sair de países como o Brasil e ir para lá.",
+   "Afeta câmbio, bolsas globais, cripto e fluxo para emergentes.", "Taxa efetiva dos empréstimos overnight entre bancos americanos, dentro da meta do Fed.", "", "", "Juros americanos altos pressionam ativos de risco e emergentes.", "O efeito depende do que o mercado já esperava.", _E)
+_t("Treasury", "Título do Tesouro dos EUA (Treasury)", "US Treasury note",
+   "Título de dívida do governo americano; o de 10 anos é a referência global.",
+   "É considerado o investimento mais seguro do mundo. Quando seu rendimento sobe, outros ativos precisam oferecer mais.",
+   "O rendimento do Treasury de 10 anos é a taxa livre de risco global usada no valuation de ações.", "Taxa de desconto de longo prazo; influencia o valor presente de fluxos futuros.", "", "", "Alta do rendimento tende a pressionar ações de crescimento e cripto.", "Pode subir por inflação, oferta de títulos ou prêmio de risco.", _E)
+_t("Brent", "Petróleo Brent", "Brent crude oil",
+   "Tipo de petróleo usado como referência de preço no mercado internacional.",
+   "Quando o Brent sobe, petroleiras ganham e combustíveis e fretes ficam mais caros.",
+   "Referência para a Petrobras e para o custo de transporte. Preço em dólar por barril.", "Preço spot do óleo do Mar do Norte; correlacionado com demanda global e decisões da OPEP+.", "", "", "", "", _E)
+_t("VIX", "Índice de Volatilidade (VIX)", "CBOE volatility index",
+   "Índice que mede o medo no mercado de ações dos EUA.",
+   "Quando sobe muito, os investidores estão assustados e tendem a vender ativos de risco.",
+   "Calculado a partir de preços de opções do S&P 500; nível acima de 25-30 indica estresse.", "Volatilidade implícita de 30 dias do S&P 500; mede aversão a risco global.", "", "", "Alta do VIX costuma coincidir com queda de bolsas e de cripto.", "Mede o mercado americano; o efeito no Brasil é indireto.", _E)
+_t("Focus", "Pesquisa Focus (expectativas de mercado)", "Focus survey",
+   "Pesquisa semanal do Banco Central com projeções de economistas para inflação, juros, câmbio e PIB.",
+   "Mostra o que os economistas do mercado esperam que aconteça.",
+   "A mediana das projeções serve de referência para a expectativa do mercado.", "Mediana das projeções de instituições; base de cálculo dos últimos 30 dias.", "", "", "Expectativas de inflação acima da meta tendem a manter os juros altos.", "É opinião agregada e muda de uma semana para outra.", _E)
+_t("Curva de juros", "Curva de juros", "Yield curve",
+   "Taxas de juros para diferentes prazos, do curto ao longo prazo.",
+   "Mostra quanto o mercado cobra de juros para emprestar por 1 ano, 5 anos, 10 anos.",
+   "Curva inclinada para cima: juros esperados maiores no futuro. Invertida: mercado espera queda de juros.", "Construída com DI futuro ou títulos públicos; base para precificar prefixados.", "", "", "", "Este app usa a expectativa Focus para a Selic como aproximação, não a curva do DI.", _E)
+_t("Cenário econômico", "Cenário econômico (bom, neutro ou ruim)", "Economic scenario",
+   "Classificação das condições da economia para um setor ou classe de ativos.",
+   "BOM = condições relativamente favoráveis; NEUTRO = sinais mistos; RUIM = condições relativamente desfavoráveis. Não diz se um ativo vai subir ou cair.",
+   "Resulta de uma nota de -1 a +1 que combina fatores como juros reais, inflação, atividade, câmbio e crédito, com pesos diferentes por setor.",
+   "Média ponderada dos fatores com dado atual; histerese de 0,08 na saída de BOM/RUIM; cobertura abaixo de 50% força NEUTRO.", "", "", "Descreve o ambiente; a análise individual do ativo continua sendo o que decide.", "Pesos são educacionais e simplificados; cada empresa pode fugir do padrão do setor.", _E)
+
+TERMOS["Juro real"]["alias"] = tuple(TERMOS["Juro real"]["alias"]) + ("Juros reais",)
+
+
 # ------------------------------------------------------------------------------------------------ consulta
 def _norm(s) -> str:
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode().lower()
