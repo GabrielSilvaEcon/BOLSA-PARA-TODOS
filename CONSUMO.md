@@ -105,3 +105,29 @@ Limitações: o disjuntor vale por processo (o app e o monitor têm o seu); só 
   - Já aplicados antes: mensagens e resumos de IA, atualizar dados, alertas, intervalo do monitor.
 - Nada é removido de nenhum plano: todos continuam acessando todos os módulos; só mudam as quantidades, ajustáveis em Administração > Consumo > Planos e limites.
 - Falha ao ler o plano nunca bloqueia (`limite_atual` devolve "sem limite"). Assinatura vencida volta ao limite do Gratuito.
+
+## Etapas 11, 12 e 13 — Carência, cancelamento, renovação, cupons e teste grátis (assinaturas.py)
+
+Sem provedor de pagamento: o administrador ativa/renova à mão; o resto é automático. Tudo em Administração > Assinaturas (regras e cupons) e Minha conta > "Assinatura: cupom, teste grátis e cancelamento".
+
+- **Carência / inadimplência (11)**: depois do vencimento o plano continua valendo por N dias (padrão 3); passado o prazo volta ao Gratuito sozinho (nada é apagado). Renovar dentro da carência continua a contar do vencimento antigo. Painel mostra "Em carência" e "Vencidas".
+- **Cancelamento (11)**: o usuário cancela a renovação e mantém o plano até a validade (pode desfazer); plano sem validade volta ao Gratuito na hora. Histórico das últimas 20 mudanças fica na assinatura (visível ao usuário).
+- **Avisos de renovação (11)**: o monitor (a cada execução) notifica o usuário N dias antes (padrão 7, 3, 1), no dia, durante a carência e quando o plano acaba; uma notificação por data/situação.
+- **Cupons (12)**: código de 3–20 caracteres que dá X dias de Plus ou Premium; limite de usos, data de validade e liga/desliga. Uma vez por conta, 5 tentativas por dia por conta, não rebaixa quem já tem plano melhor, soma dias se já tem o mesmo plano.
+- **Teste grátis (13)**: desligado até o administrador ligar; escolhe plano e dias (1–30); uma vez por conta e só para quem nunca teve plano pago; termina sozinho.
+- Chaves em `config_sistema`: `assin_cfg`, `cupom|CÓDIGO`, `resgate|CÓDIGO|hash`, `cupom_tent|dia|hash`, `teste|hash`.
+- Cupom e teste grátis usam um trinco no processo (sem uso duplo no mesmo instante). Vale por processo do app; o monitor não resgata cupons.
+
+## Etapas 14 e 15 — Custo por usuário/recurso e prevenção de abuso (Administração > Uso)
+
+- **custo_usuario.py (14)**: soma, nos últimos 1/3/7 dias, o uso de cada recurso diário por conta e multiplica pelo custo por uso (informado em Uso; padrão: IA = preço por 1.000 pedidos da fonte "ia" ÷ 1.000; demais R$ 0). Mostra por plano (usuários ativos, custo médio/mês projetado por usuário, receita líquida de uma assinatura, quanto sobra), por recurso e os 10 maiores consumos. Só o administrador vê e-mails (guardados em `uso|dia|hash` como `_e`).
+- **abuso.py (15)**: (1) rajada: no máximo N usos por minuto de IA/atualizar dados por pessoa (padrão 8; visitante por sessão); (2) cada vez que alguém bate no limite do plano o app conta (`_neg`); passando de X no dia (padrão 15) a conta aparece em "Uso fora do padrão" e o monitor avisa os administradores (uma vez por conta/dia). **O app nunca suspende conta sozinho.**
+- Já existiam: login com bloqueio por tentativas (seguranca), 5 tentativas/dia de cupom (Etapa 12), SSRF/limites HTTP (http_seguro).
+- Limites: a rajada vive na memória do processo (reinicia com o app); o custo mede só recursos limitados por plano — o custo de leitura de dados é compartilhado (cache) e aparece em Custos.
+
+## Etapas 16, 17 e 18 — Otimização, continuidade e carga
+
+- **manutencao.py (16)**: faxina diária (monitor) de contadores antigos; buscas por prefixo (`comeca`) no banco; painel "Tamanho do banco" em Administração > Continuidade.
+- **Continuidade (17)**: verificações reais (banco, monitor, cache, fontes pausadas, backup) e backup/restauração cifrados das configurações (planos e validades, cupons, resgates, testes, regras). Contadores e cache não entram no backup.
+- **Carga (18)**: `tests/test_carga.py` com threads reais. Achou e corrigiu corridas nos limites do plano, nos limites de fonte e no uso de cupom. Números e limites em AUDITORIA_FINAL.md.
+- **Etapa 19**: AUDITORIA_FINAL.md (rentabilidade, segurança, o que ainda não foi comprovado).
