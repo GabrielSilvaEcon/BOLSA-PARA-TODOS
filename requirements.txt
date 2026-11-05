@@ -10,3 +10,4 @@ httpx
 ccxt
 openpyxl
 reportlab
+argon2-cffi
