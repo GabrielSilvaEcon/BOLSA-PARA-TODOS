@@ -1,0 +1,24 @@
+name: seguranca
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+permissions:
+  contents: read
+jobs:
+  auditoria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pip-audit bandit
+      - run: pip-audit -r requirements.txt
+        continue-on-error: true
+      - run: bandit -r . -x ./tests -ll
+        continue-on-error: true
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        continue-on-error: true
