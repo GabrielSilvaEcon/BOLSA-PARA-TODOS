@@ -7,5 +7,13 @@ textColor = "#FFFFFF"
 font = "sans serif"
 
 [client]
-# Esconde Share, estrela e GitHub para quem só visita o app. Apague esta linha se quiser mostrar.
 toolbarMode = "minimal"
+showErrorDetails = "type"
+
+[server]
+enableXsrfProtection = true
+enableCORS = true
+maxUploadSize = 10
+
+[browser]
+gatherUsageStats = false
