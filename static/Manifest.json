@@ -1,0 +1,19 @@
+{
+  "short_name": "Bússola B3",
+  "name": "Bússola B3 - Análise de Investimentos",
+  "description": "Aplicativo de análise fundamentalista e técnica de ações.",
+  "icons": [
+    {
+      "src": "/app/static/favicon512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#10284a",
+  "background_color": "#10284a",
+  "lang": "pt-BR",
+  "scope": "/"
+}
