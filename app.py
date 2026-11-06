@@ -1,3 +1,26 @@
+import streamlit as st
+
+# Configuração inicial da página e ocultação de elementos da interface
+st.set_page_config(
+    page_title="Nome do Seu App",
+    page_icon="📱",
+    layout="centered"
+)
+
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# A partir daqui continua o restante do seu código (títulos, gráficos, botões, etc.)
+st.title("Meu Aplicativo")
+
+
+
 """
 Bússola B3 - Preço justo, DCF, múltiplos, dividendos, técnica, ranking por perfil, economia e carteira.
 
