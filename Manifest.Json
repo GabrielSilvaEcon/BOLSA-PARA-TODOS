@@ -1,0 +1,24 @@
+{
+  "short_name": "Bússola B3",
+  "name": "Bússola B3 - Análise de Investimentos",
+  "icons": [
+    {
+      "src": "/favicon_512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#10284a",
+  "background_color": "#10284a",
+  "dir": "ltr",
+  "lang": "pt-BR",
+  "scope": "/",
+  "orientation": "any",
+  "categories": [
+    "finance",
+    "business",
+    "productivity"
+  ]
+}
