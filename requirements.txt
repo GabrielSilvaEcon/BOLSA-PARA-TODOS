@@ -14,3 +14,4 @@ argon2-cffi
 numpy
 pillow
 cryptography
+googlenewsdecoder
