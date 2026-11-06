@@ -41,6 +41,8 @@ import streamlit as st
 import incorporar
 
 
+
+
 try:
     import dados as _dados  # noqa: F401  (confere se o arquivo existe)
     import glossario as _glossario  # noqa: F401
@@ -96,6 +98,15 @@ import simulador_app
 import relatorios_app
 import comparador_app
 import tendencia
+
+st.markdown(
+    """
+    <head>
+        <link rel="manifest" href="/app/static/manifest.json">
+    </head>
+    """,
+    unsafe_allow_html=True
+)
 
 try:
     from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
