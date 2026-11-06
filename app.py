@@ -40,6 +40,15 @@ import plotly.graph_objects as go
 import streamlit as st
 import incorporar
 
+st.markdown(
+    """
+    <img src="/app/static/favicon512.png"
+         width="150"
+         style="display:block;margin:auto;">
+    """,
+    unsafe_allow_html=True
+)
+
 try:
     import dados as _dados  # noqa: F401  (confere se o arquivo existe)
     import glossario as _glossario  # noqa: F401
