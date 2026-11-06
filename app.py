@@ -102,11 +102,12 @@ import tendencia
 st.markdown(
     """
     <head>
-<link rel="manifest" href="/static/manifest.json">
+        <link rel="manifest" href="/static/manifest.json">
     </head>
     """,
     unsafe_allow_html=True
 )
+
 
 try:
     from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
