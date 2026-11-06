@@ -4,7 +4,7 @@
   "description": "Aplicativo de análise fundamentalista e técnica de ações.",
   "icons": [
     {
-      "src": "/static/favicon512.png",
+"src": "https://raw.githubusercontent.com/GabrielSilvaEcon/BOLSA-PARA-TODOS/main/static/favicon512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
