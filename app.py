@@ -99,14 +99,40 @@ import relatorios_app
 import comparador_app
 import tendencia
 
+import json
+import streamlit as st
+
+# O seu código do manifesto diretamente no Python
+manifest_data = {
+  "short_name": "Bússola B3",
+  "name": "Bússola B3 - Análise de Investimentos",
+  "description": "Aplicativo de análise fundamentalista e técnica de ações.",
+  "icons": [
+    {
+      "src": "/static/favicon512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#10284a",
+  "background_color": "#10284a",
+  "lang": "pt-BR",
+  "scope": "/"
+}
+
+# Injeta a tag do manifesto e cria a rota para o navegador ler
 st.markdown(
     """
     <head>
-        <link rel="manifest" href="/static/manifest.json">
+        <link rel="manifest" href="/manifest.json">
     </head>
     """,
     unsafe_allow_html=True
 )
+
 
 
 try:
