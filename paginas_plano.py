@@ -1,7 +1,8 @@
 """Acesso das páginas por plano (módulo puro, sem Streamlit).
 
-Hoje NENHUMA página exige plano: a configuração começa vazia e o administrador decide, em Administração > Consumo > Planos e limites,
-se alguma página pede um plano mínimo. O que está aqui vale para o menu (cadeado) e para o servidor (bloqueio por URL):
+Divisão sugerida (PADRAO_MINIMOS): o Gratuito abre a análise fundamentalista básica, carteira, notícias e educação; o Plus soma saúde financeira,
+fundos, renda fixa, cripto, comparador e relatórios; o Premium soma DCF, análise técnica avançada, risco, gestão, inteligência e evolução.
+Vale enquanto o administrador não salvar a sua própria configuração (Administração > Consumo > Páginas por plano); depois, vale a dele. O que está aqui vale para o menu (cadeado) e para o servidor (bloqueio por URL):
 as duas checagens usam as mesmas funções.
  · Páginas essenciais nunca podem ser trancadas (início, alertas, planos, conta, ajuda): a pessoa sempre consegue sair do bloqueio.
  · Administração é controlada por permissão de papel, não por plano.
@@ -13,6 +14,15 @@ PLANOS_ORDEM = ("visitante", "gratuito", "plus", "premium")
 ROTULO = {"visitante": "Visitante", "gratuito": "Gratuito", "plus": "Investidor Plus", "premium": "Investidor Premium"}
 NUNCA_TRANCAR = frozenset({"inicio", "notificacoes", "planos", "conta", "ajuda", "administracao"})
 CH_CFG = "paginas_plano_cfg"
+PADRAO_MINIMOS = {
+    # Investidor Plus
+    "micro": "plus", "tecnica": "plus", "tecnica-cripto": "plus", "fiis": "plus", "fundos-acoes": "plus", "multimercados": "plus",
+    "fundos-renda-fixa": "plus", "renda-fixa": "plus", "etfs": "plus", "criptomoedas": "plus", "cripto-onchain": "plus",
+    "cripto-receitas": "plus", "cripto-fundamentalista": "plus", "comparar": "plus", "relatorios": "plus",
+    # Investidor Premium
+    "dcf": "premium", "tecnica-avancada": "premium", "cripto-avancada": "premium", "risco": "premium", "gestao-carteira": "premium",
+    "inteligencia": "premium", "evolucao": "premium", "stock-picking": "premium",
+}
 
 
 def normalizar(cfg) -> dict:
@@ -38,6 +48,11 @@ def liberada(url_path: str, plano: str | None, cfg: dict | None) -> bool:
     return PLANOS_ORDEM.index(p) >= PLANOS_ORDEM.index(minimo)
 
 
+def paginas_do_plano(minimos: dict | None, plano: str) -> list[str]:
+    """url_path das páginas cujo plano mínimo é exatamente este (o que o plano acrescenta ao anterior)."""
+    return sorted(u for u, p in normalizar(minimos).items() if p == plano)
+
+
 def explicacao(titulo: str, minimo: str, plano: str | None) -> dict:
     """Texto claro do bloqueio: o que é, qual plano libera e qual é o plano atual."""
     atual = ROTULO.get(plano if plano in ROTULO else "visitante")
@@ -58,7 +73,8 @@ def ler() -> dict:
         return _cache["v"]
     try:
         import banco
-        v = normalizar(banco.cfg_ler(CH_CFG))
+        bruto = banco.cfg_ler(CH_CFG)
+        v = normalizar(bruto) if isinstance(bruto, dict) and "minimos" in bruto else normalizar({"minimos": PADRAO_MINIMOS})
     except Exception:
         v = {}
     _cache["v"], _cache["t"] = v, agora
