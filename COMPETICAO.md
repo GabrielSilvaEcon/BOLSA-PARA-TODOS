@@ -37,11 +37,28 @@ capital e pode ser reinvestido (manualmente ou com reinvestimento automático de
 - **Liga cheia:** vale quem entrou primeiro; os excedentes veem o aviso de liga lotada. **Encerrar:** só o dono (apaga liga e ranking). **Excluir a conta** apaga as ligas que a pessoa criou.
 - **Convite por link:** o código fica na sessão e aparece na aba Ligas; se a pessoa ainda não está na competição, ela entra primeiro e aceita depois.
 
+## Etapa 3 · Temporadas, selos e retorno ajustado ao risco (em partes)
+- **Parte 1 (feita):** ranking ajustado ao risco (Sharpe, volatilidade, queda máxima) em `competicao.py`, com 10 pregões ou mais.
+- **Parte 2 (feita):** `competicao_temporadas.py`, lógica pura: temporadas **mensais** (`2026-11`) e **trimestrais** (`2026-T4`), retorno medido só dentro da janela
+  (mínimo de 5 pregões no mês e 10 no trimestre), ranking por retorno e por Sharpe da temporada, e **selos**: Ouro, Prata, Bronze, Top 10 e Equilíbrio (melhor Sharpe).
+  Temporada em andamento não concede selo; o pódio exige 5 participantes qualificados e o Top 10 exige 11. O id do selo (`selo|temporada`) torna o reprocessamento seguro.
+  Testes: `test_competicao_temporadas.py`.
+- **Parte 3 (feita):** o fechamento diário (`competicao_job.py`) chama `T.planejar` e, a cada pregão, publica a temporada atual de cada tipo em `comp_temp|ID`
+  (`2026-11`, `2026-T4`). No primeiro pregão depois do fim da janela, congela a anterior (`encerrada: true`) e concede os selos, uma única vez.
+  Os selos ficam na própria carteira (`comp_cart`, campo `selos`; só o fechamento grava), e a posição atual em cada temporada fica em `rank.temp`.
+  `banco.comp_temp_ler(id)` lê o ranking público (sem e-mails). Se as temporadas falharem, o ranking geral sai do mesmo jeito.
+  Sem tabela nova. Testes: `test_competicao_temporadas_job.py`. Limite: se o job ficar parado mais de uma temporada, só a última encerrada é recuperada.
+- **Parte 4 (feita):** aba **Temporadas** em `competicao_app.py` (mensal e trimestral, as últimas 6 e 4 temporadas, ordenação por retorno ou ajustado ao risco, sua posição, medalhas
+  nas encerradas) e vitrine **Meus selos**. O fechamento envia o aviso "Você ganhou o selo X" (deduplicado pelo id do selo; respeita a preferência de avisos do ranking geral).
+  Funções de apresentação (`rotulo`, `recentes`, `descricao_selo`, `avisos_de_selos`) ficam em `competicao_temporadas.py`, testáveis sem Streamlit.
+  A tela foi exercitada com um Streamlit falso; falta um teste visual no app real.
+
 ## Regras fixas (constantes em `competicao.py`)
 Capital inicial 100 mil · custo 0,05% por operação · no máximo 40% do patrimônio em um ativo · 5 pregões para entrar no ranking · ordens só em cotas inteiras.
 
 ## Ativar
 1. Suba os arquivos novos e os três alterados (`banco.py`, `planos.py`, `app.py`); faça Reboot no Streamlit Cloud.
+   **Etapa 3:** suba também `competicao_temporadas.py` (novo) e as versões novas de `competicao.py`, `competicao_job.py`, `competicao_app.py` e `banco.py`. Sem tabela nova.
    **Etapa 2:** suba também `competicao_ligas.py` (novo) e as versões novas de `banco.py`, `planos.py`, `competicao_app.py`, `competicao_job.py` e `tests/test_competicao_ligas.py`. O `app.py` não muda.
    Não há tabela nem script SQL novo. O workflow continua o mesmo.
 2. Confirme que o banco de configuração (`config_sistema`) e o monitor (`monitor_estado`) já existem no Supabase (rode o script SQL de Administração > Sistema se faltar).
