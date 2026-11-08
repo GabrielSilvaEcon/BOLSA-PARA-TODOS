@@ -2,7 +2,6 @@
 
 **Quando fazer:** a Jornada (Etapas 1 a 6b do `PLANO_DUOLINGO.md`) já está concluída.
 **Objetivo:** o app ter 3 áreas, cada uma com navegação própria, e trocar de área com um toque.
-**Nome atual do app:** Bússola B3 (a troca do nome é uma tarefa separada, ver "Fora deste plano").
 
 ## As áreas
 | Área | O que entra |
@@ -54,6 +53,3 @@ Só começa depois do A5. Antes do J1, confirmar o formato do jogo com o dono do
 - `app.py` tem mais de 4.000 linhas: a mudança fica num trecho pequeno, perto de onde o menu é montado.
 - A barra fixa depende de CSS e do que o Streamlit permite; o plano B já está previsto.
 - Estado da área ativa e da última página fica em `st.session_state`; no visitante vale só para a sessão.
-
-## Fora deste plano
-- Trocar o nome para Bússola B3: aparece em cerca de 10 arquivos (`marca.py`, `paleta.py`, `usuarios.py`, `banco.py`, `pagamentos.py`, `ajuda_app.py`, `tutoriais.py`, `glossario_central.py`, `static/manifest.json`, `README.md`). Fazer em tarefa separada, em um commit só.
