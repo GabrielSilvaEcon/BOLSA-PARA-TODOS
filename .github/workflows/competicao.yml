@@ -1,0 +1,28 @@
+name: competicao
+# Fechamento diário da competição de carteiras virtuais. Roda depois do pregão da B3, em dias úteis (UTC: 21h30 = 18h30 em Brasília),
+# com uma segunda tentativa de reserva. A trava no banco impede executar duas vezes o mesmo dia. O GitHub pode atrasar alguns minutos.
+on:
+  schedule:
+    - cron: "30 21 * * 1-5"
+    - cron: "30 23 * * 1-5"
+  workflow_dispatch:
+concurrency:
+  group: competicao
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  fechar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python competicao_job.py
+        env:
+          BPT_SUPABASE_URL: ${{ secrets.BPT_SUPABASE_URL }}
+          BPT_SUPABASE_KEY: ${{ secrets.BPT_SUPABASE_KEY }}
