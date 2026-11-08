@@ -31,7 +31,7 @@ def hoje(agora: datetime | None = None) -> date:
 
 # ------------------------------------------------------------------ estado
 def nova_jornada() -> dict:
-    return {"xp": 0, "xp_dia": {}, "licoes": {}, "erros": [], "meta_dia": META_DIA_PADRAO}
+    return {"xp": 0, "xp_dia": {}, "licoes": {}, "erros": [], "meta_dia": META_DIA_PADRAO, "som": True}
 
 
 def _int(v, minimo: int, maximo: int, padrao: int) -> int:
@@ -48,6 +48,7 @@ def normalizar_jornada(j) -> dict:
         return base
     base["xp"] = _int(j.get("xp"), 0, 10**9, 0)
     base["meta_dia"] = _int(j.get("meta_dia"), 5, 200, META_DIA_PADRAO)
+    base["som"] = j["som"] if isinstance(j.get("som"), bool) else True      # só um booleano de verdade vale; qualquer outra coisa volta ao padrão (ligado)
     dias = {}
     for k, v in (j.get("xp_dia") or {}).items():
         try:
@@ -191,7 +192,8 @@ def concluir_sessao(p: dict, s: dict, agora: datetime | None = None) -> tuple[di
         r["ultima"] = _agora(agora).isoformat(timespec="seconds")
     j["xp"] += xp
     d = hoje(agora).isoformat()
-    j["xp_dia"][d] = j["xp_dia"].get(d, 0) + xp
+    antes_hoje = j["xp_dia"].get(d, 0)
+    j["xp_dia"][d] = antes_hoje + xp
     for eid in s["ids"]:                      # errou agora → entra na fila de revisão; acertou de primeira → sai dela
         if eid in s["erros_ids"]:
             if eid not in j["erros"]:
@@ -199,8 +201,11 @@ def concluir_sessao(p: dict, s: dict, agora: datetime | None = None) -> tuple[di
         elif eid in j["erros"]:
             j["erros"].remove(eid)
     p = {**p, "jornada": normalizar_jornada(j)}
+    meta_ok = meta_atingida(p, agora)
     return p, {"ok": True, "xp": xp, "perfeita": perfeita, "acertos_primeira": total - len(s["erros_ids"]), "total": total,
-               "revisao": s["revisao"], "ofensiva": ofensiva(p, agora), "meta_atingida": meta_atingida(p, agora)}
+               "revisao": s["revisao"], "ofensiva": ofensiva(p, agora), "meta_atingida": meta_ok,
+               "meta_nova": meta_ok and antes_hoje < j["meta_dia"],          # a meta foi batida NESTA sessão (e não antes, no mesmo dia)
+               "primeiro_do_dia": antes_hoje == 0, "licao": s["licao"]}
 
 
 # ------------------------------------------------------------------ XP, meta e ofensiva
@@ -235,6 +240,33 @@ def ofensiva(p: dict, agora: datetime | None = None) -> int:
     return n
 
 
+def melhor_ofensiva(p: dict) -> int:
+    """Maior sequência de dias seguidos com estudo já registrada (não zera quando a ofensiva atual se perde). Base das conquistas de ofensiva."""
+    dias = sorted(date.fromisoformat(k) for k, v in _jor(p)["xp_dia"].items() if v > 0)
+    melhor = atual = 0
+    anterior = None
+    for d in dias:
+        atual = atual + 1 if anterior is not None and (d - anterior).days == 1 else 1
+        melhor = max(melhor, atual)
+        anterior = d
+    return melhor
+
+
+def teve_licao_perfeita(p: dict) -> bool:
+    return any(r.get("melhor", 0) >= 1.0 for r in _jor(p)["licoes"].values())
+
+
+# ------------------------------------------------------------------ preferência de som
+def som_ligado(p: dict) -> bool:
+    return _jor(p)["som"]
+
+
+def definir_som(p: dict, ligado: bool) -> dict:
+    j = _jor(p)
+    j["som"] = bool(ligado)
+    return {**p, "jornada": j}
+
+
 # ------------------------------------------------------------------ mapa da trilha
 def mapa(p: dict) -> list[dict]:
     """Unidades com o estado de cada lição: concluida | proxima (a primeira não feita) | livre. Nada fica trancado."""
@@ -263,7 +295,39 @@ def erros_para_revisar(p: dict) -> int:
 def resumo(p: dict, agora: datetime | None = None) -> dict:
     j = _jor(p)
     return {"xp": j["xp"], "xp_hoje": xp_hoje(p, agora), "meta_dia": j["meta_dia"], "meta_atingida": meta_atingida(p, agora),
-            "ofensiva": ofensiva(p, agora), "erros": len(j["erros"]), "licoes_feitas": len(j["licoes"])}
+            "ofensiva": ofensiva(p, agora), "erros": len(j["erros"]), "licoes_feitas": len(j["licoes"]), "som": j["som"]}
+
+
+# ------------------------------------------------------------------ estudo com dados reais no fim da unidade (etapa 6b)
+# Cada unidade concluída pode abrir um estudo guiado com um ativo REAL (dados com fonte e data, ou "indisponível"; nada é estimado).
+# Só liga indicadores que existem em edu_conteudo.INDICADORES; `risco` mostra retorno, volatilidade e queda máxima do último ano.
+# Unidades sem dado real útil (renda fixa e impostos) ficam de fora: o app não tem fonte de preço para elas nesta tela.
+ESTUDO_REAL = {
+    "u_inicio": dict(titulo="Risco e retorno de um ativo de verdade", indicadores=(), risco=True,
+                     dica="Veja quanto um ativo oscilou no último ano e compare com o retorno do período."),
+    "u_onde": dict(titulo="Conheça um ativo por dentro", indicadores=("Dividend yield",), risco=True,
+                   dica="Ação, FII ou ETF: veja os proventos dos últimos 12 meses e o risco observado."),
+    "u_carteira": dict(titulo="Compare o risco de dois ativos", indicadores=(), risco=True,
+                       dica="Escolha dois ativos e veja como oscilaram na mesma janela. Diversificar é combinar oscilações diferentes."),
+    "u_analise": dict(titulo="Leia os indicadores de uma empresa real", indicadores=("P/L", "P/VP", "ROE", "Margem líquida"), risco=False,
+                      dica="Digite o código de uma ação e veja o que cada número significa, em palavras."),
+    "u_riscos": dict(titulo="Volatilidade e queda máxima na prática", indicadores=(), risco=True,
+                     dica="Veja a pior queda que o ativo teve no último ano e quanto ele oscila."),
+}
+
+
+def estudo_real(unidade_id: str) -> dict | None:
+    """Roteiro de estudo com dado real para a unidade (ou None se a unidade não tem)."""
+    return ESTUDO_REAL.get(unidade_id)
+
+
+def estudo_real_liberado(p: dict, unidade_id: str) -> bool:
+    """Só aparece no fim da unidade: todas as lições feitas. (Não tranca nada: a tela só oferece o estudo, que é opcional.)"""
+    if unidade_id not in ESTUDO_REAL:
+        return False
+    u = J.UNIDADE_POR_ID.get(unidade_id)
+    j = _jor(p)
+    return bool(u) and all(l in j["licoes"] for l in u["licoes"])
 
 
 # ------------------------------------------------------------------ validação do conteúdo
@@ -279,6 +343,14 @@ def validar_conteudo() -> list[str]:
     for u in J.UNIDADES:
         if not IC.existe(u.get("icone_svg", "")):
             erros.append(f"{u['id']}: icone_svg inexistente")
+    for uid, e in ESTUDO_REAL.items():
+        if uid not in J.UNIDADE_POR_ID:
+            erros.append(f"estudo real: unidade {uid} não existe")
+        for sig in e["indicadores"]:
+            if sig not in E.INDICADORES:
+                erros.append(f"estudo real {uid}: indicador {sig} não existe")
+        if not e["indicadores"] and not e["risco"]:
+            erros.append(f"estudo real {uid}: sem indicador nem risco")
     for l in J.LICOES:
         if not IC.existe(l.get("icone_svg", "")):
             erros.append(f"{l['id']}: icone_svg inexistente")

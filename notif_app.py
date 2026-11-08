@@ -407,6 +407,11 @@ def _aba_prefs(u: dict) -> None:
         imin = m1.selectbox("Importância mínima (no app)", list(N.IMPORTANCIAS)[::-1], index=list(N.IMPORTANCIAS)[::-1].index(p["importancia_min"]), format_func=N.ROTULO_IMPORT.get)
         iext = m2.selectbox("Importância mínima (e-mail, Telegram, push)", list(N.IMPORTANCIAS)[::-1], index=list(N.IMPORTANCIAS)[::-1].index(p["importancia_min_externo"]), format_func=N.ROTULO_IMPORT.get)
         off = st.multiselect("Desativar categorias", [c for c in N.CATEGORIAS if c != "sistema"], default=p["categorias_off"], format_func=N.CATEGORIAS.get)
+        st.markdown(C._titulo("Lembrete de estudo", "Um aviso por dia para fazer uma lição da Jornada de educação financeira, só se você ainda não estudou. "
+                                                       "Chega na primeira verificação do monitor depois da hora escolhida (Brasília), respeitando os horários permitidos abaixo."), unsafe_allow_html=True)
+        e1, e2 = st.columns([2, 1])
+        est_on = e1.checkbox("Lembrar de estudar", value=p["estudo"]["ativo"], help="Desligado por padrão. Também vai para os canais externos que você ativar.")
+        est_hora = e2.text_input("Hora (HH:MM)", value=p["estudo"]["hora"], key="nt_estudo_hora")
         st.markdown(C._titulo("Alertas do cenário econômico", "Avisam quando a economia muda de um jeito relevante para os ativos da sua carteira real. Nunca usam ativos pesquisados, exemplos ou a carteira fictícia."), unsafe_allow_html=True)
         pm = p["macro"]
         q1, q2, q3 = st.columns(3)
@@ -446,7 +451,8 @@ def _aba_prefs(u: dict) -> None:
         novas = N.normalizar_prefs({**p, "ativo": ativo, "agrupar": agr, "importancia_min": imin, "importancia_min_externo": iext, "categorias_off": off,
                                     "canais": {"app": True, "email": ce, "telegram": ct, "ntfy": cn}, "horario": {"inicio": ini.strip(), "fim": fim.strip(), "dias": dias},
                                     "verificar_a_cada_min": ver, "intervalo_min_h": gap, "max_externas_dia": mx, "alvo_classes": {k: v for k, v in alvo.items() if v > 0},
-                                    "macro": {"ativo": True, "mudanca": mm_mud, "intensidade": mm_int, "risco": mm_ris, "neutro": mm_neu, "somente_ruim": mm_ruim}})
+                                    "macro": {"ativo": True, "mudanca": mm_mud, "intensidade": mm_int, "risco": mm_ris, "neutro": mm_neu, "somente_ruim": mm_ruim},
+                                    "estudo": {"ativo": est_on, "hora": est_hora.strip()}})
         if sum(novas["alvo_classes"].values()) > 100.5:
             st.markdown(C._msg("A alocação-alvo passa de 100%. Ajuste os valores.", "erro"), unsafe_allow_html=True)
         else:

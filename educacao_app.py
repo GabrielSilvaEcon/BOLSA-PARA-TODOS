@@ -415,6 +415,65 @@ def _aba_ativo() -> None:
             col.page_link(pg, label=rot, icon=":material/open_in_new:")
 
 
+def _estudo_unidade(uid: str, roteiro: dict) -> None:
+    """Estudo com dado real no fim de uma unidade da Jornada (chamado por jornada_app). Mesmas fontes e regras da aba "Com ativos reais":
+    dado com fonte e data, ou "indisponível"; nada é estimado. Não dá XP (XP é só por estudar lições e revisões)."""
+    st.markdown(f"**{_e(roteiro['titulo'])}**")
+    tk = st.text_input("Código do ativo", key=f"edu_ru_tk_{uid}", placeholder="PETR4, HGLG11, BOVA11, BTC-USD...", max_chars=14).strip().upper()
+    if st.button("Estudar este ativo", key=f"edu_ru_go_{uid}", type="primary", disabled=not tk):
+        _ss()[f"edu_ru_{uid}"] = tk
+        _set(ED.registrar_ativo_estudado(prog()))
+    alvo = _ss().get(f"edu_ru_{uid}")
+    if not alvo or alvo != tk:
+        st.caption(roteiro["dica"])
+        return
+    hoje = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    cripto = "-" in alvo and alvo.endswith(("USD", "USDT", "BRL"))
+    classe = "cripto" if cripto else None
+    if not cripto:
+        try:
+            import monitor
+            classe = monitor.classe_do_ticker(alvo)
+        except Exception:
+            classe = "acao"
+    if roteiro["indicadores"] and classe in ("acao", "fii", "etf"):
+        with st.spinner("Buscando dados reais..."):
+            ind, d = _indicadores_reais(alvo)
+        if d and d.get("erro") and all(v is None for v in ind.values()):
+            st.markdown(C._msg(f"Não consegui dados fundamentalistas agora ({d['erro']}). Nada foi estimado.", "aviso"), unsafe_allow_html=True)
+        else:
+            st.markdown(C._msg(f"Fonte: fontes de dados do app (Yahoo Finance, com fonte reserva) · consulta em {hoje}" + (f" · balanço de {d['data_balanco']}" if d and d.get("data_balanco") else ""), "info"), unsafe_allow_html=True)
+            for sig in roteiro["indicadores"]:
+                if sig in ind:
+                    e = ED.explicar_indicador(sig)
+                    if e:
+                        st.markdown(_card(sig if e["nome"] == sig else f"{sig} · {e['nome']}", "Neste ativo: " + ED.ler_indicador(sig, ind[sig])), unsafe_allow_html=True)
+    elif roteiro["indicadores"]:
+        st.markdown(C._msg("Indicadores de balanço valem para ações, FIIs e ETFs. Para este ativo, veja o risco observado abaixo.", "info"), unsafe_allow_html=True)
+    if not roteiro["risco"]:
+        return
+    precos, ultima, erro = _fechamentos(alvo)
+    m = ED.metricas_risco(precos) if precos else None
+    if not m:
+        st.markdown(C._msg(f"Histórico indisponível ({erro or 'poucos dados'}). Nada foi estimado.", "aviso"), unsafe_allow_html=True)
+        return
+    st.markdown(C._msg(f"Fonte: Yahoo Finance · último fechamento de {ultima} · {m['pontos']} dias de dados. Resultado histórico: não indica o futuro.", "info"), unsafe_allow_html=True)
+    st.markdown(C._grade([C._kpi("Retorno no período", f"{_br(m['retorno'] * 100, 1, True)}%", "ok" if m["retorno"] >= 0 else "aviso"),
+                          C._kpi("Volatilidade anual", f"{_br(m['volatilidade'] * 100)}%", "info"),
+                          C._kpi("Queda máxima", f"{_br(m['drawdown'] * 100)}%", "aviso")]), unsafe_allow_html=True)
+    outro = st.text_input("Comparar o risco com outro ativo (opcional)", key=f"edu_ru_tk2_{uid}", max_chars=14).strip().upper()
+    if outro:
+        p2, _u2, e2 = _fechamentos(outro)
+        m2 = ED.metricas_risco(p2) if p2 else None
+        if not m2:
+            st.markdown(C._msg(f"Sem histórico para {outro} ({e2 or 'poucos dados'}).", "aviso"), unsafe_allow_html=True)
+        else:
+            st.markdown(C._grade([C._kpi(f"{alvo} · volatilidade", f"{_br(m['volatilidade'] * 100)}%", "info"), C._kpi(f"{outro} · volatilidade", f"{_br(m2['volatilidade'] * 100)}%", "info"),
+                                  C._kpi(f"{alvo} · queda máx.", f"{_br(m['drawdown'] * 100)}%", "aviso"), C._kpi(f"{outro} · queda máx.", f"{_br(m2['drawdown'] * 100)}%", "aviso")]), unsafe_allow_html=True)
+            st.caption("Dois ativos podem render parecido e oscilar de formas muito diferentes. Fonte: Yahoo Finance, último ano.")
+    st.caption("Quer a explicação completa de cada indicador? Use a aba Com ativos reais. Conteúdo educacional, não é recomendação.")
+
+
 # ------------------------------------------------------------------ simulações
 def _aba_simulacoes() -> None:
     st.markdown(C._titulo("Simulações educativas", "Resultados HIPOTÉTICOS com as fórmulas do Simulador (Passo 18). Não são previsões nem retornos garantidos."), unsafe_allow_html=True)
@@ -554,7 +613,7 @@ def pagina_educacao() -> None:
         st.caption(E.AVISO)
         return
     abas = st.tabs(["Jornada", "Painel", "Trilhas", "Biblioteca", "Praticar", "Com ativos reais", "Simulações", "Professor", "Glossário"])
-    for aba, fn in zip(abas, (lambda: jornada_app.aba(prog, _set), _aba_painel, _aba_trilhas, _aba_biblioteca, _aba_praticar, _aba_ativo, _aba_simulacoes, _aba_professor, _aba_glossario)):
+    for aba, fn in zip(abas, (lambda: jornada_app.aba(prog, _set, _estudo_unidade), _aba_painel, _aba_trilhas, _aba_biblioteca, _aba_praticar, _aba_ativo, _aba_simulacoes, _aba_professor, _aba_glossario)):
         with aba:
             fn()
     st.caption(E.AVISO)

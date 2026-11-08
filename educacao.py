@@ -165,6 +165,12 @@ CONQUISTAS = [
     ("tres_trilhas", "Aprendiz constante", "Concluiu 3 trilhas.", lambda p: len(p["certificados"]) >= 3),
     ("indicadores", "Decifrador de indicadores", "Abriu 8 explicações de indicadores.", lambda p: len(p["vistos"]) >= 8),
     ("dado_real", "Mão na massa", "Estudou 3 ativos com dados reais do app.", lambda p: p["ativos"] >= 3),
+    # Jornada (etapa 6): premiam constância e acerto de primeira, nunca operação ou risco. A ofensiva usa a MELHOR sequência já feita,
+    # então a conquista não some se a sequência atual for perdida.
+    ("licao_perfeita", "Lição perfeita", "Fez uma lição da Jornada sem errar nenhum exercício de primeira.", lambda p: jornada.teve_licao_perfeita(p)),
+    ("ofensiva_3", "Ofensiva de 3 dias", "Estudou 3 dias seguidos na Jornada.", lambda p: jornada.melhor_ofensiva(p) >= 3),
+    ("ofensiva_7", "Ofensiva de 7 dias", "Estudou 7 dias seguidos na Jornada.", lambda p: jornada.melhor_ofensiva(p) >= 7),
+    ("ofensiva_30", "Ofensiva de 30 dias", "Estudou 30 dias seguidos na Jornada.", lambda p: jornada.melhor_ofensiva(p) >= 30),
 ]
 
 
