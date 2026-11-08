@@ -35,6 +35,7 @@ capital e pode ser reinvestido (manualmente ou com reinvestimento automático de
 - **Isolamento:** `comp_liga_ranking_ler` só entrega o ranking a quem tem o código no próprio documento; `comp_liga_encerrar` só aceita o dono; a consulta de uma liga antes de entrar
   devolve só nome e tamanho. Código errado: 6 tentativas por sessão e limite de rajada por minuto.
 - **Liga cheia:** vale quem entrou primeiro; os excedentes veem o aviso de liga lotada. **Encerrar:** só o dono (apaga liga e ranking). **Excluir a conta** apaga as ligas que a pessoa criou.
+- **Liga de estudo (opcional, Educação > Jornada):** reaproveita o código das ligas acima, mas o placar é só de estudo (XP da semana). Documento próprio `edu_liga` da pessoa (`ligado`, `semana`, `xp`, `apelido`), desligado por padrão; `banco.edu_liga_ranking` só entrega a membros da liga e sem e-mail. Não passa pelo fechamento diário e não mostra retorno, ordens nem risco. Detalhes em `EDUCACAO.md`.
 - **Convite por link:** o código fica na sessão e aparece na aba Ligas; se a pessoa ainda não está na competição, ela entra primeiro e aceita depois.
 
 ## Etapa 3 · Temporadas, selos e retorno ajustado ao risco (em partes)
