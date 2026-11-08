@@ -21,3 +21,6 @@ Página **Aprender > Educação financeira**. Conteúdo aberto a todos; progress
 - Certificado interno é educacional, não é certificação nem mede capacidade de investir.
 - Regras tributárias têm data de revisão (`REVISAO`) e remetem à fonte oficial. Revise-as quando a lei mudar.
 - Professor com IA reutiliza `assistente.py` (mesma chave, mesmos limites e filtro contra recomendação).
+
+## Jornada estilo Duolingo
+Plano em `PLANO_DUOLINGO.md`. `jornada_conteudo.py` (dados: unidades, lições, exercícios) e `jornada.py` (lógica pura: sessão, XP, ofensiva, revisão, mapa). Estado em `edu_progresso["jornada"]`. Sem vidas que bloqueiam; XP só por estudo. Nova lição: adicione em `LICOES` e no `licoes` da unidade; rode `pytest test_jornada.py`.
