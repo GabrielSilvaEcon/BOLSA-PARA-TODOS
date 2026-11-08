@@ -18,6 +18,8 @@ AREAS = [
     },
     {
         "id": "analisar", "descricao": "Carteira, ações, fundos, cripto e mais", "nome": "Analisar", "icone": ":material/query_stats:",
+        # Ao tocar em Analisar o app abre sempre a pesquisa de ativos (página Início); a Carteira fica dentro da área, no menu.
+        "entrada": "inicio",
         "paginas": [
             "carteira", "gestao-carteira", "risco", "relatorios", "simulador", "calculadoras",
             "preco-justo", "valuation", "micro", "dividendos", "dcf", "tecnica", "tecnica-avancada", "stock-picking",
@@ -29,7 +31,7 @@ AREAS = [
     },
     {
         "id": "jogar", "descricao": "Missões, desafios e ranking", "nome": "Jogar", "icone": ":material/emoji_events:",
-        "paginas": ["competicao"],
+        "paginas": ["jogar", "competicao"],
     },
 ]
 
@@ -87,10 +89,14 @@ def lembrar(memoria: dict, url_path: str) -> dict:
 
 
 def ultima_pagina(area_id: str, memoria: dict = None) -> str:
-    """Última página aberta na área; se não houver (ou deixou de existir na área), a página padrão dela."""
+    """Página que abre ao tocar na área. Área com `entrada` (Analisar -> pesquisa de ativos) abre sempre nela;
+    as demais abrem a última página visitada; se não houver (ou deixou de existir), a página padrão."""
     paginas = paginas_da_area(area_id)
     if not paginas:
         return ""
+    entrada = (_area(area_id) or {}).get("entrada")
+    if entrada:
+        return entrada
     lembrada = (memoria or {}).get(area_id)
     return lembrada if lembrada in paginas else paginas[0]
 
