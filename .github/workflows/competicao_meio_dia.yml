@@ -1,0 +1,28 @@
+name: competicao-meio-dia
+# Execução do meio-dia da competição: ordens enviadas antes das 12h entram ao preço atual de cada ativo.
+# UTC 15h10 = 12h10 em Brasília, com segunda tentativa 30 minutos depois. A trava no banco impede executar duas vezes o mesmo dia.
+on:
+  schedule:
+    - cron: "10 15 * * 1-5"
+    - cron: "40 15 * * 1-5"
+  workflow_dispatch:
+concurrency:
+  group: competicao
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  meio-dia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python competicao_job.py --meio-dia
+        env:
+          BPT_SUPABASE_URL: ${{ secrets.BPT_SUPABASE_URL }}
+          BPT_SUPABASE_KEY: ${{ secrets.BPT_SUPABASE_KEY }}
