@@ -101,6 +101,12 @@ def sensacao_de_app(n_itens: int) -> str:
         f"{q} [class*=\"st-key-abasel_\"] button[data-testid=\"stBaseButton-pillsActive\"] :is(p,span){{color:var(--dz-sobre) !important}}"
     )
     limpeza = f"{q} [data-testid=\"stHeaderActionElements\"]{{display:none !important}}"
+    ajuda = (
+        f"{q} .st-key-aj_btn_box{{display:flex !important;justify-content:flex-end;height:auto !important;margin:0 0 -6px !important}}"
+        f"{q} .st-key-aj_btn_box button{{min-height:36px !important;width:36px !important;padding:0 !important;border-radius:50% !important;"
+        "border:1px solid var(--dz-borda) !important;background:var(--dz-cartao) !important;box-shadow:0 2px 0 rgba(0,0,0,.35) !important;opacity:1 !important}"
+        f"{q} .st-key-aj_btn_box button :is(span,svg,[data-testid=\"stIconMaterial\"]){{color:var(--dz-destaque) !important}}"
+    )
     h = f"{q} .st-key-hud_topo"
     hud = (
         f"@media (max-width:{K.TABLET_MAX}px){{{h}{{position:fixed;top:var(--dz-cab-h,48px);left:0;right:0;z-index:999;box-sizing:border-box;padding:5px 10px;"
@@ -116,7 +122,7 @@ def sensacao_de_app(n_itens: int) -> str:
         f"{q} .block-container{{padding-top:calc(var(--dz-cab-h,48px) + 56px) !important}}}}"
         f"@media (min-width:{K.TABLET_MAX + 1}px){{{h}{{display:none !important}}}}"
     )
-    return barra + relevo + fichas + limpeza + hud
+    return barra + relevo + fichas + limpeza + ajuda + hud
 
 
 def hubs_compactos() -> str:
