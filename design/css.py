@@ -130,17 +130,24 @@ def sensacao_de_app(n_itens: int) -> str:
 
 
 def acordeao() -> str:
-    """Barras que abrem e fecham (cada análise com o resultado na barra)."""
+    """Barras que abrem e fecham: ícone colorido à esquerda, seta à direita, cor própria por posição (var --ac vem de secoes.abas)."""
     q = "html body .stApp.stApp"
     b = f"{q} [class*=\"st-key-acdbar_\"]"
+    ac = "var(--ac,var(--dz-destaque))"
     return (
-        f"{b}{{margin:0 0 8px}}"
-        f"{b} button{{width:100% !important;justify-content:flex-start !important;text-align:left !important;min-height:56px;border-radius:16px !important;"
-        "padding:10px 14px !important;background:var(--dz-cartao) !important;border:1px solid var(--dz-borda) !important;box-shadow:0 3px 0 rgba(0,0,0,.35) !important}"
-        f"{b} button :is(p,span){{text-align:left !important;white-space:normal !important;color:var(--dz-texto) !important;font-weight:700 !important}}"
-        f"{b} button[data-testid^=\"stBaseButton-primary\"]{{border-color:var(--dz-destaque) !important;background:color-mix(in srgb,var(--dz-destaque) 14%,var(--dz-cartao)) !important}}"
-        f"{b} button [data-testid=\"stIconMaterial\"]{{color:var(--dz-destaque) !important;margin-left:auto;order:2}}"
-        f"{q} [class*=\"st-key-acdon_\"]{{margin:0 0 10px}}"
+        f"{b}{{margin:0 0 10px}}"
+        f"{b} button{{position:relative;width:100% !important;justify-content:flex-start !important;text-align:left !important;min-height:60px;border-radius:18px !important;gap:12px !important;"
+        f"padding:10px 14px !important;background:radial-gradient(circle at 96% 0%,color-mix(in srgb,{ac} 26%,transparent),transparent 48%),linear-gradient(160deg,color-mix(in srgb,{ac} 13%,var(--dz-cartao)),var(--dz-cartao) 72%) !important;"
+        f"border:1px solid color-mix(in srgb,{ac} 42%,transparent) !important;box-shadow:0 4px 0 color-mix(in srgb,{ac} 26%,#0B0821) !important;transition:transform .08s,box-shadow .08s}}"
+        f"{b} button:active{{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,{ac} 26%,#0B0821) !important}}"
+        f"{b} button :is(p,span):not([data-testid=\"stIconMaterial\"]){{text-align:left !important;white-space:normal !important;color:var(--dz-texto) !important;font-weight:800 !important;font-size:1rem !important;line-height:1.2 !important}}"
+        f"{b} button [data-testid=\"stIconMaterial\"]{{flex:0 0 38px;width:38px;height:38px;border-radius:50%;display:grid !important;place-items:center;font-size:21px !important;color:#fff !important;margin:0 !important;order:0;"
+        f"background:radial-gradient(circle at 30% 18%,rgba(255,255,255,.45),transparent 52%),{ac};box-shadow:0 3px 0 color-mix(in srgb,{ac} 55%,#0B0821)}}"
+        f"{b} button:after{{content:\"\";flex:none;margin:0 4px 3px auto;width:9px;height:9px;border-right:3px solid {ac};border-bottom:3px solid {ac};transform:rotate(45deg);transition:transform .2s;order:3}}"
+        f"{b} button[data-testid^=\"stBaseButton-primary\"]{{border-color:{ac} !important;background:linear-gradient(160deg,color-mix(in srgb,{ac} 30%,var(--dz-cartao)),color-mix(in srgb,{ac} 10%,var(--dz-cartao)) 80%) !important;"
+        f"box-shadow:0 4px 0 color-mix(in srgb,{ac} 45%,#0B0821),0 0 0 3px color-mix(in srgb,{ac} 18%,transparent) !important}}"
+        f"{b} button[data-testid^=\"stBaseButton-primary\"]:after{{transform:rotate(-135deg);margin-bottom:-3px}}"
+        f"{q} [class*=\"st-key-acdon_\"]{{margin:2px 0 14px;padding:12px 4px 0;border-left:3px solid color-mix(in srgb,var(--dz-borda) 60%,transparent);padding-left:10px}}"
     )
 
 
