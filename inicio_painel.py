@@ -25,6 +25,7 @@ MERCADO = (
     ("Ibovespa", "^BVSP", "", 0),
     ("Dólar", "BRL=X", "R$ ", 2),
     ("Bitcoin", "BTC-USD", "US$ ", 0),
+    ("Índice do medo", "^VIX", "", 1),      # VIX: mede o medo no mercado americano (Yahoo, gratuito)
 )
 
 
@@ -82,14 +83,27 @@ def mercado_hoje() -> list:
         if sim in cot:
             p, v = cot[sim]
             itens.append({"rotulo": rotulo, "valor": pre + _num(p, casas), "var": v})
-    s = selic_atual()
-    if s is not None:
-        itens.append({"rotulo": "Selic (meta)", "valor": _num(s, 2) + "% a.a.", "var": None, "sem_var": True})
+    for it in itens:
+        if it["rotulo"] == "Índice do medo":
+            it["nota"] = nota_medo(float(cot["^VIX"][0]))
+    if not any(it["rotulo"] == "Índice do medo" for it in itens):      # reserva: VIX pelo catálogo de indicadores (FRED)
+        try:
+            import macro_rede
+            v = (macro_rede.indicador("vix") or {}).get("valor")
+            if v is not None:
+                itens.append({"rotulo": "Índice do medo", "valor": _num(float(v), 1), "var": None, "nota": nota_medo(float(v))})
+        except Exception:
+            pass
     return itens
 
 
+def nota_medo(vix: float) -> str:
+    """Leitura simples do VIX (faixas usuais de mercado; educativo)."""
+    return "calmo" if vix < 20 else ("atenção" if vix < 30 else "medo alto")
+
+
 # ------------------------------------------------------------------ HTML
-ICONE_MERCADO = {"Ibovespa": ("grafico", "#8B6CFF"), "Dólar": ("moeda", "#3DDC97"), "Bitcoin": ("bitcoin", "#F2B84B"), "Selic": ("percent", "#2BA7C9")}
+ICONE_MERCADO = {"Ibovespa": ("grafico", "#8B6CFF"), "Dólar": ("moeda", "#3DDC97"), "Bitcoin": ("bitcoin", "#F2B84B"), "Índice do medo": ("chama", "#FF6B6B")}
 ICONE_ATALHO = {"acoes": "velas", "fundos": "predio", "rf": "cofre", "cripto": "bitcoin"}
 
 
@@ -105,7 +119,7 @@ def html_mercado(itens: list) -> str:
     cards = ""
     for it in itens:
         nome, cor = next((v for k, v in ICONE_MERCADO.items() if str(it["rotulo"]).startswith(k)), ("estrela", "#8B6CFF"))
-        v = f'<i class="na">taxa básica</i>' if it.get("sem_var") else f'<i class="{classe_var(it["var"])}">{html.escape(fmt_var(it["var"]))}</i>'
+        v = f'<i class="na">{html.escape(it["nota"])}</i>' if it.get("nota") else f'<i class="na">taxa básica</i>' if it.get("sem_var") else f'<i class="{classe_var(it["var"])}">{html.escape(fmt_var(it["var"]))}</i>'
         cards += (f'<div class="in-mk" style="--ac:{cor}"><img class="bg" src="{IC.uri(nome, cor)}" alt="">'
                   f'<div class="top"><span class="ch"><img src="{IC.uri(nome, cor)}" alt=""></span><span>{html.escape(it["rotulo"])}</span></div>'
                   f'<b>{html.escape(it["valor"])}</b>{v}</div>')
