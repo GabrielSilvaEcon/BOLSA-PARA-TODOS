@@ -139,6 +139,8 @@ def acordeao() -> str:
         f"{b} button{{position:relative;width:100% !important;justify-content:flex-start !important;text-align:left !important;min-height:60px;border-radius:18px !important;gap:12px !important;"
         f"padding:10px 14px !important;background:radial-gradient(circle at 96% 0%,color-mix(in srgb,{ac} 26%,transparent),transparent 48%),linear-gradient(160deg,color-mix(in srgb,{ac} 13%,var(--dz-cartao)),var(--dz-cartao) 72%) !important;"
         f"border:1px solid color-mix(in srgb,{ac} 42%,transparent) !important;box-shadow:0 4px 0 color-mix(in srgb,{ac} 26%,#0B0821) !important;transition:transform .08s,box-shadow .08s}}"
+        f"{b} button>div{{display:flex !important;align-items:center !important;justify-content:flex-start !important;gap:12px !important;width:100% !important;margin:0 !important;text-align:left !important}}"
+        f"{b} button [data-testid=\"stMarkdownContainer\"]{{flex:1 1 auto !important;min-width:0;width:auto !important;margin:0 !important;text-align:left !important}}"
         f"{b} button:active{{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,{ac} 26%,#0B0821) !important}}"
         f"{b} button :is(p,span):not([data-testid=\"stIconMaterial\"]){{text-align:left !important;white-space:normal !important;color:var(--dz-texto) !important;font-weight:800 !important;font-size:1rem !important;line-height:1.2 !important}}"
         f"{b} button [data-testid=\"stIconMaterial\"]{{flex:0 0 38px;width:38px;height:38px;border-radius:50%;display:grid !important;place-items:center;font-size:21px !important;color:#fff !important;margin:0 !important;order:0;"
