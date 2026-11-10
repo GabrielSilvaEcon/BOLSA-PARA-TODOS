@@ -26,8 +26,15 @@ def _limpo(rotulo: str) -> str:
     return _ICONE.sub("", str(rotulo)).strip()
 
 
-def abas(rotulos: list[str], key: str | None = None, minimo: int = 4) -> list:
-    """Devolve uma lista de containers (um por seção). Só o da seção escolhida fica visível."""
+def _alternar(chave: str, rotulo: str) -> None:
+    """Toque na barra: abre a seção; tocar na que já está aberta fecha. Só uma fica aberta por vez (menos rolagem)."""
+    st.session_state[chave] = None if st.session_state.get(chave) == rotulo else rotulo
+
+
+def abas(rotulos: list[str], key: str | None = None, minimo: int = 4, resumos: dict | None = None) -> list:
+    """Devolve uma lista de containers (um por seção). Com `minimo` seções ou mais, cada uma vira uma barra que abre e fecha (acordeão);
+    `resumos` ({rótulo: texto curto}) coloca o resultado da análise na própria barra. Só a seção aberta fica visível.
+    Com menos seções, usa as abas normais."""
     rotulos = [str(r) for r in rotulos]
     if len(rotulos) < minimo:
         return st.tabs(rotulos)
@@ -35,26 +42,18 @@ def abas(rotulos: list[str], key: str | None = None, minimo: int = 4) -> list:
         quadro = sys._getframe(1)
         ident = f"{quadro.f_code.co_filename}:{quadro.f_lineno}|" + "|".join(r.replace("🔒 ", "") for r in rotulos)
         key = hashlib.md5(ident.encode("utf-8")).hexdigest()[:10]
-    chave = f"secao_{key}"
+    chave = f"acd_{key}"
     if st.session_state.get(chave) not in rotulos:
         st.session_state.pop(chave, None)
-    st.markdown(_CSS, unsafe_allow_html=True)
-    ult = f"{chave}_ult"
-    with st.container(key=f"abasel_{key}"):
-        if hasattr(st, "pills"):        # fichas que rolam de lado (jeito de aplicativo); sem pills, cai no menu suspenso
-            if st.session_state.get(chave) not in rotulos:
-                st.session_state.pop(chave, None)
-            padrao = st.session_state.get(ult) if st.session_state.get(ult) in rotulos else rotulos[0]
-
-            def _manter():          # tocar na ficha ativa a desmarcaria: volta para a última seção
-                if st.session_state.get(chave) is None:
-                    st.session_state[chave] = st.session_state.get(ult)
-
-            kw = {} if chave in st.session_state else {"default": padrao}
-            escolhida = st.pills("Seção", rotulos, selection_mode="single", key=chave, label_visibility="collapsed", on_change=_manter, **kw)
-            escolhida = escolhida if escolhida in rotulos else padrao
-            st.session_state[ult] = escolhida
-        else:
-            escolhida = st.selectbox("Seção", rotulos, key=chave, format_func=_limpo, label_visibility="collapsed")
-    atual = rotulos.index(escolhida) if escolhida in rotulos else 0
-    return [st.container(key=(f"abaon_{key}_{i}" if i == atual else f"abaoff_{key}_{i}")) for i in range(len(rotulos))]
+    aberto = st.session_state.get(chave)
+    resumos = resumos or {}
+    saida = []
+    for i, r in enumerate(rotulos):
+        on = aberto == r
+        res = resumos.get(r) or resumos.get(r.replace("🔒 ", ""))
+        nome = _limpo(r)
+        with st.container(key=f"acdbar_{key}_{i}"):
+            st.button(f"{nome}  ·  {res}" if res else nome, key=f"{chave}_b{i}", type="primary" if on else "secondary",
+                      icon=":material/expand_less:" if on else ":material/expand_more:", on_click=_alternar, args=(chave, r), width="stretch")
+        saida.append(st.container(key=f"acdon_{key}_{i}" if on else f"abaoff_{key}_{i}"))
+    return saida
