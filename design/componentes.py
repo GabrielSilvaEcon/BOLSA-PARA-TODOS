@@ -173,3 +173,17 @@ def tabela_cartoes(colunas: list, linhas: list) -> str:
                         for c, v in zip(colunas[1:], lin[1:]) if v not in (None, ""))
         out.append(f"<div class='dz-tc'><div class='dz-tc-t'>{titulo}</div><div class='dz-tc-g'>{pares}</div></div>")
     return "<div class='dz-tc-lista'>" + "".join(out) + "</div>"
+
+
+def hero_ativo(titulo: str, subtitulo: str = "", valor: str = "", selo_texto: str = "", selo_tom: str = "neutro",
+               destaques: list | None = None, logo_html: str = "") -> str:
+    """Abertura padrão de uma página de ativo: identificação, preço, selo de veredito e até 4 destaques (rótulo, valor).
+    `logo_html` já deve vir escapado/seguro (quem chama monta a imagem)."""
+    sel = selo(selo_texto, selo_tom) if selo_texto else ""
+    dst = "".join(f"<div class='dz-hr-d'><span>{_e(r)}</span><b>{_e(v)}</b></div>" for r, v in (destaques or [])[:4] if v not in (None, ""))
+    dst = f"<div class='dz-hr-g'>{dst}</div>" if dst else ""
+    sub = f"<div class='dz-hr-s'>{_e(subtitulo)}</div>" if subtitulo else ""
+    val = f"<div class='dz-hr-v'>{_e(valor)}</div>" if valor else ""
+    return (f"<div class='dz-hr'><div class='dz-hr-c'>{logo_html}<div class='dz-hr-id'><div class='dz-hr-t'>{_e(titulo)}</div>{sub}</div>"
+            f"<div class='dz-hr-dir'>{val}{sel}</div></div>{dst}</div>")
+
