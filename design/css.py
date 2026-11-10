@@ -128,6 +128,21 @@ def sensacao_de_app(n_itens: int) -> str:
     return barra + relevo + fichas + limpeza + ajuda + hud
 
 
+def acordeao() -> str:
+    """Barras que abrem e fecham (cada análise com o resultado na barra)."""
+    q = "html body .stApp.stApp"
+    b = f"{q} [class*=\"st-key-acdbar_\"]"
+    return (
+        f"{b}{{margin:0 0 8px}}"
+        f"{b} button{{width:100% !important;justify-content:flex-start !important;text-align:left !important;min-height:56px;border-radius:16px !important;"
+        "padding:10px 14px !important;background:var(--dz-cartao) !important;border:1px solid var(--dz-borda) !important;box-shadow:0 3px 0 rgba(0,0,0,.35) !important}"
+        f"{b} button :is(p,span){{text-align:left !important;white-space:normal !important;color:var(--dz-texto) !important;font-weight:700 !important}}"
+        f"{b} button[data-testid^=\"stBaseButton-primary\"]{{border-color:var(--dz-destaque) !important;background:color-mix(in srgb,var(--dz-destaque) 14%,var(--dz-cartao)) !important}}"
+        f"{b} button [data-testid=\"stIconMaterial\"]{{color:var(--dz-destaque) !important;margin-left:auto;order:2}}"
+        f"{q} [class*=\"st-key-acdon_\"]{{margin:0 0 10px}}"
+    )
+
+
 def controles_mobile() -> str:
     """Etapa 3: radios horizontais e controles segmentados viram fichas que quebram linha; gráficos sem sobra lateral."""
     q = "html body .stApp.stApp"
@@ -375,4 +390,4 @@ def marca() -> str:
 
 def css(tema_id: str, n_itens: int) -> str:
     """CSS completo da v2 (uma tag <style>, sem linhas em branco, para o st.markdown não quebrar o bloco)."""
-    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar(), hubs_compactos(), controles_mobile()]) + "</style>"
+    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar(), hubs_compactos(), controles_mobile(), acordeao()]) + "</style>"
