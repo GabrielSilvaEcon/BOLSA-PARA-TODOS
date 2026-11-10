@@ -61,6 +61,64 @@ def barra_inferior(n_itens: int) -> str:
     return base + fixa + topo
 
 
+def sensacao_de_app(n_itens: int) -> str:
+    """Jeito de aplicativo (inspirado em jogos): barra inferior só com ícones e item ativo expandido, botões com relevo, seções em
+    fichas que rolam de lado, sem âncoras de título nem rolagem de página inteira escondendo o que importa."""
+    b = "html body .stApp.stApp .st-key-barra_areas"
+    q = "html body .stApp.stApp"
+    ativo = "[data-testid^=\"stBaseButton-primary\"]"
+    barra = (
+        f"@media (max-width:{K.TABLET_MAX}px){{"
+        f"{b} [data-testid=\"stHorizontalBlock\"]{{display:flex !important;gap:4px !important;align-items:stretch !important}}"
+        f"{b} [data-testid=\"stColumn\"]{{flex:1 1 0 !important;width:auto !important;transition:flex .2s ease}}"
+        f"{b} [data-testid=\"stColumn\"]:has(button{ativo}){{flex:2.3 1 0 !important}}"
+        f"{b} .stButton > button:not({ativo}) p{{font-size:0 !important;gap:0 !important}}"
+        f"{b} .stButton > button:not({ativo}) [data-testid=\"stIconMaterial\"]{{font-size:1.75rem !important}}"
+        f"{b} .stButton > button{ativo}{{min-height:58px !important;background:color-mix(in srgb,var(--dz-ativo) 22%,var(--dz-concha)) !important;"
+        "box-shadow:inset 0 3px 0 var(--dz-ativo) !important;border-radius:14px !important}"
+        f"{b} .stButton > button{ativo} p{{font-size:.8rem !important;font-weight:800 !important}}"
+        "}"
+    )
+    relevo = (
+        f"{q} [data-testid=\"stMain\"] .stButton:not(.st-key-barra_areas *) > button[data-testid^=\"stBaseButton-secondary\"]"
+        "{border-radius:16px !important;border:2px solid var(--dz-borda) !important;box-shadow:0 4px 0 rgba(0,0,0,.38) !important;font-weight:700;"
+        "transition:transform .08s ease,box-shadow .08s ease}"
+        f"{q} [data-testid=\"stMain\"] .stButton:not(.st-key-barra_areas *) > button[data-testid^=\"stBaseButton-primary\"]"
+        "{border-radius:16px !important;box-shadow:0 4px 0 color-mix(in srgb,var(--dz-destaque) 50%,#000) !important;font-weight:800;"
+        "transition:transform .08s ease,box-shadow .08s ease}"
+        f"{q} [data-testid=\"stMain\"] .stButton:not(.st-key-barra_areas *) > button:active"
+        "{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.38) !important}"
+    )
+    fichas = (
+        f"{q} [class*=\"st-key-abasel_\"] [data-testid=\"stButtonGroup\"]{{flex-wrap:nowrap !important;overflow-x:auto;gap:8px !important;padding:2px 2px 8px;"
+        "scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}"
+        f"{q} [class*=\"st-key-abasel_\"] [data-testid=\"stButtonGroup\"]::-webkit-scrollbar{{display:none}}"
+        f"{q} [class*=\"st-key-abasel_\"] button{{flex:none !important;white-space:nowrap;min-height:42px;padding:0 16px !important;border-radius:999px !important;"
+        "border:2px solid var(--dz-borda) !important;background:var(--dz-cartao) !important;box-shadow:0 3px 0 rgba(0,0,0,.35) !important;scroll-snap-align:start}"
+        f"{q} [class*=\"st-key-abasel_\"] button :is(p,span){{color:var(--dz-texto) !important;font-weight:700 !important}}"
+        f"{q} [class*=\"st-key-abasel_\"] button[data-testid=\"stBaseButton-pillsActive\"]{{background:var(--dz-destaque) !important;"
+        "border-color:var(--dz-destaque) !important;box-shadow:0 3px 0 color-mix(in srgb,var(--dz-destaque) 50%,#000) !important}"
+        f"{q} [class*=\"st-key-abasel_\"] button[data-testid=\"stBaseButton-pillsActive\"] :is(p,span){{color:var(--dz-sobre) !important}}"
+    )
+    limpeza = f"{q} [data-testid=\"stHeaderActionElements\"]{{display:none !important}}"
+    h = f"{q} .st-key-hud_topo"
+    hud = (
+        f"@media (max-width:{K.TABLET_MAX}px){{{h}{{position:fixed;top:var(--dz-cab-h,48px);left:0;right:0;z-index:999;box-sizing:border-box;padding:5px 10px;"
+        "background:var(--dz-concha);border-bottom:1px solid var(--dz-concha-borda);box-shadow:0 6px 16px -10px rgba(0,0,0,.6)}"
+        f"{h} [data-testid=\"stHorizontalBlock\"]{{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px !important;max-width:520px;margin:0 auto}}"
+        f"{h} [data-testid=\"stColumn\"]{{width:auto !important;min-width:0 !important;flex:none !important}}"
+        f"{h} a{{display:flex !important;align-items:center;justify-content:center;gap:6px;min-height:34px !important;padding:0 10px !important;border-radius:999px !important;"
+        "background:var(--dz-cartao) !important;border:1px solid var(--dz-borda) !important;text-decoration:none !important;box-shadow:0 2px 0 rgba(0,0,0,.35)}"
+        f"{h} a :is(p,span){{color:var(--dz-texto) !important;font-weight:800 !important;font-size:.9rem !important;white-space:nowrap}}"
+        f"{h} [data-testid=\"stColumn\"]:nth-child(1) [data-testid=\"stIconMaterial\"]{{color:#FF9B3D !important}}"
+        f"{h} [data-testid=\"stColumn\"]:nth-child(2) [data-testid=\"stIconMaterial\"]{{color:var(--dz-ativo) !important}}"
+        f"{h} [data-testid=\"stColumn\"]:nth-child(3) [data-testid=\"stIconMaterial\"]{{color:#F2B84B !important}}"
+        f"{q} .block-container{{padding-top:calc(var(--dz-cab-h,48px) + 56px) !important}}}}"
+        f"@media (min-width:{K.TABLET_MAX + 1}px){{{h}{{display:none !important}}}}"
+    )
+    return barra + relevo + fichas + limpeza + hud
+
+
 def cabecalho_compacto() -> str:
     """Celular: cabeçalho nativo de 48 px (era ~60) e menos espaço no topo da página."""
     return (
@@ -222,4 +280,4 @@ def marca() -> str:
 
 def css(tema_id: str, n_itens: int) -> str:
     """CSS completo da v2 (uma tag <style>, sem linhas em branco, para o st.markdown não quebrar o bloco)."""
-    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca()]) + "</style>"
+    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens)]) + "</style>"
