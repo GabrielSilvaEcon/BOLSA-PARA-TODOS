@@ -125,6 +125,20 @@ def sensacao_de_app(n_itens: int) -> str:
     return barra + relevo + fichas + limpeza + ajuda + hud
 
 
+def controles_mobile() -> str:
+    """Etapa 3: radios horizontais e controles segmentados viram fichas que quebram linha; gráficos sem sobra lateral."""
+    q = "html body .stApp.stApp"
+    return (
+        f"@media (max-width:900px){{"
+        f"{q} [data-testid=\"stRadio\"] [role=\"radiogroup\"]{{flex-wrap:wrap !important;gap:8px !important}}"
+        f"{q} [data-testid=\"stRadio\"] [role=\"radiogroup\"] label{{border:1px solid var(--dz-borda);background:var(--dz-cartao);border-radius:999px;padding:6px 12px !important;margin:0 !important}}"
+        f"{q} [data-testid=\"stRadio\"] [role=\"radiogroup\"] label:has(input:checked){{border-color:var(--dz-destaque);box-shadow:0 0 0 1px var(--dz-destaque) inset}}"
+        f"{q} [data-testid=\"stSegmentedControl\"] [role=\"group\"],{q} [data-testid=\"stSegmentedControl\"] > div{{width:100% !important}}"
+        f"{q} [data-testid=\"stPlotlyChart\"]{{margin-left:-6px;margin-right:-6px;touch-action:pan-y}}"
+        f"}}"
+    )
+
+
 def hubs_compactos() -> str:
     """Celular: telas de entrada (Analisar) mais baixas; as páginas de cada cartão ficam em 2 colunas."""
     q = "html body .stApp.stApp"
@@ -334,4 +348,4 @@ def marca() -> str:
 
 def css(tema_id: str, n_itens: int) -> str:
     """CSS completo da v2 (uma tag <style>, sem linhas em branco, para o st.markdown não quebrar o bloco)."""
-    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar(), hubs_compactos()]) + "</style>"
+    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar(), hubs_compactos(), controles_mobile()]) + "</style>"
