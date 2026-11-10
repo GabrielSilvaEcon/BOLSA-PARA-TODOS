@@ -122,9 +122,6 @@ def _bloco_decisao(ok: bool, texto: str) -> None:
         f"(ações, FIIs, ETFs, fundos, renda fixa, cripto) e nenhum acima de {JG.PESO_MAXIMO * 100:.0f}% do patrimônio. "
         "Vale pela forma como a carteira foi montada, não pelo resultado.</div></div>"
         f"<div class='jg-pt'>+{JG.PTS_DECISAO} pts</div></div><div class='jg-nota'>{_e(texto)}</div></div>", unsafe_allow_html=True)
-    alvo = _PAGINAS.get("competicao")
-    if alvo is not None:
-        st.page_link(alvo, label="Abrir o Wallet Game", icon=":material/emoji_events:")
 
 
 def _bloco_desafios(p: dict) -> None:
