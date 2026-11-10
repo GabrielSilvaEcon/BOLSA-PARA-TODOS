@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "TickerHunters",
+  "short_name": "TickerHunters",
+  "description": "Aprenda a investir jogando e analise ações, FIIs, ETFs, cripto e fundos em um só lugar.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#150F3A",
+  "theme_color": "#150F3A",
+  "categories": ["finance", "business"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

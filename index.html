@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TickerHunters</title>
+  <meta name="description" content="Painel de Preço Justo da B3 com os métodos de Graham e Bazin.">
+  <meta name="theme-color" content="#0e1117">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TickerHunters">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    html, body { margin: 0; height: 100%; background: #0e1117; color: #fafafa;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    #app { position: fixed; inset: 0; }
+    iframe { width: 100%; height: 100%; border: 0; display: block; background: #0e1117; }
+    #splash { position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px; background: #0e1117;
+      transition: opacity .4s ease; z-index: 2; }
+    #splash.hide { opacity: 0; pointer-events: none; }
+    #splash img { width: 96px; height: 96px; border-radius: 22px; }
+    #splash h1 { font-size: 20px; margin: 0; font-weight: 600; }
+    .spinner { width: 28px; height: 28px; border: 3px solid #2b3039;
+      border-top-color: #4da3ff; border-radius: 50%; animation: spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #fallback { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: none;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #1b1f27;
+      font-size: 14px; text-align: center; }
+    #fallback a { color: #4da3ff; }
+  </style>
+</head>
+<body>
+  <div id="splash">
+    <img src="icon-192.png" alt="">
+    <h1>TickerHunters</h1>
+    <div class="spinner"></div>
+  </div>
+
+  <div id="app">
+    <iframe id="frame" title="TickerHunters" allow="clipboard-write; fullscreen"></iframe>
+  </div>
+
+  <div id="fallback">
+    O app demorou para carregar. <a id="direct" target="_blank" rel="noopener">Abrir direto</a>
+  </div>
+
+  <script>
+    // >>> CONFIRME esta URL (no print ela aparece cortada: "streamlit.ap...") <<<
+    var STREAMLIT_URL = "https://bolsa-para-todos-mvnxjzwmgbsk82jlbx6nwd.streamlit.app/";
+
+    // ?embed=true esconde o cabeçalho/rodapé do Streamlit
+    var embedUrl = STREAMLIT_URL + (STREAMLIT_URL.indexOf("?") > -1 ? "&" : "?") + "embed=true";
+    var frame = document.getElementById("frame");
+    var splash = document.getElementById("splash");
+    var fallback = document.getElementById("fallback");
+    document.getElementById("direct").href = STREAMLIT_URL;
+
+    var slow = setTimeout(function () { fallback.style.display = "block"; }, 15000);
+    frame.addEventListener("load", function () {
+      clearTimeout(slow);
+      fallback.style.display = "none";
+      splash.classList.add("hide");
+    });
+    frame.src = embedUrl;
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("sw.js").catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>
