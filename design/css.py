@@ -168,6 +168,10 @@ def legado() -> str:
         f"{q} .stTabs [role=\"tab\"][aria-selected=\"true\"]{{background:var(--dz-destaque) !important;background-image:none !important;border:0 !important;box-shadow:none !important}}"
         f"{q} .stTabs [role=\"tab\"][aria-selected=\"true\"] :is(p,span,div){{color:var(--dz-sobre) !important;-webkit-text-fill-color:var(--dz-sobre) !important}}"
         f"{q} .stTabs [data-baseweb=\"tab-highlight\"],{q} .stTabs [data-baseweb=\"tab-border\"]{{display:none !important}}"
+        f"{q} .dz-msg,{q} .dz-msg div{{color:var(--dz-texto) !important;-webkit-text-fill-color:var(--dz-texto) !important}}"
+        f"{q} .dz-msg{{margin-bottom:14px !important}}"
+        f"{q} .stTabs [role=\"tab\"]{{padding:6px 14px !important;height:auto !important;min-height:36px !important;line-height:1.2 !important}}"
+        f"{q} .stTabs [role=\"tablist\"]>div:not([role]){{display:none !important}}"
         f"{p} .pgi{{background:color-mix(in srgb,var(--dz-destaque) 20%,transparent) !important;color:var(--dz-destaque) !important}}"
     )
 
