@@ -142,6 +142,11 @@ def controles_mobile() -> str:
         f"{{flex-wrap:wrap !important;row-gap:10px !important;column-gap:10px !important}}"
         f"{q} [data-testid=\"stMain\"] [data-testid=\"stHorizontalBlock\"]:has(>[data-testid=\"stColumn\"]:nth-child(3)):not(:has([data-testid=\"stPlotlyChart\"],[data-testid=\"stDataFrame\"],[data-testid=\"stHorizontalBlock\"])):not(.st-key-barra_areas *):not(.st-key-hud_topo *):not(.st-key-topo_perfil *):not(:has([class*=\"st-key-pop_\"],[class*=\"st-key-ex_\"],[class*=\"st-key-barra_areas\"]))"
         f">[data-testid=\"stColumn\"]{{flex:1 1 calc(50% - 5px) !important;min-width:calc(50% - 5px) !important;width:auto !important}}"
+        f"{q} [data-testid=\"stMain\"] [data-testid=\"stMarkdownContainer\"]>ul{{list-style:none !important;padding:0 !important;margin:8px 0 !important}}"
+        f"{q} [data-testid=\"stMain\"] [data-testid=\"stMarkdownContainer\"]>ul>li{{background:var(--dz-cartao);border:1px solid var(--dz-borda);"
+        f"border-left:3px solid var(--dz-destaque);border-radius:12px;padding:10px 12px !important;margin:6px 0 !important;line-height:1.45}}"
+        f"{q} [data-testid=\"stMetric\"] :is([data-testid=\"stMetricValue\"],[data-testid=\"stMetricLabel\"]) *{{white-space:normal !important;overflow:visible !important;text-overflow:clip !important}}"
+        f"{q} [data-testid=\"stMetricValue\"]{{font-size:1.35rem !important;line-height:1.2}}"
         f"{q} [data-testid=\"stPlotlyChart\"]{{margin-left:-6px;margin-right:-6px;touch-action:pan-y}}"
         f"}}"
     )
