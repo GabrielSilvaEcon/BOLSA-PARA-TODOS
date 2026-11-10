@@ -159,3 +159,16 @@ def cartao_posicao(titulo: str, classe: str, valor: str, resultado, peso, detalh
     return (f"<div class='dz-posc'{cor_css}><div class='dz-posc-t'><div><div class='dz-posc-n'>{_e(titulo)}</div>"
             f"<div class='dz-posc-c'>{_e(classe)}</div></div><div class='dz-posc-v'>{_e(valor)}"
             f"<div class='dz-var dz-{cls}'>{_e(rtxt)}</div></div></div>{barra_progresso(peso, 'Peso na carteira', f'{_pct(peso):.0f}%')}{d}</div>")
+
+
+def tabela_cartoes(colunas: list, linhas: list) -> str:
+    """Tabela vista como cartões (um por linha): a 1ª coluna é o título e as demais viram pares rótulo/valor."""
+    if not colunas or not linhas:
+        return ""
+    out = []
+    for lin in linhas:
+        titulo = _e(lin[0])
+        pares = "".join(f"<div class='dz-tc-p'><span>{_e(c)}</span><b>{_e(v)}</b></div>"
+                        for c, v in zip(colunas[1:], lin[1:]) if v not in (None, ""))
+        out.append(f"<div class='dz-tc'><div class='dz-tc-t'>{titulo}</div><div class='dz-tc-g'>{pares}</div></div>")
+    return "<div class='dz-tc-lista'>" + "".join(out) + "</div>"
