@@ -131,6 +131,16 @@ def hubs_compactos() -> str:
         f"{q} [class*=\"st-key-an_card_\"]>[data-testid=\"stVerticalBlock\"]{{display:grid !important;grid-template-columns:1fr 1fr;gap:6px !important}}"
         f"{q} [class*=\"st-key-an_card_\"]>[data-testid=\"stVerticalBlock\"]>:first-child{{grid-column:1/-1}}"
         f"{q} .st-key-an_func a{{min-height:44px}}"
+        f"{q} [data-testid=\"stHorizontalBlock\"]:has([class*=\"st-key-pop_\"]),{q} [data-testid=\"stHorizontalBlock\"]:has([class*=\"st-key-ex_\"])"
+        "{display:grid !important;grid-template-columns:1fr 1fr;gap:8px !important}"
+        f"{q} [data-testid=\"stHorizontalBlock\"]:has([class*=\"st-key-pop_\"])>[data-testid=\"stColumn\"],"
+        f"{q} [data-testid=\"stHorizontalBlock\"]:has([class*=\"st-key-ex_\"])>[data-testid=\"stColumn\"]{{width:auto !important;min-width:0 !important;flex:none !important}}"
+        f"{q} [class*=\"st-key-pop_\"] button p,{q} [class*=\"st-key-ex_\"] button p{{font-size:.9rem !important;white-space:normal;line-height:1.15}}"
+        f"{q} .hero2 h1{{font-size:1.45rem !important;line-height:1.2 !important}}"
+        f"{q} .hero2 p{{font-size:.88rem !important;line-height:1.4 !important}}"
+        f"{q} .h2-tico svg{{width:92px !important;height:auto !important}}"
+        f"html body .stApp.stApp [data-testid=\"stMain\"] .st-key-in_atalhos a[data-testid=\"stPageLink-NavLink\"]{{min-height:104px !important;padding:10px 6px !important;gap:7px !important}}"
+        f"html body .stApp.stApp [data-testid=\"stMain\"] .st-key-in_atalhos a[data-testid=\"stPageLink-NavLink\"]:before{{width:46px !important;height:46px !important}}"
         "}"
     )
 
