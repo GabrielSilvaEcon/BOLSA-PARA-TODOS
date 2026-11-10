@@ -180,6 +180,7 @@ def legado() -> str:
         f"{p} [data-testid=\"stElementContainer\"]:has(>[data-testid=\"stMarkdown\"] [data-testid=\"stMarkdownContainer\"]>style:only-child){{display:none !important}}"
         f"{p} [data-testid=\"stMain\"] hr{{border-color:var(--dz-borda) !important;opacity:.6}}"
         f"{p} .kpi,{p} .card{{margin-bottom:12px !important}}"
+        f"{q} [data-testid=\"stMarkdownContainer\"]:has(>.kpi),{q} [data-testid=\"stMarkdownContainer\"]:has(>.card){{padding-bottom:12px}}"
         f"{q} .jor-metabar{{margin-bottom:14px !important}}{q} .st-key-jor_som_sw{{margin-top:8px !important}}"
         f"{q} .dz-rklista,{q} .dz-tc-lista,{q} .dz-msg{{margin-bottom:16px !important}}"
         f"{p} .pgi{{background:color-mix(in srgb,var(--dz-destaque) 20%,transparent) !important;color:var(--dz-destaque) !important}}"
