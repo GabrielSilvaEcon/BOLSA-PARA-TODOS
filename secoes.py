@@ -39,7 +39,22 @@ def abas(rotulos: list[str], key: str | None = None, minimo: int = 4) -> list:
     if st.session_state.get(chave) not in rotulos:
         st.session_state.pop(chave, None)
     st.markdown(_CSS, unsafe_allow_html=True)
+    ult = f"{chave}_ult"
     with st.container(key=f"abasel_{key}"):
-        escolhida = st.selectbox("Seção", rotulos, key=chave, format_func=_limpo, label_visibility="collapsed")
+        if hasattr(st, "pills"):        # fichas que rolam de lado (jeito de aplicativo); sem pills, cai no menu suspenso
+            if st.session_state.get(chave) not in rotulos:
+                st.session_state.pop(chave, None)
+            padrao = st.session_state.get(ult) if st.session_state.get(ult) in rotulos else rotulos[0]
+
+            def _manter():          # tocar na ficha ativa a desmarcaria: volta para a última seção
+                if st.session_state.get(chave) is None:
+                    st.session_state[chave] = st.session_state.get(ult)
+
+            kw = {} if chave in st.session_state else {"default": padrao}
+            escolhida = st.pills("Seção", rotulos, selection_mode="single", key=chave, label_visibility="collapsed", on_change=_manter, **kw)
+            escolhida = escolhida if escolhida in rotulos else padrao
+            st.session_state[ult] = escolhida
+        else:
+            escolhida = st.selectbox("Seção", rotulos, key=chave, format_func=_limpo, label_visibility="collapsed")
     atual = rotulos.index(escolhida) if escolhida in rotulos else 0
     return [st.container(key=(f"abaon_{key}_{i}" if i == atual else f"abaoff_{key}_{i}")) for i in range(len(rotulos))]
