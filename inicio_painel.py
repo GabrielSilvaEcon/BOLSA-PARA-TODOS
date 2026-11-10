@@ -230,6 +230,11 @@ html body .stApp.stApp .st-key-in_ferr a[data-testid="stPageLink-NavLink"] [data
 html body .stApp.stApp .st-key-in_ferr a[data-testid="stPageLink-NavLink"] p{font-weight:800; font-size:.88rem; line-height:1.15; color:#fff !important; margin:0; overflow-wrap:anywhere; text-align:left;}
 html body .stApp.stApp .st-key-in_ferr a[data-testid="stPageLink-NavLink"]:not([aria-current="page"]):active{transform:translateY(3px); box-shadow:0 1px 0 color-mix(in srgb,var(--ac) 28%,#0B0821) !important;}
 .st-key-in_ferr [class*="_trav"] a[data-testid="stPageLink-NavLink"]{filter:saturate(.5) brightness(.9);}
+.in-jr{padding-bottom:14px;} .in-wg{padding-bottom:12px;}
+.st-key-in_aprender [data-testid="stVerticalBlock"],.st-key-in_wallet [data-testid="stVerticalBlock"]{gap:.75rem !important;}
+.st-key-in_ferr [data-testid="stVerticalBlock"]{gap:.85rem !important;}
+.st-key-in_ferr [data-testid="stHorizontalBlock"]{row-gap:14px !important;}
+html body .stApp.stApp .st-key-in_ferr a[data-testid="stPageLink-NavLink"] > div,html body .stApp.stApp .st-key-in_ferr a[data-testid="stPageLink-NavLink"] [data-testid="stMarkdownContainer"]{flex:1 1 auto !important; margin:0 !important; text-align:left !important; justify-content:flex-start !important; width:auto !important;}
 .in-sec{margin:20px 2px 10px !important;}
 .st-key-in_empresas a[data-testid="stPageLink-NavLink"],.st-key-in_empresas button{min-height:42px;}
 """
