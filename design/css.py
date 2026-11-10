@@ -373,7 +373,7 @@ def navegacao() -> str:
     """Atalho da conta no canto do cabeçalho e 'voltar' das sub-páginas, com cara de app."""
     return (
         ".stApp .st-key-topo_perfil{position:fixed;top:4px;left:10px;z-index:1000001;width:min(280px,calc(100vw - 20px)) !important}"      # acima do cabeçalho do Streamlit (z-index ~1000000)
-        ".stApp .st-key-topo_perfil>[data-testid=\"stVerticalBlock\"]{flex-direction:row !important;align-items:center;gap:8px !important}"
+        ".stApp .st-key-topo_perfil{display:flex !important;flex-direction:row !important;flex-wrap:nowrap !important;align-items:center;gap:8px !important}"
         ".stApp .st-key-topo_perfil [data-testid=\"stElementContainer\"]{width:auto !important}"
         ".stApp .st-key-topo_perfil [data-testid=\"stElementContainer\"]:first-child{margin-right:auto}"
         ".stApp .st-key-topo_perfil .wm{display:flex;align-items:center;gap:8px;white-space:nowrap}"
