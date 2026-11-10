@@ -142,6 +142,11 @@ html body .stApp.stApp div[class*="st-key-jor_r_"] label > div:not(:has(p)):not(
 html body .stApp.stApp div[class*="st-key-jor_r_"] label [data-testid="stMarkdownContainer"]{flex:1;min-width:0;}
 html body .stApp.stApp div[class*="st-key-jor_r_"] label input{position:absolute;opacity:0;width:0;height:0;}
 html body .stApp.stApp div[class*="st-key-jor_ss"] button,html body .stApp.stApp div[class*="st-key-jor_ss"] button[kind]{background:transparent !important;background-image:none !important;border:0 !important;box-shadow:none !important;min-height:34px !important;padding:.2rem .6rem !important;color:#BDB5E6 !important;font-size:.82rem !important;width:auto !important;}
+/* lição como um cartão centralizado */
+html body .stApp.stApp div[class*="st-key-jor_player"]{background:linear-gradient(180deg,#1B1442,#150F38);border:2px solid #3D3182;border-radius:22px;box-shadow:0 6px 0 #0E0A28;padding:14px 14px 16px !important;margin:6px auto 96px !important;width:100% !important;max-width:560px !important;box-sizing:border-box;}
+html body .stApp.stApp div[class*="st-key-jor_player"] > div[data-testid="stElementContainer"],html body .stApp.stApp div[class*="st-key-jor_r_"] [data-testid="stRadio"] > div{width:100% !important;}
+html body .stApp.stApp div[class*="st-key-jor_ss"]{display:flex;justify-content:center;}
+html body .stApp.stApp div[class*="st-key-jor_player"] .jor-ask .jor-q{box-shadow:0 3px 0 rgba(0,0,0,.25);}
 </style>"""
 
 
