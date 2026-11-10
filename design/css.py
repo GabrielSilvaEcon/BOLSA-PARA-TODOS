@@ -119,6 +119,27 @@ def sensacao_de_app(n_itens: int) -> str:
     return barra + relevo + fichas + limpeza + hud
 
 
+def compactar() -> str:
+    """Celular: cabeçalho de página enxuto (linha de apoio atrás do botão "i"), menos espaço entre blocos e entre títulos."""
+    q = "html body .stApp.stApp"
+    return (
+        f"@media (max-width:{K.CELULAR_MAX}px){{"
+        f"{q} .pghead{{display:block;padding:10px 54px 10px 12px !important;margin:0 0 10px !important;overflow:visible !important}}"
+        f"{q} .pghead::after{{display:none !important}}"
+        f"{q} .pghead .pgsub{{display:none !important}}"
+        f"{q} .pghead .pgt{{font-size:1.25rem !important;display:flex;align-items:center;gap:10px;line-height:1.2}}"
+        f"{q} .pghead .pgmais{{display:block !important;position:absolute;top:9px;right:10px}}"
+        f"{q} .pgmais>summary{{list-style:none;cursor:pointer;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;"
+        "border:1px solid var(--dz-borda);background:var(--dz-cartao);color:var(--dz-texto);font-weight:800;font-style:italic}"
+        f"{q} .pgmais>summary::-webkit-details-marker{{display:none}}"
+        f"{q} .pgmais[open] .pgmais-t{{position:absolute;right:0;top:42px;width:min(82vw,320px);z-index:6;padding:10px 12px;background:var(--dz-cartao);"
+        "border:1px solid var(--dz-borda);border-radius:14px;box-shadow:0 12px 28px -12px rgba(0,0,0,.7);font-size:.88rem;line-height:1.4;color:var(--dz-texto)}"
+        f"{q} [data-testid=\"stMain\"] [data-testid=\"stVerticalBlock\"]{{gap:.65rem !important}}"
+        f"{q} [data-testid=\"stMain\"] :is(h2,h3,h4){{margin:.35rem 0 .15rem !important;padding-top:.25rem !important}}"
+        "}"
+    )
+
+
 def cabecalho_compacto() -> str:
     """Celular: cabeçalho nativo de 48 px (era ~60) e menos espaço no topo da página."""
     return (
@@ -280,4 +301,4 @@ def marca() -> str:
 
 def css(tema_id: str, n_itens: int) -> str:
     """CSS completo da v2 (uma tag <style>, sem linhas em branco, para o st.markdown não quebrar o bloco)."""
-    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens)]) + "</style>"
+    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar()]) + "</style>"
