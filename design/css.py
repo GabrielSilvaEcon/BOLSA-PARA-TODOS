@@ -164,10 +164,10 @@ def legado() -> str:
         f"@media (max-width:{K.CELULAR_MAX}px){{{p} [data-testid=\"stAlert\"]{{padding:0 !important;border:0 !important;background:transparent !important;box-shadow:none !important}}"
         f"{p} [data-testid=\"stAlertContainer\"]{{padding:.7rem .9rem !important;border-radius:var(--dz-r-cartao) !important;line-height:1.45}}"
         f"{p} [data-testid^=\"stAlertContent\"] p{{margin:0 !important;line-height:1.45 !important}}}}"
-        f"{q} .stTabs [data-baseweb=\"tab\"]{{border-radius:999px !important}}"
-        f"{q} .stTabs [data-baseweb=\"tab\"][aria-selected=\"true\"]{{background:var(--dz-destaque) !important;box-shadow:none !important}}"
-        f"{q} .stTabs [data-baseweb=\"tab\"][aria-selected=\"true\"] :is(p,span,div){{color:var(--dz-sobre) !important;-webkit-text-fill-color:var(--dz-sobre) !important}}"
-        f"{q} .stTabs [data-baseweb=\"tab-highlight\"]{{display:none !important}}"
+        f"{q} .stTabs [role=\"tab\"]{{border-radius:999px !important}}"
+        f"{q} .stTabs [role=\"tab\"][aria-selected=\"true\"]{{background:var(--dz-destaque) !important;background-image:none !important;border:0 !important;box-shadow:none !important}}"
+        f"{q} .stTabs [role=\"tab\"][aria-selected=\"true\"] :is(p,span,div){{color:var(--dz-sobre) !important;-webkit-text-fill-color:var(--dz-sobre) !important}}"
+        f"{q} .stTabs [data-baseweb=\"tab-highlight\"],{q} .stTabs [data-baseweb=\"tab-border\"]{{display:none !important}}"
         f"{p} .pgi{{background:color-mix(in srgb,var(--dz-destaque) 20%,transparent) !important;color:var(--dz-destaque) !important}}"
     )
 
