@@ -172,6 +172,8 @@ def legado() -> str:
         f"{q} .dz-msg{{margin-bottom:14px !important}}"
         f"{q} .stTabs [role=\"tab\"]{{padding:6px 14px !important;height:auto !important;min-height:36px !important;line-height:1.2 !important}}"
         f"{q} .stTabs [role=\"tablist\"]>div:not([role]){{display:none !important}}"
+        f"{p} [data-testid=\"stElementContainer\"]:has(>[data-testid=\"stMarkdown\"] [data-testid=\"stMarkdownContainer\"]>style:only-child){{display:none !important}}"
+        f"{p} [data-testid=\"stMain\"] hr{{border-color:var(--dz-borda) !important;opacity:.6}}"
         f"{p} .pgi{{background:color-mix(in srgb,var(--dz-destaque) 20%,transparent) !important;color:var(--dz-destaque) !important}}"
     )
 
