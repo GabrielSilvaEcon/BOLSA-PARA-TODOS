@@ -4154,9 +4154,7 @@ PG_COMP = st.Page(competicao_app.pagina_competicao, title="Wallet Game", icon=":
 PG_JOGAR = st.Page(jogar_app.pagina_jogar, title="Missões", icon=":material/flag:", url_path="missoes")
 PG_EDU = st.Page(educacao_app.pagina_educacao, title="Educação financeira", icon=":material/school:", url_path="educacao")
 PG_JORNADA = st.Page(educacao_app.pagina_jornada, title="Jornada", icon=":material/route:", url_path="jornada")
-PG_MOEDAS = st.Page(tickercoins_app.pagina_carteira, title="Minha carteira de moedas", icon=":material/account_balance_wallet:", url_path="moedas")
-PG_RECOMP = st.Page(tickercoins_app.pagina_recompensas, title="Central de recompensas", icon=":material/redeem:", url_path="recompensas")
-PG_LOJA = st.Page(tickercoins_app.pagina_loja, title="Loja Ticker", icon=":material/storefront:", url_path="loja")
+PG_ECONOMIA = st.Page(tickercoins_app.pagina_economia, title="Economia Ticker", icon=":material/toll:", url_path="economia")
 PG_GLOSSARIO = st.Page(educacao_app.pagina_glossario, title="Glossário", icon=":material/menu_book:", url_path="glossario")
 PG_GESTAO = st.Page(pagina_gestao_app, title="Gestão de carteira", icon=":material/pie_chart:", url_path="gestao-carteira")
 PG_RISCO = st.Page(pagina_risco_app, title="Gestão de risco", icon=":material/shield:", url_path="risco")
@@ -4243,8 +4241,9 @@ paginas = {
     ":material/account_balance_wallet: Carteira": [PG_CART, PG_GESTAO, PG_RISCO, PG_REL, PG_SIM],
     ":material/psychology: Inteligência": [PG_INTEL, PG_NOTICIAS, PG_NOTIF],
     ":material/account_balance_wallet: Wallet Game": [PG_COMP],
-    ":material/school: Aprender": [PG_JORNADA, PG_JOGAR, PG_EDU, PG_GLOSSARIO, PG_MOEDAS, PG_RECOMP, PG_LOJA],
+    ":material/school: Aprender": [PG_JORNADA, PG_JOGAR, PG_EDU, PG_GLOSSARIO],
     ":material/compare_arrows: Comparar": [PG_COMPARAR, PG_EVOLUCAO],
+    ":material/toll: Economia Ticker": [PG_ECONOMIA],
     ":material/help: Ajuda": [PG_AJUDA],
 }
 
@@ -4510,6 +4509,7 @@ def _menu_conta_itens():
     elif usuarios.eh_visitante() or not usuarios.acesso_obrigatorio():
         st.markdown("<div class='nav-user'><i></i>Visitante</div>", unsafe_allow_html=True)
     link(PG_CONTA, "Minha conta")
+    link(PG_ECONOMIA, "Economia Ticker")
     st.page_link(PG_CONTA, label=f"Modo de uso: {EXP.ROTULOS[experiencia_app.modo()]}", icon=":material/tune:")
     link(PG_PLANOS, "Planos e assinaturas")
     link(PG_AJUDA, "Ajuda e diagnóstico")
@@ -4530,6 +4530,7 @@ def _topo_acoes():
     """Botões do topo (no lugar do menu lateral): logo à esquerda; pesquisa e conta à direita, ambos abrem uma janela."""
     with st.container(key="topo_perfil"):
         st.markdown(_marca_html(26), unsafe_allow_html=True)
+        tickercoins_app.chip_cabecalho()          # moeda + saldo (um só, em todas as telas); leva à Economia Ticker
         if st.button("Pesquisar", key="topo_busca", icon=":material/search:", type="tertiary"):
             _dialogo_busca()
         if st.button("Conta", key="topo_conta", icon=":material/account_circle:", type="tertiary"):
@@ -4541,7 +4542,6 @@ _todas_pg = {p.url_path: p for n_, p in list(globals().items()) if n_.startswith
 notif_app.registrar_paginas(_todas_pg)
 conta_app.TODAS.update({u_: p_.title for u_, p_ in _todas_pg.items()})
 jogar_app.registrar_paginas({"competicao": PG_COMP, "jornada": PG_JORNADA})
-tickercoins_app.registrar_paginas({"moedas": PG_MOEDAS, "recompensas": PG_RECOMP, "loja": PG_LOJA})
 _todas_pg.setdefault("inicio", PG_INICIO)   # a página padrão (default=True) tem url_path "" no Streamlit: sem este alias, "inicio" nunca era achado e o botão Início não navegava
 educacao_app.registrar_paginas({"renda-fixa": PG_RF, "fiis": PG_FIIS, "criptomoedas": PG_CRIPTO, "simulador": PG_SIM})
 usuarios.exigir_login(marca.LOGO_GRANDE, marca.NOME)   # sem login configurado nos secrets, abre como visitante
