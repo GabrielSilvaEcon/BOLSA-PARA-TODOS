@@ -190,6 +190,7 @@ def legado() -> str:
         f"{q} [data-testid=\"stMain\"] a[data-testid=\"stPageLink-NavLink\"]{{height:auto !important;min-height:44px;border-radius:18px !important;padding:8px 14px !important}}"
         f"{q} [data-testid=\"stMain\"] a[data-testid=\"stPageLink-NavLink\"] :is(p,span){{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;line-height:1.3 !important}}"
         f"{p} [data-testid=\"stElementContainer\"]:has(>[data-testid=\"stMarkdown\"] [data-testid=\"stMarkdownContainer\"]:empty){{display:none !important}}"
+        f"{q} [class*=\"st-key-abaoff_\"],{q} [class*=\"st-key-abaoff_\"] *{{display:none !important}}"
         f"{q} .jor-metabar{{margin-bottom:14px !important}}{q} .st-key-jor_som_sw{{margin-top:8px !important}}"
         f"{q} .dz-rklista,{q} .dz-tc-lista,{q} .dz-msg{{margin-bottom:16px !important}}"
         f"{p} .pgi{{background:color-mix(in srgb,var(--dz-destaque) 20%,transparent) !important;color:var(--dz-destaque) !important}}"
