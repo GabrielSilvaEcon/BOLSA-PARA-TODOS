@@ -93,6 +93,9 @@ def sensacao_de_app(n_itens: int) -> str:
         f"{q} [class*=\"st-key-abasel_\"] [data-testid=\"stButtonGroup\"]{{flex-wrap:nowrap !important;overflow-x:auto;gap:8px !important;padding:2px 2px 8px;"
         "scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}"
         f"{q} [class*=\"st-key-abasel_\"] [data-testid=\"stButtonGroup\"]::-webkit-scrollbar{{display:none}}"
+        f"{q} [class*=\"st-key-abasel_\"] :is([data-testid^=\"stButtonGroup\"],[role=\"group\"],[data-testid^=\"stButtonGroup\"]>div)"
+        "{flex-wrap:nowrap !important;overflow-x:auto;scrollbar-width:none;max-width:100%}"
+        f"{q} [class*=\"st-key-abasel_\"] :is([role=\"group\"],[data-testid^=\"stButtonGroup\"]>div)::-webkit-scrollbar{{display:none}}"
         f"{q} [class*=\"st-key-abasel_\"] button{{flex:none !important;white-space:nowrap;min-height:42px;padding:0 16px !important;border-radius:999px !important;"
         "border:2px solid var(--dz-borda) !important;background:var(--dz-cartao) !important;box-shadow:0 3px 0 rgba(0,0,0,.35) !important;scroll-snap-align:start}"
         f"{q} [class*=\"st-key-abasel_\"] button :is(p,span){{color:var(--dz-texto) !important;font-weight:700 !important}}"
@@ -131,6 +134,8 @@ def controles_mobile() -> str:
     return (
         f"@media (max-width:900px){{"
         f"{q} [class*=\"st-key-leit_item_\"]>[data-testid=\"stVerticalBlock\"]{{gap:12px !important}}"
+        f"{q} .st-key-aj_btn_box{{position:relative;height:0 !important;margin:-10px 0 0 !important;overflow:visible;z-index:5}}"
+        f"{q} .st-key-aj_btn_box button{{position:absolute !important;right:58px;top:-58px;margin:0 !important}}"
         f"{q} .leit-tit{{display:block;line-height:1.3 !important;margin:0 0 2px !important}}"
         f"{q} [class*=\"st-key-leit_res_\"]{{position:relative;margin-top:4px !important}}"
         f"{q} [data-testid=\"stSegmentedControl\"]{{margin-top:10px}}"
