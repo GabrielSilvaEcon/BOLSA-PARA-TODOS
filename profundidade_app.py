@@ -42,38 +42,13 @@ def seletor() -> str:
     return a
 
 
-def _alternar(chave: str, nome: str) -> None:
-    """Toque na barra: abre a seção; tocar na que já está aberta fecha. Só uma fica aberta (menos rolagem)."""
-    st.session_state[chave] = None if st.session_state.get(chave) == nome else nome
-
-
-def _acordeao(classe: str, nomes: list[str], vis: list, resumos: dict) -> list:
-    """Cada análise vira uma barra com o resultado em destaque; o conteúdo só aparece quando a barra é aberta."""
-    chave = f"acd_{classe}"
-    aberto = st.session_state.get(chave)
-    saida = []
-    for i, (nome, v) in enumerate(zip(nomes, vis)):
-        if not v:
-            saida.append(None)
-            continue
-        on = aberto == nome
-        res = resumos.get(nome)
-        with st.container(key=f"acdbar_{classe}_{i}"):
-            st.button(f"{nome}  ·  {res}" if res else nome, key=f"{chave}_b{i}", type="primary" if on else "secondary",
-                      icon=":material/expand_less:" if on else ":material/expand_more:", on_click=_alternar, args=(chave, nome), width="stretch")
-        saida.append(st.container(key=f"acdon_{classe}_{i}" if on else f"abaoff_{classe}_{i}"))
-    return saida
-
-
 def abas(classe: str, nomes: list[str], resumos: dict | None = None) -> list:
     """Como st.tabs, mas só com as abas da profundidade escolhida. Devolve uma lista do mesmo tamanho: a aba escondida vem como None.
-    Com `resumos` ({nome: texto curto}), as seções viram barras que abrem e fecham (acordeão) em vez de fichas."""
+    As seções são barras que abrem e fecham; `resumos` ({nome: texto curto}) mostra o resultado na própria barra."""
     prof = seletor()
     vis = PROF.abas_visiveis(classe, nomes, prof)
     esconde = [n for n, v in zip(nomes, vis) if not v]
     if esconde:
         st.caption(f"Análise {PROF.ROTULOS[prof].lower()}: {len(esconde)} aba(s) a mais na análise Aprofundada ({', '.join(esconde[:4])}{'…' if len(esconde) > 4 else ''}).")
-    if resumos is not None:
-        return _acordeao(classe, nomes, vis, resumos)
-    criadas = iter(secoes.abas([n for n, v in zip(nomes, vis) if v]))
+    criadas = iter(secoes.abas([n for n, v in zip(nomes, vis) if v], key=f"prof_{classe}", resumos=resumos))
     return [next(criadas) if v else None for v in vis]
