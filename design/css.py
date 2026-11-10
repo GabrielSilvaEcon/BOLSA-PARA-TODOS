@@ -119,7 +119,7 @@ def sensacao_de_app(n_itens: int) -> str:
         f"{h} [data-testid=\"stColumn\"]:nth-child(1) [data-testid=\"stIconMaterial\"]{{color:#FF9B3D !important}}"
         f"{h} [data-testid=\"stColumn\"]:nth-child(2) [data-testid=\"stIconMaterial\"]{{color:var(--dz-ativo) !important}}"
         f"{h} [data-testid=\"stColumn\"]:nth-child(3) [data-testid=\"stIconMaterial\"]{{color:#F2B84B !important}}"
-        f"{q} .block-container{{padding-top:calc(var(--dz-cab-h,48px) + 56px) !important}}}}"
+        f"{q} .block-container{{padding-top:calc(var(--dz-cab-h,48px) + 26px) !important}}}}"
         f"@media (min-width:{K.TABLET_MAX + 1}px){{{h}{{display:none !important}}}}"
     )
     return barra + relevo + fichas + limpeza + ajuda + hud
@@ -130,6 +130,10 @@ def controles_mobile() -> str:
     q = "html body .stApp.stApp"
     return (
         f"@media (max-width:900px){{"
+        f"{q} [class*=\"st-key-leit_item_\"]>[data-testid=\"stVerticalBlock\"]{{gap:12px !important}}"
+        f"{q} .leit-tit{{display:block;line-height:1.3 !important;margin:0 0 2px !important}}"
+        f"{q} [class*=\"st-key-leit_res_\"]{{position:relative;margin-top:4px !important}}"
+        f"{q} [data-testid=\"stSegmentedControl\"]{{margin-top:10px}}"
         f"{q} [data-testid=\"stRadio\"] [role=\"radiogroup\"]{{flex-wrap:wrap !important;gap:8px !important}}"
         f"{q} [data-testid=\"stRadio\"] [role=\"radiogroup\"] label{{border:1px solid var(--dz-borda);background:var(--dz-cartao);border-radius:999px;padding:6px 12px !important;margin:0 !important}}"
         f"{q} [data-testid=\"stRadio\"] [role=\"radiogroup\"] label:has(input:checked){{border-color:var(--dz-destaque);box-shadow:0 0 0 1px var(--dz-destaque) inset}}"
