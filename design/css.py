@@ -119,6 +119,22 @@ def sensacao_de_app(n_itens: int) -> str:
     return barra + relevo + fichas + limpeza + hud
 
 
+def hubs_compactos() -> str:
+    """Celular: telas de entrada (Analisar) mais baixas; as páginas de cada cartão ficam em 2 colunas."""
+    q = "html body .stApp.stApp"
+    return (
+        f"@media (max-width:{K.CELULAR_MAX}px){{"
+        f"{q} .an-hero{{padding:12px !important;margin-bottom:10px !important}}"
+        f"{q} .an-hero h1{{font-size:1.3rem !important}}"
+        f"{q} .an-hero p{{font-size:.85rem !important;margin:4px 0 6px !important}}"
+        f"{q} .an-sec{{margin:8px 0 4px !important}}"
+        f"{q} [class*=\"st-key-an_card_\"]>[data-testid=\"stVerticalBlock\"]{{display:grid !important;grid-template-columns:1fr 1fr;gap:6px !important}}"
+        f"{q} [class*=\"st-key-an_card_\"]>[data-testid=\"stVerticalBlock\"]>:first-child{{grid-column:1/-1}}"
+        f"{q} .st-key-an_func a{{min-height:44px}}"
+        "}"
+    )
+
+
 def compactar() -> str:
     """Celular: cabeçalho de página enxuto (linha de apoio atrás do botão "i"), menos espaço entre blocos e entre títulos."""
     q = "html body .stApp.stApp"
@@ -302,4 +318,4 @@ def marca() -> str:
 
 def css(tema_id: str, n_itens: int) -> str:
     """CSS completo da v2 (uma tag <style>, sem linhas em branco, para o st.markdown não quebrar o bloco)."""
-    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar()]) + "</style>"
+    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar(), hubs_compactos()]) + "</style>"
