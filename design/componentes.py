@@ -64,12 +64,13 @@ def _pct(v) -> float:
         return 0.0
 
 
-def mensagem(texto: str, tom: str = "info", titulo: str = "") -> str:
+def mensagem(texto: str, tom: str = "info", titulo: str = "", bruto: bool = False) -> str:
     """Aviso em cartão com ícone: info, sucesso, aviso ou erro. A cor nunca é o único sinal (há ícone e texto)."""
     tom = tom if tom in {"info", "sucesso", "aviso", "erro"} else "info"
     ic = {"info": "info", "sucesso": "check", "aviso": "alerta", "erro": "alerta"}[tom]
     t = f"<b>{_e(titulo)}</b> " if titulo else ""
-    return f"<div class='dz-msg dz-msg-{tom}' role='status'>{icone(ic, 20)}<div>{t}{_e(texto)}</div></div>"
+    corpo = texto if bruto else _e(texto)      # bruto: o chamador já escapou o texto e só deixou negrito/código
+    return f"<div class='dz-msg dz-msg-{tom}' role='status'>{icone(ic, 20)}<div>{t}{corpo}</div></div>"
 
 
 def vazio(titulo: str, texto: str = "", icone_nome: str = "info") -> str:
