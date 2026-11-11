@@ -443,6 +443,12 @@ def fichas_globais() -> str:
         "box-shadow:0 3px 0 color-mix(in srgb,var(--dz-destaque) 50%,#000) !important}"
         f"{sc} button[data-testid$=\"Active\"] :is(p,span){{color:var(--dz-sobre) !important;-webkit-text-fill-color:var(--dz-sobre) !important}}"
         f"{q} :is([data-testid=\"stSelectbox\"],[data-testid=\"stNumberInput\"],[data-testid=\"stTextInput\"]){{max-width:100%}}"
+        # avisos que aparecem e somem (st.toast): cartão de vidro roxo do app, sem a moldura interna
+        "html body .stApp.stApp [data-testid=\"stToast\"]{background:linear-gradient(160deg,#3A2A75,#241C4D) !important;border:1px solid rgba(139,108,255,.55) !important;"
+        "border-left:4px solid #8BE04E !important;border-radius:18px !important;box-shadow:0 14px 30px -12px rgba(0,0,0,.7) !important;padding:6px 10px !important;max-width:min(420px,calc(100vw - 1.5rem)) !important}"
+        "html body .stApp.stApp [data-testid=\"stToast\"] *{border:0 !important;background:transparent !important;box-shadow:none !important;outline:0 !important}"
+        "html body .stApp.stApp [data-testid=\"stToast\"] [data-testid=\"stMarkdownContainer\"] p{font-size:.92rem !important;font-weight:700 !important;line-height:1.35 !important;margin:0 !important}"
+        "html body .stApp.stApp [data-testid=\"stToast\"] [data-testid=\"stToastDynamicIcon\"],html body .stApp.stApp [data-testid=\"stToast\"] [data-testid=\"stToastIcon\"]{font-size:1.25rem !important;margin-right:6px !important}"
     )
 
 
