@@ -424,6 +424,26 @@ def marca() -> str:
     return (".wm-t em{font-style:normal;background:none !important;-webkit-text-fill-color:" + T.MARCA["cor"] + " !important;color:" + T.MARCA["cor"] + " !important}")
 
 
+def fichas_globais() -> str:
+    """Controles segmentados do app inteiro (estilo antigo: retângulos colados e cortados) viram fichas em pílula que quebram linha,
+    com a cor de destaque do tema; vale também para a Wallet Game, Negociar, Ranking, Notícias etc."""
+    q = "html body .stApp.stApp [data-testid=\"stMain\"]"
+    sc = f"{q} [data-testid=\"stSegmentedControl\"]"
+    return (
+        f"{sc}{{max-width:100%;overflow:visible}}"
+        f"{sc} :is([role=\"group\"],[data-testid^=\"stButtonGroup\"],[data-testid^=\"stButtonGroup\"]>div){{display:flex !important;flex-wrap:wrap !important;gap:8px !important;"
+        "width:100% !important;max-width:100% !important;overflow:visible !important;border:0 !important;background:transparent !important;box-shadow:none !important}"
+        f"{sc} button{{flex:0 1 auto !important;min-height:42px;padding:6px 14px !important;border-radius:999px !important;border:2px solid var(--dz-borda) !important;"
+        "background:var(--dz-cartao) !important;box-shadow:0 3px 0 rgba(0,0,0,.35) !important;white-space:normal !important;max-width:100%;margin:0 !important}"
+        f"{sc} button :is(p,span){{color:var(--dz-texto) !important;font-weight:700 !important;line-height:1.15 !important;font-size:.88rem !important}}"
+        f"{sc} button:active{{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35) !important}}"
+        f"{sc} button[data-testid$=\"Active\"]{{background:var(--dz-destaque) !important;border-color:var(--dz-destaque) !important;"
+        "box-shadow:0 3px 0 color-mix(in srgb,var(--dz-destaque) 50%,#000) !important}"
+        f"{sc} button[data-testid$=\"Active\"] :is(p,span){{color:var(--dz-sobre) !important;-webkit-text-fill-color:var(--dz-sobre) !important}}"
+        f"{q} :is([data-testid=\"stSelectbox\"],[data-testid=\"stNumberInput\"],[data-testid=\"stTextInput\"]){{max-width:100%}}"
+    )
+
+
 def css(tema_id: str, n_itens: int) -> str:
     """CSS completo da v2 (uma tag <style>, sem linhas em branco, para o st.markdown não quebrar o bloco)."""
-    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar(), hubs_compactos(), controles_mobile(), acordeao()]) + "</style>"
+    return "<style>@import url('" + K.FONTE_URL + "');\n" + "\n".join([variaveis(tema_id), barra_inferior(n_itens), cabecalho_compacto(), widgets(), legado(), navegacao(), componentes(), marca(), sensacao_de_app(n_itens), compactar(), hubs_compactos(), controles_mobile(), acordeao(), fichas_globais()]) + "</style>"
