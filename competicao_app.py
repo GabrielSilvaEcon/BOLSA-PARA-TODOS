@@ -987,7 +987,7 @@ def pagina_competicao():
         elif sec == "Missões do jogo":
             WGA.aba_missoes(res)
         elif sec == "Conquistas":
-            WGA.aba_conquistas(res)
+            WGA.aba_conquistas(res, cart)
         elif sec == "Ranking":
             _aba_ranking(perfil, cart)
         elif sec == "Negociar":

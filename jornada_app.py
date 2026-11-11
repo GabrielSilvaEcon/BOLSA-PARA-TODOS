@@ -340,7 +340,7 @@ def _topo_novo(p: dict, mapa: list[dict], prog, set_prog) -> None:
         st.button("Jogar", key="jor_jogar", icon=":material/chevron_right:", on_click=_ir_wallet, width="stretch")
     with st.container(key="jor_mais"):
         st.caption("Mais para aprender")
-        for col, (rot, ic, url) in zip(st.columns(3), (("Missões de estudo", ":material/flag:", "missoes"), ("Educação", ":material/school:", "educacao"),
+        for col, (rot, ic, url) in zip(st.columns(3), (("Central de missões", ":material/flag:", "missoes"), ("Educação", ":material/school:", "educacao"),
                                                        ("Glossário", ":material/menu_book:", "glossario"))):
             col.button(rot, key=f"jor_mais_{url}", icon=ic, on_click=_ir_pagina, args=(url,), width="stretch")
 

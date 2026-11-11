@@ -4286,7 +4286,7 @@ PG_NOTICIAS = st.Page(pagina_noticias_app, title="Central de notícias e eventos
 PG_INTEL = st.Page(pagina_intel_app, title="Central de inteligência", icon=":material/psychology:", url_path="inteligencia")
 PG_NOTIF = st.Page(notif_app.pagina_notificacoes, title="Alertas", icon=":material/notifications:", url_path="notificacoes")
 PG_COMP = st.Page(competicao_app.pagina_competicao, title="Wallet Game", icon=":material/emoji_events:", url_path="competicao")
-PG_JOGAR = st.Page(jogar_app.pagina_jogar, title="Missões de estudo", icon=":material/flag:", url_path="missoes")
+PG_JOGAR = st.Page(jogar_app.pagina_jogar, title="Central de missões", icon=":material/flag:", url_path="missoes")
 PG_EDU = st.Page(educacao_app.pagina_educacao, title="Educação financeira", icon=":material/school:", url_path="educacao")
 PG_JORNADA = st.Page(educacao_app.pagina_jornada, title="Jornada", icon=":material/route:", url_path="jornada")
 PG_ECONOMIA = st.Page(tickercoins_app.pagina_economia, title="Loja Ticker", icon=":material/toll:", url_path="economia")

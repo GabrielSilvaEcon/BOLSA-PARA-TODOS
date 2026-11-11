@@ -264,7 +264,13 @@ def aba_missoes(res: dict) -> None:
     st.markdown("<div class='wg-aviso'>As missões premiam hábito e diversificação, não volume de operações. Diárias e semanais renovam sozinhas.</div>", unsafe_allow_html=True)
 
 
-def aba_conquistas(res: dict) -> None:
+def aba_conquistas(res: dict, cart: dict | None = None) -> None:
+    """Coleção de emblemas por categoria (emblemas.py), seguida das conquistas do Wallet Game com as recompensas de cada uma."""
+    import emblemas_app as EMA
+    import emblemas as EM
+    st.markdown(EMA.CSS, unsafe_allow_html=True)
+    st.markdown(EMA.html_colecao(EM.colecao(EMA.contexto_da_tela(res, cart))), unsafe_allow_html=True)
+    st.markdown("<div class='wg-sec'>Conquistas do Wallet Game</div>", unsafe_allow_html=True)
     ok = [c for c in res["conquistas"] if c["desbloqueada_em"]]
     st.markdown(f"<div class='wg-sec'>{len(ok)} de {len(res['conquistas'])} desbloqueadas</div>", unsafe_allow_html=True)
     for c in res["conquistas"]:

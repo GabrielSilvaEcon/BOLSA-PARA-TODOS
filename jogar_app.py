@@ -39,6 +39,8 @@ CSS = """<style>
 .jg-bar{height:8px;background:#2A2060;border-radius:99px;overflow:hidden;margin-top:9px;}
 .jg-bar i{display:block;height:100%;background:linear-gradient(90deg,#7C5CFF,#2DD4A0);border-radius:99px;}
 .jg-nota{font-size:.82rem;color:#BDB5E6 !important;margin-top:4px;}
+.jg-ori{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:rgba(139,108,255,.25);color:#D8CCFF !important;font-size:.68rem;font-weight:800;vertical-align:middle}
+.jg-chs{margin-top:6px}.jg-ch{display:inline-block;margin:0 6px 0 0;padding:2px 9px;border-radius:99px;background:rgba(61,220,151,.16);color:#7CF0C0 !important;font-size:.74rem;font-weight:800}
 </style>"""
 
 
@@ -151,8 +153,85 @@ def _ir(url_path: str) -> None:
 
 
 # ------------------------------------------------------------------ página
+# ------------------------------------------------------------------ central de missões (Fase 3)
+ABAS = ("Diárias", "Semanais", "Especiais", "Temporadas")
+
+
+def _chips_recompensa(rec: dict) -> str:
+    itens = []
+    if rec.get("xp"):
+        itens.append(f"+{int(rec['xp'])} XP")
+    if rec.get("tc"):
+        itens.append(f"+{int(rec['tc'])} TC")
+    if rec.get("capital"):
+        itens.append(f"+T$ {rec['capital']:,.0f}".replace(",", "."))
+    return "".join(f"<span class='jg-ch'>{_e(i)}</span>" for i in itens)
+
+
+def _res_wallet():
+    """Resultado do Wallet Game da pessoa (missões do jogo) ou None se ela não participa / o banco não está disponível. Nunca levanta erro."""
+    try:
+        a = usuarios.ator()
+        if not a:
+            return None
+        import banco
+        import competicao_app as CA
+        import wallet_game_app as WGA
+        if not banco.cfg_disponivel() or not CA._pessoa(a)["perfil"].get("aceite"):
+            return None
+        return WGA.resultado(a)
+    except Exception:
+        return None
+
+
+def _card_wallet(m: dict, res: dict) -> str:
+    pct = 100 if m["feita"] else min(100.0, (m["progresso"] / m["meta"] * 100) if m["meta"] else 0)
+    prog = "Concluída" if m["feita"] else (f"{m['progresso']:.0f} de {m['meta']}" if m["id"] != "e_rent5" else f"{res['resultado']:+.1f}% de +{m['meta']}%")
+    return (f"<div class='jg-card {'ok' if m['feita'] else ''}'><div class='jg-top'><div style='min-width:0'>"
+            f"<div class='jg-t'>{'✓ ' if m['feita'] else ''}{_e(m['nome'])} <span class='jg-ori'>Wallet Game</span></div>"
+            f"<div class='jg-s'>{_e(m['descricao'])}</div></div></div>"
+            f"<div class='jg-bar'><i style='width:{pct:.0f}%'></i></div><div class='jg-nota'>Objetivo: {_e(m['objetivo'])} · {_e(prog)}</div>"
+            f"<div class='jg-chs'>{_chips_recompensa(m['recompensa'])}</div></div>")
+
+
+def _missoes_wallet(res, periodo: str) -> None:
+    if res is None:
+        st.markdown("<div class='jg-card trancado'><div class='jg-t'>Missões do Wallet Game</div>"
+                    "<div class='jg-s'>Participe do Wallet Game para ver aqui as missões do jogo.</div></div>", unsafe_allow_html=True)
+        st.button("Ir para o Wallet Game", key=f"cm_wg_{periodo}", icon=":material/account_balance_wallet:", on_click=_ir, args=("competicao",))
+        return
+    lista = [m for m in res["missoes"] if m["periodo"] == periodo]
+    for m in lista:
+        st.markdown(_card_wallet(m, res), unsafe_allow_html=True)
+    if not lista:
+        st.caption("Nenhuma missão do jogo neste grupo agora.")
+
+
+def _ir_secao_wg(secao: str) -> None:
+    st.session_state["wg_sec"] = secao
+    _ir("competicao")
+
+
+def _aba_temporadas() -> None:
+    import competicao_temporadas as T
+    import wallet_game as W
+    hoje = W.hoje_brt()
+    st.markdown("<div class='jg-sec'>Temporadas em andamento</div>", unsafe_allow_html=True)
+    for tipo in T.TIPOS:
+        tid = T.id_temporada(tipo, hoje)
+        ini, fim = T.limites(tid)
+        falta = max(0, (fim - hoje).days)
+        st.markdown(f"<div class='jg-card'><div class='jg-top'><div style='min-width:0'><div class='jg-t'>{_e(T.rotulo(tid))} "
+                    f"<span class='jg-ori'>{'Mensal' if tipo == 'mensal' else 'Trimestral'}</span></div>"
+                    f"<div class='jg-s'>De {ini.strftime('%d/%m/%Y')} a {fim.strftime('%d/%m/%Y')} · {falta} dia(s) restante(s). "
+                    f"Entra quem tiver {T.MIN_DIAS_TEMPORADA[tipo]} pregões ou mais no período.</div></div></div></div>", unsafe_allow_html=True)
+    st.caption("Não há missões próprias de temporada: o que vale aqui é o desempenho da carteira virtual. Quando a temporada termina saem os selos "
+               "(Ouro, Prata, Bronze, Top 10 e Equilíbrio), que aparecem na coleção de emblemas.")
+    st.button("Abrir as Temporadas", key="cm_temp", icon=":material/leaderboard:", on_click=_ir_secao_wg, args=("Temporadas",))
+
+
 def pagina_jogar() -> None:
-    st.markdown(tema.cabecalho("🎯", "Missões de estudo", "Missões do dia, desafio da semana e desafios por tema. Os pontos vêm de estudar, nunca de arriscar."),
+    st.markdown(tema.cabecalho("🎯", "Central de missões", "Diárias, semanais, especiais e temporadas num só lugar. Estudo e Wallet Game, sem misturar as moedas."),
                 unsafe_allow_html=True)
     st.markdown(CSS, unsafe_allow_html=True)
     if st.session_state.get("jor_sessao"):                  # desafio em andamento: mesmo player da Jornada
@@ -161,11 +240,24 @@ def pagina_jogar() -> None:
     p = EA.prog()
     ok_dec, txt_dec = _boa_decisao()
     r = JG.resumo(p, boa_decisao=ok_dec)
+    res = _res_wallet()
     _bloco_pontos(r)
-    _bloco_missoes(r)
-    _bloco_semana(r)
-    _bloco_decisao(ok_dec, txt_dec)
-    _bloco_desafios(p)
+    aba = st.segmented_control("Tipo de missão", list(ABAS), key="cm_aba", default=ABAS[0], label_visibility="collapsed") or ABAS[0]
+    if aba == "Diárias":
+        _bloco_missoes(r)
+        st.markdown("<div class='jg-sec'>Do Wallet Game</div>", unsafe_allow_html=True)
+        _missoes_wallet(res, "dia")
+    elif aba == "Semanais":
+        _bloco_semana(r)
+        _bloco_decisao(ok_dec, txt_dec)
+        st.markdown("<div class='jg-sec'>Do Wallet Game</div>", unsafe_allow_html=True)
+        _missoes_wallet(res, "semana")
+    elif aba == "Especiais":
+        st.markdown("<div class='jg-sec'>Do Wallet Game</div>", unsafe_allow_html=True)
+        _missoes_wallet(res, "especial")
+        _bloco_desafios(p)
+    else:
+        _aba_temporadas()
     if not usuarios.usuario():
         st.caption("Sem entrar na conta, seu progresso vale só para esta sessão.")
     st.caption("Conteúdo educacional. Pontos e desafios premiam só o estudo e boas decisões de processo, nunca lucro, retorno ou risco.")
