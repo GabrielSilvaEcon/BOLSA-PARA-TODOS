@@ -110,22 +110,7 @@ def sensacao_de_app(n_itens: int) -> str:
         "border:1px solid var(--dz-borda) !important;background:var(--dz-cartao) !important;box-shadow:0 2px 0 rgba(0,0,0,.35) !important;opacity:1 !important}"
         f"{q} .st-key-aj_btn_box button :is(span,svg,[data-testid=\"stIconMaterial\"]){{color:var(--dz-destaque) !important}}"
     )
-    h = f"{q} .st-key-hud_topo"
-    hud = (
-        f"@media (max-width:{K.TABLET_MAX}px){{{h}{{position:fixed;top:var(--dz-cab-h,48px);left:0;right:0;z-index:999;box-sizing:border-box;padding:5px 10px;"
-        "background:var(--dz-concha);border-bottom:1px solid var(--dz-concha-borda);box-shadow:0 6px 16px -10px rgba(0,0,0,.6)}"
-        f"{h} [data-testid=\"stHorizontalBlock\"]{{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px !important;max-width:520px;margin:0 auto}}"
-        f"{h} [data-testid=\"stColumn\"]{{width:auto !important;min-width:0 !important;flex:none !important}}"
-        f"{h} [data-testid=\"stPageLink\"]{{width:100% !important}}"
-        f"{h} a{{width:100% !important;display:flex !important;align-items:center;justify-content:center;gap:6px;min-height:34px !important;padding:0 10px !important;border-radius:999px !important;"
-        "background:var(--dz-cartao) !important;border:1px solid var(--dz-borda) !important;text-decoration:none !important;box-shadow:0 2px 0 rgba(0,0,0,.35)}"
-        f"{h} a :is(p,span){{color:var(--dz-texto) !important;font-weight:800 !important;font-size:.9rem !important;white-space:nowrap}}"
-        f"{h} [data-testid=\"stColumn\"]:nth-child(1) [data-testid=\"stIconMaterial\"]{{color:#FF9B3D !important}}"
-        f"{h} [data-testid=\"stColumn\"]:nth-child(2) [data-testid=\"stIconMaterial\"]{{color:var(--dz-ativo) !important}}"
-        f"{h} [data-testid=\"stColumn\"]:nth-child(3) [data-testid=\"stIconMaterial\"]{{color:#F2B84B !important}}"
-        f"{q} .block-container{{padding-top:calc(var(--dz-cab-h,48px) + 26px) !important}}}}"
-        f"@media (min-width:{K.TABLET_MAX + 1}px){{{h}{{display:none !important}}}}"
-    )
+    hud = ""          # a faixa de indicadores (linha 2 do cabeçalho) tem estilo próprio em cabecalho_global.py
     return barra + relevo + fichas + limpeza + ajuda + hud
 
 
