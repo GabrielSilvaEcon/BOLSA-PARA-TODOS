@@ -132,14 +132,12 @@ def sensacao_de_app(n_itens: int) -> str:
 def acordeao() -> str:
     """Navegação das seções de cada tela (secoes.abas): botões compactos no topo, ícone redondo colorido em cima e nome embaixo, 2 ou 3 por
     linha; o botão da seção ativa fica destacado e só o conteúdo dela aparece. (O nome da função é o antigo; não há mais barras que abrem.)"""
-    q = "html body .stApp.stApp"
+    q = "html body .stApp.stApp.stApp"
     n = f"{q} [class*=\"st-key-acdnav_\"]"
     ac = "var(--ac,var(--dz-destaque))"
     return (
         f"{n}{{margin:0 0 8px}}"
-        f"{n} [data-testid=\"stHorizontalBlock\"]{{flex-wrap:nowrap !important;gap:8px !important;margin-bottom:8px}}"
-        f"{n} [data-testid=\"stColumn\"]{{flex:1 1 0 !important;min-width:0 !important;width:auto !important}}"
-        f"{n} button{{width:100% !important;min-height:60px;border-radius:16px !important;padding:6px 4px !important;gap:2px !important;justify-content:center !important;"
+        f"{n} button{{width:100% !important;min-height:60px !important;height:auto !important;border-radius:16px !important;padding:6px 4px !important;gap:2px !important;justify-content:center !important;"
         f"background:linear-gradient(160deg,color-mix(in srgb,{ac} 14%,var(--dz-cartao)),var(--dz-cartao) 75%) !important;"
         f"border:1px solid color-mix(in srgb,{ac} 45%,transparent) !important;box-shadow:0 3px 0 color-mix(in srgb,{ac} 28%,#0B0821) !important;transition:transform .08s,box-shadow .08s}}"
         f"{n} button:active{{transform:translateY(2px);box-shadow:0 1px 0 color-mix(in srgb,{ac} 28%,#0B0821) !important}}"
