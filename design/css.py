@@ -468,6 +468,15 @@ def fichas_globais() -> str:
         "html body .stApp.stApp.stApp [data-testid=\"stAlert\"]{border-radius:16px !important}"
         "html body .stApp.stApp.stApp [data-testid=\"stExpander\"]{border-radius:16px !important;background:var(--dz-cartao) !important;border:1px solid var(--dz-borda) !important}"
         "html body .stApp.stApp.stApp [data-testid=\"stExpander\"] summary p{font-weight:800 !important}"
+        # botões padronizados: seletor de profundidade em pílulas iguais às do resto do app; abas sem a linha embaixo
+        "html body .stApp.stApp.stApp .st-key-home_prof :is([role=\"group\"],[data-testid^=\"stButtonGroup\"],[data-testid^=\"stButtonGroup\"]>div){display:flex !important;flex-wrap:nowrap !important;gap:8px !important;"
+        "width:100% !important;border:0 !important;background:transparent !important;box-shadow:none !important;overflow:visible !important}"
+        "html body .stApp.stApp.stApp .st-key-home_prof button{flex:1 1 0 !important;min-width:0 !important;min-height:42px !important;border-radius:999px !important;"
+        "border:2px solid var(--dz-borda) !important;background:var(--dz-cartao) !important;box-shadow:0 3px 0 rgba(0,0,0,.35) !important;padding:6px 8px !important;margin:0 !important}"
+        "html body .stApp.stApp.stApp .st-key-home_prof button :is(p,span){font-size:.82rem !important;font-weight:800 !important;color:var(--dz-texto) !important;white-space:nowrap !important}"
+        "html body .stApp.stApp.stApp .st-key-home_prof button:is([aria-checked=\"true\"],[aria-pressed=\"true\"],[data-testid$=\"Active\"]){background:var(--dz-destaque) !important;border-color:var(--dz-destaque) !important}"
+        "html body .stApp.stApp.stApp .st-key-home_prof button:is([aria-checked=\"true\"],[aria-pressed=\"true\"],[data-testid$=\"Active\"]) :is(p,span){color:var(--dz-sobre) !important}"
+        "html body .stApp.stApp.stApp .stTabs :is([data-baseweb=\"tab-highlight\"],[data-baseweb=\"tab-border\"]){display:none !important;height:0 !important;background:transparent !important}"
         + _fundo_cabecalho()
     )
 
