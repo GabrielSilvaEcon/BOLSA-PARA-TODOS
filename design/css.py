@@ -137,7 +137,7 @@ def acordeao() -> str:
     ac = "var(--ac,var(--dz-destaque))"
     return (
         f"{n}{{margin:0 0 8px}}"
-        f"{n} button{{width:100% !important;min-height:60px !important;height:auto !important;border-radius:16px !important;padding:6px 4px !important;gap:2px !important;justify-content:center !important;"
+        f"{n} button{{width:100% !important;min-height:60px !important;height:auto !important;border-radius:16px !important;padding:6px 4px !important;gap:3px !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;"
         f"background:linear-gradient(160deg,color-mix(in srgb,{ac} 14%,var(--dz-cartao)),var(--dz-cartao) 75%) !important;"
         f"border:1px solid color-mix(in srgb,{ac} 45%,transparent) !important;box-shadow:0 3px 0 color-mix(in srgb,{ac} 28%,#0B0821) !important;transition:transform .08s,box-shadow .08s}}"
         f"{n} button:active{{transform:translateY(2px);box-shadow:0 1px 0 color-mix(in srgb,{ac} 28%,#0B0821) !important}}"
@@ -448,6 +448,18 @@ def fichas_globais() -> str:
         "html body [data-testid=\"stToastContainer\"],html body [data-testid=\"stToast\"]>div{border-radius:18px !important}"
         "html body [data-testid=\"stToast\"] [data-testid=\"stMarkdownContainer\"] p{font-size:.92rem !important;font-weight:700 !important;line-height:1.35 !important;margin:0 !important}"
         "html body [data-testid=\"stToast\"] [data-testid=\"stToastDynamicIcon\"],html body [data-testid=\"stToast\"] [data-testid=\"stToastIcon\"]{font-size:1.25rem !important;margin-right:6px !important}"
+        # padronização: números em cartões lado a lado (2 por linha, mesmo no celular), abas em cápsula e avisos como cartões
+        "html body .stApp.stApp.stApp [data-testid=\"stMain\"] [data-testid=\"stHorizontalBlock\"]:has(>[data-testid=\"stColumn\"] [data-testid=\"stMetric\"]){flex-wrap:wrap !important;gap:8px !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stMain\"] [data-testid=\"stHorizontalBlock\"]:has(>[data-testid=\"stColumn\"] [data-testid=\"stMetric\"])>[data-testid=\"stColumn\"]{flex:1 1 calc(50% - 8px) !important;min-width:calc(50% - 8px) !important;width:auto !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stMetric\"]{padding:12px 14px !important;border-radius:16px !important;background:var(--dz-cartao) !important;"
+        "border:1px solid var(--dz-borda) !important;border-left:4px solid var(--dz-destaque) !important;min-height:0 !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stMetricLabel\"] *{font-size:.7rem !important;letter-spacing:.05em !important;text-transform:uppercase !important;font-weight:800 !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stMetricValue\"],html body .stApp.stApp.stApp [data-testid=\"stMetricValue\"] *{font-size:1.2rem !important;font-weight:800 !important;line-height:1.2 !important}"
+        "html body .stApp.stApp.stApp .stTabs [data-baseweb=\"tab-list\"]{border-bottom:0 !important;background:var(--dz-cartao) !important;padding:4px !important;border-radius:999px !important;gap:4px !important;width:100% !important;flex-wrap:nowrap !important;overflow-x:auto}"
+        "html body .stApp.stApp.stApp .stTabs [role=\"tab\"]{flex:1 1 0 !important;justify-content:center !important;min-width:max-content}"
+        "html body .stApp.stApp.stApp [data-testid=\"stAlert\"]{border-radius:16px !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stExpander\"]{border-radius:16px !important;background:var(--dz-cartao) !important;border:1px solid var(--dz-borda) !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stExpander\"] summary p{font-weight:800 !important}"
     )
 
 
