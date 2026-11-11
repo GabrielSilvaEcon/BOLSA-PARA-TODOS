@@ -468,6 +468,16 @@ def fichas_globais() -> str:
         "html body .stApp.stApp.stApp [data-testid=\"stAlert\"]{border-radius:16px !important}"
         "html body .stApp.stApp.stApp [data-testid=\"stExpander\"]{border-radius:16px !important;background:var(--dz-cartao) !important;border:1px solid var(--dz-borda) !important}"
         "html body .stApp.stApp.stApp [data-testid=\"stExpander\"] summary p{font-weight:800 !important}"
+        # caixas de escolha e de pesquisa: maiores, com brilho na cor do destaque e rótulo pequeno em cima
+        "html body .stApp.stApp.stApp [data-testid=\"stMain\"] :is([data-testid=\"stSelectbox\"],[data-testid=\"stMultiSelect\"],[data-testid=\"stTextInput\"]) label p{font-size:.74rem !important;font-weight:800 !important;"
+        "letter-spacing:.06em !important;text-transform:uppercase !important;color:#BDB5E6 !important;margin-bottom:2px !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stMain\"] :is([data-baseweb=\"select\"]>div,[data-baseweb=\"input\"]){min-height:54px !important;border-radius:18px !important;"
+        "background:linear-gradient(160deg,color-mix(in srgb,var(--dz-destaque) 14%,var(--dz-cartao)),var(--dz-cartao) 80%) !important;"
+        "border:1.5px solid color-mix(in srgb,var(--dz-destaque) 55%,transparent) !important;box-shadow:0 8px 20px -14px var(--dz-destaque) !important;padding-left:6px !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stMain\"] :is([data-baseweb=\"select\"]>div,[data-baseweb=\"input\"]):focus-within{border-color:var(--dz-destaque) !important;"
+        "box-shadow:0 0 0 3px color-mix(in srgb,var(--dz-destaque) 28%,transparent) !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stMain\"] [data-baseweb=\"select\"] input::placeholder,html body .stApp.stApp.stApp [data-testid=\"stMain\"] [data-baseweb=\"input\"] input::placeholder{color:#9D94CC !important;opacity:1 !important}"
+        "html body .stApp.stApp.stApp [data-testid=\"stMain\"] [data-baseweb=\"select\"] svg{color:var(--dz-destaque) !important;fill:var(--dz-destaque) !important}"
         # botões padronizados: seletor de profundidade em pílulas iguais às do resto do app; abas sem a linha embaixo
         "html body .stApp.stApp.stApp .st-key-home_prof :is([role=\"group\"],[data-testid^=\"stButtonGroup\"],[data-testid^=\"stButtonGroup\"]>div){display:flex !important;flex-wrap:nowrap !important;gap:8px !important;"
         "width:100% !important;border:0 !important;background:transparent !important;box-shadow:none !important;overflow:visible !important}"
