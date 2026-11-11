@@ -97,14 +97,14 @@ _CSS = f"""
 .hn-h b{{font-weight:800}}
 {_Q} .st-key-in_news_h button{{min-height:40px !important;padding:0 6px !important;background:transparent !important;border:0 !important;box-shadow:none !important}}
 {_Q} .st-key-in_news_h button :is(p,span){{color:#8EA2FF !important;-webkit-text-fill-color:#8EA2FF !important;font-weight:700 !important;font-size:.92rem !important;white-space:nowrap}}
-.hn-car{{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}}
+.hn-car{{display:flex;gap:10px;padding-right:12px;scroll-padding-left:2px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}}
 .hn-car::-webkit-scrollbar{{display:none}}
-.hn-c{{flex:0 0 min(86%,340px);scroll-snap-align:start;display:flex;gap:10px;align-items:center;box-sizing:border-box;padding:10px;border-radius:18px;text-decoration:none !important;
+.hn-c{{flex:0 0 min(88%,360px);scroll-snap-align:start;display:flex;gap:10px;align-items:center;box-sizing:border-box;padding:10px;border-radius:18px;text-decoration:none !important;
   background:rgba(255,255,255,.04);border:1px solid color-mix(in srgb,var(--ac) 40%,transparent);border-left:4px solid var(--ac)}}
-.hn-f{{flex:0 0 84px;height:84px;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,var(--ac) 45%,#1B1442),#1B1442)}}
+.hn-f{{flex:0 0 68px;height:68px;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,var(--ac) 45%,#1B1442),#1B1442)}}
 .hn-f img{{width:100%;height:100%;object-fit:cover;display:block}}
 .hn-t{{min-width:0;display:flex;flex-direction:column;gap:6px}}
-.hn-t b{{color:#fff !important;font-size:.95rem;line-height:1.25;font-weight:700;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}}
+.hn-t b{{color:#fff !important;font-size:.92rem;line-height:1.25;font-weight:700;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}}
 .hn-t span{{color:#B9B3E6 !important;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
 @media (min-width:760px){{.hn-c{{flex-basis:min(46%,380px)}}}}
 .hn-vazio{{padding:12px 4px;color:#CFCBFF !important;font-size:.92rem}}
