@@ -523,8 +523,6 @@ def pagina_notificacoes() -> None:
     a = _ator()
     if not u or not a:
         st.markdown(C._msg("Entre na sua conta para criar alertas e receber notificações. Elas são individuais: só você vê as suas.", "aviso"), unsafe_allow_html=True)
-        if usuarios.eh_visitante():
-            st.button("Entrar na conta", key="nt_entrar", icon=":material/login:", on_click=usuarios.sair_visitante, width="stretch")
         return
     if not banco.notif_disponivel():
         st.markdown(C._msg("As tabelas de notificações ainda não existem no banco. No Supabase, abra o SQL Editor e execute de novo o script "
