@@ -22,7 +22,9 @@ from datetime import date, datetime, timedelta
 
 import ativos_jogo as A
 
-CAPITAL_INICIAL = 100_000.0
+CAPITAL_INICIAL = 100_000.0      # capital das carteiras criadas ANTES da nova regra (legado: continuam com R$ 100.000, nada é reiniciado)
+CAPITAL_NOVO = 10_000.0          # capital de quem entra a partir de DATA_NOVA_REGRA
+DATA_NOVA_REGRA = "2026-11-11"   # entradas nesta data ou depois começam com CAPITAL_NOVO
 CUSTO_OPERACAO = 0.0005          # 0,05% por compra e por venda (B3). Cada classe tem o seu custo em `ativos_jogo.CLASSES` (cripto 0,20%; fundos e renda fixa 0%)
 MAX_PESO = 0.40                  # no máximo 40% do patrimônio em um ativo (CDI e Tesouro Selic, onde se guarda a reserva, ficam de fora)
 MIN_DIAS_RANKING = 1             # pregões de histórico para aparecer no ranking: entra já no primeiro fechamento (subir este número exige mais histórico)
@@ -103,9 +105,61 @@ def universo_base() -> list[str]:
 
 
 # ------------------------------------------------------------------ estado da carteira
-def novo_estado(entrada: str) -> dict:
-    return {"v": 1, "inicio": entrada, "caixa": CAPITAL_INICIAL, "pos": {}, "ult": {}, "hist": [], "proc": [], "ext": [],
+def capital_para_entrada(entrada: str | None) -> float:
+    """Capital inicial de quem entrou em `entrada` (data ISO): R$ 10.000 a partir da nova regra; quem já estava dentro fica com o que tinha."""
+    return CAPITAL_NOVO if str(entrada or "9999")[:10] >= DATA_NOVA_REGRA else CAPITAL_INICIAL
+
+
+def capital_de(estado: dict | None) -> float:
+    """Capital inicial desta carteira (gravado em `cap0`; carteiras antigas não têm o campo e valem R$ 100.000)."""
+    try:
+        v = float((estado or {}).get("cap0") or 0)
+    except (TypeError, ValueError):
+        v = 0.0
+    return v if v > 0 else CAPITAL_INICIAL
+
+
+def novo_estado(entrada: str, capital: float | None = None) -> dict:
+    cap = float(capital) if capital else capital_para_entrada(entrada)
+    return {"v": 1, "inicio": entrada, "caixa": cap, "cap0": cap, "apt": 0.0, "pos": {}, "ult": {}, "hist": [], "proc": [], "ext": [],
             "ult_dia": None, "rank": {}}
+
+
+def aportes(estado: dict | None) -> float:
+    """Total já creditado por bônus da Wallet Game (não é resultado de investimento: fica fora do retorno e do ranking por %)."""
+    try:
+        return float((estado or {}).get("apt") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _liq(x: dict) -> float:
+    """Patrimônio de um fechamento sem os bônus creditados até ali."""
+    return float(x["p"]) - float(x.get("a") or 0.0)
+
+
+def aplicar_creditos(estado: dict, creditos: list[dict]) -> tuple[dict, int]:
+    """Aplica ao caixa os créditos do livro (wg_creditos) que ainda não estão na carteira. Idempotente: cada `chave` entra uma única vez,
+    mesmo que a carteira seja regravada por dois lugares ao mesmo tempo. Devolve (novo estado, quantos entraram agora)."""
+    e = copy.deepcopy(estado)
+    ja = list(e.get("cred") or [])
+    vistos = set(ja)
+    n = 0
+    for c in sorted(creditos or [], key=lambda x: (x.get("criado_em") or "", x["chave"])):
+        if c["chave"] in vistos:
+            continue
+        v = round(float(c["valor"]), 2)
+        if v <= 0:
+            continue
+        e["caixa"] = round(float(e.get("caixa", 0.0)) + v, 2)
+        e["apt"] = round(aportes(e) + v, 2)
+        ja.append(c["chave"])
+        vistos.add(c["chave"])
+        e.setdefault("ext", []).append({"d": str(c.get("dia") or (c.get("criado_em") or "")[:10]), "tipo": "bonus", "m": str(c.get("descricao") or "Bônus")[:60], "v": v})
+        n += 1
+    e["cred"] = ja[-800:]
+    e["ext"] = (e.get("ext") or [])[-MAX_EXTRATO:]
+    return e, n
 
 
 def patrimonio(estado: dict, precos: dict | None = None) -> float:
@@ -328,8 +382,9 @@ def processar_dia(estado: dict, pendentes: list[dict], dia: str, dados_dia: dict
     pat = round(patrimonio(e), 2)
     if e["hist"] and e["hist"][-1]["d"] == dia:
         e["hist"][-1]["p"] = pat
+        e["hist"][-1]["a"] = round(aportes(e), 2)
     else:
-        e["hist"].append({"d": dia, "p": pat})
+        e["hist"].append({"d": dia, "p": pat, "a": round(aportes(e), 2)})
     e["ult_dia"] = dia
     e["proc"] = e["proc"][-MAX_PROCESSADAS:]
     e["ext"] = (e["ext"] + ext)[-MAX_EXTRATO:]
@@ -363,30 +418,33 @@ def processar_meio_dia(estado: dict, pendentes: list[dict], dia: str, precos: di
 
 # ------------------------------------------------------------------ desempenho e ranking
 def retorno_total(estado: dict) -> float | None:
+    """Retorno desde o início, sem contar os bônus creditados (eles não são resultado de investimento)."""
     h = (estado or {}).get("hist") or []
-    return h[-1]["p"] / CAPITAL_INICIAL - 1 if h else None
+    return _liq(h[-1]) / capital_de(estado) - 1 if h else None
 
 
 def retorno_periodo(estado: dict, desde: str | None) -> float | None:
-    """Retorno desde o início do período (data ISO). Sem aportes, é a razão entre o patrimônio final e o do último fechamento antes do período."""
+    """Retorno desde o início do período (data ISO), sem contar os bônus. Sem aportes além do bônus, é a razão entre o patrimônio final e o do último
+    fechamento antes do período."""
     h = (estado or {}).get("hist") or []
     if not h:
         return None
+    cap = capital_de(estado)
     if desde is None:
-        base = CAPITAL_INICIAL
+        base = cap
     else:
-        antes = [x["p"] for x in h if x["d"] < desde]
-        base = antes[-1] if antes else CAPITAL_INICIAL      # quem entrou no meio do período parte do capital inicial
+        antes = [_liq(x) for x in h if x["d"] < desde]
+        base = antes[-1] if antes else cap                  # quem entrou no meio do período parte do capital inicial
         if not [x for x in h if x["d"] >= desde]:
             return None                                     # sem pregão no período: fora do ranking do período
-    return h[-1]["p"] / base - 1
+    return _liq(h[-1]) / base - 1
 
 
 def queda_maxima(estado: dict) -> float:
-    pico, pior = CAPITAL_INICIAL, 0.0
+    pico, pior = capital_de(estado), 0.0
     for x in (estado or {}).get("hist") or []:
-        pico = max(pico, x["p"])
-        pior = min(pior, x["p"] / pico - 1)
+        pico = max(pico, _liq(x))
+        pior = min(pior, _liq(x) / pico - 1)
     return pior
 
 
@@ -410,7 +468,7 @@ def metricas_risco(estado: dict) -> dict | None:
     h = (estado or {}).get("hist") or []
     if len(h) < MIN_DIAS_RISCO:
         return None
-    return metricas_serie([CAPITAL_INICIAL] + [x["p"] for x in h])
+    return metricas_serie([capital_de(estado)] + [_liq(x) for x in h])
 
 
 def inicio_semana(hoje: date) -> str:
