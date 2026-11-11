@@ -129,6 +129,14 @@ def sensacao_de_app(n_itens: int) -> str:
     return barra + relevo + fichas + limpeza + ajuda + hud
 
 
+def _fundo_cabecalho() -> str:
+    try:
+        import fundos_cabecalho
+        return fundos_cabecalho.css()
+    except Exception:
+        return ""
+
+
 def acordeao() -> str:
     """Navegação das seções de cada tela (secoes.abas): botões compactos no topo, ícone redondo colorido em cima e nome embaixo, 2 ou 3 por
     linha; o botão da seção ativa fica destacado e só o conteúdo dela aparece. (O nome da função é o antigo; não há mais barras que abrem.)"""
@@ -460,6 +468,7 @@ def fichas_globais() -> str:
         "html body .stApp.stApp.stApp [data-testid=\"stAlert\"]{border-radius:16px !important}"
         "html body .stApp.stApp.stApp [data-testid=\"stExpander\"]{border-radius:16px !important;background:var(--dz-cartao) !important;border:1px solid var(--dz-borda) !important}"
         "html body .stApp.stApp.stApp [data-testid=\"stExpander\"] summary p{font-weight:800 !important}"
+        + _fundo_cabecalho()
     )
 
 
