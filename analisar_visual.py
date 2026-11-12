@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 
+import arte_analisar as AA
 import jornada_arte as ART
 import tema
 
@@ -20,6 +21,8 @@ _ARTE = {
     "cart": "<rect x='22' y='22' width='66' height='46' rx='8'/><path d='M22 36h66'/><circle cx='76' cy='52' r='4'/><path d='M30 22l40-12 6 12'/>",
     "ferr": "<path d='M84 8a20 20 0 0 0-22 26L14 66l10 8 48-32a20 20 0 0 0 26-22l-12 8-10-4-4-10z'/>",
 }
+# arte 3D de cada cartão (assets da cartela; se faltar, volta ao ícone de linha)
+_ARTE3D = {"acoes": "cl_acoes", "fundos": "cl_fiis", "rf": "cl_renda_fixa", "cripto": "cl_cripto", "cart": "c_escudo_coroa", "ferr": "i_alvo"}
 _ICONE_SEC = ("<svg width='34' height='34' viewBox='0 0 24 24' fill='none' stroke-linecap='round' aria-hidden='true'><rect x='3' y='13' width='4' height='8' rx='1' fill='#F2B84B'/>"
               "<rect x='10' y='8' width='4' height='13' rx='1' fill='#F2B84B'/><rect x='17' y='3' width='4' height='18' rx='1' fill='#F2B84B'/></svg>")
 _FUNDO_HERO = ("<svg class='ah-bg' viewBox='0 0 200 90' preserveAspectRatio='xMaxYMax meet' aria-hidden='true'><g fill='#3D7BFF' opacity='.28'>"
@@ -46,7 +49,9 @@ def html_secao(texto: str) -> str:
 
 
 def html_cartao(cid: str, titulo: str, descricao: str, n: int, icone: str) -> str:
-    return (f"{arte(cid)}<div class='an-ch'><span class='an-ci'>{tema.icone(icone, 26)}</span>"
+    a3 = _ARTE3D.get(cid, "")
+    ico = (f"<span class='an-ci an-3d'>{AA.img(a3, '', '')}</span>" if AA.existe(a3) else f"<span class='an-ci'>{tema.icone(icone, 26)}</span>")
+    return (f"{arte(cid)}<div class='an-ch'>{ico}"
             f"<div class='an-ct'><b>{html.escape(titulo)}</b><span>{html.escape(descricao)}</span></div>"
             f"<span class='an-n'>{n}</span><span class='an-chev'>›</span></div>")
 
@@ -88,4 +93,32 @@ CSS = f"""
   border:1px solid color-mix(in srgb,var(--ac) 55%,transparent) !important;box-shadow:0 3px 0 rgba(0,0,0,.35) !important}}
 {Q} [class*="st-key-an_card_"] button :is(p,span){{color:#fff !important;-webkit-text-fill-color:#fff !important;font-weight:800 !important}}
 {Q} [class*="st-key-an_card_"] button [data-testid="stIconMaterial"]{{color:var(--ac) !important;-webkit-text-fill-color:var(--ac) !important}}
+
+/* arte 3D: sem caixa, com halo e flutuação suave */
+@keyframes ahBoia{{0%,100%{{transform:translateY(0)}}50%{{transform:translateY(-4px)}}}}
+@keyframes ahEntra{{from{{opacity:0;transform:translateY(10px)}}to{{opacity:1;transform:none}}}}
+@keyframes ahBrilho{{0%{{transform:translateX(-130%)}}60%,100%{{transform:translateX(230%)}}}}
+{Q} [class*="st-key-an_card_"] .an-ci.an-3d{{position:relative;width:64px !important;height:64px !important;border:0 !important;box-shadow:none !important;background:none !important;
+  display:grid;place-items:center;overflow:visible}}
+{Q} [class*="st-key-an_card_"] .an-ci.an-3d::before{{content:"";position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--ac) 55%,transparent),transparent 68%);opacity:.85}}
+{Q} [class*="st-key-an_card_"] .an-ci.an-3d img{{position:relative;width:60px;height:auto;max-height:60px;object-fit:contain;animation:ahBoia 3.4s ease-in-out infinite;
+  filter:drop-shadow(0 6px 8px rgba(0,0,0,.5))}}
+{Q} [class*="st-key-an_card_"]{{animation:ahEntra .45s ease both;transition:transform .18s ease,box-shadow .2s ease,border-color .2s ease}}
+{Q} .st-key-an_card_acoes{{animation-delay:0s}}{Q} .st-key-an_card_fundos{{animation-delay:.06s}}{Q} .st-key-an_card_rf{{animation-delay:.12s}}
+{Q} .st-key-an_card_cripto{{animation-delay:.18s}}{Q} .st-key-an_card_cart{{animation-delay:.24s}}{Q} .st-key-an_card_ferr{{animation-delay:.3s}}
+{Q} [class*="st-key-an_card_"]:hover{{transform:translateY(-3px);box-shadow:0 0 30px -6px var(--ac),0 6px 0 rgba(0,0,0,.3) !important}}
+{Q} [class*="st-key-an_card_"]:active{{transform:scale(.98)}}
+{Q} [class*="st-key-an_card_"]::after{{content:"";position:absolute;top:0;bottom:0;left:0;width:38%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.10),transparent);animation:ahBrilho 6s ease-in-out infinite}}
+{Q} [class*="st-key-an_card_"] button:active{{transform:scale(.97)}}
+.ah-m{{animation:ahBoia 3.8s ease-in-out infinite}}
+@media (prefers-reduced-motion:reduce){{{Q} [class*="st-key-an_card_"],{Q} [class*="st-key-an_card_"]::after,.ah-m,{Q} [class*="st-key-an_card_"] .an-ci.an-3d img{{animation:none !important}}}}
+/* cabeçalho em grade: arte e contagem em cima, título e descrição ocupando a largura toda (cabe nas duas colunas do celular) */
+{Q} [class*="st-key-an_card_"] .an-ch{{display:grid !important;grid-template-columns:auto 1fr auto;align-items:center;column-gap:8px;row-gap:6px}}
+{Q} [class*="st-key-an_card_"] .an-ct{{display:contents !important}}
+{Q} [class*="st-key-an_card_"] .an-ci{{grid-column:1;grid-row:1}}
+{Q} [class*="st-key-an_card_"] .an-n{{grid-column:3;grid-row:1;justify-self:end;align-self:start}}
+{Q} [class*="st-key-an_card_"] .an-chev{{display:none !important}}
+{Q} [class*="st-key-an_card_"] .an-ct b{{grid-column:1/-1;grid-row:2;line-height:1.15}}
+{Q} [class*="st-key-an_card_"] .an-ct span{{grid-column:1/-1;grid-row:3;font-size:clamp(.74rem,3vw,.9rem) !important;line-height:1.3}}
 """
