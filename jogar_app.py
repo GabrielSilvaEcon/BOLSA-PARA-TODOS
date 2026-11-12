@@ -1,0 +1,249 @@
+"""Página "Jogar": missões do dia, desafio da semana, desafios temáticos, boa decisão da semana e ranking da liga (J3 do PLANO_AREAS.md).
+
+- Só desenha: as regras estão em jogar.py (lógica pura) e o placar da liga em jornada_liga_app.py (liga de estudo, já existente).
+- Pontos premiam estudo e boas decisões de processo; nunca lucro, retorno ou risco. Nada da Jornada é bloqueado.
+- Qualquer falha de banco ou da liga mostra um aviso curto e a página continua.
+"""
+from __future__ import annotations
+
+import estilo_app as ES
+import arte_tickerhunters as AT
+import html
+
+import streamlit as st
+
+import educacao_app as EA
+import jogar as JG
+import jornada_icones as IC
+import jornada_liga_app as LIGA
+import jornada_player as PLAYER
+import missoes_visual as MV
+import tema
+import usuarios
+
+_PAGINAS: dict = {}
+
+CSS = """<style>
+.jg-pills{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 10px;}
+.jg-pill{background:#1B1442;border:1px solid #3D3182;border-radius:14px;padding:8px 14px;color:#F6F3FF !important;min-width:96px;}
+.jg-pill b{display:block;font-size:1.3rem;line-height:1.2;color:#FFFFFF !important;}
+.jg-pill span{font-size:.74rem;color:#BDB5E6 !important;text-transform:uppercase;letter-spacing:.05em;}
+.jg-pill.dest{background:linear-gradient(135deg,#5B3FD6,#9B3FC8);border-color:#8B6CFF;}
+.jg-sec{font-weight:900;font-size:1.08rem;margin:20px 0 6px;color:#F6F3FF !important;}
+.jg-card{background:linear-gradient(145deg,#1E1650,#160F36);border:1px solid #3D3182;border-left:5px solid #7C5CFF;border-radius:16px;padding:12px 14px;margin:8px 0;color:#EDE9FF !important;}
+.jg-card.ok{border-left-color:#2DD4A0;} .jg-card.trancado{opacity:.72;border-left-color:#5A5290;}
+.jg-top{display:flex;align-items:center;gap:12px;}
+.jg-ic{flex:0 0 42px;width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;}
+.jg-ic img{width:26px;height:26px;display:block;}
+.jg-t{font-weight:800;font-size:1.02rem;color:#F6F3FF !important;line-height:1.3;}
+.jg-s{font-size:.88rem;color:#CFC8EE !important;line-height:1.4;margin-top:2px;}
+.jg-pt{margin-left:auto;font-weight:900;font-size:.85rem;white-space:nowrap;color:#C5B3FF !important;}
+.jg-card.ok .jg-pt{color:#2DD4A0 !important;}
+.jg-bar{height:8px;background:#2A2060;border-radius:99px;overflow:hidden;margin-top:9px;}
+.jg-bar i{display:block;height:100%;background:linear-gradient(90deg,#7C5CFF,#2DD4A0);border-radius:99px;}
+.jg-nota{font-size:.82rem;color:#BDB5E6 !important;margin-top:4px;}
+.jg-ori{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:rgba(139,108,255,.25);color:#D8CCFF !important;font-size:.68rem;font-weight:800;vertical-align:middle}
+.jg-chs{margin-top:6px}.jg-ch{display:inline-block;margin:0 6px 0 0;padding:2px 9px;border-radius:99px;background:rgba(61,220,151,.16);color:#7CF0C0 !important;font-size:.74rem;font-weight:800}
+</style>"""
+
+
+def registrar_paginas(paginas: dict) -> None:
+    _PAGINAS.update({k: v for k, v in paginas.items() if v is not None})
+
+
+def _e(x) -> str:
+    return html.escape(str(x), quote=True)
+
+
+def _barra(atual, alvo) -> str:
+    pct = 0 if not alvo else max(0.0, min(1.0, atual / alvo)) * 100
+    return f"<div class='jg-bar'><i style='width:{pct:.0f}%'></i></div>"
+
+
+def _card_progresso(titulo: str, texto: str, atual, alvo, ok: bool, pontos: int, extra: str = "") -> str:
+    marca = "✓ " if ok else ""
+    return (f"<div class='jg-card {'ok' if ok else ''}'><div class='jg-top'><div style='min-width:0'>"
+            f"<div class='jg-t'>{marca}{_e(titulo)}</div><div class='jg-s'>{_e(texto)}</div></div>"
+            f"<div class='jg-pt'>+{pontos} pts</div></div>{_barra(atual, alvo)}"
+            f"<div class='jg-nota'>{_e(atual)} de {_e(alvo)}</div>{extra}</div>")
+
+
+# ------------------------------------------------------------------ ações
+def _iniciar_desafio(unidade_id: str) -> None:
+    PLAYER.iniciar_sessao(JG.iniciar_desafio(unidade_id, EA.prog()))
+
+
+# ------------------------------------------------------------------ blocos
+def _boa_decisao() -> tuple[bool, str]:
+    """(cumpriu, texto). Lê a carteira virtual só para ver COMO ela foi montada; qualquer falha vira 'não cumpriu', sem erro na tela."""
+    try:
+        a = usuarios.ator()
+        if not a:
+            return False, "Entre na sua conta e participe da Competição para esta boa decisão contar."
+        import banco
+        import competicao_app as CA
+        if not banco.cfg_disponivel():
+            return False, "A Competição está indisponível agora."
+        d = JG.diversificada(CA._pessoa(a)["cart"])
+    except Exception:
+        return False, "Não consegui ler sua carteira virtual agora."
+    if d["ativos"] == 0 and not d["ok"]:
+        return False, "Você ainda não tem posições na carteira virtual da Competição."
+    return d["ok"], f"{d['ativos']} ativos relevantes em {d.get('classes', 0)} classe(s), maior peso {d['maior_peso'] * 100:.0f}%."
+
+
+def _bloco_pontos(r: dict) -> None:
+    pt = r["pontos"]
+    st.markdown(MV.html_stats(pt["total"], r["feitas"], len(r["missoes"]), r["ofensiva"], r["xp_hoje"]), unsafe_allow_html=True)
+    st.caption(f"Pontos da semana: {pt['estudo']} de estudo (XP) + {pt['missoes']} de missões + {pt['desafio']} do desafio da semana"
+               f" + {pt['decisao']} de boa decisão.")
+
+
+def _cartao(chave: str, html_card: str, destino: str | None) -> None:
+    """Cartão de missão; com `destino`, um botão › sobre a seta leva à página (Jornada ou Wallet Game)."""
+    if destino:
+        with st.container(key=f"ms_c_{chave}"):
+            st.markdown(html_card, unsafe_allow_html=True)
+            st.button("\u200b", key=f"ms_b_{chave}", icon=":material/chevron_right:", on_click=_ir, args=(destino,), help="Abrir")
+    else:
+        st.markdown(html_card, unsafe_allow_html=True)
+
+
+def _bloco_missoes(r: dict) -> None:
+    st.markdown(MV.html_secao("Missões do dia", MV.renova_hoje()), unsafe_allow_html=True)
+    for m in r["missoes"]:
+        card = MV.html_missao(m["titulo"], m["texto"], m["atual"], m["alvo"], m["ok"], m["pontos"], MV.icone_missao(m["id"]), seta=not m["ok"])
+        _cartao(f"d_{m['id']}", card, None if m["ok"] else "jornada")
+    if not r["feitas"]:
+        st.button("Começar a estudar", key="jg_ir_jornada", icon=":material/school:", on_click=_ir, args=("jornada",))
+
+
+def _bloco_semana(r: dict) -> None:
+    d = r["semanal"]
+    st.markdown(MV.html_secao("Desafio da semana", MV.renova_semana()), unsafe_allow_html=True)
+    card = MV.html_missao(d["titulo"], d["texto"], d["atual"], d["alvo"], d["ok"], d["pontos"], MV.icone_missao(d["id"]), seta=not d["ok"])
+    _cartao(f"s_{d['id']}", card, None if d["ok"] else "jornada")
+
+
+def _bloco_decisao(ok: bool, texto: str) -> None:
+    st.markdown(MV.html_secao("Boa decisão da semana"), unsafe_allow_html=True)
+    corpo = (f"No Wallet Game, monte uma carteira com {JG.MIN_ATIVOS} ou mais ativos, de pelo menos {JG.MIN_CLASSES} classes "
+             f"(ações, FIIs, ETFs, fundos, renda fixa, cripto) e nenhum acima de {JG.PESO_MAXIMO * 100:.0f}% do patrimônio. "
+             "Vale pela forma como a carteira foi montada, não pelo resultado.")
+    card = MV.html_missao("Carteira virtual diversificada", corpo, None, None, ok, JG.PTS_DECISAO, MV.icone_circulo(IC.uri("escudo", "#3DDC97"), "#3DDC97"),
+                          rodape=f"<div class='ms-n'>{_e(texto)}</div>", seta=not ok)
+    _cartao("decisao", card, None if ok else "competicao")
+
+
+def _bloco_desafios(p: dict) -> None:
+    st.markdown(MV.html_secao("Desafios por tema"), unsafe_allow_html=True)
+    st.caption("Conclua todas as lições de uma unidade da Jornada para abrir o desafio dela: 5 perguntas sorteadas da unidade. "
+               "A Jornada continua toda aberta, com ou sem desafio.")
+    for d in JG.desafios_tematicos(p):
+        cor = d["cor"] if d.get("cor") else "#8B6CFF"
+        icone = IC.uri(d["svg"], cor) if IC.existe(d["svg"]) else IC.uri("estrela", cor)
+        if d["liberado"]:
+            nota = f"{d['perguntas']} perguntas na unidade · desafio aberto"
+        else:
+            nota = f"Falta{'m' if d['falta'] != 1 else ''} {d['falta']} lição{'ões' if d['falta'] != 1 else ''} da unidade na Jornada"
+        card = MV.html_missao(d["titulo"], d["descricao"], None, None, False, None, MV.icone_circulo(icone, cor), rodape=f"<div class='ms-n'>{_e(nota)}</div>",
+                              seta=False, estado="" if d["liberado"] else "trancado")
+        st.markdown(card, unsafe_allow_html=True)
+        if d["liberado"]:
+            st.button(f"Jogar desafio: {d['titulo']}", key=f"jg_des_{d['id']}", type="primary", width="stretch",
+                      on_click=_iniciar_desafio, args=(d["id"],))
+
+
+def _ir(url_path: str) -> None:
+    alvo = _PAGINAS.get(url_path)
+    if alvo is not None:
+        st.switch_page(alvo)
+
+
+# ------------------------------------------------------------------ página
+# ------------------------------------------------------------------ central de missões (Fase 3)
+ABAS = ("Diárias", "Semanais", "Especiais")
+
+
+def _chips_recompensa(rec: dict) -> str:
+    itens = []
+    if rec.get("xp"):
+        itens.append(f"+{int(rec['xp'])} XP")
+    if rec.get("tc"):
+        itens.append(f"+{int(rec['tc'])} TC")
+    if rec.get("capital"):
+        itens.append(f"+T$ {rec['capital']:,.0f}".replace(",", "."))
+    return "<div class='ms-chs'>" + "".join(f"<span class='ms-ch'>{_e(i)}</span>" for i in itens) + "</div>"
+
+
+def _res_wallet():
+    """Resultado do Wallet Game da pessoa (missões do jogo) ou None se ela não participa / o banco não está disponível. Nunca levanta erro."""
+    try:
+        a = usuarios.ator()
+        if not a:
+            return None
+        import banco
+        import competicao_app as CA
+        import wallet_game_app as WGA
+        if not banco.cfg_disponivel() or not CA._pessoa(a)["perfil"].get("aceite"):
+            return None
+        return WGA.resultado(a)
+    except Exception:
+        return None
+
+
+def _card_wallet(m: dict, res: dict) -> str:
+    prog = "Concluída" if m["feita"] else (f"{m['progresso']:.0f} de {m['meta']}" if m["id"] != "e_rent5" else f"{res['resultado']:+.1f}% de +{m['meta']}%")
+    pct = 100 if m["feita"] else min(100.0, (m["progresso"] / m["meta"] * 100) if m["meta"] else 0)
+    rod = f"<div class='ms-bar'><i style='width:{pct:.0f}%'></i></div><div class='ms-n'>Objetivo: {_e(m['objetivo'])} · {_e(prog)}</div>" + _chips_recompensa(m["recompensa"])
+    return MV.html_missao(m["nome"], m["descricao"], None, None, bool(m["feita"]), None, MV.icone_circulo(IC.uri("moeda", "#F2B84B"), "#F2B84B"), selo="Wallet Game",
+                          rodape=rod, seta=not m["feita"])
+
+
+def _missoes_wallet(res, periodo: str) -> None:
+    if res is None:
+        st.markdown(MV.html_missao("Missões do Wallet Game", "Participe do Wallet Game para ver aqui as missões do jogo.", None, None, False, None,
+                                   MV.icone_circulo(IC.uri("moeda", "#F2B84B"), "#F2B84B"), seta=False, estado="trancado"), unsafe_allow_html=True)
+        st.button("Ir para o Wallet Game", key=f"cm_wg_{periodo}", icon=":material/account_balance_wallet:", on_click=_ir, args=("competicao",))
+        return
+    lista = [m for m in res["missoes"] if m["periodo"] == periodo]
+    st.markdown(MV.html_secao("Do Wallet Game"), unsafe_allow_html=True)
+    for m in lista:
+        _cartao(f"w_{m['id']}", _card_wallet(m, res), None if m["feita"] else "competicao")
+    if not lista:
+        st.caption("Nenhuma missão do jogo neste grupo agora.")
+
+
+def _voltar_inicio() -> None:
+    st.session_state["_nav_pend"] = "inicio"
+
+
+def pagina_jogar() -> None:
+    if not PLAYER.sessao_em("missoes"):
+        st.markdown(ES.css_voltar("cm_voltar"), unsafe_allow_html=True)
+        st.button("Voltar", key="cm_voltar", icon=":material/arrow_back:", on_click=_voltar_inicio, help="Voltar")
+    st.markdown(CSS + MV.css(), unsafe_allow_html=True)
+    if PLAYER.sessao_em("missoes"):                         # desafio das missões em andamento: mesmo player da Jornada
+        PLAYER.tela(EA.prog, EA._set)
+        return
+    st.markdown(MV.html_hero(JG.REGRA), unsafe_allow_html=True)
+    p = EA.prog()
+    ok_dec, txt_dec = _boa_decisao()
+    r = JG.resumo(p, boa_decisao=ok_dec)
+    res = _res_wallet()
+    _bloco_pontos(r)
+    st.markdown(MV.css_abas("cm_aba"), unsafe_allow_html=True)
+    aba = ES.abas("cm_aba", ABAS)
+    if aba == "Diárias":
+        _bloco_missoes(r)
+        _missoes_wallet(res, "dia")
+    elif aba == "Semanais":
+        _bloco_semana(r)
+        _bloco_decisao(ok_dec, txt_dec)
+        _missoes_wallet(res, "semana")
+    else:
+        _missoes_wallet(res, "especial")
+        _bloco_desafios(p)
+    if not usuarios.usuario():
+        st.caption("Sem entrar na conta, seu progresso vale só para esta sessão.")
+    st.caption("Conteúdo educacional. Pontos e desafios premiam só o estudo e boas decisões de processo, nunca lucro, retorno ou risco.")
