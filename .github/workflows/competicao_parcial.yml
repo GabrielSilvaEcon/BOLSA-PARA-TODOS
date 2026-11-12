@@ -1,0 +1,30 @@
+name: competicao-parcial
+# Ranking parcial do dia, so para acompanhar (o oficial continua sendo o do fechamento, ~18h30).
+# UTC 13h30 = 10h30 em Brasilia e 17h30 = 14h30, cada um com segunda tentativa 30 minutos depois (a trava no banco evita repetir).
+on:
+  schedule:
+    - cron: "30 13 * * 1-5"
+    - cron: "0 14 * * 1-5"
+    - cron: "30 17 * * 1-5"
+    - cron: "0 18 * * 1-5"
+  workflow_dispatch:
+concurrency:
+  group: competicao
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  parcial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python competicao_job.py --parcial
+        env:
+          BPT_SUPABASE_URL: ${{ secrets.BPT_SUPABASE_URL }}
+          BPT_SUPABASE_KEY: ${{ secrets.BPT_SUPABASE_KEY }}
