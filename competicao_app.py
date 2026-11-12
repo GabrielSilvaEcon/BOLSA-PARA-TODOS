@@ -675,6 +675,24 @@ def _html_painel(icone: str, titulo: str, corpo: str) -> str:
     return f"<div class='cn-pn'><div class='cn-pt'>{AT.img(icone, 22)}<b>{html.escape(titulo)}</b></div>{corpo}</div>"
 
 
+def _campo_busca() -> str:
+    """Campo de busca. Com o pacote st-keyup a lista atualiza a cada letra digitada (como na referência); sem ele, atualiza ao dar Enter."""
+    ph = "Ticker ou nome: PETR4, Petrobras..."
+    try:
+        from st_keyup import st_keyup
+        try:
+            v = st_keyup("Buscar ativo", key="cn_q", placeholder=ph, debounce=250, label_visibility="collapsed")
+        except TypeError:
+            v = st_keyup("Buscar ativo", key="cn_q", debounce=250)
+        return v or ""
+    except Exception:
+        pass
+    try:
+        return st.text_input("Buscar ativo", key="cn_q", placeholder=ph, max_chars=30, label_visibility="collapsed", icon=":material/search:")
+    except TypeError:
+        return st.text_input("Buscar ativo", key="cn_q", placeholder=ph, max_chars=30, label_visibility="collapsed")
+
+
 def _vitrine(est: dict, precos: dict, por_classe: dict, disp: list, rot: dict, lado: str, extras: dict, sel: str | None = None) -> None:
     """Passos 2 e 3 do fluxo: buscar e selecionar o ativo. Comprar: por classe, com busca. Vender: só o que você tem."""
     ss = st.session_state
@@ -687,11 +705,7 @@ def _vitrine(est: dict, precos: dict, por_classe: dict, disp: list, rot: dict, l
             st.markdown(f"<div class='cn-tl'>{AT.img('grafico_alta', 34)}<b>{lado} Ativo</b></div>", unsafe_allow_html=True)
             if lado == "Comprar":
                 with st.container(key="cn_busca"):
-                    try:
-                        q = st.text_input("Buscar ativo", key="cn_q", placeholder="Ticker ou nome: PETR4, Petrobras...", max_chars=30,
-                                          label_visibility="collapsed", icon=":material/search:")
-                    except TypeError:
-                        q = st.text_input("Buscar ativo", key="cn_q", placeholder="Ticker ou nome: PETR4, Petrobras...", max_chars=30, label_visibility="collapsed")
+                    q = _campo_busca()
         with cd:
             if sel:
                 bal = "Ótima escolha! Agora é só definir quanto comprar!" if lado == "Comprar" else "Vamos realizar o lucro? Defina quanto vender."
