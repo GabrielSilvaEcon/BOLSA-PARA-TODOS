@@ -125,10 +125,10 @@ def css() -> str:
             f"{q} .st-key-lj_meus button:before{{content:'';width:22px;height:22px;flex:none;background:#C5B3FF;-webkit-mask:{_m('presente')} center/contain no-repeat;mask:{_m('presente')} center/contain no-repeat}}"
             f"{q} .st-key-lj_como button:before{{content:'';width:26px;height:26px;flex:none;background:url(\"{AL.uri('tc')}\") center/contain no-repeat}}"
             # saldo
-            f"{q} .st-key-lj_saldo{{position:relative;margin:6px 0 8px;border-radius:22px;border:2px solid transparent;overflow:hidden;"
+            f"{q} .st-key-lj_saldo{{position:relative;min-height:108px;margin:6px 0 8px;border-radius:22px;border:2px solid transparent;overflow:hidden;"
             f"background:url(\"{fs}\") right bottom/cover no-repeat padding-box,linear-gradient(120deg,#2A1B86,#18105A 60%,#120B45) padding-box,linear-gradient(90deg,#2BA7FF,#8B6CFF,#2BA7FF) border-box;"
             "box-shadow:0 0 24px -10px rgba(43,167,255,.8)}"
-            ".lv-sd{display:flex;align-items:center;gap:10px;min-height:80px;padding:4px 168px 4px 8px}"
+            ".lv-sd{display:flex;align-items:center;gap:10px;min-height:100px;padding:8px 168px 8px 8px}"
             ".lv-sd-a{flex:0 0 26%;max-width:140px}.lv-sd-a img,.lv-bau-a img{width:100%;height:auto;display:block;-webkit-mask-image:radial-gradient(ellipse at 50% 52%,#000 58%,transparent 98%);mask-image:radial-gradient(ellipse at 50% 52%,#000 58%,transparent 98%)}"
             ".lv-sd-l{align-self:stretch;width:1px;margin:10px 2px;background:rgba(197,179,255,.35)}"
             ".lv-sd-v{flex:1;min-width:0}.lv-sd-v .n{display:flex;align-items:center;gap:8px}.lv-sd-v .n img{width:clamp(26px,7vw,40px);height:auto}"
