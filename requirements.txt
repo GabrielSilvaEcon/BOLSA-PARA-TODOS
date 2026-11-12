@@ -16,4 +16,4 @@ pillow
 cryptography
 googlenewsdecoder
 mercadopago
-st-keyup
+streamlit-keyup
