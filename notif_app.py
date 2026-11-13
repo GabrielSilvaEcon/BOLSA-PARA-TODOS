@@ -515,10 +515,11 @@ def _aba_monitor(a) -> None:
 
 
 # ------------------------------------------------------------------ página
-def pagina_notificacoes() -> None:
+def pagina_notificacoes(cabecalho: bool = True) -> None:
     st.markdown(CSS, unsafe_allow_html=True)
     C._css()
-    st.markdown(tema.cabecalho("🔔", "Alertas", "Preço, indicadores, economia, notícias e ativos que você acompanha, com histórico, filtros e canais."), unsafe_allow_html=True)
+    if cabecalho:
+        st.markdown(tema.cabecalho("🔔", "Alertas", "Preço, indicadores, economia, notícias e ativos que você acompanha, com histórico, filtros e canais."), unsafe_allow_html=True)
     u = usuarios.usuario()
     a = _ator()
     if not u or not a:
