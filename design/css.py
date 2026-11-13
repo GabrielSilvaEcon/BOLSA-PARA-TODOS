@@ -61,6 +61,10 @@ def barra_inferior(n_itens: int) -> str:
     return base + fixa + topo
 
 
+_ESPADAS = ("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' "
+            "stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3L17 17M14.5 19.5l5-5M17 17l4 4M21 3L7 17M9.5 19.5l-5-5M7 17l-4 4'/%3E%3C/svg%3E")
+
+
 def sensacao_de_app(n_itens: int) -> str:
     """Jeito de aplicativo (inspirado em jogos): barra inferior só com ícones e item ativo expandido, botões com relevo, seções em
     fichas que rolam de lado, sem âncoras de título nem rolagem de página inteira escondendo o que importa."""
@@ -78,9 +82,11 @@ def sensacao_de_app(n_itens: int) -> str:
         "border-radius:14px !important;position:relative}"
         f"{b} .stButton > button p{{font-size:.76rem !important;font-weight:700 !important}}"
         f"{b} .stButton > button [data-testid=\"stIconMaterial\"]{{font-size:1.7rem !important}}"
-        f"{b} .stButton > button:not({ativo}) :is(p,span,[data-testid=\"stIconMaterial\"]){{color:#E4DEFF !important}}"
+        f"{b} .stButton > button:not({ativo}) *{{color:#E4DEFF !important;-webkit-text-fill-color:#E4DEFF !important;background:transparent !important}}"
+        f"{b} .stButton > button > div,{b} .stButton > button [data-testid=\"stMarkdownContainer\"]{{display:flex !important;flex-direction:column !important;align-items:center !important;gap:2px !important}}"
+        f"{b} .stButton > button p{{flex-direction:column !important}}"
         f"{b} .stButton > button{ativo}{{background:transparent !important;box-shadow:none !important}}"
-        f"{b} .stButton > button{ativo} :is(p,span,[data-testid=\"stIconMaterial\"]){{color:#FFC93C !important;"
+        f"{b} .stButton > button{ativo} *{{color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important;background:transparent !important;"
         "text-shadow:0 0 12px rgba(255,201,60,.65)}"
         f"{b} .stButton > button{ativo}::after{{content:\"\";position:absolute;left:28%;right:28%;bottom:3px;height:3px;border-radius:3px;"
         "background:#FFB020;box-shadow:0 0 10px 2px rgba(255,176,32,.8)}"
@@ -89,9 +95,12 @@ def sensacao_de_app(n_itens: int) -> str:
         f"{b} {jg} .stButton > button{{min-height:78px !important;margin-top:-18px;border-radius:26px 26px 14px 14px !important;"
         "background:linear-gradient(180deg,rgba(150,90,255,.55),rgba(60,30,150,.35)) !important;border:1px solid rgba(190,150,255,.75) !important;"
         "box-shadow:0 0 26px 2px rgba(150,90,255,.7),inset 0 1px 0 rgba(255,255,255,.35) !important}"
-        f"{b} {jg} .stButton > button :is(p,span,[data-testid=\"stIconMaterial\"]){{color:#E56BFF !important;text-shadow:0 0 12px rgba(229,107,255,.7)}}"
-        f"{b} {jg} .stButton > button [data-testid=\"stIconMaterial\"]{{font-size:2.1rem !important}}"
-        f"{b} {jg} .stButton > button{ativo} :is(p,span,[data-testid=\"stIconMaterial\"]){{color:#FFC93C !important}}"
+        f"{b} {jg} .stButton > button *{{color:#E56BFF !important;-webkit-text-fill-color:#E56BFF !important;text-shadow:0 0 12px rgba(229,107,255,.7)}}"
+        # ícone de espadas cruzadas desenhado por máscara (o nome "swords" não existe na fonte de ícones do Streamlit)
+        f"{b} {jg} .stButton > button [data-testid=\"stIconMaterial\"]{{font-size:0 !important;width:2.3rem !important;height:2.3rem !important;"
+        "background:currentColor !important;-webkit-mask:url(\"" + _ESPADAS + "\") center/contain no-repeat;mask:url(\"" + _ESPADAS + "\") center/contain no-repeat;"
+        "filter:drop-shadow(0 0 6px rgba(229,107,255,.8))}"
+        f"{b} {jg} .stButton > button{ativo} *{{color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}"
         "}"
     )
     relevo = (
