@@ -26,7 +26,18 @@ def mesa(chave: str, **args):
     return _comp(key=chave, default=None, **args)
 
 
-def args_mesa(v: dict, p: dict, estado: dict) -> dict:
+def prox_revelacao_s(p: dict, agora: float) -> float | None:
+    """Segundos até o servidor liberar o próximo candle do replay (None se não há mais). Só informa o instante; não revela nada."""
+    if p["fase"] != "replay":
+        return None
+    n = TB.TIMEFRAMES[p["tf"]]["n_replay"]
+    passo = TB.T_REPLAY_S / n
+    dec = max(0.0, agora - p["t_fase"])
+    k = int(dec / passo)
+    return None if k >= n else max(0.05, (k + 1) * passo - dec)
+
+
+def args_mesa(v: dict, p: dict, estado: dict, agora: float | None = None) -> dict:
     """Argumentos do componente. `v` é o resultado de TB.visao(): só candles já revelados, nada do futuro."""
     cand = v["candles"]
     sr = {"suportes": [], "resistencias": []}
@@ -40,8 +51,11 @@ def args_mesa(v: dict, p: dict, estado: dict) -> dict:
     if e:
         inicial = {k: e.get(k) for k in ("direcao", "tipo", "confianca", "entrada", "stop", "alvo")}
         inicial["marcas"] = e.get("marcas") or {}
-    return {"candles": cand, "ticker": v["ticker"], "tf_nome": TB.TIMEFRAMES[v["tf"]]["nome"], "demo": v["demo"], "rodada": v["rodada"], "rodadas": v["rodadas"],
-            "seg": v["segundos"], "ref": cand[-1]["c"], "token": f"{p['id']}-{v['rodada']}", "sr": sr, "inicial": inicial, "limites": dict(TB.MAX_MARCAS),
+    rep = v["fase"] == "replay"
+    prox = prox_revelacao_s(p, agora) if (rep and agora is not None) else None
+    return {"modo": "replay" if rep else "analise", "revelados": v["revelados"], "total_replay": v["total_replay"], "prox_ms": None if prox is None else int(prox * 1000),
+            "candles": cand, "ticker": v["ticker"], "tf_nome": TB.TIMEFRAMES[v["tf"]]["nome"], "demo": v["demo"], "rodada": v["rodada"], "rodadas": v["rodadas"],
+            "seg": v["segundos"], "ref": cand[-1]["c"], "token": f"{p['id']}-{v['rodada']}-{'r' if rep else 'a'}", "sr": sr, "inicial": inicial, "limites": dict(TB.MAX_MARCAS),
             "erro": estado.get("erro", ""), "erro_seq": estado.get("erro_seq", 0), "ok_seq": estado.get("ok_seq", 0)}
 
 

@@ -473,7 +473,7 @@ def _analise(p: dict) -> None:
     st.markdown(_CSS_MESA, unsafe_allow_html=True)
     _voltar()
     try:
-        val = TG.mesa(chave, **TG.args_mesa(v, p, est))
+        val = TG.mesa(chave, **TG.args_mesa(v, p, est, _agora()))
     except Exception:
         _ss()["tb_sem_mesa"] = True                       # componente indisponível neste ambiente: cai para o formulário
         return st.rerun()
@@ -508,9 +508,30 @@ def _frag_replay() -> None:
     st.markdown("<div class='tb-card'><b>Acompanhe o movimento</b><p>Os candles aparecem na ordem em que aconteceram. Veja se a sua estratégia se confirma!</p></div>", unsafe_allow_html=True)
 
 
+@st.fragment(run_every=1)
+def _frag_replay_mesa() -> None:
+    """Replay na mesa (canvas): a tela continua montada e só recebe os candles que o servidor já liberou; a animação é local e suave."""
+    p = _partida()
+    if not p:
+        return
+    TB.avancar(p, _agora(), _cen())
+    if p["fase"] != "replay":
+        return st.rerun()
+    v = TB.visao(p, _cenario_atual(p), _agora(), _jogador())
+    try:
+        TG.mesa(f"tb_mesa_r_{p['id']}_{p['rodada']}", **TG.args_mesa(v, p, {}, _agora()))
+    except Exception:
+        _ss()["tb_sem_mesa"] = True
+        return st.rerun()
+
+
 def _replay(p: dict) -> None:
+    if _ss().get("tb_sem_mesa") or not TG.disponivel():
+        _voltar()
+        return _frag_replay()
+    st.markdown(_CSS_MESA, unsafe_allow_html=True)
     _voltar()
-    _frag_replay()
+    _frag_replay_mesa()
 
 
 # ------------------------------------------------------------------ TELA 4 · Resultado da rodada
