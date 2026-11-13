@@ -73,6 +73,13 @@ html,body{background:radial-gradient(120% 60% at 50% 0,#1E1470 0,#0F0A3C 55%,#0A
 #ban .md img.fut{filter:grayscale(1) brightness(.55)}
 #ban .md img.atual{filter:drop-shadow(0 0 6px #F2B84B)}
 #ban .pl{position:absolute;right:clamp(6px,1.4vw,14px);top:clamp(5px,1.2vw,12px);padding:1px clamp(8px,1.8vw,18px);border-radius:999px;background:#7CF04F;color:#0B2A06;font-weight:900;font-size:clamp(11px,2.6vw,36px);box-shadow:0 0 10px rgba(124,240,79,.5)}
+#ban .ap{margin-top:clamp(2px,.6vw,8px);font-size:clamp(9px,2vw,24px);font-weight:700;color:#C9C2FF}
+#ban .ap:empty{display:none}
+#res .fin{margin:6px 0 2px;padding:7px 10px;border-radius:12px;border:1.5px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);text-align:center}
+#res .fin b{display:block;font-size:1.05rem;font-weight:900}
+#res .fin small{display:block;opacity:.85;font-size:.72rem;margin-top:2px}
+#res .fin.up{border-color:#34E85E;background:rgba(52,232,94,.12)}#res .fin.up b{color:#6BFF8A}
+#res .fin.down{border-color:#FF3D63;background:rgba(255,61,99,.12)}#res .fin.down b{color:#FF6B87}
 #hd{gap:clamp(6px,1.4vw,14px);padding:clamp(3px,.8vw,8px) clamp(6px,1.4vw,14px);min-height:clamp(38px,8vw,66px);border-radius:clamp(14px,2.6vw,24px);border:2px solid #5B4BD6;background:linear-gradient(160deg,#2A1F8E,#150F55);box-shadow:0 0 14px rgba(91,75,214,.5),inset 0 0 12px rgba(120,100,255,.18)}
 #hd #vt{flex:none;min-height:clamp(30px,6.4vw,54px);padding:0 clamp(10px,2.4vw,24px);border-radius:999px;border:2px solid #8B7CFF;background:linear-gradient(160deg,#241A86,#150F55);box-shadow:0 0 10px rgba(139,124,255,.6);font-weight:700;font-size:clamp(12px,2.9vw,24px)}
 #tk{font-size:clamp(14px,3.6vw,32px);font-weight:800}
@@ -99,7 +106,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 </style></head><body>
 <div id="app">
   <div id="ban"><div class="fx"></div><div class="bl" id="fala">Hora de mostrar suas estratégias!</div>
-    <div class="cd"><div class="t">Sua Partida</div><div class="md"><img id="m1" alt=""><img id="m2" alt=""><img id="m3" alt=""></div><div class="pl" id="pl">1/3</div></div></div>
+    <div class="cd"><div class="t">Sua Partida</div><div class="md"><img id="m1" alt=""><img id="m2" alt=""><img id="m3" alt=""></div><div class="pl" id="pl">1/3</div><div class="ap" id="ap"></div></div></div>
   <div id="hd"><button id="vt"><span>←</span> Voltar</button><div id="tk"></div><div id="rod"></div><div id="tm">--:--</div><button id="fs" title="Tela cheia" style="display:none">⛶</button></div>
   <div class="row tbr" id="t2"><button id="b-buy" class="buy" style="flex:1.3"><span class="ar">▲ </span>Compra</button><button id="b-sell" class="sell" style="flex:1.25"><span class="ar">▼ </span>Venda</button>
     <button id="b-entrada" style="flex:1.2">Entrada</button><button id="b-stop">Stop</button><button id="b-alvo">Alvo</button>
@@ -215,7 +222,7 @@ function onRender(a){
   if(S.modo!=='analise'){const n=S.cands.length;S.offAlvo=n+3-(W-axisW())/S.cw}
   $("tk").innerHTML=`${esc(a.ticker)}${a.demo?'<span class="pill">SIMULADO</span>':""}<small>R$ ${fmt(a.ref)} · ${esc(a.tf_nome)}</small>`;
   $("rod").textContent=`Rodada ${a.rodada}/${a.rodadas}`;
-  $("fala").textContent=FALA[a.modo]||FALA.analise;$("pl").textContent=`${a.rodada}/${a.rodadas}`;
+  $("fala").textContent=FALA[a.modo]||FALA.analise;$("pl").textContent=`${a.rodada}/${a.rodadas}`;$("ap").textContent=a.aposta_txt||"";
   [1,2,3].forEach(i=>{const m=$("m"+i);if(!m.src)m.src=MED[i-1];m.className=i<a.rodada||(i===a.rodada&&a.modo==="resultado")?"":(i===a.rodada?"atual":"fut")});
   resultado(a);
   fit();ui();draw();kick();
@@ -358,12 +365,13 @@ function resultado(a){
   const el=$("res");
   if(a.modo!=="resultado"||!a.resultado){el.style.display="none";el.dataset.k="";return}
   if(S&&S.fila&&S.fila.length){el.style.display="none";return}          // espera o gráfico terminar de desenrolar
-  const r=a.resultado,k=a.fase_key+"|"+r.pontos;
+  const r=a.resultado,k=a.fase_key+"|"+r.pontos+"|"+(r.fin?r.fin.t1:"");
   if(el.dataset.k!==k){el.dataset.k=k;
     const dir=r.acertou===true?"Acertou a direção":r.acertou===false?"Errou a direção":"Sem direção";
     const op=r.executada==null?"Sem operação":(r.executada?("Operação "+(r.r>=0?"+":"−")+Math.abs(r.r).toFixed(1).replace(".",",")+" R"):"Entrada não executada");
     el.innerHTML=(r.img?`<img src="${r.img}" alt="">`:"")+(r.selo?`<img class="selo" src="${r.selo}" alt="Ótima análise!">`:"")+`<div class="n">${r.pontos.toFixed(1).replace(".",",")}</div><small>pontos nesta rodada · total ${r.total.toFixed(1).replace(".",",")}</small>
       <div class="ch"><span>${dir}</span><span>${op}</span></div>
+      ${r.fin?`<div class="fin ${r.fin.cor}"><b>${esc(r.fin.t1)}</b><small>${esc(r.fin.t2)}</small></div>`:""}
       <details><summary>Raio-X da rodada</summary>${r.linhas.map(x=>`<p><b>${esc(x[0])}</b><br>${esc(x[1])}</p>`).join("")}</details>
       ${a.multi?'<small>A próxima rodada começa sozinha quando o relógio zerar (igual para todos).</small>':`<button id="prox">${r.ultima?"Ver resultado final":"Próxima rodada"}</button>`}`;
     if(!a.multi)$("prox").onclick=()=>{const b=$("prox");b.disabled=true;b.textContent="Carregando…";send("proxima")};
