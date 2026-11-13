@@ -123,7 +123,7 @@ function novoEstado(a){
   const s={dir:ini.direcao==="alta"||ini.direcao==="baixa"?ini.direcao:null,tipo:TIPOS.includes(ini.tipo)?ini.tipo:"continuacao",conf:ini.confianca||3,
     lines:{entrada:ini.entrada??null,stop:ini.stop??null,alvo:ini.alvo??null},
     marcas:{niveis:(m.niveis||[]).map(x=>({...x})),tendencias:(m.tendencias||[]).map(x=>({...x})),notas:(m.notas||[]).map(x=>({...x}))},
-    ind:{vol:true,sma:true,ema:false,rsi:false,sr:false},tool:null,pend:null,notaPend:null,cw:0,off:0,seq:0,sentSeq:0,sentSig:null,savedSig:null,erroLocal:"",locked:false,timeoutSent:false};
+    ind:{vol:true,sma:true,ema:false,rsi:false,sr:false},tool:null,pend:null,notaPend:null,cw:0,off:0,seq:0,sentSeq:0,sentSig:null,savedSig:null,erroLocal:"",locked:false,timeoutSent:false,fila:[],fT:0,fStep:300};
   return s;
 }
 const sig=()=>JSON.stringify([S.dir,S.tipo,S.conf,S.lines,S.marcas]);
@@ -131,9 +131,12 @@ function aplicaOp(a){const ini=a.inicial||{};
   S.dir=ini.direcao==="alta"||ini.direcao==="baixa"?ini.direcao:null;S.tipo=TIPOS.includes(ini.tipo)?ini.tipo:"continuacao";S.conf=ini.confianca||3;
   S.lines={entrada:ini.entrada??null,stop:ini.stop??null,alvo:ini.alvo??null}}
 function cresce(a){   // candles novos já liberados pelo servidor entram no MESMO gráfico, com a animação suave de sempre
-  if(a.candles.length>S.cands.length){const ant=S.cands.length;S.cands=a.candles;cache();
-    if(S.modo!=="analise"&&ant>0){S.anim={i:a.candles.length-1,t0:performance.now(),dur:650};kick()}}
-  else if(a.candles.length<S.cands.length){S.cands=a.candles;cache()}
+  const tem=S.cands.length+S.fila.length;
+  if(a.candles.length>tem){const novos=a.candles.slice(tem);
+    if(S.modo!=="analise"&&S.cands.length>0){                       // candles já liberados pelo servidor entram um a um (fila), no ritmo da chegada
+      S.fStep=Math.max(70,Math.min(420,950/Math.max(1,S.fila.length+novos.length)));S.fila.push(...novos);S.fT=Math.min(S.fT||0,performance.now());kick()}
+    else{S.cands=S.cands.concat(novos);cache()}}
+  else if(a.candles.length<tem){S.fila=[];S.cands=a.candles;cache()}
 }
 function modoClasses(){const m=S.modo!=="analise";$("app").classList.toggle("replay",m)}
 function transicao(a){   // mudou de fase/rodada: o gráfico, o zoom e os desenhos pessoais permanecem
@@ -300,20 +303,21 @@ function ui(){
   $("sm").innerHTML=`<div class="l1">${l1}</div><div class="l2">${l2}${v.ok&&salvo?' <span class="ok">✔ confirmada</span>':v.ok&&S.savedSig?' <span class="er">alterada: confirme de novo</span>':""}</div>`;
   const c=$("conf");c.disabled=!v.ok||(salvo&&!S.erroLocal);c.textContent=salvo?"✔ Estratégia confirmada":(S.savedSig?"Atualizar estratégia":"Confirmar estratégia");
   const r=$("rep");r.style.display=S.savedSig&&salvo?"block":"none";
-  if(A.multi){const pr=A.prontos||{};r.textContent=pr.eu?`Aguardando ${pr.n}/${pr.total}`:"Estou pronto";r.disabled=!!pr.eu}else{r.textContent="Iniciar replay";r.disabled=false}
+  if(A.multi)r.style.display="none";else{r.textContent="Iniciar replay";r.disabled=false}
 }
 function resultado(a){
   const el=$("res");
   if(a.modo!=="resultado"||!a.resultado){el.style.display="none";el.dataset.k="";return}
-  const pr=a.prontos||{},r=a.resultado,k=a.fase_key+"|"+r.pontos+"|"+(a.multi?pr.eu+"/"+pr.n:"");
+  if(S&&S.fila&&S.fila.length){el.style.display="none";return}          // espera o gráfico terminar de desenrolar
+  const r=a.resultado,k=a.fase_key+"|"+r.pontos;
   if(el.dataset.k!==k){el.dataset.k=k;
     const dir=r.acertou===true?"Acertou a direção":r.acertou===false?"Errou a direção":"Sem direção";
     const op=r.executada==null?"Sem operação":(r.executada?("Operação "+(r.r>=0?"+":"−")+Math.abs(r.r).toFixed(1).replace(".",",")+" R"):"Entrada não executada");
     el.innerHTML=(r.img?`<img src="${r.img}" alt="">`:"")+`<div class="n">${r.pontos.toFixed(1).replace(".",",")}</div><small>pontos nesta rodada · total ${r.total.toFixed(1).replace(".",",")}</small>
       <div class="ch"><span>${dir}</span><span>${op}</span></div>
       <details><summary>Raio-X da rodada</summary>${r.linhas.map(x=>`<p><b>${esc(x[0])}</b><br>${esc(x[1])}</p>`).join("")}</details>
-      <button id="prox"${a.multi&&pr.eu?" disabled":""}>${a.multi&&pr.eu?`Aguardando ${pr.n}/${pr.total}`:(r.ultima?"Ver resultado final":"Próxima rodada")}</button>${a.multi?'<small>A próxima rodada começa sozinha quando o relógio zerar.</small>':""}`;
-    $("prox").onclick=()=>{const b=$("prox");b.disabled=true;b.textContent=a.multi?"Aguardando…":"Carregando…";send("proxima")};
+      ${a.multi?'<small>A próxima rodada começa sozinha quando o relógio zerar (igual para todos).</small>':`<button id="prox">${r.ultima?"Ver resultado final":"Próxima rodada"}</button>`}`;
+    if(!a.multi)$("prox").onclick=()=>{const b=$("prox");b.disabled=true;b.textContent="Carregando…";send("proxima")};
   }
   el.style.display="block";
 }
@@ -425,6 +429,12 @@ let rt=0;
 function kick(){if(raf)return;raf=requestAnimationFrame(loop);rt=setTimeout(()=>{if(raf){cancelAnimationFrame(raf);loop()}},48)}   // rAF normal; o temporizador garante o avanço se o navegador pausar quadros
 function loop(){
   clearTimeout(rt);raf=0;if(!S||!W)return;let mexe=false;const now=performance.now();
+  if(S.fila.length&&now>=S.fT){let n=0;                                 // libera os candles já devidos (se o navegador atrasou, recupera sem acelerar a animação)
+    while(S.fila.length&&now>=S.fT&&n<8){S.cands.push(S.fila.shift());S.fT=Math.max(S.fT,now-S.fStep)+S.fStep;n++}
+    cache();S.anim={i:S.cands.length-1,t0:now,dur:Math.min(650,S.fStep*1.6)};mexe=true;
+    if(S.modo!=="analise")S.offAlvo=S.cands.length+3-(W-axisW())/S.cw}
+  if(S.fila.length)mexe=true;
+  if(S.modo==="resultado"&&!S.fila.length&&!S.anim)resultado(A);
   if(S.anim){const t=Math.min(1,(now-S.anim.t0)/S.anim.dur);S.anim.e=ease(t);if(t>=1)S.anim=null;else mexe=true}
   if(S.modo!=="analise"){
     if(S.follow&&S.offAlvo!=null){const d=S.offAlvo-S.off;if(Math.abs(d)>0.01){S.off+=d*0.18;mexe=true}else S.off=S.offAlvo}
