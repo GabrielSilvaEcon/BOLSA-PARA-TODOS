@@ -1,0 +1,27 @@
+name: competicao-ao-vivo
+# Ranking AO VIVO: de hora em hora, todos os dias (inclusive fim de semana e noite), com o preco do momento de cada ativo
+# (cripto negocia 24h). So para acompanhar: o oficial, os selos e os premios continuam sendo do fechamento (~18h30).
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+concurrency:
+  group: competicao
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  ao-vivo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python competicao_job.py --ao-vivo
+        env:
+          BPT_SUPABASE_URL: ${{ secrets.BPT_SUPABASE_URL }}
+          BPT_SUPABASE_KEY: ${{ secrets.BPT_SUPABASE_KEY }}
