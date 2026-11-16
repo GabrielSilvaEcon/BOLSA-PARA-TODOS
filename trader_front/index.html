@@ -107,6 +107,32 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #bt #conf[disabled]{background:linear-gradient(160deg,#352B96,#241C78);border:2px solid #4B3FC0;color:#8E87D8;box-shadow:none;opacity:1}
 #app.land #ban,#app.short #ban{display:none}
 #app.nr #rod{display:none}
+
+/* ===== Mesa de operações (motor 2) ===== */
+#mesa{display:none;flex-direction:column;gap:4px}
+#app.mesa.replay #mesa{display:flex}
+#app.mesa.rs #mesa,#app.mesa.rs #adv{display:none!important}
+#app.mesa #t2 #b-entrada,#app.mesa #t2 #b-stop,#app.mesa #t2 #b-alvo,#app.mesa #t2 #b-limpar{display:none}
+#app.replay #mais .an{display:none}
+#mb1 button{min-height:46px;font-weight:900;font-size:14px;border:0}
+#mb1 .buy{background:linear-gradient(90deg,#2EE86B,#14C9B5);color:#06240F;box-shadow:0 0 12px rgba(46,232,107,.35)}
+#mb1 .sell{background:linear-gradient(90deg,#FF6B87,#FF3D63);color:#2B0510;box-shadow:0 0 12px rgba(255,61,99,.4)}
+#mb1 .enc{background:linear-gradient(90deg,#F2B84B,#E89B1C);color:#1A1030}
+#mb1 button[disabled]{filter:grayscale(.7);box-shadow:none}
+#mb2 button{min-height:34px;font-size:11px;font-weight:800}
+#m-can{display:none}
+#adv{position:absolute;left:6px;right:6px;bottom:6px;max-height:68%;overflow:auto;display:none;flex-direction:column;gap:4px;z-index:4;padding:8px;border-radius:14px;border:1px solid #8B6CFF;background:rgba(18,12,56,.97);box-shadow:0 8px 26px rgba(0,0,0,.5)}
+#adv .g{font-size:10px;color:#BDB5E6;font-weight:800;margin-top:2px}
+#adv input,#adv select{min-width:0;border-radius:10px;border:1px solid #8B6CFF;background:#120C38;color:#fff;padding:0 8px;min-height:38px;font-size:16px;-webkit-user-select:text;user-select:text}
+#adv input:focus,#adv select:focus{outline:2px solid #F2B84B}
+#adv .row button{min-height:38px;font-size:12px;font-weight:900}
+#adv .buy{background:#26D07C;border-color:#26D07C;color:#06240F}#adv .sell{background:#FF4D6D;border-color:#FF4D6D;color:#2B0510}
+#adv #o-lista .it{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:10px;background:rgba(60,44,150,.4);font-size:12px;font-weight:700;margin-bottom:3px}
+#adv #o-lista .it span{flex:1}#adv #o-lista .it button{min-height:30px;flex:none;width:34px;padding:0}
+#adv #o-lista .vz{font-size:11px;color:#BDB5E6}
+#adv small{color:#BDB5E6;font-size:10.5px;line-height:1.3}
+#sm b.op.up{color:#6BFF8A}#sm b.op.down{color:#FF6B87}
+#app.mesa #sm .pz{color:#F2B84B;font-weight:900}
 </style></head><body>
 <div id="app">
   <div id="ban"><div class="fx"></div><div class="bl" id="fala">Hora de mostrar suas estratégias!</div>
@@ -116,12 +142,23 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
     <button id="b-entrada" style="flex:1.2">Entrada</button><button id="b-stop">Stop</button><button id="b-alvo">Alvo</button>
     <button id="b-apagar" title="Apagar marcação" style="flex:.7">⌫</button><button id="b-limpar" title="Limpar operação" style="flex:.7">✕</button><button id="b-mais" style="flex:.7">⋯</button></div>
   <div id="cvw"><canvas id="cv"></canvas><div id="dica"></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
-    <div id="mais"><div class="g">ESTRATÉGIA</div><button id="b-tipo"></button><button id="b-conf"></button><div class="g">INDICADORES</div><button data-i="vol">Volume</button><button data-i="sma">Média simples (20)</button><button data-i="ema">Média exponencial (9)</button><button data-i="rsi">RSI (14)</button><button data-i="sr">Suporte/Resistência</button>
-      <div class="g">MARCAÇÕES DE ANÁLISE</div><button data-t="nivel">Nível de preço</button><button data-t="tend">Linha de tendência</button><button data-t="nota">Anotação</button></div>
+    <div id="mais"><div class="g an">ESTRATÉGIA</div><button id="b-tipo" class="an"></button><button id="b-conf" class="an"></button><div class="g">INDICADORES</div><button data-i="vol">Volume</button><button data-i="sma">Média simples (20)</button><button data-i="ema">Média exponencial (9)</button><button data-i="rsi">RSI (14)</button><button data-i="sr">Suporte/Resistência</button>
+      <div class="g an">MARCAÇÕES DE ANÁLISE</div><button data-t="nivel" class="an">Nível de preço</button><button data-t="tend" class="an">Linha de tendência</button><button data-t="nota" class="an">Anotação</button></div>
+    <div id="adv"><div class="g">NOVA ORDEM</div>
+      <div id="o-nova"><div class="row"><select id="o-tipo"><option value="mercado">A mercado</option><option value="limite">Limite</option><option value="stop_entrada">Stop de entrada</option></select><input id="o-preco" inputmode="decimal" placeholder="Preço de entrada" autocomplete="off"></div>
+        <div class="row"><input id="o-stop" inputmode="decimal" placeholder="Stop loss (opcional)" autocomplete="off"><input id="o-alvo" inputmode="decimal" placeholder="Alvo (opcional)" autocomplete="off"></div>
+        <div class="row"><button id="o-buy" class="buy">Enviar COMPRA</button><button id="o-sell" class="sell">Enviar VENDA</button></div></div>
+      <div id="o-gerir"><div class="g">STOP E ALVO DA POSIÇÃO</div>
+        <div class="row"><input id="g-stop" inputmode="decimal" placeholder="Stop" autocomplete="off"><button id="g-stop-b">Definir stop</button></div>
+        <div class="row"><input id="g-alvo" inputmode="decimal" placeholder="Alvo" autocomplete="off"><button id="g-alvo-b">Definir alvo</button></div></div>
+      <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
+      <small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%.</small></div>
     <div id="res"></div>
     <div id="nota"><input id="nota-t" maxlength="40" placeholder="Texto curto"><button id="nota-ok">OK</button></div></div>
   <div id="pgw"><div id="pg"></div></div>
   <div id="sm"></div>
+  <div id="mesa"><div class="row" id="mb1"><button id="m-buy" class="buy"><span class="ar">▲ </span>COMPRAR</button><button id="m-sell" class="sell"><span class="ar">▼ </span>VENDER</button><button id="m-enc" class="enc">⏹ ENCERRAR</button></div>
+    <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar ordem</button><button id="m-adv">⚙ Ordem</button><button id="m-ind" title="Indicadores">⋯</button></div></div>
   <div id="bt"><button id="conf">Confirmar estratégia</button><button id="rep">Iniciar replay</button><button id="enc">⏹ Encerrar operação</button></div>
 </div>
 <script>
@@ -131,10 +168,11 @@ const Geo={
   priceAt(y,top,h,lo,hi){return hi-((y-top)/h)*(hi-lo)},
   yAt(p,top,h,lo,hi){return top+((hi-p)/(hi-lo))*h},
   r2(p){return Math.round(p*100)/100},
-  validar(s,ref){
+  validar(s,ref,mesa){
     const L=s.lines,o={ok:false,msg:"",risco:null,retorno:null,rr:null,pStop:null,pAlvo:null};
     if(s.tipo==="aguardar"){o.ok=true;o.msg="Aguardar: você fica de fora desta rodada.";return o}
-    if(s.dir!=="alta"&&s.dir!=="baixa"){o.msg="Escolha COMPRA ou VENDA.";return o}
+    if(s.dir!=="alta"&&s.dir!=="baixa"){o.msg=mesa?"Escolha ALTA ou BAIXA.":"Escolha COMPRA ou VENDA.";return o}
+    if(mesa){o.ok=true;return o}
     const f=[["entrada","Entrada"],["stop","Stop"],["alvo","Alvo"]].filter(k=>L[k[0]]==null).map(k=>k[1]);
     if(L.entrada!=null&&L.stop!=null){o.risco=Math.abs(L.entrada-L.stop);o.pStop=(L.stop/L.entrada-1)*100}
     if(L.entrada!=null&&L.alvo!=null){o.retorno=Math.abs(L.alvo-L.entrada);o.pAlvo=(L.alvo/L.entrada-1)*100}
@@ -151,6 +189,7 @@ const TIPOS=["continuacao","reversao","rompimento","aguardar"],ROT={continuacao:
 const COR={e:"#4B8BFF",s:"#FF4D6D",a:"#26D07C",up:"#26D07C",dn:"#FF4D6D",niv:"#A78BFA",gold:"#F2B84B",sma:"#F2B84B",ema:"#4DD0E1",rsi:"#C4B5FF"};
 const NOME={entrada:"ENT",stop:"STOP",alvo:"ALVO"},CORL={entrada:COR.e,stop:COR.s,alvo:COR.a};
 const $=id=>document.getElementById(id);
+const mesaOn=()=>!!(A&&A.motor===2);
 let A=null,S=null,cv,ctx,W=0,H=0,L={},T0=0,frozen=null,raf=0;
 const fmt=p=>p==null?"—":p.toFixed(2).replace(".",",");
 const pc=p=>p==null?"":(p>=0?"+":"−")+Math.abs(p).toFixed(1).replace(".",",")+"%";
@@ -194,7 +233,7 @@ function cresce(a){   // candles novos já liberados pelo servidor entram no MES
     else{S.cands=S.cands.concat(novos);cache()}}
   else if(a.candles.length<tem){S.fila=[];S.cands=a.candles;cache()}
 }
-function modoClasses(){const m=S.modo!=="analise";$("app").classList.toggle("replay",m)}
+function modoClasses(){const m=S.modo!=="analise";$("app").classList.toggle("replay",m);$("app").classList.toggle("mesa",mesaOn());$("app").classList.toggle("rs",S.modo==="resultado");if(S.modo!=="replay"){$("adv").style.display="none"}}
 function transicao(a){   // mudou de fase/rodada: o gráfico, o zoom e os desenhos pessoais permanecem
   const velho=S.modo,nova=S.rodada!==a.rodada;
   S.fk=a.fase_key;S.modo=a.modo;S.locked=false;S.timeoutSent=false;$("app").classList.remove("locked");S.tool=null;S.pend=null;
@@ -225,7 +264,8 @@ function onRender(a){
   if(a.erro&&a.erro_seq===S.sentSeq){S.erroLocal=a.erro}else if(a.ok_seq===S.sentSeq){S.erroLocal=""}
   if(S.modo!=='analise'){const n=S.cands.length;S.offAlvo=n+3-(W-axisW())/S.cw}
   $("tk").innerHTML=`${esc(a.ticker)}${a.demo?'<span class="pill">SIMULADO</span>':""}<small>R$ ${fmt(a.ref)} · ${esc(a.tf_nome)}</small>`;
-  $("rod").textContent=`Rodada ${a.rodada}/${a.rodadas}`;
+  $("rod").textContent=`Rodada ${a.rodada}/${a.rodadas}${a.pausada?" ⏸":""}`;
+  $("b-buy").innerHTML=`<span class="ar">▲ </span>${mesaOn()?"Alta":"Compra"}`;$("b-sell").innerHTML=`<span class="ar">▼ </span>${mesaOn()?"Baixa":"Venda"}`;
   $("fala").textContent=FALA[a.modo]||FALA.analise;$("pl").textContent=`${a.rodada}/${a.rodadas}`;$("ap").textContent=a.aposta_txt||"";
   [1,2,3].forEach(i=>{const m=$("m"+i);if(!m.src)m.src=MED[i-1];m.className=i<a.rodada||(i===a.rodada&&a.modo==="resultado")?"":(i===a.rodada?"atual":"fut")});
   resultado(a);
@@ -276,6 +316,7 @@ function dominio(){
   for(let i=i0;i<=i1;i++){const c=S.cands[i];if(!c)continue;lo=Math.min(lo,c.l);hi=Math.max(hi,c.h)}
   if(!isFinite(lo)){lo=0;hi=1}
   for(const k of ["entrada","stop","alvo"]){const p=S.lines[k];if(p!=null){lo=Math.min(lo,p);hi=Math.max(hi,p)}}
+  if(mesaOn())for(const p of precosMesa()){lo=Math.min(lo,p);hi=Math.max(hi,p)}
   const pad=(hi-lo)*0.07||hi*0.01;return [lo-pad,hi+pad];
 }
 function visiveis(){const pw=W-axisW();return {i0:Math.max(0,Math.floor(S.off)),i1:Math.min(S.cands.length-1,Math.ceil(S.off+pw/S.cw))}}
@@ -314,8 +355,9 @@ function draw(){
   for(const n of S.marcas.notas){const x=L.x(n.i),y=L.y(n.preco);ctx.fillStyle=COR.niv;ctx.beginPath();ctx.arc(x,y,3.5,0,7);ctx.fill();
     ctx.font="10px system-ui";const w=ctx.measureText(n.texto).width+8;ctx.fillStyle="rgba(60,44,150,.92)";ctx.fillRect(Math.min(x-w/2,L.pw-w),y-22,w,15);ctx.fillStyle="#fff";ctx.textAlign="left";ctx.fillText(n.texto,Math.min(x-w/2,L.pw-w)+4,y-14)}
   // linhas da operação
-  for(const k of ["entrada","stop","alvo"])if(Ln[k]!=null)hline(Ln[k],(k==="entrada"&&A.propria)?COR.a:CORL[k],[],(k==="entrada"&&A.propria)?"ENT ✔":NOME[k],true);
-  for(const o of A.adversarios||[])hline(o.preco,COR.gold,[6,3],"Entrada — "+o.rotulo,false);
+  if(mesaOn())desenhaMesa(i0,i1);
+  else{for(const k of ["entrada","stop","alvo"])if(Ln[k]!=null)hline(Ln[k],(k==="entrada"&&A.propria)?COR.a:CORL[k],[],(k==="entrada"&&A.propria)?"ENT ✔":NOME[k],true);
+    for(const o of A.adversarios||[])hline(o.preco,COR.gold,[6,3],"Entrada — "+o.rotulo,false)}
   const sd=A.operacao&&A.operacao.saida;
   if(sd&&sd.indice>=i0-1&&sd.indice<=i1+1){const x=L.x(sd.indice),y=L.y(sd.preco);ctx.fillStyle=A.operacao.cor==="up"?COR.up:(A.operacao.cor==="down"?COR.dn:COR.gold);ctx.strokeStyle="#fff";ctx.lineWidth=2;
     ctx.beginPath();ctx.arc(x,y,6,0,7);ctx.fill();ctx.stroke();ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillStyle="#fff";ctx.fillText("SAÍDA",x,y-9)}
@@ -343,9 +385,9 @@ function hline(p,col,dash,label,destaque){
 
 /* ===== UI (barras, resumo, confirmação) ===== */
 function ui(){
-  const v=Geo.validar(S,A.ref);S.v=v;$("bt").classList.remove("enc");
-  if(S.modo==="resultado"){const Ln=S.lines;$("sm").innerHTML=`<div class="l1"><span class="e">ENT ${fmt(Ln.entrada)}</span><span class="s">STOP ${fmt(Ln.stop)}</span><span class="a">ALVO ${fmt(Ln.alvo)}</span></div><div class="l2"><span class="ok">🏁 Rodada encerrada</span> · veja o resultado abaixo</div>`;$("pg").style.width="100%";return}
-  if(S.modo==="replay"){const Ln=S.lines,o=A.operacao;
+  const v=Geo.validar(S,A.ref,mesaOn());S.v=v;$("bt").classList.remove("enc");
+  if(S.modo==="resultado"){if(mesaOn()){$("sm").innerHTML='<div class="l2"><span class="ok">🏁 Rodada encerrada</span> · veja o resultado abaixo</div>';$("pg").style.width="100%";return}const Ln=S.lines;$("sm").innerHTML=`<div class="l1"><span class="e">ENT ${fmt(Ln.entrada)}</span><span class="s">STOP ${fmt(Ln.stop)}</span><span class="a">ALVO ${fmt(Ln.alvo)}</span></div><div class="l2"><span class="ok">🏁 Rodada encerrada</span> · veja o resultado abaixo</div>`;$("pg").style.width="100%";return}
+  if(S.modo==="replay"){if(mesaOn())return uiMesa();const Ln=S.lines,o=A.operacao;
     $("sm").innerHTML=`<div class="l1"><span class="e">ENT ${fmt(Ln.entrada)}</span><span class="s">STOP ${fmt(Ln.stop)}</span><span class="a">ALVO ${fmt(Ln.alvo)}</span></div><div class="l2"><span class="ok">🔒 Estratégia travada</span> · ${S.dir==="alta"?"Compra":S.dir==="baixa"?"Venda":"Aguardar"} · ${ROT[S.tipo]} ★${S.conf} · candle ${A.revelados}/${A.total_replay}${o?` · <b class="op ${o.cor}">${esc(o.txt)}</b>`:""}${S.erroLocal?` · <span class="er">${esc(S.erroLocal)}</span>`:""}</div>`;
     $("pg").style.width=(100*(A.revelados||0)/(A.total_replay||1))+"%";
     const pode=!!(o&&o.encerravel);$("bt").classList.toggle("enc",pode);if(pode)$("enc").disabled=false;return}
@@ -355,7 +397,7 @@ function ui(){
   $("b-mais").classList.toggle("on",["nivel","tend","nota"].includes(S.tool));
   document.querySelectorAll("#mais [data-i]").forEach(b=>b.classList.toggle("on",!!S.ind[b.dataset.i]));
   document.querySelectorAll("#mais [data-t]").forEach(b=>b.classList.toggle("on",S.tool===b.dataset.t));
-  const dica={entrada:"Toque no gráfico para posicionar a ENTRADA",stop:"Toque no gráfico para posicionar o STOP",alvo:"Toque no gráfico para posicionar o ALVO",apagar:"Toque numa linha ou marcação para apagar",
+  const dica=A.pausada?"⏸ Pausa técnica: a partida parou para todos":{entrada:"Toque no gráfico para posicionar a ENTRADA",stop:"Toque no gráfico para posicionar o STOP",alvo:"Toque no gráfico para posicionar o ALVO",apagar:"Toque numa linha ou marcação para apagar",
     nivel:"Toque para marcar um nível de preço",tend:S.pend?"Toque no segundo ponto da tendência":"Toque no primeiro ponto da tendência",nota:"Toque no candle para anotar"}[S.tool];
   const d=$("dica");d.style.display=dica?"block":"none";d.textContent=dica||"";
   const Ln=S.lines;
@@ -366,6 +408,7 @@ function ui(){
   else if(!v.ok)l2=`<span class="er">${esc(v.msg)}</span>`;
   else if(S.tipo==="aguardar")l2=v.msg;
   else l2=`Risco ${fmt(v.risco)} · Retorno ${fmt(v.retorno)} · <b>R/R 1:${v.rr!=null?v.rr.toFixed(1).replace(".",","):"—"}</b> · ${ROT[S.tipo]} ★${S.conf}`;
+  if(mesaOn()){l1=`<span class="e">${S.dir==="alta"?"▲ ALTA":S.dir==="baixa"?"▼ BAIXA":"— sem direção"}</span><span class="a">${ROT[S.tipo]} ${"★".repeat(S.conf)}</span>`;if(v.ok&&!S.erroLocal)l2=S.tipo==="aguardar"?v.msg:"Sua leitura vale pontos de qualidade. No replay você compra, vende e ajusta stop e alvo ao vivo."}
   $("sm").innerHTML=`<div class="l1">${l1}</div><div class="l2">${l2}${v.ok&&salvo?' <span class="ok">✔ confirmada</span>':v.ok&&S.savedSig?' <span class="er">alterada: confirme de novo</span>':""}</div>`;
   const c=$("conf");c.disabled=!v.ok||(salvo&&!S.erroLocal);c.textContent=salvo?"✔ Estratégia confirmada":(S.savedSig?"Atualizar estratégia":"Confirmar estratégia");
   const r=$("rep");r.style.display=S.savedSig&&salvo?"block":"none";
@@ -378,10 +421,10 @@ function resultado(a){
   const r=a.resultado,k=a.fase_key+"|"+r.pontos+"|"+(r.fin?r.fin.t1:"");
   if(el.dataset.k!==k){el.dataset.k=k;
     const dir=r.acertou===true?"Acertou a direção":r.acertou===false?"Errou a direção":"Sem direção";
-    const op=r.executada==null?"Sem operação":(r.executada?("Operação "+(r.r>=0?"+":"−")+Math.abs(r.r).toFixed(1).replace(".",",")+" R"):"Entrada não executada");
-    el.innerHTML=(r.img?`<img src="${r.img}" alt="">`:"")+(r.selo?`<img class="selo" src="${r.selo}" alt="Ótima análise!">`:"")+`<div class="n">${r.pontos.toFixed(1).replace(".",",")}</div><small>pontos nesta rodada · total ${r.total.toFixed(1).replace(".",",")}</small>
+    const op=r.n_ops!=null?(r.n_ops?r.n_ops+(r.n_ops>1?" operações":" operação"):"Sem operação"):r.executada==null?"Sem operação":(r.executada?("Operação "+(r.r>=0?"+":"−")+Math.abs(r.r).toFixed(1).replace(".",",")+" R"):"Entrada não executada");
+    el.innerHTML=(r.img?`<img src="${r.img}" alt="">`:"")+(r.selo?`<img class="selo" src="${r.selo}" alt="Ótima análise!">`:"")+`<div class="n" style="${a.motor===2&&r.pontos<0?"color:#FF6B87":a.motor===2&&r.pontos>0?"color:#6BFF8A":""}">${a.motor===2&&r.pontos>0?"+":""}${r.pontos.toFixed(1).replace(".",",")}</div><small>pontos nesta rodada · total ${r.total.toFixed(1).replace(".",",")}</small>
       <div class="ch"><span>${dir}</span><span>${op}</span></div>
-      ${r.fin?`<div class="fin ${r.fin.cor}"><b>${esc(r.fin.t1)}</b><small>${esc(r.fin.t2)}</small></div>`:""}
+      ${r.fin?`<div class="fin ${r.fin.cor}"><b>${esc(r.fin.t1)}</b><small>${esc(r.fin.t2)}</small>${r.fin.nota?`<small>${esc(r.fin.nota)}</small>`:""}</div>`:""}
       <details><summary>Raio-X da rodada</summary>${r.linhas.map(x=>`<p><b>${esc(x[0])}</b><br>${esc(x[1])}</p>`).join("")}</details>
       ${a.multi?'<small>A próxima rodada começa sozinha quando o relógio zerar (igual para todos).</small>':`<button id="prox">${r.ultima?"Ver resultado final":"Próxima rodada"}</button>`}`;
     if(!a.multi)$("prox").onclick=()=>{const b=$("prox");b.disabled=true;b.textContent="Carregando…";send("proxima")};
@@ -389,13 +432,13 @@ function resultado(a){
   el.style.display="block";
 }
 function tick(){
-  if(!A)return;const seg=Math.max(0,Math.ceil((T0-performance.now())/1000)),tm=$("tm");
+  if(!A)return;const seg=A.pausada?Math.max(0,A.seg):Math.max(0,Math.ceil((T0-performance.now())/1000)),tm=$("tm");
   tm.textContent=String(Math.floor(seg/60)).padStart(2,"0")+":"+String(seg%60).padStart(2,"0");
   const salvo=S&&S.savedSig===sig()&&S.v&&S.v.ok;
   tm.classList.toggle("fim",seg<=15);tm.classList.toggle("pisca",seg<=15&&!salvo);
   if(S&&S.modo!=="analise"){if(S.modo==="resultado"&&!A.multi)tm.textContent="--:--";return}
-  if(seg<=0&&S&&!S.locked){S.locked=true;$("app").classList.add("locked")}
-  if(seg<=0&&S&&!S.timeoutSent){S.timeoutSent=true;send("tempo")}
+  if(seg<=0&&S&&!S.locked&&!A.pausada){S.locked=true;$("app").classList.add("locked")}
+  if(seg<=0&&S&&!S.timeoutSent&&!A.pausada){S.timeoutSent=true;send("tempo")}
 }
 setInterval(tick,250);
 function send(evento){
@@ -405,10 +448,104 @@ function send(evento){
   post({type:"streamlit:setComponentValue",value:v,dataType:"json"});
 }
 
+/* ===== Mesa de operações (motor 2): ordens ao vivo, linhas próprias e entradas/saídas dos adversários ===== */
+const mz=()=>A&&A.mesa;
+const advAberto=()=>$("adv").style.display==="flex";
+function aidNovo(){try{if(window.crypto&&crypto.randomUUID)return crypto.randomUUID().replace(/-/g,"").slice(0,24)}catch(e){}return "a"+Date.now().toString(36)+Math.random().toString(36).slice(2,12)}
+function livreEnvio(){return !(S&&S.pend&&S.pend.seq>(A?A.seq0||0:0)&&performance.now()<S.pend.ate)}   // uma ação por vez, até o servidor confirmar (ou 5 s)
+function sendAcao(d){
+  if(!S||S.modo!=="replay"||!A||A.pausada||!livreEnvio())return false;
+  S.seq++;S.sentSeq=S.seq;S.erroLocal="";S.pend={seq:S.seq,ate:performance.now()+5000};
+  post({type:"streamlit:setComponentValue",value:{seq:S.seq,evento:"acao",dados:Object.assign({aid:aidNovo()},d)},dataType:"json"});
+  setTimeout(()=>{if(S)ui()},5100);ui();return true}
+function linhasMesa(){   // linhas PRÓPRIAS (o servidor só envia ao dono); durante o arraste vale a posição local
+  const m=mz(),o={entrada:null,stop:null,alvo:null,pend:null,dir:null};if(!m)return o;
+  if(m.posicao){o.entrada=m.posicao.preco_entrada;o.stop=m.posicao.stop;o.alvo=m.posicao.alvo;o.dir=m.posicao.direcao}
+  else{const pe=(m.ordens||[]).find(x=>x.id==="entrada");if(pe){o.pend=pe;o.dir=pe.direcao;o.entrada=pe.preco}
+    for(const x of m.ordens||[]){if(x.id==="stop")o.stop=x.preco;if(x.id==="alvo")o.alvo=x.preco}}
+  const ov=S.ovr;if(ov){if(performance.now()<ov.ate)o[ov.k]=ov.p;else S.ovr=null}
+  return o}
+function precosMesa(){const o=linhasMesa(),r=[];for(const k of ["entrada","stop","alvo"])if(o[k]!=null)r.push(o[k]);
+  for(const a of A.adversarios||[])for(const q of a.ops||[])if(q.aberta)r.push(q.preco_entrada);return r}
+function marca(i,p,forma,cor,txt){   // só desenha candle que já apareceu na tela (a fila de animação pode estar poucos candles atrás)
+  if(i==null||i<0||i>S.cands.length-1)return;const x=L.x(i),y=L.y(p);if(x<-8||x>L.pw+8)return;
+  ctx.fillStyle=cor;ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.beginPath();
+  if(forma==="up"){ctx.moveTo(x,y-7);ctx.lineTo(x-6,y+4);ctx.lineTo(x+6,y+4);ctx.closePath()}
+  else if(forma==="dn"){ctx.moveTo(x,y+7);ctx.lineTo(x-6,y-4);ctx.lineTo(x+6,y-4);ctx.closePath()}
+  else ctx.arc(x,y,5,0,7);
+  ctx.fill();ctx.stroke();
+  if(txt){ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillStyle="#fff";ctx.fillText(txt,x,y-9)}}
+function ligacao(i1,p1,i2,p2,cor,dash){const a=Math.min(i2,S.cands.length-1);if(i1==null||i1<0||a<i1)return;
+  ctx.strokeStyle=cor;ctx.lineWidth=1.2;ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(L.x(i1),L.y(p1));ctx.lineTo(L.x(a),L.y(p2));ctx.stroke();ctx.setLineDash([])}
+function desenhaMesa(i0,i1){
+  const m=mz();if(!m)return;const o=linhasMesa();
+  if(o.entrada!=null&&o.stop!=null){ctx.fillStyle="rgba(255,77,109,.10)";const a=L.y(o.entrada),b=L.y(o.stop);ctx.fillRect(0,Math.min(a,b),L.pw,Math.abs(b-a))}
+  if(o.entrada!=null&&o.alvo!=null){ctx.fillStyle="rgba(38,208,124,.10)";const a=L.y(o.entrada),b=L.y(o.alvo);ctx.fillRect(0,Math.min(a,b),L.pw,Math.abs(b-a))}
+  for(const adv of A.adversarios||[])for(const q of adv.ops||[]){   // adversário: só entrada e saída JÁ executadas (o servidor não envia mais nada)
+    const sd=q.direcao==="alta"?"▲":"▼",forma=q.direcao==="alta"?"up":"dn";
+    if(q.aberta){hline(q.preco_entrada,COR.gold,[6,3],adv.rotulo+" "+sd,false);marca(q.indice_entrada,q.preco_entrada,forma,COR.gold,"")}
+    else{ligacao(q.indice_entrada,q.preco_entrada,q.indice_saida,q.preco_entrada,"rgba(242,184,75,.65)",[6,3]);
+      marca(q.indice_entrada,q.preco_entrada,forma,COR.gold,"");marca(q.indice_saida,q.preco_saida,"o",COR.gold,adv.rotulo.replace("Jogador ","J")+" saiu")}}
+  (m.operacoes||[]).forEach((q,k)=>{ligacao(q.indice_entrada,q.preco_entrada,q.indice_saida,q.preco_saida,"rgba(255,255,255,.4)",[2,3]);
+    marca(q.indice_entrada,q.preco_entrada,q.direcao==="alta"?"up":"dn",COR.e,"");
+    marca(q.indice_saida,q.preco_saida,"o",q.pct>0?COR.up:(q.pct<0?COR.dn:COR.gold),k===m.operacoes.length-1&&!m.posicao?"SAÍDA":"")});
+  if(m.posicao)marca(m.posicao.indice_entrada,m.posicao.preco_entrada,m.posicao.direcao==="alta"?"up":"dn",COR.e,"ENTRADA");
+  if(o.pend)hline(o.pend.preco,COR.e,[5,4],(o.pend.tipo==="limite"?"LIMITE ":"STOP ENT. ")+(o.pend.direcao==="alta"?"▲":"▼"),false);
+  else if(o.entrada!=null)hline(o.entrada,COR.e,[],o.dir==="alta"?"COMPRA ▲":"VENDA ▼",false);
+  if(o.stop!=null)hline(o.stop,COR.s,[],"STOP",true);
+  if(o.alvo!=null)hline(o.alvo,COR.a,[],"ALVO",true)}
+function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)
+  const m=mz(),pz=!!A.pausada,liv=livreEnvio(),at=!!m&&!pz,o=linhasMesa();
+  const dt=o.dir==="alta"?"COMPRA ▲":(o.dir==="baixa"?"VENDA ▼":"");
+  let l1;
+  if(m&&m.posicao)l1=`<span class="e">${dt} ${fmt(m.posicao.preco_entrada)}</span><span class="s">STOP ${fmt(o.stop)}</span><span class="a">ALVO ${fmt(o.alvo)}</span>`;
+  else if(o.pend)l1=`<span class="e">Ordem ${o.pend.tipo==="limite"?"limite":"stop de entrada"} ${dt} em ${fmt(o.pend.preco)}</span><span class="s">STOP ${fmt(o.stop)}</span><span class="a">ALVO ${fmt(o.alvo)}</span>`;
+  else l1=`<span class="e">Sem posição</span><span class="pz">pronto para operar</span>`;
+  const n=m?m.n_encerradas:0;
+  let l2=`Aberto <b class="op ${m?m.cor_aberto:"zero"}">${esc(m?m.aberto_txt:"—")}</b> · Rodada <b class="op ${m?m.cor_acum:"zero"}">${esc(m?m.acum_txt:"—")}</b> · ${n} encerrada${n===1?"":"s"} · candle ${A.revelados}/${A.total_replay}`;
+  if(pz)l2+=` · <span class="pz">⏸ pausa técnica</span>`;
+  if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
+  $("sm").innerHTML=`<div class="l1">${l1}</div><div class="l2">${l2}</div>`;
+  $("pg").style.width=(100*(A.revelados||0)/(A.total_replay||1))+"%";
+  const abre=!!(at&&m.pode_abrir&&liv),ger=!!(at&&m.pode_gerir);
+  $("m-buy").disabled=!abre;$("m-sell").disabled=!abre;$("m-enc").disabled=!(at&&m.pode_encerrar&&liv);
+  $("m-stop").disabled=!ger;$("m-alvo").disabled=!ger;$("m-stop").classList.toggle("on",S.tool==="mstop");$("m-alvo").classList.toggle("on",S.tool==="malvo");
+  $("m-can").style.display=(at&&m.pode_cancelar)?"block":"none";$("m-can").disabled=!liv;$("m-adv").classList.toggle("on",advAberto());
+  $("o-nova").style.display=(m&&m.pode_abrir)?"":"none";$("o-gerir").style.display=(m&&m.pode_gerir)?"":"none";
+  $("o-preco").style.display=$("o-tipo").value==="mercado"?"none":"";
+  $("o-buy").disabled=!abre;$("o-sell").disabled=!abre;$("g-stop-b").disabled=!ger||!liv;$("g-alvo-b").disabled=!ger||!liv;
+  $("g-stop-b").textContent=o.stop!=null?"Mover stop":"Definir stop";$("g-alvo-b").textContent=o.alvo!=null?"Mover alvo":"Definir alvo";
+  const sg=JSON.stringify(m?m.ordens:[]);
+  if(S.lsig!==sg){S.lsig=sg;const el=$("o-lista");
+    el.innerHTML=(m&&m.ordens.length)?m.ordens.map(x=>{const nome=x.id==="entrada"?(x.tipo==="limite"?"Limite":"Stop de entrada")+" "+(x.direcao==="alta"?"▲ compra":"▼ venda"):(x.id==="stop"?"Stop":"Alvo");
+      return `<div class="it"><span>${nome} · ${fmt(x.preco)}</span><button data-q="${x.id}" title="Cancelar">✕</button></div>`}).join(""):'<div class="vz">Nenhuma ordem pendente.</div>';
+    el.querySelectorAll("button[data-q]").forEach(b=>b.onclick=()=>sendAcao({tipo:"cancelar",qual:b.dataset.q}))}
+}
+const num=id=>{const t=$(id).value.trim().replace(",",".");if(!t)return null;const x=parseFloat(t);return isFinite(x)?x:NaN};
+function enviarOrdem(dir){
+  const tipo=$("o-tipo").value,p=num("o-preco"),st=num("o-stop"),al=num("o-alvo");
+  if([p,st,al].some(x=>Number.isNaN(x)))return flash("Número inválido");
+  if(tipo!=="mercado"&&p==null)return flash("Informe o preço de entrada");
+  const d={tipo,direcao:dir};if(tipo!=="mercado")d.preco=p;if(st!=null)d.stop=st;if(al!=null)d.alvo=al;
+  if(!sendAcao(d))flash("Aguarde a ordem anterior")}
+function soltaLinha(k){   // largou a linha de stop/alvo: manda o novo preço (o servidor valida e confirma)
+  const m=mz(),ov=S.ovr;if(!m||!ov||ov.k!==k){S.ovr=null;return}
+  const o=linhasMesa(),pr=ov.p,px=o.pend?o.pend.preco:m.preco_atual;
+  const ok=k==="stop"?(o.dir==="alta"?pr<px:pr>px):(o.dir==="alta"?pr>px:pr<px);
+  if(!ok){S.ovr=null;flash(k==="stop"?"O stop precisa ficar do lado perdedor do preço":"O alvo precisa ficar do lado ganhador do preço");return}
+  if(sendAcao({tipo:k==="stop"?"mover_stop":"mover_alvo",preco:pr}))S.ovr.ate=performance.now()+3000;else{S.ovr=null;flash("Aguarde a ordem anterior")}}
+function toqueMesa(p,pr){
+  const t=S.tool;
+  if(t==="mstop"||t==="malvo"){const k=t==="mstop"?"stop":"alvo",o=linhasMesa();S.tool=null;
+    if(pr>0&&!sendAcao({tipo:(o[k]!=null?"mover_":"definir_")+k,preco:pr}))flash("Aguarde a ordem anterior");ui();draw();return}
+  if(S.campo&&pr>0){const el=$(S.campo);if(el)el.value=String(pr).replace(".",",")}
+  ui();draw()}
+
 /* ===== Interação (mouse e toque) ===== */
 const ptrs=new Map();let modo=null,t0=null,pinch=null;
 function pos(e){const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
 function objetos(){
+  if(mesaOn()&&S.modo==="replay"){const l=linhasMesa(),r=[];for(const k of ["stop","alvo"])if(l[k]!=null)r.push({tipo:"linha",k,p:l[k]});return r}
   const o=[];for(const k of ["entrada","stop","alvo"])if(S.lines[k]!=null)o.push({tipo:"linha",k,p:S.lines[k]});
   S.marcas.niveis.forEach((n,i)=>o.push({tipo:"nivel",i,p:n.preco}));return o;
 }
@@ -430,7 +567,7 @@ cv.addEventListener("pointerdown",e=>{
   if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),cw:S.cw,mx:(a.x+b.x)/2,idx:(((a.x+b.x)/2)-S.cw/2)/S.cw+S.off};modo="pinch";return}
   t0={x:p.x,y:p.y,t:performance.now(),moved:false,off:S.off};layout();
   if(p.x>L.pw){modo="pan";return}
-  const hit=(S.tool==null&&S.modo==="analise")?achar(p,e.pointerType==="mouse"?10:24):null;
+  const hit=(S.tool==null&&(S.modo==="analise"||(mesaOn()&&S.modo==="replay"&&!A.pausada)))?achar(p,e.pointerType==="mouse"?10:24):null;
   if(hit){modo="drag";t0.hit=hit;frozen=[L.lo,L.hi]}else modo="pan";
 });
 cv.addEventListener("pointermove",e=>{
@@ -442,7 +579,7 @@ cv.addEventListener("pointermove",e=>{
   if(modo==="drag"&&t0.moved){
     let pr=Geo.r2(Math.max(L.lo,Math.min(L.hi,L.price(p.y))));
     if(pr<=0)return;const h=t0.hit;
-    if(h.tipo==="linha")S.lines[h.k]=pr;else S.marcas.niveis[h.i].preco=pr;
+    if(h.tipo==="linha"){if(mesaOn())S.ovr={k:h.k,p:pr,ate:performance.now()+60000};else S.lines[h.k]=pr}else S.marcas.niveis[h.i].preco=pr;
     ui();draw();
   }else if(modo==="pan"&&t0.moved){S.follow=false;S.off=t0.off-(p.x-t0.x)/S.cw;limita();draw()}
 });
@@ -450,8 +587,8 @@ function fim(e){
   const p=ptrs.get(e.pointerId)||pos(e);ptrs.delete(e.pointerId);
   if(modo==="pinch"){if(ptrs.size<2){modo=null;pinch=null;t0=null}return}
   const tap=t0&&!t0.moved&&performance.now()-t0.t<600;
-  if(modo==="drag"){frozen=null;draw()}
-  if(tap&&modo==="pan"&&p.x<=L.pw&&S.tool)toque(p);
+  if(modo==="drag"){frozen=null;if(mesaOn()&&t0&&t0.hit&&t0.moved)soltaLinha(t0.hit.k);draw()}
+  if(tap&&modo==="pan"&&p.x<=L.pw&&(S.tool||(mesaOn()&&S.modo==="replay"&&S.campo&&advAberto())))toque(p);
   modo=null;t0=null;frozen=null;
 }
 cv.addEventListener("pointerup",fim);cv.addEventListener("pointercancel",e=>{ptrs.delete(e.pointerId);modo=null;t0=null;frozen=null;pinch=null;draw()});
@@ -460,6 +597,7 @@ cv.addEventListener("contextmenu",e=>e.preventDefault());
 function limita(){const n=S.cands.length,pw=W-axisW();S.off=Math.max(-3,Math.min(n-pw/S.cw+3,S.off))}
 function toque(p){
   layout();const t=S.tool,pr=Geo.r2(L.price(p.y));
+  if(mesaOn()&&S.modo==="replay")return toqueMesa(p,pr);
   if(["entrada","stop","alvo"].includes(t)){if(pr>0){S.lines[t]=pr;S.tool=null}}
   else if(t==="nivel"){if(S.marcas.niveis.length>=A.limites.niveis){flash("Limite de níveis atingido");}else if(pr>0){S.marcas.niveis.push({preco:pr,rotulo:""});S.tool=null}}
   else if(t==="tend"){const i=candleEm(p.x),ref={i,p:pr};
@@ -513,6 +651,18 @@ function loop(){
   if(S.modo==="resultado"&&!S.fila.length&&!S.anim)resultado(A);          // o cartão de resultado entra quando o último candle terminou de aparecer
   draw();if(mexe)kick();
 }
-window.__TB={kick,Geo,get A(){return A},get S(){return S},get L(){return L},draw,ui,fit,send};
+$("m-buy").onclick=()=>{if(!sendAcao({tipo:"mercado",direcao:"alta"}))flash("Aguarde a ordem anterior")};
+$("m-sell").onclick=()=>{if(!sendAcao({tipo:"mercado",direcao:"baixa"}))flash("Aguarde a ordem anterior")};
+$("m-enc").onclick=()=>{if(!sendAcao({tipo:"encerrar"}))flash("Aguarde a ordem anterior")};
+$("m-can").onclick=()=>{sendAcao({tipo:"cancelar",qual:"todas"})};
+$("m-stop").onclick=()=>{S.tool=S.tool==="mstop"?null:"mstop";ui()};
+$("m-alvo").onclick=()=>{S.tool=S.tool==="malvo"?null:"malvo";ui()};
+$("m-adv").onclick=()=>{const a=$("adv");a.style.display=a.style.display==="flex"?"none":"flex";ui()};
+$("m-ind").onclick=()=>{const m=$("mais");m.style.display=m.style.display==="flex"?"none":"flex"};
+$("o-tipo").onchange=()=>ui();$("o-buy").onclick=()=>enviarOrdem("alta");$("o-sell").onclick=()=>enviarOrdem("baixa");
+["o-preco","o-stop","o-alvo","g-stop","g-alvo"].forEach(id=>$(id).addEventListener("focus",()=>{S.campo=id}));
+$("g-stop-b").onclick=()=>{const v=num("g-stop");if(v==null||Number.isNaN(v))return flash("Informe o preço do stop");if(!sendAcao({tipo:linhasMesa().stop!=null?"mover_stop":"definir_stop",preco:v}))flash("Aguarde a ordem anterior")};
+$("g-alvo-b").onclick=()=>{const v=num("g-alvo");if(v==null||Number.isNaN(v))return flash("Informe o preço do alvo");if(!sendAcao({tipo:linhasMesa().alvo!=null?"mover_alvo":"definir_alvo",preco:v}))flash("Aguarde a ordem anterior")};
+window.__TB={kick,sendAcao,uiMesa,desenhaMesa,linhasMesa,Geo,get A(){return A},get S(){return S},get L(){return L},draw,ui,fit,send};
 post({type:"streamlit:componentReady",apiVersion:1});
 </script></body></html>
