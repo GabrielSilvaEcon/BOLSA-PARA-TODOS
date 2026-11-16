@@ -1373,3 +1373,222 @@ def test_isolamento_restaura_o_banco_mesmo_quando_o_teste_falha():
             assert banco._caminho_sqlite != anterior[0] and os.path.isdir(pasta)
             raise RuntimeError("falha no meio do teste")
     assert (banco._caminho_sqlite, banco._forcar_sqlite) == anterior and not os.path.exists(pasta)         # restaurado e pasta temporária apagada
+
+
+# ====================================================================================================================================
+# LIMITE DE PERDA DA RODADA · 3% do patrimônio do início da rodada (realizado + não realizado) · gate de caixa · gaps · privacidade
+# ====================================================================================================================================
+LIM = TB.LIMITE_PERDA_X
+
+
+def _spike(i, alto=45.0):
+    """Rodada 1: 4 candles planos em 10; o candle 4 sobe até `alto` e fica lá."""
+    if i < 4:
+        return 10.0, 10.05, 9.95, 10.0
+    return (10.0, alto, 10.0, alto) if i == 4 else (alto, alto, alto, alto)
+
+
+def _gap(i):
+    return (10.0, 10.05, 9.95, 10.0) if i < 4 else (60.0, 60.0, 60.0, 60.0)
+
+
+def test_limite_e_derivado_de_3_por_cento_do_patrimonio_sobre_1_por_cento_da_aposta():
+    assert TB.LIMITE_PERDA_PCT_PAT == 0.03 and TB.PCT_APOSTA == 0.01 and LIM == pytest.approx(3.0)
+
+
+def test_limite_01_venda_sem_stop_sai_no_preco_do_limite():
+    s = sim([K(10.0, 45.0, 10.0, 45.0)], [A("mercado", 0, 1, direcao="baixa")])
+    t = s["trades"][0]
+    assert t["saida"] == pytest.approx(40.0) and t["ret"] == pytest.approx(-3.0) and t["motivo"] == "limite" and s["bloq"] and s["pos"] is None
+
+
+def test_limite_02_gap_alem_do_limite_sai_na_abertura_e_o_prejuizo_nao_e_truncado():
+    s = sim([K(50.0, 50.0, 50.0, 50.0)], [A("mercado", 0, 1, direcao="baixa")])
+    t = s["trades"][0]
+    assert t["saida"] == 50.0 and t["ret"] == pytest.approx(-4.0) and t["motivo"] == "limite" and s["bloq"]
+
+
+def test_limite_03_considera_realizado_mais_nao_realizado():
+    cand = [K(10.0, 30.0, 10.0, 30.0), K(30.0, 50.0, 30.0, 50.0), K(50.0, 70.0, 50.0, 70.0)]
+    acoes = [A("mercado", 0, 1, direcao="baixa"), A("encerrar", 1, 2), A("mercado", 1, 3, direcao="baixa")]
+    antes = sim(cand[:2], acoes)                                                            # realizado −2,0; 2ª venda aberta em 30
+    assert antes["trades"][0]["ret"] == pytest.approx(-2.0) and not antes["bloq"] and antes["pos"]["entrada"] == 30.0
+    assert TB.preco_limite_perda(antes["pos"], -2.0) == pytest.approx(60.0)                  # 30 × (1 + 3 − 2)
+    s = sim(cand, acoes)
+    assert [t["motivo"] for t in s["trades"]] == ["manual", "limite"] and s["trades"][1]["saida"] == pytest.approx(60.0)
+    assert sum(t["ret"] for t in s["trades"]) == pytest.approx(-3.0) and s["bloq"]
+
+
+def test_limite_03b_ganho_realizado_afasta_o_limite():
+    cand = [K(10.0, 10.0, 5.0, 5.0), K(5.0, 22.0, 5.0, 22.0)]
+    acoes = [A("mercado", 0, 1, direcao="baixa"), A("encerrar", 1, 2), A("mercado", 1, 3, direcao="baixa")]
+    s = sim(cand[:1], acoes[:2])
+    assert s["trades"][0]["ret"] == pytest.approx(0.5)                                      # +0,5 realizado
+    s = sim(cand, acoes)
+    assert s["pos"] is not None and not s["bloq"]                                           # 2ª venda a 5: limite em 5·(1+3+0,5)=22,5 → 22 não alcança
+
+
+def test_limite_04_stop_do_jogador_mais_perto_vale_e_stop_alem_do_limite_perde_para_o_limite():
+    cand = [K(10.0, 45.0, 10.0, 45.0)]
+    s = sim(cand, [A("mercado", 0, 1, direcao="baixa", stop=12.0)])
+    assert s["trades"][0]["motivo"] == "stop" and s["trades"][0]["saida"] == 12.0 and not s["bloq"]
+    s = sim(cand, [A("mercado", 0, 1, direcao="baixa", stop=50.0)])
+    assert s["trades"][0]["motivo"] == "limite" and s["trades"][0]["saida"] == pytest.approx(40.0)
+    s = sim(cand, [A("mercado", 0, 1, direcao="baixa", stop=40.0)])                           # empate: vale o stop do jogador
+    assert s["trades"][0]["motivo"] == "stop"
+
+
+def test_limite_05_depois_do_limite_nenhuma_entrada_nova_no_simulador_e_no_registro():
+    cand = [K(10.0, 45.0, 10.0, 45.0), K(45.0)]
+    acoes = [A("mercado", 0, 1, direcao="baixa"), A("mercado", 1, 2, direcao="alta"), A("limite", 1, 3, direcao="alta", preco=40.0), A("stop_entrada", 1, 4, direcao="alta", preco=46.0)]
+    s = sim(cand, acoes)
+    assert len(s["trades"]) == 1 and s["pos"] is None and s["pend"] is None and s["ignoradas"] == 3 and s["bloq"]
+    c = _cenario(fn_replay=_spike)
+    p = _partida(c)
+    op(p, c, "ana", 3, "mercado", "1", direcao="baixa")
+    m = TB.visao(p, c, ag(p, 6), "ana")["mesa"]
+    assert m["limite"]["bloqueado"] and not m["pode_abrir"] and m["n_encerradas"] == 1
+    n = len(p["acoes"])
+    for tipo, extra in (("mercado", {}), ("limite", {"preco": 40.0}), ("stop_entrada", {"preco": 46.0})):
+        with pytest.raises(TB.ErroTrader, match="limite de perda"):
+            op(p, c, "ana", 6, tipo, "x" + tipo, direcao="alta", **extra)
+    assert len(p["acoes"]) == n                                                              # recusada não grava
+    op(p, c, "bia", 6, "mercado", "b1", direcao="alta")                                       # o outro jogador não é afetado
+
+
+def test_limite_06_cancelamento_defensivo_das_pendentes_ao_atingir_o_limite():
+    st = TB.simular_jogador([], [], 10.0)
+    TB._abrir(st, "baixa", 10.0, 0, 0, "mercado", None, None)
+    st["pend"] = {"tipo": "limite", "direcao": "alta", "preco": 9.0, "stop": None, "alvo": None, "ordem": 1}
+    TB._fechar(st, 40.0, 0, "manual")                                                         # perda realizada de −3,0 por saída manual
+    assert st["pend"] is None and st["bloq"] and st["pos"] is None
+
+
+def test_limite_07_compra_com_limite_pequeno_gap_e_nivel_invalido():
+    s = TB.simular_jogador([K(10.0, 10.0, 4.0, 4.0)], [A("mercado", 0, 1, direcao="alta")], 10.0, limite_x=0.5)
+    assert s["trades"][0]["saida"] == pytest.approx(5.0) and s["trades"][0]["motivo"] == "limite"
+    s = TB.simular_jogador([K(4.0, 4.0, 4.0, 4.0)], [A("mercado", 0, 1, direcao="alta")], 10.0, limite_x=0.5)
+    assert s["trades"][0]["saida"] == 4.0 and s["trades"][0]["ret"] == pytest.approx(-0.6)
+    pos = {"direcao": "alta", "entrada": 10.0}
+    assert TB.preco_limite_perda(pos, 0.0, 1.5) is None and TB.preco_limite_perda(None, 0.0) is None
+    assert TB.preco_limite_perda(pos, 0.0, 0.5) == pytest.approx(5.0)
+    assert TB.preco_limite_perda({"direcao": "baixa", "entrada": 10.0}, 0.0, 3.0) == pytest.approx(40.0)
+
+
+def test_limite_07b_compra_nunca_perde_mais_que_a_aposta_por_operacao_mesmo_sem_stop():
+    s = sim([K(10.0, 10.0, 0.5, 0.5)], [A("mercado", 0, 1, direcao="alta")], final=True)
+    assert s["trades"][0]["ret"] == pytest.approx(-0.95) and not s["bloq"]                   # sozinha, a compra não alcança −3,0
+
+
+def test_limite_08_fluxo_completo_pnl_menos_3_por_cento_pontos_negativos_e_reset_na_rodada_seguinte():
+    c = _cenario(fn_replay=_spike)
+    p = _partida(c)
+    op(p, c, "ana", 3, "mercado", "1", direcao="baixa")
+    fim(p, c)
+    r = p["resultados"]["1:ana"]
+    assert r["limite_atingido"] is True and r["fin"]["pnl"] == pytest.approx(-3000.0) and r["fin"]["pct_pat"] == pytest.approx(-3.0)
+    assert r["pontos"] < 0 and p["pontos"]["ana"] == r["pontos"]
+    assert any("Limite de perda" in t for t, _ in TB.explicar_mesa(r)) and any("Limite de perda" in t for t, _ in TB.explicar(r))
+    assert p["resultados"]["1:bia"]["limite_atingido"] is False
+    TB.avancar(p, p["t_fase"] + TB.T_RESULTADO_S + 0.1, {c["id"]: c})
+    for j in ("ana", "bia"):
+        TB.salvar_estrategia(p, j, dict(EST), None, 10.0, p["t_fase"] + 1)
+    assert p["rodada"] == 2 and p["fase"] == "replay"
+    a, nova = op(p, c, "ana", 3, "mercado", "r2", direcao="baixa")                           # rodada 2: o limite recomeça do zero
+    assert nova and TB.visao(p, c, ag(p, 3), "ana")["mesa"]["limite"]["bloqueado"] is False
+
+
+def test_limite_09_gap_no_fluxo_perda_real_de_5_por_cento_sem_truncar():
+    c = _cenario(fn_replay=_gap)
+    p = _partida(c)
+    op(p, c, "ana", 3, "mercado", "1", direcao="baixa")
+    fim(p, c)
+    r = p["resultados"]["1:ana"]
+    assert r["limite_atingido"] and r["operacoes"][0]["saida"] == 60.0 and r["fin"]["pnl"] == pytest.approx(-5000.0) and r["fin"]["pct_pat"] == pytest.approx(-5.0)
+
+
+def test_limite_10_privacidade_o_adversario_nao_recebe_preco_nem_estado_do_limite_do_outro():
+    c = _cenario(fn_replay=lambda i: (12.3456, 12.40, 12.30, 12.3456))
+    p = _partida(c)
+    op(p, c, "ana", 3, "mercado", "1", direcao="baixa")
+    agora = ag(p, 5)
+    propria = TB.visao(p, c, agora, "ana")["mesa"]["limite"]
+    assert propria["preco"] == pytest.approx(12.3456 * 4)
+    bia = TB.visao(p, c, agora, "bia")
+    txt = json.dumps(bia, default=str) + json.dumps(G.args_mesa(bia, p, {}, agora), default=str)
+    assert str(propria["preco"]) not in txt and str(round(propria["preco"], 2)) not in txt and str(round(propria["preco"], 4)) not in txt
+    assert bia["mesa"]["limite"]["preco"] is None and bia["mesa"]["limite"]["bloqueado"] is False
+    assert set(bia["adversarios"][0]["ops"][0]) == {"direcao", "preco_entrada", "indice_entrada", "aberta", "preco_saida", "indice_saida"}
+
+
+def test_limite_12a_decisao_6_stop_de_entrada_de_venda_com_gap_abre_na_abertura_e_compra_nao_dispara_caindo():
+    s = sim([K(10.0), K(8.0, 8.2, 7.9, 8.1)], [A("stop_entrada", 1, 1, direcao="baixa", preco=9.0)])
+    assert s["pos"]["entrada"] == 8.0 and s["pos"]["direcao"] == "baixa"
+    s = sim([K(10.0), K(10.0, 10.1, 9.0, 9.2)], [A("stop_entrada", 1, 1, direcao="alta", preco=10.5)])
+    assert s["pos"] is None and s["pend"] is not None
+
+
+def test_limite_12b_decisao_7_nao_ha_botao_nem_caminho_de_pausa_para_o_jogador():
+    import pathlib
+    raiz = pathlib.Path(__file__).parent
+    html = (raiz / "trader_front" / "index.html").read_text(encoding="utf-8").lower()
+    import re
+    assert not re.search(r"<button[^>]*(paus|pause)", html) and not re.search(r"<button[^>]*>[^<]*paus", html) and "pausa t" in html     # só o aviso de pausa técnica, sem botão
+    assert "pausar" not in (raiz / "trader_battle_app.py").read_text(encoding="utf-8")
+    import inspect
+    assert "pausar" not in inspect.getsource(G.processar) and "pausar" not in inspect.getsource(OL.Ops)
+
+
+# ------------------------------------------------------------------ gate de caixa de 3% e o caixa nunca ajustado artificialmente
+def test_caixa_minimo_de_3_por_cento_para_a_mesa_e_1_por_cento_para_as_regras_antigas():
+    with livro(pat=100000.0, caixa=2999.0):
+        with pytest.raises(TCA.SemSaldo, match="3%"):
+            TCA.aposta_de("a@x.com", mesa=True)
+        assert TCA.aposta_de("a@x.com")["stake"] == 1000.0                                    # regras antigas: 1% basta
+    with livro(pat=100000.0, caixa=3000.0):
+        assert TCA.aposta_de("a@x.com", mesa=True)["stake"] == 1000.0
+    with livro(pat=100000.0, caixa=2000.0):
+        a = TCA.aposta_rodada("a@x.com")                                                      # rodadas seguintes: não derruba a partida, só zera a aposta
+        assert a["stake"] == 0.0 and a["sem_saldo"]
+
+
+def test_online_sala_da_mesa_recusa_quem_tem_menos_de_3_por_cento_e_sala_antiga_continua_com_1_por_cento():
+    with banco_isolado():
+        _contas()
+        with livro(pat=100000.0, caixa=2000.0):
+            r = OL.criar_sala(EMAILS[0], "15m", TS, "rapida")
+            OL.entrar_na_sala(EMAILS[1], r["codigo"], TS + 1)
+            with pytest.raises(OL.ErroSala, match="3%"):
+                OL.iniciar(r["id"], EMAILS[0], TS + 2)
+            assert OL._row(r["id"])["dados"].get("p") is None                                  # nada foi iniciado
+    with banco_isolado():                                                                      # sala criada antes da mesa (sem formato): regra antiga de 1%
+        _contas()
+        with livro(pat=100000.0, caixa=2000.0):
+            r = OL.criar_sala(EMAILS[0], "15m", TS, "rapida")
+            OL.entrar_na_sala(EMAILS[1], r["codigo"], TS + 1)
+            d = OL._row(r["id"])["dados"]
+            d["sala"].pop("formato")
+            banco._atualizar_n("tb_partidas", {"id": r["id"]}, {"dados": banco._js(d)})
+            OL.iniciar(r["id"], EMAILS[0], TS + 2)
+            assert OL.ler(r["id"], EMAILS[0], TS + 3)["v"]["motor"] == 1
+
+
+def test_app_individual_com_caixa_entre_1_e_3_por_cento_nao_inicia_a_mesa():
+    with app_falso(pat=100000.0, caixa=2000.0) as (APP, _):
+        APP._ss().clear()
+        APP._ss()["tb_tf"] = "15m"
+        APP._iniciar()
+        assert "3%" in APP._ss().get("tb_erro", "") and "tb_p" not in APP._ss()
+
+
+def test_caixa_com_gap_o_prejuizo_real_e_lancado_inteiro_sem_ajuste_artificial():
+    """Com exatamente 3% de caixa: o limite sem gap zera o caixa (nunca negativo); com gap a perda real passa de 3% e é lançada INTEIRA (o caixa pode ficar negativo)."""
+    for fn, perda, caixa_final in ((_spike, -3000.0, 0.0), (_gap, -5000.0, -2000.0)):
+        c = _cenario(fn_replay=fn)
+        p = _partida(c)
+        op(p, c, "ana", 3, "mercado", "1", direcao="baixa")
+        fim(p, c)
+        with livro(pat=100000.0, caixa=3000.0) as lanc:
+            TCA.liquidar(p)
+            assert lanc[f"trader:{p['id']}:1:ana"]["valor"] == pytest.approx(perda)
+            assert TCA.situacao("ana")["caixa"] == pytest.approx(caixa_final)
