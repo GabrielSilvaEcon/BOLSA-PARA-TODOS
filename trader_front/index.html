@@ -152,7 +152,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
         <div class="row"><input id="g-stop" inputmode="decimal" placeholder="Stop" autocomplete="off"><button id="g-stop-b">Definir stop</button></div>
         <div class="row"><input id="g-alvo" inputmode="decimal" placeholder="Alvo" autocomplete="off"><button id="g-alvo-b">Definir alvo</button></div></div>
       <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
-      <small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%.</small></div>
+      <small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></div>
     <div id="res"></div>
     <div id="nota"><input id="nota-t" maxlength="40" placeholder="Texto curto"><button id="nota-ok">OK</button></div></div>
   <div id="pgw"><div id="pg"></div></div>
@@ -493,7 +493,8 @@ function desenhaMesa(i0,i1){
   if(o.pend)hline(o.pend.preco,COR.e,[5,4],(o.pend.tipo==="limite"?"LIMITE ":"STOP ENT. ")+(o.pend.direcao==="alta"?"▲":"▼"),false);
   else if(o.entrada!=null)hline(o.entrada,COR.e,[],o.dir==="alta"?"COMPRA ▲":"VENDA ▼",false);
   if(o.stop!=null)hline(o.stop,COR.s,[],"STOP",true);
-  if(o.alvo!=null)hline(o.alvo,COR.a,[],"ALVO",true)}
+  if(o.alvo!=null)hline(o.alvo,COR.a,[],"ALVO",true);
+  if(m.posicao&&m.limite&&m.limite.preco!=null)hline(m.limite.preco,COR.s,[2,4],"LIMITE "+m.limite.pct_pat+"%",false)}   // nível em que a perda acumulada da rodada chega ao limite
 function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)
   const m=mz(),pz=!!A.pausada,liv=livreEnvio(),at=!!m&&!pz,o=linhasMesa();
   const dt=o.dir==="alta"?"COMPRA ▲":(o.dir==="baixa"?"VENDA ▼":"");
@@ -501,8 +502,10 @@ function uiMesa(){   // atualiza só textos e estados dos botões (a tela não �
   if(m&&m.posicao)l1=`<span class="e">${dt} ${fmt(m.posicao.preco_entrada)}</span><span class="s">STOP ${fmt(o.stop)}</span><span class="a">ALVO ${fmt(o.alvo)}</span>`;
   else if(o.pend)l1=`<span class="e">Ordem ${o.pend.tipo==="limite"?"limite":"stop de entrada"} ${dt} em ${fmt(o.pend.preco)}</span><span class="s">STOP ${fmt(o.stop)}</span><span class="a">ALVO ${fmt(o.alvo)}</span>`;
   else l1=`<span class="e">Sem posição</span><span class="pz">pronto para operar</span>`;
-  const n=m?m.n_encerradas:0;
+  const n=m?m.n_encerradas:0,lm=m&&m.limite;
+  if(lm&&lm.bloqueado)l1=`<span class="s">🛑 limite de perda atingido (${lm.pct_pat}% do patrimônio): novas entradas bloqueadas nesta rodada</span>`;
   let l2=`Aberto <b class="op ${m?m.cor_aberto:"zero"}">${esc(m?m.aberto_txt:"—")}</b> · Rodada <b class="op ${m?m.cor_acum:"zero"}">${esc(m?m.acum_txt:"—")}</b> · ${n} encerrada${n===1?"":"s"} · candle ${A.revelados}/${A.total_replay}`;
+  if(lm)l2+=` · Risco ${fmt(lm.usado_pct_pat)}% de ${lm.pct_pat}%`;
   if(pz)l2+=` · <span class="pz">⏸ pausa técnica</span>`;
   if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
   $("sm").innerHTML=`<div class="l1">${l1}</div><div class="l2">${l2}</div>`;
