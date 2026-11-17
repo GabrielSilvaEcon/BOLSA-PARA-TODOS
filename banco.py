@@ -1223,7 +1223,7 @@ def comp_apelido_livre(ator: Ator | None, apelido_k: str) -> bool:
 
 def sis_comp_todos(chave: str, limite: int = 5000) -> list[dict]:
     """[{email, dados}] de todas as contas para uma chave da competição. Só o fechamento diário e o próprio banco usam (sem Ator)."""
-    if chave not in ("comp_ordens", "comp_cart", "comp_ligas", "edu_liga"):
+    if chave not in ("comp_ordens", "comp_cart", "comp_ligas", "edu_liga", "jogos_placar"):
         raise ValueError("chave desconhecida")
     return [{"email": r["email"], "dados": _de_js(r["dados"])} for r in _selecionar("monitor_estado", {"chave": chave}, ["email", "dados"], limite=limite)]
 
@@ -1258,6 +1258,57 @@ def comp_ligas_ler(ator: Ator | None) -> dict:
     return sis_estado_ler(ator.email, "comp_ligas")
 
 
+def comp_ligas_gravar(ator: Ator | None, dados: dict) -> None:
+    if not ator:
+        raise SemPermissao("Faça login.")
+    sis_estado_gravar(ator.email, "comp_ligas", dados)
+
+
+def comp_liga_contagem(ator: Ator | None, codigo: str) -> int:
+    """Quantas contas têm o código da liga no próprio documento (conferência de vaga antes de entrar)."""
+    if not ator:
+        raise SemPermissao("Faça login.")
+    c = _cod_liga(codigo)
+    return sum(1 for r in sis_comp_todos("comp_ligas")
+               if any(isinstance(x, dict) and x.get("c") == c for x in (r["dados"] or {}).get("ligas") or []))
+
+
+def _hash_dono(email: str) -> str:
+    import hashlib
+    return hashlib.sha256(email.strip().lower().encode()).hexdigest()[:24]
+
+
+def comp_liga_criar(ator: Ator | None, definicao: dict) -> str:
+    """Grava a definição de uma liga nova com um código inédito e devolve o código. O hash do dono vem do ator (não da tela)."""
+    if not ator:
+        raise SemPermissao("Faça login.")
+    import secrets
+    alfabeto = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+    doc = {"v": 1, "nome": str(definicao["nome"])[:30], "max": int(definicao["max"]), "criada": str(definicao.get("criada") or "")[:10],
+           "dono_h": _hash_dono(ator.email)}
+    for _ in range(8):
+        c = "".join(secrets.choice(alfabeto) for _ in range(8))
+        if not cfg_ler("comp_liga|" + c):
+            cfg_gravar("comp_liga|" + c, doc)
+            return c
+    raise ErroBanco("não foi possível gerar um código de liga inédito")
+
+
+def comp_liga_encerrar(ator: Ator | None, codigo: str) -> bool:
+    """Só o dono encerra a liga (apaga a definição e o ranking). False se a liga não existe; SemPermissao se não for o dono."""
+    if not ator:
+        raise SemPermissao("Faça login.")
+    c = _cod_liga(codigo)
+    d = cfg_ler("comp_liga|" + c)
+    if not d:
+        return False
+    if d.get("dono_h") != _hash_dono(ator.email):
+        raise SemPermissao("Só quem criou a liga pode encerrá-la.")
+    cfg_apagar("comp_liga|" + c)
+    cfg_apagar("comp_lr|" + c)
+    return True
+
+
 def comp_liga_definicao(ator: Ator | None, codigo: str) -> dict | None:
     """Nome e tamanho máximo da liga, para quem tem o código (nunca o dono). None se não existir."""
     if not ator:
@@ -1267,6 +1318,21 @@ def comp_liga_definicao(ator: Ator | None, codigo: str) -> dict | None:
     if not d or not d.get("nome"):
         return None
     return {"codigo": c, "nome": str(d["nome"])[:30], "max": int(d.get("max") or 30), "criada": str(d.get("criada") or "")[:10]}
+
+
+# ------------------------------------------------------------------ Central de Jogos: placar de cada conta (Trade Battle e Ticker Battle)
+# Um documento por conta (monitor_estado, chave jogos_placar). Só o servidor grava, e só o da própria conta (fim de partida). Os rankings leem
+# todos numa consulta (sis_comp_todos). A base diária das variações de posição fica em config_sistema (jogos_rk|<jogo>), sem e-mail.
+def jogos_placar_ler(ator: Ator | None) -> dict:
+    if not ator:
+        raise SemPermissao("Faça login.")
+    return sis_estado_ler(ator.email, "jogos_placar")
+
+
+def jogos_placar_gravar(ator: Ator | None, dados: dict) -> None:
+    if not ator:
+        raise SemPermissao("Faça login.")
+    sis_estado_gravar(ator.email, "jogos_placar", dados)
 
 
 def edu_liga_ler(ator: Ator | None) -> dict:

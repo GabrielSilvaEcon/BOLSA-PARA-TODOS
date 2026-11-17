@@ -16,6 +16,8 @@ import re
 from datetime import date, datetime, timezone
 from urllib.parse import parse_qs, urlparse
 
+import competicao as C
+
 
 CH_LIGAS = "comp_ligas"            # documento da pessoa (o app grava): ligas e preferência de avisos
 CFG_LIGA = "comp_liga|"            # definição da liga (o app grava, só o dono) — prefixo + código
@@ -52,6 +54,41 @@ def extrair_convite(valor) -> str | None:
             return None
     s = re.sub(r"[\s\-]", "", s).upper()
     return s if _CODIGO.fullmatch(s) else None
+
+
+def formatar_codigo(codigo: str) -> str:
+    c = str(codigo or "")
+    return f"{c[:4]}-{c[4:]}" if len(c) == TAM_CODIGO else c
+
+
+def link_convite(url_base: str, codigo: str, pagina: str = "jogos-amigos") -> str:
+    """Link que abre direto a tela de amigos com o código já preenchido (extrair_convite lê o ?liga=)."""
+    base = str(url_base or "").rstrip("/")
+    return f"{base}/{pagina}?liga={codigo}" if base else f"?liga={codigo}"
+
+
+def nome_valido(nome: str) -> tuple[bool, str]:
+    n = re.sub(r"\s+", " ", str(nome or "")).strip()
+    if not _NOME.fullmatch(n):
+        return False, "Use de 3 a 30 caracteres: letras, números, espaço, ponto, hífen ou sublinhado."
+    base = re.sub(r"[\d_.\- ]", "", n.lower())
+    if any(r in base for r in C._RESERVADOS) or any(b in base for b in C._BLOQUEADOS):
+        return False, "Esse nome não é permitido. Escolha outro."
+    return True, ""
+
+
+def limpar_nome(nome: str) -> str:
+    return re.sub(r"\s+", " ", str(nome or "")).strip()[:30]
+
+
+def nova_definicao(nome: str, max_membros: int, agora: datetime | None = None) -> dict:
+    """Definição de uma liga nova (nome, vagas, data). O código e o hash do dono são gerados pelo banco a partir de quem está logado."""
+    ag = agora or datetime.now(timezone.utc)
+    try:
+        m = int(max_membros)
+    except Exception:
+        m = MAX_MEMBROS_PADRAO
+    return {"v": 1, "nome": limpar_nome(nome), "max": max(2, min(m, MAX_MEMBROS_TETO)), "criada": ag.strftime("%Y-%m-%d")}
 
 
 def sanear_ligas(doc) -> dict:

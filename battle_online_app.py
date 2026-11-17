@@ -614,6 +614,11 @@ def _resultado() -> None:
         _limpar(); _ir("modo"); return st.rerun()
     lado = f["lado"]
     res = f["resultado"]
+    try:
+        import jogos_app
+        jogos_app.registrar_ticker(f["id"], res, "online")         # placar da Central de Jogos (resultado do servidor; repetir não soma)
+    except Exception:
+        pass
     tit = {"vitoria": ("Vitória!", "Você venceu o duelo!", "celebrando"), "derrota": ("Derrota", f"{f['op']} venceu desta vez.", "triste"), "empate": ("Empate", "O duelo terminou igual.", "pensativo")}[res]
     p = f["placar"]
     st.markdown(f"<div class='bt-final {res}'><div class='bt-fxres'>{CT.img({'vitoria': 'faixa_vitoria', 'derrota': 'faixa_derrota', 'empate': 'faixa_empate'}[res], alt=tit[0])}</div><div class='rs'>{_e(tit[1])}</div></div>"

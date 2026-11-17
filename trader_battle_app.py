@@ -697,8 +697,20 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago
             st.markdown(f"<div class='tb-rx-r'>Rodada {k}</div>{_raiox_html(linhas)}", unsafe_allow_html=True)
 
 
+def _registrar_ranking(pid: str, fz: dict, p: dict) -> None:
+    """Partida terminada entra no placar da Central de Jogos (pontos e colocação calculados aqui, no servidor)."""
+    try:
+        import jogos_app
+        meu = next(x for x in fz["placar"] if x["voce"])
+        n = len(fz["placar"])
+        jogos_app.registrar_trade(pid, meu["pontos"], len(fz["rodadas"]), TB.cfg_de(p).get("formato") or "", meu["pos"] if n > 1 else None, n)
+    except Exception:
+        pass
+
+
 def _fim_online(b: dict) -> None:
     v = b["v"]
+    _registrar_ranking(b["p"]["id"], v["final"], b["p"])
     _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]))
     st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
     st.button("Voltar ao início do Trade Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_on_desanexar)
@@ -764,6 +776,11 @@ def _escolher_formato(tf: str, f: str) -> None:
 
 def _central() -> None:
     st.markdown(_CSS_CENTRAL, unsafe_allow_html=True)
+    try:
+        import jogos_app
+        jogos_app.navegacao("trader")
+    except Exception:
+        pass
     st.markdown(f"<div class='tb-hero'><img src='{ART.uri('hero')}' alt='Trade Battle'></div>", unsafe_allow_html=True)
     tf = st.segmented_control("Timeframe", list(TB.TIMEFRAMES), default="15m", key="tb_tf",
                               format_func=lambda k: TB.TIMEFRAMES[k]["nome"], label_visibility="collapsed") or "15m"
@@ -794,6 +811,11 @@ def _central() -> None:
     st.button("Voltar para sua sala/partida" if ativa else "Entrar em uma Sala", key="tb_sala_row", icon=":material/login:", width="stretch",
               on_click=(_on_voltar_partida if ativa else _painel), args=((ativa,) if ativa else ("entrar",)))
     _central_online(None if ativa else painel)
+    try:
+        import jogos_app
+        jogos_app.faixa_jogo("trade")                         # ranking, posição e histórico da Central de Jogos
+    except Exception:
+        pass
     st.markdown("<div class='tb-sobre'><div class='h'>⭐ Sobre o Trade Battle</div><div class='g'>"
                 "<div><i>👥</i><b>2-4</b><small>jogadores</small></div>"
                 f"<div><i>📅</i><b>{' · '.join(str(n) for n in TB.FORMATOS.values())}</b><small>rodadas</small></div>"
@@ -1172,6 +1194,7 @@ def _fim(p: dict) -> None:
     j = _jogador()
     _liquidar(p, forcar=True)
     fz = TB.resumo_final(p, j)
+    _registrar_ranking(p["id"], fz, p)
     _tela_final(fz, TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]], _pagar_xp(p["id"], fz["xp"]))
     st.button("Jogar novamente", key="tb_de_novo", icon=":material/replay:", width="stretch", on_click=_de_novo)
     st.button("Voltar ao início do Trade Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_sair)

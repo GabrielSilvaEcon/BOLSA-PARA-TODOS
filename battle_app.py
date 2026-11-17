@@ -336,6 +336,11 @@ def _central() -> None:
     deck = [t for t in pes["deck"] if t in jog]
     ok_deck, msg_deck = B.validar_baralho(pes["deck"], snap, _hoje())
     st.markdown(f"<div class='bt-hero2'><img src='{ART.uri('modo_hero')}' alt='Ticker Battle'></div>", unsafe_allow_html=True)
+    try:                                                     # navegação da Central de Jogos logo abaixo do banner (o banner sobe por cima do topo)
+        import jogos_app
+        jogos_app.navegacao("battle")
+    except Exception:
+        pass
     try:
         import battle_online_app as ON                       # modos de jogo e histórico online (se o módulo falhar, o Duelo contra Sistema segue)
     except Exception as e:
@@ -360,6 +365,11 @@ def _central() -> None:
     st.button("GERENCIAR BARALHO", key="bt_gerenciar", icon=":material/style:", width="stretch", on_click=_ir, args=("baralho",))
     if ON:
         ON.secao_online()
+    try:
+        import jogos_app
+        jogos_app.faixa_jogo("ticker")                    # ranking, posição e histórico da Central de Jogos
+    except Exception:
+        pass
 
     st.markdown("<div class='bt-box'><div class='t'><span class='m'>❓</span>Como funciona</div><div class='bt-passos'>"
                 "<div><b>🃏</b>Escolha sua carta</div><div><b>🎯</b>Escolha o atributo</div><div><b>⚔️</b>Vence quem tem o melhor valor</div></div>"
@@ -546,6 +556,11 @@ def _concluir() -> None:
         reg = BD.registro_historico(d, ss["bt_cartas_duelo"])
         _salvar_pessoa(BD.adicionar_historico(_pessoa(), reg))
         ss["bt_salvo"] = d["id"]
+        try:
+            import jogos_app
+            jogos_app.registrar_ticker(d["id"], d["final"], "sistema")      # placar da Central de Jogos (resultado decidido aqui, no servidor)
+        except Exception:
+            pass
     _ir("resultado")
 
 

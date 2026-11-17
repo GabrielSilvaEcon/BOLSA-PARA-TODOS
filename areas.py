@@ -8,7 +8,7 @@ Regras: 3 ou 4 áreas (cabem na barra do celular); cada página em no máximo um
 MAX_AREAS = 4
 
 # Páginas sempre acessíveis, em qualquer área (não pertencem a nenhuma).
-SEMPRE = ("inicio", "conta", "planos", "administracao", "ajuda", "economia", "battle", "trader")
+SEMPRE = ("inicio", "conta", "planos", "administracao", "ajuda", "economia", "battle", "trader", "jogos", "jogos-ranking", "jogos-amigos", "jogos-eventos")
 
 # `descricao` aparece no cartão da tela Início. A primeira página de cada área é a página padrão (a que abre ao entrar na área pela primeira vez).
 # `entrada` = página que SEMPRE abre ao tocar na área (tela própria com cartões); sem `entrada`, abre a última página visitada.
@@ -257,6 +257,10 @@ SINONIMOS = {
     "competicao": "wallet game ranking ligas carteira virtual",
     "battle": "ticker battle duelo cartas baralho batalha jogo",
     "trader": "trade battle trader battle analise tecnica candles grafico replay estrategia",
+    "jogos": "central de jogos jogar trade battle ticker battle destaques desafio",
+    "jogos-ranking": "ranking dos jogos podio classificacao posicao trade ticker",
+    "jogos-amigos": "amigos liga convite codigo comparar placar",
+    "jogos-eventos": "eventos recompensas desafio semanal missoes bau campanha",
     "jornada": "licoes xp estudo trilha",
     "missoes": "desafios metas conquistas",
     "economia": "economia ticker tickercoins moedas saldo tc recompensas loja extrato beneficios",

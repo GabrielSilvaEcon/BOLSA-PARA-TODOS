@@ -131,7 +131,7 @@ def test_card_do_fim_da_unidade_escapa_html_e_avisa_que_e_opcional():
 # ------------------------------------------------------------------ banco e PWA
 def test_banco_tem_funcoes_e_chave_da_liga_de_estudo():
     src = (RAIZ / "banco.py").read_text(encoding="utf-8")
-    assert "def edu_liga_ranking" in src and '"edu_liga")' in src and '"comp_ligas", "edu_liga")' in src
+    assert "def edu_liga_ranking" in src and '"edu_liga")' in src and '"comp_ligas", "edu_liga"' in src
     trecho = src[src.index("def edu_liga_ranking"):src.index("def sis_comp_ligas_def")]
     linha_saida = trecho.split("out.append")[1].split("\n")[0]
     assert "SemPermissao" in trecho and '"email":' not in linha_saida          # confere membro; as linhas devolvidas não levam o e-mail

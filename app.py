@@ -92,6 +92,7 @@ import analise_tecnica_app
 import noticias_app
 import battle_app
 import trader_battle_app
+import jogos_app
 import competicao_app
 import jogar_app
 import tickercoins_app
@@ -4241,6 +4242,10 @@ PG_NOTIF = st.Page(notif_app.pagina_notificacoes, title="Alertas", icon=":materi
 PG_COMP = st.Page(competicao_app.pagina_competicao, title="Wallet Game", icon=":material/emoji_events:", url_path="competicao")
 PG_BATTLE = st.Page(battle_app.pagina_battle, title="Ticker Battle", icon=":material/sports_esports:", url_path="battle")
 PG_TRADER = st.Page(trader_battle_app.pagina_trader, title="Trade Battle", icon=":material/show_chart:", url_path="trader")
+PG_JOGOS = st.Page(jogos_app.pagina_central, title="Central de Jogos", icon=":material/sports_esports:", url_path="jogos")
+PG_JG_RANK = st.Page(jogos_app.pagina_ranking, title="Ranking dos jogos", icon=":material/emoji_events:", url_path="jogos-ranking")
+PG_JG_AMIGOS = st.Page(jogos_app.pagina_amigos, title="Meus amigos", icon=":material/group:", url_path="jogos-amigos")
+PG_JG_EVENTOS = st.Page(jogos_app.pagina_eventos, title="Eventos e recompensas", icon=":material/redeem:", url_path="jogos-eventos")
 PG_JOGAR = st.Page(jogar_app.pagina_jogar, title="Central de missões", icon=":material/flag:", url_path="missoes")
 PG_EDU = st.Page(educacao_app.pagina_educacao, title="Educação financeira", icon=":material/school:", url_path="educacao")
 PG_JORNADA = st.Page(educacao_app.pagina_jornada, title="Jornada", icon=":material/route:", url_path="jornada")
@@ -4331,8 +4336,7 @@ paginas = {
     ":material/account_balance_wallet: Carteira": [PG_CART, PG_GESTAO, PG_RISCO, PG_REL, PG_SIM],
     ":material/psychology: Inteligência": [PG_INTEL, PG_NOTICIAS, PG_NOTIF],
     ":material/account_balance_wallet: Wallet Game": [PG_COMP],
-    ":material/sports_esports: Ticker Battle": [PG_BATTLE],
-    ":material/show_chart: Trade Battle": [PG_TRADER],
+    ":material/sports_esports: Central de Jogos": [PG_JOGOS, PG_TRADER, PG_BATTLE, PG_JG_RANK, PG_JG_AMIGOS, PG_JG_EVENTOS],
     ":material/school: Aprender": [PG_JORNADA, PG_JOGAR, PG_EDU, PG_GLOSSARIO],
     ":material/compare_arrows: Comparar": [PG_COMPARAR, PG_EVOLUCAO],
     ":material/toll: Loja Ticker": [PG_ECONOMIA],
@@ -4552,9 +4556,8 @@ def _abrir_conta():
 
 
 def _abrir_jogar():
-    """Callback do botão Jogar (centro da barra): abre a tela inicial do Ticker Battle."""
-    st.session_state["bt_tela"] = "central"
-    st.session_state["_nav_pend"] = "battle"
+    """Callback do botão Jogar (centro da barra): abre a Central de Jogos (Trade Battle, Ticker Battle, ranking, amigos e eventos)."""
+    st.session_state["_nav_pend"] = "jogos"
 
 
 def _seletor_de_areas():
@@ -4576,7 +4579,7 @@ def _seletor_de_areas():
                       type="primary" if ativa == "aprender" else "secondary", on_click=_abrir_area, args=("aprender",))
         with cols[2]:
             st.button("Jogar", key="area_btn_jogar", icon=":material/sports_esports:", width="stretch",
-                      type="primary" if pg.url_path in ("battle", "trader") else "secondary", on_click=_abrir_jogar)
+                      type="primary" if pg.url_path in ("battle", "trader") + jogos_app.PAGINAS_DA_CENTRAL else "secondary", on_click=_abrir_jogar)
         with cols[3]:
             a = por_id["analisar"]
             st.button(a["nome"], key="area_btn_analisar", icon=a["icone"], width="stretch",
