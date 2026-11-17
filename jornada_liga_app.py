@@ -127,6 +127,8 @@ def _conteudo(prog) -> None:
     st.caption(html.escape(JL.texto_posicao(itens)))
     if itens:
         from design import componentes as DC
-        st.markdown(DC.lista_ranking([{"pos": x["pos"], "nome": x["apelido"], "valor": f"{x['xp']} XP", "sub": "na semana", "tom": 1 if x["xp"] else 0,
-                                       "voce": bool(x["eu"])} for x in itens], medalhas=True), unsafe_allow_html=True)
+        import amigos_app as AMA                     # tocar em alguém da liga abre o perfil público
+        AMA.lista_clicavel("jl", [(DC.lista_ranking([{"pos": x["pos"], "nome": x["apelido"], "valor": f"{x['xp']} XP", "sub": "na semana",
+                                                      "tom": 1 if x["xp"] else 0, "voce": bool(x["eu"])}], medalhas=True),
+                                   None if x["eu"] else AMA.usuario_de_apelido(x["apelido"])) for x in itens])
 

@@ -24,12 +24,15 @@ _e = html.escape
 _P = "html body .stApp.stApp.stApp"
 _TTL = 60
 
-CSS = "<style>" + "".join(l.strip() for l in f"""
+CSS_LINK = "<style>" + "".join(l.strip() for l in f"""
 {_P} [class*="st-key-lk_"]{{position:relative;gap:0 !important}}
 {_P} [class*="st-key-lk_"] [data-testid="stElementContainer"]:has(.stButton){{position:absolute !important;inset:0;z-index:3;margin:0 !important;width:100% !important}}
 {_P} [class*="st-key-lk_"] .stButton,{_P} [class*="st-key-lk_"] .stButton > button[data-testid]{{width:100% !important;height:100% !important;min-height:0 !important}}
 {_P} [data-testid="stMain"] [class*="st-key-lk_"] .stButton > button[data-testid]{{opacity:0 !important;cursor:pointer;background:transparent !important;border:0 !important;box-shadow:none !important}}
 {_P} [class*="st-key-lk_"]:hover .am-lin,{_P} [class*="st-key-lk_"]:hover .jg-lin{{filter:brightness(1.15)}}
+""".splitlines()) + "</style>"   # linhas e grades clicáveis (vai no CSS global do app)
+
+CSS = CSS_LINK + "<style>" + "".join(l.strip() for l in f"""
 {_P} .am-lin{{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:16px;border:1.5px solid rgba(139,108,255,.45);
   background:linear-gradient(160deg,#241A86,#150F55)}}
 {_P} .am-lin .av{{flex:0 0 42px;width:42px;height:42px;border-radius:50%;overflow:hidden;background:#1B1545;box-shadow:0 0 0 2px #34E85E}}
@@ -165,6 +168,97 @@ def linha_clicavel(chave: str, html_linha: str, usuario: str | None, rotulo: str
         st.markdown(html_linha, unsafe_allow_html=True)
         if usuario:
             st.button(rotulo or f"Ver perfil de {usuario}", key=f"lkb_{chave}", on_click=ir_jogador, args=(usuario,))
+
+
+def _indice() -> dict:
+    """Índices para levar de qualquer nome público (NickName da Competição, da liga de estudo, das salas) ao perfil. Só no servidor."""
+    def montar():
+        por_email, por_k = {}, {}
+        for r in banco.sis_comp_todos("perfil_jogador"):
+            p = PF.sanear(r["dados"])
+            if p["usuario"]:
+                vis = p["privacidade"]["visivel"] != "ninguem"
+                por_email[r["email"]] = p["usuario"] if vis else ""
+                if vis:
+                    por_k[p["usuario_k"]] = p["usuario"]
+        comp = {}
+        try:
+            for r in banco.sis_comp_todos("comp_ordens"):
+                k = str((r["dados"] or {}).get("apelido_k") or "")
+                if k:
+                    comp[k] = r["email"]
+        except Exception:
+            pass
+        return {"por_email": por_email, "por_k": por_k, "comp": comp}
+    return _cache("_am_idx", _TTL, montar)
+
+
+def usuario_de_email(email: str, apelido: str = "") -> str | None:
+    """Nome de usuário (para o link) da conta `email`. Quem joga mas ainda não tem perfil ganha o perfil básico do NickName público.
+    None se a pessoa esconde o perfil de todos."""
+    idx = _indice()
+    if email in idx["por_email"]:
+        return idx["por_email"][email] or None
+    if apelido:
+        try:
+            if banco.sis_perfil_padrao(email, apelido):
+                u = PF.inicial(apelido)["usuario"]
+                idx["por_email"][email] = u
+                idx["por_k"][PF.chave_usuario(u)] = u
+                return u
+        except Exception as e:
+            banco.registrar_erro("amigos_app.usuario_de_email", e)
+    return None
+
+
+def usuario_de_apelido(apelido: str) -> str | None:
+    """Do NickName mostrado em um ranking (Competição/Wallet Game, liga de estudo, salas) ao nome de usuário do perfil."""
+    k = str(apelido or "").strip().lower()
+    if not k or k == "jogador":
+        return None
+    try:
+        idx = _indice()
+        email = idx["comp"].get(k)
+        if email:
+            return usuario_de_email(email, apelido)
+        return idx["por_k"].get(k)
+    except Exception as e:
+        banco.registrar_erro("amigos_app.usuario_de_apelido", e)
+        return None
+
+
+def lista_clicavel(chave: str, linhas: list[tuple[str, str | None]], abre: str = "", fecha: str = "") -> None:
+    """Várias linhas HTML, cada uma clicável (abre o perfil de quem está nela). `abre`/`fecha` envolvem cada linha com a classe da lista
+    original, para manter o visual."""
+    st.markdown(CSS, unsafe_allow_html=True)
+    for i, (h, u) in enumerate(linhas):
+        linha_clicavel(f"{chave}_{i}", abre + h + fecha, u)
+
+
+def grade_clicavel(chave: str, html_bloco: str, usuarios: list[str | None], colunas: str) -> None:
+    """Bloco em colunas (pódio, chips) com um botão invisível sobre cada coluna. `colunas` = grid-template-columns do bloco original."""
+    st.markdown(f"<style>{_P} .st-key-gk_{chave}{{position:relative;gap:0 !important}}"
+                f"{_P} .st-key-gk_{chave}_b{{position:absolute !important;inset:0;z-index:3;display:grid !important;grid-template-columns:{colunas};gap:8px !important}}"
+                f"{_P} .st-key-gk_{chave}_b > div{{width:auto !important;height:100%;min-width:0}}"
+                f"{_P} .st-key-gk_{chave}_b .stButton,{_P} [data-testid='stMain'] .st-key-gk_{chave}_b .stButton > button[data-testid]{{width:100% !important;height:100% !important;"
+                f"opacity:0 !important;min-height:0 !important;background:transparent !important;border:0 !important;box-shadow:none !important;cursor:pointer}}</style>",
+                unsafe_allow_html=True)
+    with st.container(key=f"gk_{chave}"):
+        st.markdown(html_bloco, unsafe_allow_html=True)
+        with st.container(key=f"gk_{chave}_b"):
+            for i, u in enumerate(usuarios):
+                if u:
+                    st.button(f"Ver perfil de {u}", key=f"gk_{chave}_{i}", on_click=ir_jogador, args=(u,))
+                else:
+                    st.markdown("&nbsp;")
+
+
+def botao_perfil(chave: str, nick: str, rotulo: str | None = None) -> None:
+    """Botão visível "Ver perfil" para telas em que o nome não está numa lista (adversário do duelo, jogadores da sala)."""
+    u = usuario_de_apelido(nick)
+    if u and st.button(rotulo or f"Ver perfil de {nick}", key=f"bp_{chave}", icon=":material/person:"):
+        ir_jogador(u)
+        st.rerun(scope="app")                       # também funciona dentro de telas que se atualizam sozinhas (fragmentos)
 
 
 def _av(x: dict) -> str:
@@ -442,9 +536,11 @@ def _comparacao(a, amigos_inf: list[dict]) -> None:
             else:
                 val = f"{int(v)} vitória{'s' if v != 1 else ''}"
                 sub = f"{r['partidas']} duelos · {r['empates']} empates · {r['derrotas']} derrotas" + (f" · {r['taxa']}%" if r["taxa"] is not None else "")
-            st.markdown(f"<div class='am-cmp{' eu' if r['eu'] else ''}'><span class='p'>{r['pos']}</span><span class='n'>{_e(r['nome'])}{' (você)' if r['eu'] else ''}"
-                        f"<small>{_e(sub)}</small></span><span class='v{' neg' if v < 0 else ''}'>{_e(val)}</span>"
-                        f"<div class='b'><i class='{'neg' if v < 0 else ''}' style='width:{abs(v) / teto * 100:.0f}%'></i></div></div>", unsafe_allow_html=True)
+            linha_clicavel(f"cmp_{jogo}_{r['pos']}",
+                           f"<div class='am-cmp{' eu' if r['eu'] else ''}'><span class='p'>{r['pos']}</span><span class='n'>{_e(r['nome'])}{' (você)' if r['eu'] else ''}"
+                           f"<small>{_e(sub)}</small></span><span class='v{' neg' if v < 0 else ''}'>{_e(val)}</span>"
+                           f"<div class='b'><i class='{'neg' if v < 0 else ''}' style='width:{abs(v) / teto * 100:.0f}%'></i></div></div>",
+                           None if r["eu"] else r["usuario"])
     if ocultos:
         st.caption(f"{ocultos} amigo{'s' if ocultos > 1 else ''} esconde{'m' if ocultos > 1 else ''} as estatísticas e não aparece{'m' if ocultos > 1 else ''} na comparação.")
 

@@ -48,7 +48,23 @@ def ranking(ir) -> None:
         st.markdown(HV.html_ranking_cab(), unsafe_allow_html=True)
         st.button("Ver ranking completo", key="hm_rk_ver", icon=":material/chevron_right:", on_click=ir,
                   args=("competicao", {"wg_sec": "Classificação"}))
-        st.markdown(HV.html_ranking_corpo(r, logado, participa), unsafe_allow_html=True)
+        corpo = HV.html_ranking_corpo(r, logado, participa)
+        if r.get("vazio") or not r.get("top"):
+            st.markdown(corpo, unsafe_allow_html=True)
+            return
+        import amigos_app as AMA                     # cada líder é clicável: abre o perfil público
+        q = "html body .stApp.stApp.stApp"
+        st.markdown(f"<style>{q} .st-key-hm_rk > :is(.st-key-hm_rk_c,div:has(> .st-key-hm_rk_c)){{grid-column:1 / -1;grid-row:2;min-width:0}}"
+                    f"{q} .st-key-hm_rk_c{{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px !important}}"
+                    f"{q} .st-key-hm_rk_c > :last-child{{grid-column:1 / -1}}{q} .st-key-hm_rk_c .hm-rk-grid{{display:block}}</style>", unsafe_allow_html=True)
+        with st.container(key="hm_rk_c"):
+            chips = ""
+            for x in r["top"]:
+                ch = HV._chip_top(x)
+                chips += ch
+                AMA.linha_clicavel(f"hm_{x['pos']}", f"<div class='hm-rk-grid'>{ch}</div>",
+                                   None if participa and x.get("apelido") == apelido else AMA.usuario_de_apelido(x.get("apelido", "")))
+            st.markdown(corpo.replace(chips, "", 1), unsafe_allow_html=True)
 
 
 def desempenho(ir) -> None:

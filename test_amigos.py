@@ -206,3 +206,28 @@ def test_perfil_basico_para_quem_ja_joga(bd):
     bd._inserir("contas", {"id": "id-w", "email": "w@x.com", "nome": "W", "criado_em": "2026-01-01T00:00:00Z"})
     assert not bd.sis_perfil_padrao("w@x.com", "ana")                           # nome de outra conta: não toma
     assert bd.perfil_alvo(A, "zeca_bull")["completo"]
+
+
+def test_nome_de_qualquer_ranking_leva_ao_perfil(bd, monkeypatch):
+    import types
+    import amigos_app as AMA
+    monkeypatch.setattr(AMA, "st", types.SimpleNamespace(session_state={}))
+    A, B = _setup(bd, "Ana", "Bia", priv={"Bia": {"visivel": "ninguem"}})
+    bd.sis_estado_gravar(A.email, "comp_ordens", {"apelido": "AnaWallet", "apelido_k": "anawallet"})
+    bd._inserir("contas", {"id": "id-z", "email": "zeca@x.com", "nome": "Nome Real Zeca", "criado_em": "2026-01-01T00:00:00Z"})
+    bd.sis_estado_gravar("zeca@x.com", "comp_ordens", {"apelido": "ZecaBull", "apelido_k": "zecabull"})
+    assert AMA.usuario_de_apelido("AnaWallet") == "Ana"            # apelido da Competição → nome de usuário do perfil
+    assert AMA.usuario_de_apelido("ana") == "Ana"                  # o próprio nome de usuário (salas online)
+    assert AMA.usuario_de_apelido("ZecaBull") == "ZecaBull"        # jogava sem perfil: ganha o perfil básico do apelido público
+    assert bd.sis_perfil_por_usuario("zecabull")[0] == "zeca@x.com"
+    assert AMA.usuario_de_apelido("bia") is None                   # perfil escondido de todos: sem link
+    assert AMA.usuario_de_apelido("Jogador") is None and AMA.usuario_de_apelido("") is None
+
+
+def test_nome_nas_salas_online_e_o_usuario_nunca_o_nome_real(bd):
+    import battle_online_dados as BD
+    import trader_online_dados as TOD
+    A, = _setup(bd, "Ana")
+    assert TOD.nick_de(A.email) == "Ana" == BD.nick_de(A.email)
+    bd._inserir("contas", {"id": "id-z", "email": "zeca@x.com", "nome": "Nome Real Zeca", "criado_em": "2026-01-01T00:00:00Z"})
+    assert TOD.nick_de("zeca@x.com") == "Jogador" == BD.nick_de("zeca@x.com")

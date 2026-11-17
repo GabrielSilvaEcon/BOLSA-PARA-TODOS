@@ -518,6 +518,9 @@ def _frag_sala(pid: str) -> None:
     cards = "".join(f"<div class='tb-lin'>{_e(j['nick'])}{' (você)' if j['voce'] else ''}<span>{'criador' if j['criador'] else 'jogador'}</span></div>" for j in sa["jogadores"])
     st.markdown(f"<div class='tb-pts'><div class='n'>{_e(sa['codigo'])}</div><small>código da sala · {_e(TB.TIMEFRAMES[sa['tf']]['nome'])} · {_e(_rot_formato(sa.get('formato')))}</small></div>"
                 f"<div class='tb-card'><b>Jogadores {sa['n']}/{sa['max']}</b>{cards}</div>", unsafe_allow_html=True)
+    import amigos_app as AMA
+    for i, j in enumerate(x for x in sa["jogadores"] if not x["voce"]):
+        AMA.botao_perfil(f"tb_sala_{i}", j["nick"])
     if sa["criador"]:
         st.button("Iniciar partida", key="tb_on_iniciar", icon=":material/play_arrow:", width="stretch", disabled=sa["n"] < sa["min"], on_click=_on_iniciar, args=(pid,))
         if sa["n"] < sa["min"]:
@@ -713,6 +716,17 @@ def _fim_online(b: dict) -> None:
     _registrar_ranking(b["p"]["id"], v["final"], b["p"])
     _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]))
     st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
+    try:                                          # quem jogou na sala: botão para o perfil de cada um (o placar mostra "Jogador N")
+        import amigos_app as AMA
+        em = _email_online()
+        sala = (((TOD._row(b["p"]["id"]) or {}).get("dados") or {}).get("sala") or {})
+        outros = [j for j in sala.get("jogadores") or [] if j.get("email") != em]
+        if outros:
+            st.markdown("<div class='tb-cap'>Quem jogou com você</div>", unsafe_allow_html=True)
+        for i, j in enumerate(outros):
+            AMA.botao_perfil(f"tb_fim_{i}", str(j.get("nick") or ""))
+    except Exception:
+        pass
     st.button("Voltar ao início do Trade Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_on_desanexar)
 
 

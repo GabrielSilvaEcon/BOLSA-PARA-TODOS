@@ -4796,6 +4796,11 @@ if AREAS_ATIVAS:
     _seletor_de_areas()                     # botões das áreas no topo, em qualquer tela (etapa A3)
 if LAYOUT_COMPACTO:
     st.markdown(layout_mobile.css(), unsafe_allow_html=True)    # por último entre os CSS globais: vale para todas as páginas
+try:                                        # nomes clicáveis em rankings e listas (abrem o perfil público do jogador)
+    import amigos_app as _ama
+    st.markdown(_ama.CSS_LINK, unsafe_allow_html=True)
+except Exception:
+    pass
 if DESIGN_V2:
     st.markdown(design_css.css(design_temas.tema_da_pagina(pg.url_path, areas.area_da_pagina), len(areas.AREAS) + 2), unsafe_allow_html=True)
     st.markdown(GV.css(), unsafe_allow_html=True)

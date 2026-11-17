@@ -138,7 +138,11 @@ def _aba_ranking(perfil: dict, cart: dict, res: dict | None = None):
     with st.container(key="ck_hero"):
         st.markdown(CV2.html_titulo(), unsafe_allow_html=True)
         if itens:
-            st.markdown(CV2.html_podio(itens, ordem), unsafe_allow_html=True)
+            import amigos_app as AMA                 # tocar em alguém do pódio abre o perfil público
+            por_pos = {r["pos"]: r for r in itens if r.get("pos") in (1, 2, 3)}
+            AMA.grade_clicavel("ck_pod", CV2.html_podio(itens, ordem),
+                               [None if not por_pos.get(p) or por_pos[p].get("eu") else AMA.usuario_de_apelido(por_pos[p].get("apelido", "")) for p in (2, 1, 3)],
+                               "repeat(3,minmax(0,1fr))")
     if not itens:
         st.info("Ainda não há participantes no ranking.")
         return
@@ -157,7 +161,12 @@ def _aba_ranking(perfil: dict, cart: dict, res: dict | None = None):
         with st.container(key="ck_pill"):              # um toque troca a ordem: Retorno → Patrimônio → Risco → Retorno
             st.button(CV2.ROTULO_PERIODO[per], key="ck_pill_b", icon=":material/calendar_month:", on_click=_proxima_ordem, args=(list(RL.ORDENS),))
         if resto:
-            st.markdown(CV2.html_linhas(resto if todos else resto[:3], ordem, rolar=todos), unsafe_allow_html=True)
+            import amigos_app as AMA                 # cada linha abre o perfil público de quem está nela
+            with st.container(key="ck_rows"):
+                st.markdown("<style>html body .stApp .st-key-ck_rows{gap:6px !important}"
+                            + ("html body .stApp .st-key-ck_rows{max-height:460px;overflow-y:auto}" if todos else "") + "</style>", unsafe_allow_html=True)
+                AMA.lista_clicavel("ck_l", [(CV2.html_linhas([r], ordem), None if r.get("eu") else AMA.usuario_de_apelido(r.get("apelido", "")))
+                                            for r in (resto if todos else resto[:3])])
         else:
             st.markdown("<span></span>", unsafe_allow_html=True)
     if rotulo_parcial and rotulo_parcial.startswith("Ao vivo"):

@@ -47,11 +47,12 @@ def normalizar_codigo(txt: str) -> str:
 
 
 def nick_de(email: str) -> str:
+    """Nome público na sala: o nome de usuário do perfil de jogador (nunca o nome real nem o e-mail da conta)."""
     try:
-        n = ((banco.sis_conta_por_email(email) or {}).get("nome") or "").strip()
+        n = str((banco.sis_estado_ler(email, "perfil_jogador") or {}).get("usuario") or "").strip()
     except Exception:
         n = ""
-    return (n or email.split("@")[0])[:24]
+    return (n or "Jogador")[:24]
 
 
 # ------------------------------------------------------------------ leitura/escrita atômica

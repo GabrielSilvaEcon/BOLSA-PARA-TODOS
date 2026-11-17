@@ -403,6 +403,9 @@ def _frag_espera() -> None:
                 f"<div class='on-jog op{' on' if op_ok else ''}'>{_avatar(op=True, sil=not op)}<div><b>{_e(op['nick']) if op else 'Jogador Oponente'}</b>"
                 f"<span class='{'ok' if op_ok else 'es'}'>{'✔ Pronto' if op_ok else '⏳ Aguardando…'}</span></div></div>"
                 "<div class='on-ampulheta'><div class='h'>⏳</div>A partida será iniciada quando ambos estiverem prontos.</div>", unsafe_allow_html=True)
+    if op:
+        import amigos_app as AMA
+        AMA.botao_perfil("bt_esp_op", op["nick"])
     if v["fase"] == "pronta" and not eu_ok:
         st.button("Estou Pronto", key="bt_pronto", icon=":material/check:", type="primary", width="stretch", on_click=_pronto)
 
@@ -624,6 +627,8 @@ def _resultado() -> None:
     st.markdown(f"<div class='bt-final {res}'><div class='bt-fxres'>{CT.img({'vitoria': 'faixa_vitoria', 'derrota': 'faixa_derrota', 'empate': 'faixa_empate'}[res], alt=tit[0])}</div><div class='rs'>{_e(tit[1])}</div></div>"
                 f"<div class='on-vs'><div>{_avatar(pose=tit[2])}<div class='bt-atr'>Você</div></div><div class='p'>{p['eu']} <span class='x'>VS</span> {p['op']}<small>{p['emp']} empatada(s)</small></div>"
                 f"<div>{_avatar(op=True)}<div class='bt-atr' style='color:#FF6BC8'>{_e(f['op'])}</div></div></div>", unsafe_allow_html=True)
+    import amigos_app as AMA
+    AMA.botao_perfil("bt_res_op", f["op"])
     if f["motivo"] == "abandono":
         st.markdown(f"<div class='on-aviso'>Encerrada por abandono: {'o adversário não voltou dentro do prazo' if res == 'vitoria' else 'você ficou desconectado além do prazo (ou desistiu)'}.</div>", unsafe_allow_html=True)
     elif f["motivo"] == "tempo":
