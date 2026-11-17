@@ -135,7 +135,8 @@ def _bt(chave: str) -> str:
 
 
 _CSS_CENTRAL = "<style>" + "".join(l.strip() for l in f"""
-{_P} .tb-hero{{margin:-8px -6px 0}}
+{_P} .tb-hero{{margin:-4px 0 4px}}
+{_P} .tb-hero img{{max-width:100% !important;border-radius:18px;-webkit-mask-image:none !important;mask-image:none !important;border:2px solid rgba(139,108,255,.6);box-shadow:0 0 18px rgba(139,108,255,.5)}}
 {_P} .tb-demo2{{display:flex;align-items:center;gap:8px;margin:6px 0;padding:10px 6px 10px 14px;border-radius:18px;border:2px solid #F2B84B;
   background:linear-gradient(160deg,rgba(242,184,75,.16),rgba(18,12,56,.94));box-shadow:0 0 16px rgba(242,184,75,.35)}}
 {_P} .tb-demo2 b{{display:flex;align-items:center;gap:8px;font-size:1rem;font-weight:900;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}
