@@ -202,7 +202,7 @@ def _dialogo_intro() -> None:
 
 
 def introducao(forcar: bool = False) -> bool:
-    """Introdução rápida em JANELA própria, aberta uma única vez (depois da escolha do nível). Fechar no X também conta como vista:
+    """Introdução rápida em JANELA própria, aberta uma única vez (no primeiro acesso). Fechar no X também conta como vista:
     ela não volta sozinha. Para rever: Ajuda > Meu aprendizado. Devolve True se a janela foi aberta agora."""
     if not forcar and _ajuda()["intro"] != "pendente":
         return False

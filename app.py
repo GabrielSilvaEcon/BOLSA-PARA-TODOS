@@ -2011,7 +2011,7 @@ def _inicio_app(ativos: list):
 
 
 def pagina_inicio():
-    if experiencia_app.inicio():              # primeira vez: só a escolha do nível; a busca e a análise vêm depois
+    if experiencia_app.inicio():              # aviso de troca de modo e introdução do primeiro acesso (não para a página)
         return
     ativos = list(st.session_state.get("sel_ativos", []))
     perfil = perfil_atual()

@@ -51,93 +51,14 @@ def aplicar(novo: str) -> bool:
     return True
 
 
-def escolher_inicial(novo: str) -> None:
-    """Primeira escolha (caixa de boas-vindas): grava o nível e marca que a pessoa já escolheu, mesmo se for o padrão."""
-    ss = st.session_state
-    antes = modo()
-    if novo not in E.MODOS:
-        return
-    ss["prefs"] = E.trocar_modo(ss.get("prefs"), novo)
-    try:
-        if isinstance(ss.get("edu_progresso"), dict):
-            ss["edu_progresso"]["modo"] = novo
-        if "edu_modo_sel" in ss:
-            ss["edu_modo_sel"] = novo
-    except Exception:
-        pass
-    try:
-        banco.auditar(usuarios.ator().id, "experiencia.modo_escolhido", f"{antes}>{novo}")
-    except Exception:
-        pass
-    try:
-        usuarios.salvar()
-    except Exception:
-        pass
-    ss["_exp_msg"] = f"Pronto: agora você está no nível {E.ROTULOS[novo]}. Seus dados continuam todos iguais."
-
-
-def _cartao_nivel(m: str) -> str:
-    """Cartão ilustrado de um nível: o mesmo resultado escrito de três jeitos, o quanto de texto/número/detalhe e o que muda no app."""
-    import paleta as PL
-    nome, sub, itens = E.BOAS_VINDAS[m]
-    il = E.ILUSTRACAO[m]
-    cor = {"bom": PL.BOM, "marca": PL.MARCA_CLARA, "ouro": PL.OURO}[il["cor"]]
-    forte = "color:#FFFFFF !important;-webkit-text-fill-color:#FFFFFF"
-    claro = f"color:{PL.TEXTO_2} !important;-webkit-text-fill-color:{PL.TEXTO_2}"
-    mudo = f"color:{PL.MUDO} !important;-webkit-text-fill-color:{PL.MUDO}"
-    meds = ""
-    for rot, n in zip(E.MEDIDORES, il["medidores"]):
-        bolas = "".join(f"<i style='display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;background:{cor if k < n else 'rgba(189,181,230,.22)'}'></i>" for k in range(3))
-        meds += (f"<div style='display:flex;justify-content:space-between;align-items:center;gap:8px;margin:5px 0'>"
-                 f"<span style='{claro};font-size:.86rem'>{html.escape(rot)}</span><span>{bolas}</span></div>")
-    itens_html = "".join(f"<li style='{claro};margin:2px 0;font-size:.88rem'>{html.escape(x)}</li>" for x in itens[:4])
-    chip = lambda t: (f"<span style='display:inline-block;margin:3px 6px 0 0;padding:3px 10px;border-radius:99px;border:1px solid {cor};{claro};font-size:.78rem'>{html.escape(t)}</span>")
-    return (f"<div style='border:2px solid {cor};border-radius:18px;padding:16px 16px 14px;background:{PL.BG_2}'>"
-            f"<div style='display:flex;align-items:center;gap:12px'>"
-            f"<div style='width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;background:{cor}26;border:1px solid {cor}'>{il['icone']}</div>"
-            f"<div><div style='{forte};font-weight:800;font-size:1.2rem'>{html.escape(nome)}</div><div style='{mudo};font-size:.84rem'>{html.escape(sub)}</div></div></div>"
-            f"<div style='margin-top:12px;{mudo};font-size:.76rem'>O mesmo resultado, escrito neste nível:</div>"
-            f"<div style='margin-top:4px;padding:10px 12px;border-radius:12px;border-left:4px solid {cor};background:{PL.BG_3};{forte};font-size:.9rem;line-height:1.45'>“{html.escape(il['exemplo'])}”</div>"
-            f"<div style='margin-top:12px'>{meds}</div>"
-            f"<ul style='margin:10px 0 6px;padding-left:18px'>{itens_html}</ul>"
-            f"<div style='margin-top:6px'>{chip(il['menu'])}{chip(il['analise'])}</div>"
-            f"<div style='margin-top:10px;{claro};font-size:.86rem'><b style='{forte}'>Na prática:</b> {html.escape(il['ideal'])}</div></div>")
-
-
-def boas_vindas() -> bool:
-    """Tela de escolha do nível de conhecimento na página Início. É a primeira coisa que a pessoa vê; só some depois que ela escolher."""
-    if E.ja_escolheu(st.session_state.get("prefs")):
-        return False
-    st.markdown("## Bem-vindo ao TickerHunters")
-    st.write("Antes de começar, escolha como você prefere ver as informações. Compare os três jeitos abaixo: "
-             "o resultado é o mesmo, muda só a linguagem, a quantidade de números e o tamanho do menu.")
-    for col, m in zip(st.columns(3), E.MODOS):
-        with col:
-            st.markdown(_cartao_nivel(m), unsafe_allow_html=True)
-            st.button(f"Escolher {E.ROTULOS[m]}", key=f"bv_{m}", type="primary", on_click=escolher_inicial, args=(m,), width="stretch")
-    st.caption(E.AVISO_EXEMPLO)
-    st.caption("Grátis, sem limite de trocas e sem apagar nada. Para mudar depois: Minha conta, em Modo de uso. "
-               "Depois de escolher, você segue para a busca e a análise de ações.")
-    return True
-
-
-def nivel_discreto() -> None:
-    """Linha discreta no Início: mostra o nível atual e abre a troca sem ocupar espaço fixo."""
-    c1, c2 = st.columns([4, 1.4], vertical_alignment="center")
-    c1.caption(f"Seu modo de uso: **{E.ROTULOS[modo()]}**")
-    with c2.popover("Alterar", icon=":material/tune:", width="stretch"):
-        seletor("inicio", compacto=True)
-
-
 def inicio() -> bool:
-    """Topo da página Início: boas-vindas na primeira vez (devolve True: a página para aí, sem busca nem análise); depois, só a linha discreta do nível."""
-    if boas_vindas():
-        return True
+    """Topo da página Início: aviso de troca de modo (se houver) e a introdução curta do primeiro acesso. Não há escolha de modo na entrada:
+    quem nunca escolheu fica no modo padrão e pode trocar em Minha conta, em Modo de uso. Devolve sempre False (a página segue)."""
     msg = st.session_state.pop("_exp_msg", None)
     if msg:
         st.toast(msg, icon=":material/check_circle:")
     try:
-        import ajuda_app                                       # introdução curta: só no primeiro acesso, depois do nível escolhido
+        import ajuda_app                                       # introdução curta: só no primeiro acesso
         ajuda_app.introducao()
     except Exception:
         pass

@@ -212,28 +212,3 @@ TERMOS_DA_PAGINA = {
 }
 
 
-def ja_escolheu(prefs) -> bool:
-    """True se a pessoa já escolheu o nível de conhecimento (a caixa de boas-vindas só aparece até lá)."""
-    return bool(P.normalizar(prefs).get("modo_escolhido"))
-
-
-# ilustração da escolha do nível: o MESMO resultado, escrito de três jeitos (exemplo inventado, sem dado de mercado), e o que muda na prática
-ILUSTRACAO = {
-    "iniciante": {"icone": "🌱", "cor": "bom", "exemplo": "Pelas nossas contas, a ação está mais barata do que parece valer. É um motivo para estudar melhor a empresa, não uma ordem de compra.",
-                  "medidores": (3, 1, 0), "menu": "Menu enxuto, só o essencial", "analise": "Análise Rápida", "ideal": "Você vai ler frases e ver poucos números."},
-    "intermediario": {"icone": "⚖️", "cor": "marca", "exemplo": "Preço abaixo do justo: margem média de 22% contra alvo de 20%. Saúde financeira sólida.",
-                      "medidores": (2, 2, 1), "menu": "Menu com as páginas principais", "analise": "Análise Mediana", "ideal": "Você vai ver os indicadores principais e uma frase de apoio."},
-    "avancado": {"icone": "🔬", "cor": "ouro", "exemplo": "Graham R$ 52,30 · Bazin R$ 47,10 · margem média 22,4% · ROE 15,3% · Dív./PL 41%.",
-                 "medidores": (1, 3, 3), "menu": "Menu completo, todas as páginas", "analise": "Análise Completa", "ideal": "Você vai ver fórmulas, premissas, limites e todos os números."},
-}
-MEDIDORES = ("Explicações em texto", "Números na tela", "Detalhe técnico")
-AVISO_EXEMPLO = "Exemplo ilustrativo, com números inventados: não é uma empresa real nem uma recomendação."
-
-BOAS_VINDAS = {
-    "iniciante": ("Iniciante", "Para quem está começando a investir.",
-                  ("Linguagem simples", "Explicações detalhadas", "Exemplos do cotidiano", "Termos técnicos traduzidos", "Orientações para entender os indicadores")),
-    "intermediario": ("Intermediário", "Para quem já conhece o mercado financeiro.",
-                      ("Explicações mais objetivas", "Conceitos financeiros", "Indicadores e fórmulas", "Comparações e interpretações", "Análises com maior profundidade")),
-    "avancado": ("Avançado", "Para quem já tem experiência com investimentos.",
-                 ("Linguagem técnica", "Análises aprofundadas", "Fórmulas e metodologias", "Avaliação de riscos", "Interpretações financeiras detalhadas")),
-}
