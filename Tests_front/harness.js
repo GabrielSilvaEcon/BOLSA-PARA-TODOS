@@ -144,4 +144,19 @@ t("gráfico: iframe que nasce estreito ganha o zoom certo quando chega à largur
   w = 360; h.sb.window.__TB.fit(); yes(Math.abs(slots(360 - 46) - 93) < 0.01, "na largura real o zoom inicial mostra 90 candles + folga, veio " + slots(360 - 46));
   w = 300; h.sb.window.__TB.fit(); yes(Math.abs(slots(300 - 40) - 93) < 0.01, "girar/redimensionar mantém os mesmos candles na tela, veio " + slots(300 - 40));
 });
+t("fim da rodada: lugar, pontos e retorno, placar por pontos, Raio-X em cartões e contagem igual para todos", () => {
+  const h = carregar();
+  const pl = { rodada: "2/3", fechada: true, pat_txt: null, jogadores: [
+    { rotulo: "Jogador 2", pct: 3.1, voce: false, pos: 1, txt: "+3,10%", cor: "up", pts: 40.2, pts_txt: "+40,2" },
+    { rotulo: "Você", pct: 1.5, voce: true, pos: 2, txt: "+1,50%", cor: "up", pts: 12.0, pts_txt: "+12,0" }] };
+  const res = { pontos: 12.0, total: 30.5, faixa: "faixa_vitoria", acertou: true, executada: true, r: null, n_ops: 1, limite_atingido: false, fin: null, img: null, selo: null,
+    linhas: [["Sua leitura", "alta"], ["Limite de perda", "x"], ["Pontos", "y"]], ultima: false, rodada_txt: "2/3", ret_txt: "+1,50%", ret_cor: "up", ret_val: "+T$ 15,00" };
+  h.render(args({ motor: 2, modo: "resultado", fase_key: "2-resultado", mesa: mesaSem(), resultado: res, placar: pl, multi: true, seg: 3, candles: candles(144), revelados: 24 }));
+  const r = h.els.res.innerHTML;
+  yes(r.includes("FIM DA RODADA") && r.includes("2/3"), "título e rodada"); yes(r.includes("2º lugar"), "lugar"); yes(r.includes("+12,0") && r.includes("+1,50%") && r.includes("+T$ 15,00"), "pontos e retorno");
+  yes(r.indexOf("Jogador 2") < r.indexOf(">Você<") && r.includes("pr p2 eu"), "placar por pontos com você destacado");
+  yes(r.includes('class="ri al"') && r.includes('class="ri pt"') && r.includes("🧭"), "Raio-X em cartões com ícone"); yes(r.includes("Próxima rodada em") && !r.includes('id="prox"'), "sala: contagem, sem botão");
+  h.render(args({ motor: 2, modo: "resultado", fase_key: "2-resultado", mesa: mesaSem(), resultado: res, placar: { ...pl, jogadores: [pl.jogadores[1]] }, multi: false, seg: 0, candles: candles(144), revelados: 24 }));
+  yes(h.els.res.innerHTML.includes("Acertou a direção") && h.els.res.innerHTML.includes('id="prox"'), "solo: sem placar, com botão");
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

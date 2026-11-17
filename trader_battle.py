@@ -21,6 +21,7 @@ DOIS MOTORES CONVIVEM (um único arquivo, sem motor paralelo):
 from __future__ import annotations
 
 import math
+import re
 import uuid
 from datetime import datetime
 
@@ -661,7 +662,8 @@ def visao(p: dict, cenario: dict, agora: float, jog: str) -> dict:
          "pontos_rodadas": [round(p["resultados"][_chave(r, jog)]["pontos"], 1) for r in range(1, cfg["rodadas"] + 1) if _chave(r, jog) in p["resultados"]],
          "propria": None if mesa else entrada_executada(p, cenario, agora, p["rodada"], jog),
          "operacao": None if mesa or p["fase"] not in ("replay", "resultado", "fim") else operacao_viva(p, cenario, agora, p["rodada"], jog),
-         "aposta": (p.get("apostas") or {}).get(jog), "fin_total": resumo_financeiro(p, jog)}
+         "aposta": (p.get("apostas") or {}).get(jog), "fin_total": resumo_financeiro(p, jog),
+         "placar_rodada": placar_rodada(p, jog) if fim else None, "final": resumo_final(p, jog) if p["fase"] == "fim" else None}
     if mesa:
         v["mesa"] = _visao_mesa(p, cenario, agora, jog)
         v["adversarios"] = _adversarios_mesa(p, cenario, agora, jog)
@@ -771,6 +773,51 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
     linhas.append(("Qualidade", f"Direção {q['direcao']:+.0f} · entrada {q['entrada']:+.2f} · risco {q['risco']:+.2f} · confiança {q['confianca']:+.2f} = {q['total']:+.2f} (ajuste de até ±25%)."))
     linhas.append(("Pontos", f"{pt['base']:+.1f} × {pt['fator']:.2f} = {r['pontos']:+.1f}. Lucro e prejuízo valem no patrimônio e nos pontos, sem compensação."))
     return linhas
+
+
+def retorno_pct(res: dict | None) -> float | None:
+    """Retorno de uma rodada da mesa em % da aposta (soma das operações). None no motor antigo ou sem resultado."""
+    if not res or res.get("motor") != MOTOR_MESA:
+        return None
+    return round(sum(t["ret"] for t in res.get("operacoes") or []) * 100, 3)
+
+
+def _rotulos(p: dict, jog: str) -> dict:
+    """Como cada jogador aparece para `jog`: ele mesmo é 'Você', os outros 'Jogador N' (nunca o e-mail)."""
+    return {j: ("Você" if j == jog else f"Jogador {n}") for n, j in enumerate(p["jogadores"], 1)}
+
+
+def placar_rodada(p: dict, jog: str) -> list[dict]:
+    """Pontos e retorno de cada jogador na rodada ATUAL já fechada (só existe depois do fechamento; nada do futuro)."""
+    rot, out = _rotulos(p, jog), []
+    for j in p["jogadores"]:
+        res = p["resultados"].get(_chave(p["rodada"], j))
+        if res:
+            out.append({"rotulo": rot[j], "voce": j == jog, "pts": round(float(res["pontos"]), 1), "ret_pct": retorno_pct(res)})
+    return out
+
+
+def resumo_final(p: dict, jog: str) -> dict:
+    """Tudo o que a tela de fim de partida mostra, já rotulado para `jog`: classificação, pontos por rodada e o Raio-X das rodadas DELE."""
+    rot, n_rod = _rotulos(p, jog), cfg_de(p)["rodadas"]
+    pl = [{"rotulo": rot[x["jog"]], "voce": x["jog"] == jog, "pos": x["pos"], "pontos": x["pontos"], "ret_pct": x["ret_pct"]} for x in placar_final(p)]
+    meus = [p["resultados"].get(_chave(k, jog)) for k in range(1, n_rod + 1)]
+    return {"placar": pl, "rodadas": [round(float(r["pontos"]), 1) if r else 0.0 for r in meus],
+            "raiox": [[k, explicar(r)] for k, r in enumerate(meus, 1) if r]}
+
+
+def placar_final(p: dict) -> list[dict]:
+    """Classificação da partida: pontos somados de todas as rodadas (o que decide) e retorno somado em % da aposta.
+    Empate em pontos mantém a ordem de entrada na sala. Só números: quem chama decide os rótulos (nunca o e-mail na tela)."""
+    out = []
+    for n, j in enumerate(p["jogadores"], 1):
+        rets = [retorno_pct(p["resultados"].get(_chave(r, j))) for r in range(1, cfg_de(p)["rodadas"] + 1)]
+        out.append({"jog": j, "n": n, "pontos": round(float(p["pontos"].get(j, 0.0)), 1),
+                    "ret_pct": None if all(x is None for x in rets) else round(sum(x or 0.0 for x in rets), 3)})
+    out.sort(key=lambda x: -x["pontos"])
+    for i, x in enumerate(out, 1):
+        x["pos"] = i
+    return out
 
 
 # ------------------------------------------------------------------ indicadores (sempre sobre o que já foi revelado)
@@ -922,10 +969,19 @@ def avaliar(cenario: dict, est: dict, ate: int | None = None) -> dict:
             "confianca": pts_conf}, "estrategia": est}
 
 
+_RE_DEC = re.compile(r"(?<=\d)\.(?=\d)")
+_RE_NEG = re.compile(r"(?<![\w.,])-(?=\d)")
+
+
+def _ptbr(linhas: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Números do Raio-X no padrão brasileiro do app: vírgula decimal e sinal de menos tipográfico (42,09 · −3,00%)."""
+    return [(t, _RE_NEG.sub("−", _RE_DEC.sub(",", x))) for t, x in linhas]
+
+
 def explicar(r: dict) -> list[tuple[str, str]]:
     """Raio-X em linguagem simples: o que a pessoa previu, o que o mercado fez e como cada parte virou pontos."""
     if r.get("motor") == MOTOR_MESA:
-        return explicar_mesa(r)
+        return _ptbr(explicar_mesa(r))
     est, real, op, pt = r["estrategia"], r["real"], r["operacao"], r["partes"]
     nome = {"alta": "alta", "baixa": "baixa", "lateral": "lateralização"}
     linhas = []
@@ -945,7 +1001,7 @@ def explicar(r: dict) -> list[tuple[str, str]]:
     elif est["tipo"] == "aguardar" or est.get("sem_registro"):
         linhas.append(("Operação", "Você ficou de fora. Aguardar vale pontos quando o mercado não oferece direção clara."))
     linhas.append(("Pontos", f"Direção {pt['direcao']:.0f} + operação {pt['operacao']:.0f} + confiança {pt['confianca']:+.1f} = {r['pontos']:.1f} de 100."))
-    return linhas
+    return _ptbr(linhas)
 
 
 # ====================================================================================================================================

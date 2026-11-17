@@ -68,19 +68,29 @@ def args_mesa(v: dict, p: dict, estado: dict, agora: float | None = None) -> dic
 
 
 def placar(v: dict) -> dict | None:
-    """Placar da rodada na mesa: você e os adversários ordenados pelo resultado da rodada (realizado + aberto, em % da aposta).
-    O dos adversários vem só de entradas e saídas já públicas; o patrimônio em T$ é só o seu."""
+    """Placar da rodada na mesa: você e os adversários. Durante o replay, ordenado pelo resultado da rodada (realizado + aberto, em % da aposta,
+    o dos adversários só com entradas e saídas já públicas). Com a rodada fechada, ordenado pelos PONTOS da rodada (o que decide), com o % ao lado.
+    O patrimônio em T$ é só o seu."""
     m = v.get("mesa")
     if not m:
         return None
     import wallet_game as WG
-    js = [{"rotulo": "Você", "pct": float(m.get("total_pct") or 0.0), "voce": True}] + \
-         [{"rotulo": a["rotulo"], "pct": float(a.get("total_pct") or 0.0), "voce": False} for a in v.get("adversarios") or []]
-    js.sort(key=lambda x: -x["pct"])                                     # estável: no empate, quem já estava na frente continua
+    js = [{"rotulo": "Você", "pct": float(m.get("total_pct") or 0.0), "voce": True, "jog": v.get("jogador")}] + \
+         [{"rotulo": a["rotulo"], "pct": float(a.get("total_pct") or 0.0), "voce": False, "jog": None} for a in v.get("adversarios") or []]
+    fechada = bool(v.get("placar_rodada"))
+    if fechada:                                                          # rodada fechada: o servidor já mandou pontos e retorno de cada um
+        js = [{"rotulo": x["rotulo"], "pct": float(x["ret_pct"] if x["ret_pct"] is not None else 0.0), "voce": x["voce"], "jog": None, "pts": x["pts"]}
+              for x in v["placar_rodada"]]
+        js.sort(key=lambda x: -x["pts"])
+    else:
+        js.sort(key=lambda x: -x["pct"])                                 # estável: no empate, quem já estava na frente continua
     for i, x in enumerate(js, 1):
+        x.pop("jog", None)
         x.update(pos=i, txt=f"{_sinal(x['pct'])}{_pc(x['pct'])}%", cor="up" if x["pct"] > 0 else ("down" if x["pct"] < 0 else "zero"))
+        if x.get("pts") is not None:
+            x["pts_txt"] = f"{_sinal(x['pts'])}{_pc(x['pts'], 1)}"
     pat = None if m.get("pat_ini") is None or m.get("total_val") is None else WG.moeda(m["pat_ini"] + m["total_val"])
-    return {"rodada": f"{v['rodada']}/{v['rodadas']}", "jogadores": js, "pat_txt": pat}
+    return {"rodada": f"{v['rodada']}/{v['rodadas']}", "jogadores": js, "pat_txt": pat, "fechada": fechada}
 
 
 def _sinal(x: float) -> str:
@@ -176,7 +186,18 @@ def payload_resultado(v: dict, p: dict) -> dict | None:
     return {"pontos": r["pontos"], "total": p["pontos"].get(v.get("jogador"), v["pontos"]), "faixa": faixa, "acertou": r.get("acertou_direcao"),
             "executada": bool(r.get("operacoes")) if mesa else (None if op is None else bool(op["executada"])), "r": None if mesa or not op or not op.get("executada") else round(op["r"], 2),
             "n_ops": len(r.get("operacoes") or []) if mesa else None, "limite_atingido": bool(r.get("limite_atingido")) if mesa else None,
-            "fin": texto_fin(r.get("fin")), "img": CT.uri(faixa), "selo": ART.uri("selo_otima") if r["pontos"] >= SELO_MIN_PONTOS else None, "linhas": [[t, x] for t, x in TB.explicar(r)], "ultima": v["rodada"] >= v["rodadas"]}
+            "fin": texto_fin(r.get("fin")), "img": CT.uri(faixa), "selo": ART.uri("selo_otima") if r["pontos"] >= SELO_MIN_PONTOS else None, "linhas": [[t, x] for t, x in TB.explicar(r)], "ultima": v["rodada"] >= v["rodadas"],
+            "rodada_txt": f"{v['rodada']}/{v['rodadas']}", **_retorno_txt(TB.retorno_pct(r), r.get("fin"))}
+
+
+def _retorno_txt(pct: float | None, fin: dict | None) -> dict:
+    """Retorno da rodada já formatado para o cartão: % da aposta e, se jogou valendo patrimônio, o valor em T$."""
+    if pct is None:
+        return {"ret_txt": None, "ret_cor": "zero", "ret_val": None}
+    import wallet_game as WG
+    pnl = (fin or {}).get("pnl")
+    return {"ret_txt": f"{_sinal(pct)}{_pc(pct)}%", "ret_cor": "up" if pct > 0 else ("down" if pct < 0 else "zero"),
+            "ret_val": None if pnl is None else f"{_sinal(pnl)}{WG.moeda(abs(pnl))}"}
 
 
 def estrategia_de(val: dict) -> dict:

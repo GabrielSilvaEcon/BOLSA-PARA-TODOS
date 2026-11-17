@@ -142,6 +142,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #placar .rd b{font-size:14px;color:#fff}
 #placar .pj{flex:1 1 0;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:4px;align-items:center;padding:3px 6px;border-radius:12px;border:2px solid #5B4BD6;background:linear-gradient(160deg,#241A86,#150F55);box-shadow:0 0 10px rgba(91,75,214,.4)}
 #placar .rk{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;background:#6C5CFF;color:#fff}
+#placar.solo .rk{display:none}
 #placar .p1 .rk{background:linear-gradient(160deg,#FFE08A,#E0A21A);color:#3A2400;box-shadow:0 0 8px rgba(255,201,60,.6)}
 #placar .p2 .rk{background:linear-gradient(160deg,#F1F1FF,#9EA3C6);color:#22243A}
 #placar .p3 .rk{background:linear-gradient(160deg,#F2B07A,#B0612A);color:#2E1404}
@@ -165,6 +166,56 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #mb1 button[disabled]{filter:grayscale(.75) brightness(.7);box-shadow:none}
 #app.xs #mb1 button{min-height:48px;font-size:14px}#app.xs #sm .opc,#app.short #sm .opc{display:none}#app.xs #placar .nm{font-size:10px}#app.xs #m-enc{flex-basis:64px}
 #app.short #mb1 button{min-height:44px}
+
+/* ===== Fim da rodada e Raio-X (padrão do app) ===== */
+#res{max-height:82%;padding:10px;border:2px solid #6C5CFF;border-radius:18px;background:radial-gradient(120% 60% at 50% 0,rgba(124,108,255,.28),transparent 60%),linear-gradient(170deg,rgba(32,22,110,.98),rgba(12,8,44,.98));box-shadow:0 0 22px rgba(108,92,255,.5)}
+#res .rh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px 0 6px;padding:6px 12px;border-radius:12px;border:2px solid #5B8BFF;background:linear-gradient(160deg,#2A1F8E,#120C48);box-shadow:0 0 12px rgba(91,139,255,.45)}
+#res .rh .tt{font-weight:900;font-style:italic;font-size:16px;letter-spacing:.5px;color:#fff;text-shadow:0 0 10px rgba(124,108,255,.8)}
+#res .rh .rn{padding:1px 9px;border-radius:999px;background:#7CF04F;color:#0B2A06;font-weight:900;font-size:12px}
+#res img.selo{width:92px;margin:-2px 0 0 6px}
+#res .lg{display:block;font-weight:800;font-size:13px;line-height:1.3;color:#EDE9FF;margin:2px 0 6px}
+#res .lg span{font-size:18px;margin-right:6px;vertical-align:-2px}#res .lg b{color:#fff}
+#res .lg.ouro{font-size:15px}#res .lg.ouro b{color:#FFC93C;text-shadow:0 0 10px rgba(255,201,60,.6)}
+#res .lg.ok{color:#8DF5C1}#res .lg.no{color:#FFB0BD}
+#res .st{display:flex;gap:6px;clear:none}
+#res .bx{flex:1 1 0;min-width:0;text-align:center;padding:6px 6px 7px;border-radius:14px;border:2px solid #F2B84B;background:linear-gradient(160deg,rgba(242,184,75,.16),rgba(12,8,44,.9));box-shadow:0 0 12px rgba(242,184,75,.3)}
+#res .bx small{display:block;font-size:11px;font-weight:800;color:#EDE9FF}
+#res .bx b{display:block;font-size:26px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#res .bx b.t{font-size:15px;line-height:1.6;color:#fff}
+#res .bx i{display:block;font-style:normal;font-size:10.5px;color:#BDB5E6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#res .bx.rt{border-color:#8B7CFF;background:linear-gradient(160deg,rgba(139,124,255,.18),rgba(12,8,44,.9));box-shadow:0 0 12px rgba(139,124,255,.3)}
+#res .bx.rt.up{border-color:#34E85E;background:linear-gradient(160deg,rgba(52,232,94,.18),rgba(12,8,44,.9));box-shadow:0 0 12px rgba(52,232,94,.35)}#res .bx.rt.up b{color:#6BFF8A}
+#res .bx.rt.down{border-color:#FF3D63;background:linear-gradient(160deg,rgba(255,61,99,.18),rgba(12,8,44,.9));box-shadow:0 0 12px rgba(255,61,99,.35)}#res .bx.rt.down b{color:#FF6B87}
+#res .bx.rt.zero b{color:#EDE9FF}
+#res .ch span.al{border-color:#FF3D63;color:#FFB0BD}
+#res .pl{margin:6px 0;padding:6px 8px;border-radius:14px;border:2px solid #5B4BD6;background:rgba(10,7,40,.7)}
+#res .plh{font-weight:900;font-size:12px;margin-bottom:3px}
+#res .pr{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:4px 6px;border-top:1px solid rgba(255,255,255,.08);font-size:12.5px;font-weight:700}
+#res .pr:first-of-type{border-top:0}
+#res .pr .rk{font-weight:900;color:#BDB5E6}#res .pr.p1 .rk{color:#FFC93C}#res .pr.p2 .rk{color:#E4E6F5}#res .pr.p3 .rk{color:#F2B07A}
+#res .pr .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#res .pr b{font-variant-numeric:tabular-nums}
+#res .pr em{font-style:normal;font-weight:900;font-variant-numeric:tabular-nums;min-width:58px;text-align:right}
+#res .pr em.up{color:#6BFF8A}#res .pr em.down{color:#FF6B87}#res .pr em.zero{color:#D9D4F7}
+#res .pr.eu{border:2px solid #F2B84B;border-radius:10px;background:linear-gradient(90deg,rgba(242,184,75,.28),rgba(242,184,75,.06));box-shadow:0 0 10px rgba(242,184,75,.35)}
+#res details.rx{margin:6px 0;font-size:12px;color:#EDE9FF}
+#res details.rx summary{list-style:none;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:12px;border:2px solid #8B7CFF;background:linear-gradient(160deg,#2A1F8E,#170F58);box-shadow:0 0 10px rgba(139,124,255,.4);font-weight:900;font-size:13px}
+#res details.rx summary::-webkit-details-marker{display:none}
+#res details.rx summary i{font-style:normal;font-size:11px;color:#C9C2FF}#res details.rx summary i::after{content:" ▾"}
+#res details.rx[open] summary i::after{content:" ▴"}
+#res .rxl{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+#res .ri{display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-radius:12px;border:1px solid rgba(139,108,255,.45);border-left:4px solid #8B6CFF;background:linear-gradient(160deg,rgba(60,44,150,.45),rgba(18,12,56,.9))}
+#res .ri.al{border-left-color:#FF3D63}#res .ri.pt{border-left-color:#F2B84B}
+#res .ri .ic{font-size:16px;line-height:1.2}
+#res .ri b{display:block;font-size:11px;font-weight:900;letter-spacing:.3px;color:#C9C2FF;text-transform:uppercase}
+#res .ri p{margin:1px 0 0;font-size:12px;line-height:1.35;color:#fff}
+#res .cd{margin-top:6px;text-align:center;font-size:12px;font-weight:800;color:#C9C2FF}#res .cd b{color:#7CF04F;font-size:15px}
+#res button{border-radius:14px;min-height:46px;font-size:15px;box-shadow:0 0 14px rgba(46,232,107,.45)}
+
+#res .rh .mn{flex:none;width:30px;min-height:30px;padding:0;border-radius:50%;color:#fff;border:2px solid #8B7CFF;background:#150F55;font-size:14px;font-weight:900;box-shadow:0 0 8px rgba(139,124,255,.5)}
+#res .rh .rn{margin-left:auto}
+#res .fn{margin:4px 0;font-size:10.5px;line-height:1.35;color:#BDB5E6;text-align:center}
+#res-ver{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:none;z-index:4;min-height:40px;padding:0 16px;border-radius:999px;border:2px solid #F2B84B;background:linear-gradient(160deg,#3A2A10,#150F55);box-shadow:0 0 14px rgba(242,184,75,.5);font-weight:900;font-size:13px}
 </style></head><body>
 <div id="app">
   <div id="ban"><div class="fx"></div><div class="bl" id="fala">Hora de mostrar suas estratégias!</div>
@@ -186,7 +237,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
         <div class="row"><input id="g-alvo" inputmode="decimal" placeholder="Alvo" autocomplete="off"><button id="g-alvo-b">Definir alvo</button></div></div>
       <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
       <small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></div>
-    <div id="res"></div>
+    <div id="res"></div><button id="res-ver">🏆 Ver resultado da rodada</button>
     <div id="nota"><input id="nota-t" maxlength="40" placeholder="Texto curto"><button id="nota-ok">OK</button></div></div>
   <div id="pgw"><div id="pg"></div></div>
   <div id="pos"><div id="sm"></div><button id="m-enc" class="enc"><span class="ic">🏁</span>Encerrar</button></div>
@@ -423,7 +474,7 @@ function hline(p,col,dash,label,destaque){
 /* ===== UI (barras, resumo, confirmação) ===== */
 function ui(){
   const v=Geo.validar(S,A.ref,mesaOn());S.v=v;$("bt").classList.remove("enc");
-  if(S.modo==="resultado"){if(mesaOn()){$("sm").innerHTML='<div class="l2"><span class="ok">🏁 Rodada encerrada</span> · veja o resultado abaixo</div>';$("pg").style.width="100%";return}const Ln=S.lines;$("sm").innerHTML=`<div class="l1"><span class="e">ENT ${fmt(Ln.entrada)}</span><span class="s">STOP ${fmt(Ln.stop)}</span><span class="a">ALVO ${fmt(Ln.alvo)}</span></div><div class="l2"><span class="ok">🏁 Rodada encerrada</span> · veja o resultado abaixo</div>`;$("pg").style.width="100%";return}
+  if(S.modo==="resultado"){if(mesaOn()){$("sm").innerHTML='<div class="l2"><span class="ok">🏁 Rodada encerrada</span> · resultado no gráfico</div>';$("pg").style.width="100%";return}const Ln=S.lines;$("sm").innerHTML=`<div class="l1"><span class="e">ENT ${fmt(Ln.entrada)}</span><span class="s">STOP ${fmt(Ln.stop)}</span><span class="a">ALVO ${fmt(Ln.alvo)}</span></div><div class="l2"><span class="ok">🏁 Rodada encerrada</span> · resultado no gráfico</div>`;$("pg").style.width="100%";return}
   if(S.modo==="replay"){if(mesaOn())return uiMesa();const Ln=S.lines,o=A.operacao;
     $("sm").innerHTML=`<div class="l1"><span class="e">ENT ${fmt(Ln.entrada)}</span><span class="s">STOP ${fmt(Ln.stop)}</span><span class="a">ALVO ${fmt(Ln.alvo)}</span></div><div class="l2"><span class="ok">🔒 Estratégia travada</span> · ${S.dir==="alta"?"Compra":S.dir==="baixa"?"Venda":"Aguardar"} · ${ROT[S.tipo]} ★${S.conf} · candle ${A.revelados}/${A.total_replay}${o?` · <b class="op ${o.cor}">${esc(o.txt)}</b>`:""}${S.erroLocal?` · <span class="er">${esc(S.erroLocal)}</span>`:""}</div>`;
     $("pg").style.width=(100*(A.revelados||0)/(A.total_replay||1))+"%";
@@ -451,22 +502,41 @@ function ui(){
   const r=$("rep");r.style.display=S.savedSig&&salvo?"block":"none";
   if(A.multi)r.style.display="none";else{r.textContent="Iniciar replay";r.disabled=false}
 }
+const RXI=t=>/^Sua leitura|^Estratégia/.test(t)?"🧭":/^O mercado/.test(t)?"📈":/^Opera/.test(t)?"💱":/^Limite/.test(t)?"🛑":/^Resultado/.test(t)?"🧮":/^Qualidade/.test(t)?"⭐":/^Pontos/.test(t)?"🏆":"•";
+function raioX(linhas){   // Raio-X no padrão do app: cada item é um mini-cartão com ícone, título e explicação
+  return `<details class="rx"><summary><span>🔍 Raio-X da rodada</span><i>ver</i></summary><div class="rxl">${(linhas||[]).map(x=>`<div class="ri${/^Limite/.test(x[0])?" al":/^Pontos/.test(x[0])?" pt":""}"><span class="ic">${RXI(x[0])}</span><div><b>${esc(x[0])}</b><p>${esc(x[1])}</p></div></div>`).join("")}</div></details>`;
+}
 function resultado(a){
   const el=$("res");
-  if(a.modo!=="resultado"||!a.resultado){el.style.display="none";el.dataset.k="";return}
+  if(a.modo!=="resultado"||!a.resultado){el.style.display="none";el.dataset.k="";if($("res-ver"))$("res-ver").style.display="none";return}
   if(S&&S.fila&&S.fila.length){el.style.display="none";return}          // espera o gráfico terminar de desenrolar
-  const r=a.resultado,k=a.fase_key+"|"+r.pontos+"|"+(r.fin?r.fin.t1:"");
+  const r=a.resultado,P=a.placar,k=a.fase_key+"|"+r.pontos+"|"+(r.fin?r.fin.t1:"")+"|"+(P?JSON.stringify(P.jogadores):"");
   if(el.dataset.k!==k){el.dataset.k=k;
     const dir=r.acertou===true?"Acertou a direção":r.acertou===false?"Errou a direção":"Sem direção";
     const op=r.n_ops!=null?(r.n_ops?r.n_ops+(r.n_ops>1?" operações":" operação"):"Sem operação"):r.executada==null?"Sem operação":(r.executada?("Operação "+(r.r>=0?"+":"−")+Math.abs(r.r).toFixed(1).replace(".",",")+" R"):"Entrada não executada");
-    el.innerHTML=(r.img?`<img src="${r.img}" alt="">`:"")+(r.selo?`<img class="selo" src="${r.selo}" alt="Ótima análise!">`:"")+`<div class="n" style="${a.motor===2&&r.pontos<0?"color:#FF6B87":a.motor===2&&r.pontos>0?"color:#6BFF8A":""}">${a.motor===2&&r.pontos>0?"+":""}${r.pontos.toFixed(1).replace(".",",")}</div><small>pontos nesta rodada · total ${r.total.toFixed(1).replace(".",",")}</small>
-      <div class="ch"><span>${dir}</span><span>${op}</span></div>
-      ${r.fin?`<div class="fin ${r.fin.cor}"><b>${esc(r.fin.t1)}</b><small>${esc(r.fin.t2)}</small>${r.fin.nota?`<small>${esc(r.fin.nota)}</small>`:""}</div>`:""}
-      <details><summary>Raio-X da rodada</summary>${r.linhas.map(x=>`<p><b>${esc(x[0])}</b><br>${esc(x[1])}</p>`).join("")}</details>
-      ${a.multi?'<small>A próxima rodada começa sozinha quando o relógio zerar (igual para todos).</small>':`<button id="prox">${r.ultima?"Ver resultado final":"Próxima rodada"}</button>`}`;
-    if(!a.multi)$("prox").onclick=()=>{const b=$("prox");b.disabled=true;b.textContent="Carregando…";send("proxima")};
+    const multi=!!(P&&P.fechada&&P.jogadores.length>1),eu=multi?P.jogadores.find(j=>j.voce):null;
+    const pc=a.motor===2&&r.pontos<0?"#FF6B87":a.motor===2&&r.pontos>0?"#6BFF8A":"#FFC93C";
+    const pts=(a.motor===2&&r.pontos>0?"+":"")+r.pontos.toFixed(1).replace(".",",").replace("-","−");
+    const lug=multi&&eu?(eu.pos===1?`<div class="lg ouro"><span>👑</span>Você ficou em <b>1º lugar</b> na rodada!</div>`:`<div class="lg"><span>${eu.pos===2?"🥈":eu.pos===3?"🥉":"🎯"}</span>Você ficou em <b>${eu.pos}º lugar</b> na rodada</div>`)
+      :`<div class="lg ${r.acertou===true?"ok":r.acertou===false?"no":""}"><span>${r.acertou===true?"✅":r.acertou===false?"❌":"➖"}</span>${dir}</div>`;
+    const ret=r.ret_txt?`<div class="bx rt ${r.ret_cor}"><small>📈 Retorno</small><b>${esc(r.ret_txt)}</b><i>${r.ret_val?esc(r.ret_val)+" · ":""}da aposta</i></div>`
+      :`<div class="bx rt"><small>🎯 Operação</small><b class="t">${esc(op)}</b><i>nesta rodada</i></div>`;
+    const pl=multi?`<div class="pl"><div class="plh">🏆 Placar da rodada</div>${P.jogadores.map(j=>`<div class="pr p${j.pos}${j.voce?" eu":""}"><span class="rk">${j.pos}º</span><span class="nm">${esc(j.rotulo)}</span><b>${esc(j.pts_txt||"—")}</b><em class="${j.cor}">${esc(j.txt)}</em></div>`).join("")}</div>`:"";
+    el.innerHTML=`<div class="rh"><span class="tt">FIM DA RODADA</span><span class="rn">${esc(r.rodada_txt||(a.rodada+"/"+a.rodadas))}</span><button class="mn" id="res-mn" title="Ver o gráfico">✕</button></div>`
+      +(r.selo?`<img class="selo" src="${r.selo}" alt="Ótima análise!">`:"")+lug
+      +`<div class="st"><div class="bx pts"><small>⭐ Pontos</small><b style="color:${pc}">${pts}</b><i>total ${r.total.toFixed(1).replace(".",",").replace("-","−")} pontos</i></div>${ret}</div>`
+      +`<div class="ch">${multi?`<span>${dir}</span>`:""}${r.ret_txt?`<span>${op}</span>`:""}${r.limite_atingido?'<span class="al">🛑 Limite de perda</span>':""}</div>`
+      +(r.fin?(r.ret_txt?`<div class="fn">${esc(r.fin.t2)}${r.fin.nota?" · "+esc(r.fin.nota):""}</div>`   // o retorno já está no card: aqui só o contexto da aposta
+      :`<div class="fin ${r.fin.cor}"><b>${esc(r.fin.t1)}</b><small>${esc(r.fin.t2)}</small>${r.fin.nota?`<small>${esc(r.fin.nota)}</small>`:""}</div>`):"")
+      +pl+raioX(r.linhas)
+      +(a.multi?`<div class="cd">${r.ultima?"Resultado final":"Próxima rodada"} em <b id="res-cd">${Math.max(0,A.seg|0)}</b> s · igual para todos</div>`:`<button id="prox">${r.ultima?"Ver resultado final":"Próxima rodada"}</button>`);
+    const pb=$("prox");if(!a.multi&&pb)pb.onclick=()=>{pb.disabled=true;pb.textContent="Carregando…";send("proxima")};
   }
-  el.style.display="block";
+  const cd=$("res-cd");if(cd)cd.textContent=String(Math.max(0,A.seg|0));
+  const mn=$("res-mn"),vr=$("res-ver"),mini=S.resMin===a.fase_key;   // ✕: esconde o cartão para ver o gráfico inteiro; o botão volta a abrir
+  if(mn)mn.onclick=()=>{S.resMin=a.fase_key;resultado(a)};
+  if(vr)vr.onclick=()=>{S.resMin=null;resultado(a)};
+  el.style.display=mini?"none":"block";if(vr)vr.style.display=mini?"block":"none";
 }
 function tick(){
   if(!A)return;const seg=A.pausada?Math.max(0,A.seg):Math.max(0,Math.ceil((T0-performance.now())/1000)),tm=$("tm");
@@ -534,7 +604,7 @@ function desenhaMesa(i0,i1){
   if(m.posicao&&m.limite&&m.limite.preco!=null)hline(m.limite.preco,COR.s,[2,4],"LIMITE "+m.limite.pct_pat+"%",false)}   // nível em que a perda acumulada da rodada chega ao limite
 function placarUI(){   // placar da rodada (o servidor já manda ordenado e formatado): você em destaque, medalhas de 1º a 3º
   const P=A&&A.placar,el=$("placar");if(!P||!mesaOn()){el.classList.remove("on");return}
-  const solo=P.jogadores.length===1,curto=P.jogadores.length>=3,nome=j=>curto&&!j.voce?j.rotulo.replace(/^Jogador /,"J"):j.rotulo;
+  const solo=P.jogadores.length===1;el.classList.toggle("solo",solo);const curto=P.jogadores.length>=3,nome=j=>curto&&!j.voce?j.rotulo.replace(/^Jogador /,"J"):j.rotulo;
   el.innerHTML=`<div class="rd">Rodada<b>${esc(P.rodada)}</b></div>`+P.jogadores.map(j=>`<div class="pj p${j.pos}${j.voce?" eu":""}"><span class="rk">${j.pos}º</span><span class="nm">${esc(nome(j))}${j.voce&&solo&&P.pat_txt?` <small>· ${esc(P.pat_txt)}</small>`:""}</span><b class="${j.cor}">${esc(j.txt)}</b></div>`).join("");
   el.classList.add("on");
 }

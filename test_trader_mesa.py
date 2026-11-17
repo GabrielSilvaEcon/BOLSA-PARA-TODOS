@@ -1623,3 +1623,77 @@ def test_caixa_com_gap_o_prejuizo_real_e_lancado_inteiro_sem_ajuste_artificial()
             TCA.liquidar(p)
             assert lanc[f"trader:{p['id']}:1:ana"]["valor"] == pytest.approx(perda)
             assert TCA.situacao("ana")["caixa"] == pytest.approx(caixa_final)
+
+
+# ====================================================================================================================================
+# FIM DE RODADA / FIM DE PARTIDA · placar por pontos, retorno, tela final sem e-mail
+# ====================================================================================================================================
+def _rodada_com_vencedor():
+    c = _cenario(fn_replay=_sobe)
+    p = _partida(c, jogs=("ana@x.com", "bia@x.com", "caio@x.com"), formato="rapida")
+    op(p, c, "ana@x.com", 2, "mercado", "1", direcao="alta")                  # sobe: ana ganha
+    op(p, c, "bia@x.com", 2, "mercado", "1", direcao="baixa")                 # bia perde; caio não opera
+    fim(p, c)
+    return c, p
+
+
+def test_placar_da_rodada_fechada_ordena_por_pontos_e_traz_o_retorno():
+    c, p = _rodada_com_vencedor()
+    agora = p["t_fase"] + 0.5
+    a = G.args_mesa(TB.visao(p, c, agora, "caio@x.com"), p, {}, agora)
+    pl = a["placar"]
+    assert p["fase"] == "resultado" and pl["fechada"]
+    assert [j["rotulo"] for j in pl["jogadores"]] == ["Jogador 1", "Você", "Jogador 2"]
+    pts = [j["pts"] for j in pl["jogadores"]]
+    assert pts == sorted(pts, reverse=True) and pts[0] > 0 > pts[2] and pl["jogadores"][1]["pts_txt"] == "0,0"
+    assert pl["jogadores"][0]["cor"] == "up" and pl["jogadores"][2]["txt"].startswith("−")
+    assert "@" not in json.dumps(a)                                                       # nunca o e-mail
+    r = G.args_mesa(TB.visao(p, c, agora, "ana@x.com"), p, {}, agora)["resultado"]
+    assert r["rodada_txt"] == "1/3" and r["ret_cor"] == "up" and r["ret_txt"].startswith("+") and r["ret_val"].startswith("+T$")
+    assert r["ret_txt"] == f"+{TB.retorno_pct(p['resultados']['1:ana@x.com']):.2f}%".replace(".", ",")
+
+
+def test_placar_final_soma_pontos_e_retorno_de_todas_as_rodadas():
+    c, p = _rodada_com_vencedor()
+    pl = TB.placar_final(p)
+    assert [x["jog"] for x in pl] == ["ana@x.com", "caio@x.com", "bia@x.com"] and [x["pos"] for x in pl] == [1, 2, 3]
+    assert pl[0]["pontos"] == round(p["pontos"]["ana@x.com"], 1) and pl[0]["ret_pct"] > 0 > pl[2]["ret_pct"] and pl[1]["ret_pct"] == 0.0
+    assert TB.retorno_pct({"motor": 1}) is None
+
+
+def test_tela_final_mostra_lugar_placar_e_analise_sem_email():
+    c, p = _rodada_com_vencedor()
+    with app_falso(jog="bia@x.com") as (APP, _):
+        APP.st.markdown.reset_mock()
+        APP._tela_final(TB.resumo_final(p, "bia@x.com"), None, True, ["TEST3"] * 3)
+        txt = " ".join(str(x) for x in APP.st.markdown.call_args_list)
+        assert "FIM DE PARTIDA" in txt and "3º lugar" in txt and "Placar da Batalha" in txt and "@" not in txt
+        assert "tb-pr p3 eu" in txt and APP.ART.uri("trofeu")[:60] not in txt                               # troféu só para quem ganhou
+        assert "tb-ri" in txt and "Sua leitura" in txt                                    # análise completa com o Raio-X no padrão do app
+        APP.st.markdown.reset_mock()
+        APP._tela_final(TB.resumo_final(p, "ana@x.com"), None, True, ["TEST3"] * 3)
+        txt = " ".join(str(x) for x in APP.st.markdown.call_args_list)
+        assert "1º lugar!" in txt and APP.ART.uri("trofeu")[:60] in txt
+
+
+def test_sala_online_resultado_e_fim_montam_placar_e_resumo_so_pela_visao():
+    """A sala online entrega ao app uma partida ENXUTA (sem jogadores nem resultados): placar e tela final precisam vir só de `visao`."""
+    with sala_online() as (pid, _):
+        with livro():
+            t = _comecar_replay(pid)
+            OL.agir(pid, EMAILS[0], {"tipo": "mercado", "direcao": "alta", "aid": "z1"}, t + 5)
+            tr = t + 61                                                                    # rodada 1 fechada
+            b = OL.ler(pid, EMAILS[1], tr)
+            assert b["p"]["fase"] == "resultado" and "jogadores" not in b["p"]
+            a = G.args_mesa(b["v"], b["p"], {}, tr)
+            assert a["placar"]["fechada"] and {j["rotulo"] for j in a["placar"]["jogadores"]} == {"Você", "Jogador 1"} and "@" not in json.dumps(a)
+            fim = None
+            for k in range(2, 4):                                                          # rodadas 2 e 3 sem operar até o fim
+                tk = tr + TB.T_RESULTADO_S + 1 + (k - 2) * (61 + TB.T_RESULTADO_S + 1)
+                for e in EMAILS:
+                    _leitura(pid, e, tk)
+                fim = OL.ler(pid, EMAILS[1], tk + 61 + TB.T_RESULTADO_S + 1)
+            assert fim["p"]["fase"] == "fim"
+            fz = fim["v"]["final"]
+            assert [x["rotulo"] for x in fz["placar"]] in (["Jogador 1", "Você"], ["Você", "Jogador 1"]) and len(fz["rodadas"]) == 3 and fz["raiox"]
+            assert "@" not in json.dumps(fz)

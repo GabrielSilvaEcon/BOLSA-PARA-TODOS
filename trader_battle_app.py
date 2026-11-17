@@ -64,7 +64,7 @@ _CSS = f"""
 {_P} .tb-fin.up .v{{color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}
 {_P} .tb-fin.down{{border-color:#FF3D63 !important;background:linear-gradient(160deg,rgba(255,61,99,.18),rgba(10,7,32,.9)) !important}}
 {_P} .tb-fin.down .v{{color:#FF6B87 !important;-webkit-text-fill-color:#FF6B87 !important}}
-{_P} .tb-fin0{{font-size:.78rem;opacity:.85}}
+{_P} .tb-fin0{{font-size:.78rem;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
 {_P} .st-key-tb_jogar button,{_P} .st-key-tb_salvar button,{_P} .st-key-tb_prox button,{_P} .st-key-tb_de_novo button{{height:48px !important;border:0 !important;border-radius:14px !important;font-weight:900 !important;
   background:linear-gradient(90deg,#2EE86B,#14C9B5) !important;box-shadow:0 0 16px rgba(46,232,107,.4) !important}}
 {_P} :is(.st-key-tb_jogar,.st-key-tb_salvar,.st-key-tb_prox,.st-key-tb_de_novo) button :is(p,span){{color:#06240F !important;-webkit-text-fill-color:#06240F !important;font-weight:900 !important}}
@@ -77,6 +77,42 @@ _CSS = f"""
 {_P} .st-key-tb_ferr [data-testid="stPopover"]{{width:100%}}
 {_P} .st-key-tb_estr [data-testid="stNumberInputStepUp"],{_P} .st-key-tb_estr [data-testid="stNumberInputStepDown"]{{display:none !important}}
 {_P} .tb-faixa img{{display:block;width:100%;max-width:420px;margin:2px auto}}
+{_P} .tb-fim-t{{margin:2px 0 4px;padding:10px 12px;text-align:center;border-radius:16px;border:2px solid #5B8BFF;background:linear-gradient(160deg,#2A1F8E,#120C48);box-shadow:0 0 16px rgba(91,139,255,.5);font-weight:900;font-style:italic;font-size:1.55rem;letter-spacing:.5px;color:#fff !important;-webkit-text-fill-color:#fff !important;text-shadow:0 0 12px rgba(124,108,255,.9)}}
+{_P} .tb-fim-h{{display:flex;align-items:center;gap:8px;margin:4px 0}}
+{_P} .tb-fim-h img{{width:44%;max-width:190px;flex:none;filter:drop-shadow(0 0 16px rgba(255,201,60,.45))}}
+{_P} .tb-fim-lg{{flex:1;text-align:center;font-weight:800;font-size:1rem;line-height:1.2;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .tb-fim-lg b{{display:block;font-size:2.1rem;font-weight:900;font-style:italic;line-height:1.05;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important;text-shadow:0 0 14px rgba(255,201,60,.55)}}
+{_P} .tb-fim-lg.n b{{color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important;text-shadow:0 0 12px rgba(139,124,255,.6)}}
+{_P} .tb-fim-lg small{{display:block;margin-top:4px;font-size:.78rem;font-weight:700;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .tb-st{{display:flex;gap:8px;margin:6px 0}}
+{_P} .tb-st .bx{{flex:1 1 0;min-width:0;text-align:center;padding:8px 6px;border-radius:16px;border:2px solid #F2B84B;background:linear-gradient(160deg,rgba(242,184,75,.16),rgba(12,8,44,.92));box-shadow:0 0 14px rgba(242,184,75,.3)}}
+{_P} .tb-st .bx small{{display:block;font-size:.8rem;font-weight:800;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .tb-st .bx b{{display:block;font-size:2rem;font-weight:900;line-height:1.1;white-space:nowrap;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .tb-st .bx i{{display:block;font-style:normal;font-size:.7rem;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .tb-st .bx.rt{{border-color:#8B7CFF;box-shadow:0 0 14px rgba(139,124,255,.3);background:linear-gradient(160deg,rgba(139,124,255,.18),rgba(12,8,44,.92))}}
+{_P} .tb-st .bx.up{{border-color:#34E85E;background:linear-gradient(160deg,rgba(52,232,94,.18),rgba(12,8,44,.92));box-shadow:0 0 14px rgba(52,232,94,.35)}}
+{_P} .tb-st .bx.up b{{color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}
+{_P} .tb-st .bx.down{{border-color:#FF3D63;background:linear-gradient(160deg,rgba(255,61,99,.18),rgba(12,8,44,.92));box-shadow:0 0 14px rgba(255,61,99,.35)}}
+{_P} .tb-st .bx.down b{{color:#FF6B87 !important;-webkit-text-fill-color:#FF6B87 !important}}
+{_P} .tb-st .bx.pos b{{color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}{_P} .tb-st .bx.neg b{{color:#FF6B87 !important;-webkit-text-fill-color:#FF6B87 !important}}
+{_P} .tb-pl{{margin:6px 0;padding:8px 10px;border-radius:16px;border:2px solid #5B4BD6;background:linear-gradient(160deg,#17114A,#0A0720 90%);box-shadow:0 0 12px rgba(91,75,214,.4)}}
+{_P} .tb-pl .h{{font-weight:900;font-size:.95rem;margin-bottom:4px;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .tb-pr{{display:grid;grid-template-columns:30px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:7px 8px;border-top:1px solid rgba(255,255,255,.08);font-size:.92rem;font-weight:700;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .tb-pr:nth-child(2){{border-top:0}}
+{_P} .tb-pr .rk{{font-weight:900;font-size:1.05rem;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .tb-pr.p1 .rk{{color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}{_P} .tb-pr.p2 .rk{{color:#E4E6F5 !important;-webkit-text-fill-color:#E4E6F5 !important}}{_P} .tb-pr.p3 .rk{{color:#F2B07A !important;-webkit-text-fill-color:#F2B07A !important}}
+{_P} .tb-pr .nm{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+{_P} .tb-pr b{{font-variant-numeric:tabular-nums}}
+{_P} .tb-pr em{{font-style:normal;font-weight:900;min-width:64px;text-align:right;font-variant-numeric:tabular-nums}}
+{_P} .tb-pr em.up{{color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}{_P} .tb-pr em.down{{color:#FF6B87 !important;-webkit-text-fill-color:#FF6B87 !important}}{_P} .tb-pr em.zero{{color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
+{_P} .tb-pr.eu{{border:2px solid #F2B84B;border-radius:12px;background:linear-gradient(90deg,rgba(242,184,75,.28),rgba(242,184,75,.06));box-shadow:0 0 12px rgba(242,184,75,.35)}}
+{_P} .tb-ri{{display:flex;gap:10px;align-items:flex-start;margin:5px 0;padding:8px 10px;border-radius:14px;border:1px solid rgba(139,108,255,.45);border-left:4px solid #8B6CFF;background:linear-gradient(160deg,rgba(60,44,150,.45),rgba(18,12,56,.92))}}
+{_P} .tb-ri.al{{border-left-color:#FF3D63}}{_P} .tb-ri.pt{{border-left-color:#F2B84B}}
+{_P} .tb-ri .ic{{font-size:1.1rem;line-height:1.3}}
+{_P} .tb-ri b{{display:block;font-size:.7rem;font-weight:900;letter-spacing:.3px;text-transform:uppercase;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
+{_P} .tb-ri p{{margin:1px 0 0;font-size:.82rem;line-height:1.35;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .tb-rx-r{{margin:8px 0 2px;font-weight:900;font-size:.85rem;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}
+{_P} .tb-fim-rod{{text-align:center;margin:6px 0 2px;font-style:italic;font-size:.8rem;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
 {_P} [class*="st-key-tb_estr"] [data-testid="stHorizontalBlock"]{{flex-wrap:nowrap !important;gap:.4rem !important}}
 {_P} [class*="st-key-tb_estr"] [data-testid="stNumberInput"] input{{min-height:38px}}
 {_P} .tb-graf [data-testid="stPlotlyChart"]{{border-radius:14px;overflow:hidden}}
@@ -450,12 +486,66 @@ def _cartao_fin(fin: dict | None) -> str:
             f"{por_rod}<small>Já somado ao seu patrimônio na Wallet Game.</small></div>")
 
 
+_RX_ICONE = (("Sua leitura", "🧭"), ("Estratégia", "🧭"), ("O mercado", "📈"), ("Opera", "💱"), ("Limite", "🛑"), ("Resultado", "🧮"), ("Qualidade", "⭐"), ("Pontos", "🏆"))
+
+
+def _raiox_html(linhas: list) -> str:
+    """Raio-X no padrão do app: um mini-cartão por item, com ícone, título e explicação (mesmo visual do cartão da rodada)."""
+    out = []
+    for titulo, txt in linhas:
+        ic = next((i for k, i in _RX_ICONE if str(titulo).startswith(k)), "•")
+        cls = " al" if str(titulo).startswith("Limite") else (" pt" if str(titulo).startswith("Pontos") else "")
+        out.append(f"<div class='tb-ri{cls}'><span class='ic'>{ic}</span><div><b>{_e(titulo)}</b><p>{_e(txt)}</p></div></div>")
+    return "".join(out)
+
+
+def _sg(x: float) -> str:
+    return "+" if x > 0 else ("−" if x < 0 else "")
+
+
+def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str]) -> None:
+    """Fim da partida (visual de 'fim de rodada' da referência, nas cores do app): lugar, pontuação e retorno, placar da batalha,
+    pontos por rodada, dinheiro da partida e a análise completa (Raio-X de cada rodada). `fz` = TB.resumo_final (já rotulado, sem e-mail)."""
+    import wallet_game as WG
+    pl, n_rod = fz["placar"], len(fz["rodadas"])
+    meu = next(x for x in pl if x["voce"])
+    multi = len(pl) > 1
+    ret = fin["pct_aposta"] if fin and fin.get("pct_aposta") is not None else meu["ret_pct"]
+    pts = meu["pontos"]
+    if multi and meu["pos"] == 1:
+        lg, troph = "<div class='tb-fim-lg'>👑 Você ficou em<b>1º lugar!</b></div>", True
+    elif multi:
+        lg, troph = f"<div class='tb-fim-lg n'>Você ficou em<b>{meu['pos']}º lugar</b><small>Continue evoluindo e conquiste novas vitórias!</small></div>", False
+    elif pts > 0:
+        lg, troph = "<div class='tb-fim-lg'>Partida concluída<b>Mandou bem!</b></div>", True
+    else:
+        lg, troph = "<div class='tb-fim-lg n'>Partida concluída<b>Bora treinar!</b><small>Veja o Raio-X de cada rodada e tente de novo.</small></div>", False
+    img = f"<img src='{ART.uri('trofeu')}' alt=''>" if troph else ""
+    topo = f"<div class='tb-fim-h'>{img}{lg}</div>"
+    cor_r = "zero" if not ret else ("up" if ret > 0 else "down")
+    ret_html = (f"<div class='bx rt {cor_r}'><small>📈 Retorno</small><b>{_sg(ret)}{TG._pc(ret)}%</b>"
+                f"<i>{(_sg(fin['pnl']) + _e(WG.moeda(abs(fin['pnl']))) + ' · ') if fin else ''}da aposta</i></div>") if ret is not None else ""
+    stats = (f"<div class='tb-st'><div class='bx {'pos' if pts > 0 else ('neg' if pts < 0 else '')}'><small>⭐ Pontuação</small><b>{_sg(pts)}{TG._pc(pts, 1)}</b>"
+             f"<i>em {n_rod} rodadas{' · simulado' if demo else ''}</i></div>{ret_html}</div>")
+    placar = ""
+    if multi:
+        lin = "".join(f"<div class='tb-pr p{x['pos']}{' eu' if x['voce'] else ''}'><span class='rk'>{x['pos']}º</span><span class='nm'>{_e(x['rotulo'])}</span>"
+                      f"<b>{_sg(x['pontos'])}{TG._pc(x['pontos'], 1)}</b>"
+                      + ("<em class='zero'>—</em>" if x["ret_pct"] is None else f"<em class='{'up' if x['ret_pct'] > 0 else ('down' if x['ret_pct'] < 0 else 'zero')}'>{_sg(x['ret_pct'])}{TG._pc(x['ret_pct'])}%</em>")
+                      + "</div>" for x in pl)
+        placar = f"<div class='tb-pl'><div class='h'>🏆 Placar da Batalha</div>{lin}</div>"
+    rods = "".join(f"<div class='tb-lin'>Rodada {k} · {_e(tickers[k - 1] if k - 1 < len(tickers) else '')}<span class='{'down' if r < 0 else ''}'>{_sg(r)}{TG._pc(r, 1)}</span></div>"
+                   for k, r in enumerate(fz["rodadas"], 1))
+    st.markdown(f"<div class='tb-fim-t'>FIM DE PARTIDA!</div>{topo}{stats}{placar}<div class='tb-card'>{rods}</div>{_cartao_fin(fin)}", unsafe_allow_html=True)
+    with st.expander("Ver análise completa", icon=":material/insights:"):
+        for k, linhas in fz["raiox"]:
+            st.markdown(f"<div class='tb-rx-r'>Rodada {k}</div>{_raiox_html(linhas)}", unsafe_allow_html=True)
+
+
 def _fim_online(b: dict) -> None:
     v = b["v"]
-    linhas = "".join(f"<div class='tb-lin'>Rodada {k + 1} · {_e(v['ticker'])}<span>{x:.1f}</span></div>" for k, x in enumerate(v["pontos_rodadas"]))
-    st.markdown(f"<div class='tb-troph'><img src='{ART.uri('trofeu')}' alt=''></div>"
-                f"<div class='tb-pts'><div class='n'>{v['pontos']:.1f}</div><small>pontos em {v['rodadas']} rodadas{' · cenário simulado' if v['demo'] else ''}</small></div>"
-                f"<div class='tb-card'>{linhas}</div>{_cartao_fin(v.get('fin_total'))}", unsafe_allow_html=True)
+    _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"])
+    st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
     st.button("Voltar ao início do Trader Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_on_desanexar)
 
 
@@ -873,8 +963,7 @@ def _resultado(p: dict) -> None:
     st.markdown(f"<div class='tb-faixa'>{CT.img(fx, alt='')}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='tb-pts'><div class='n'>{r['pontos']:.1f}</div><small>pontos nesta rodada · total {p['pontos'][_jogador()]:.1f}</small></div>", unsafe_allow_html=True)
     with st.expander("Raio-X da rodada", icon=":material/search:", expanded=False):
-        for titulo, txt in TB.explicar(r):
-            st.markdown(f"<div class='tb-card'><b>{_e(titulo)}</b><p>{_e(txt)}</p></div>", unsafe_allow_html=True)
+        st.markdown(_raiox_html(TB.explicar(r)), unsafe_allow_html=True)
         st.markdown(f"<div class='tb-cap'>{'Dados simulados (modo demonstração).' if v['demo'] else 'Fonte: ' + _e(v['fonte']) + '.'} Pontuação educativa; não mede lucro real nem é recomendação.</div>",
                     unsafe_allow_html=True)
     ultima = p["rodada"] >= TB.cfg_de(p)["rodadas"]
@@ -890,11 +979,7 @@ def _de_novo() -> None:
 def _fim(p: dict) -> None:
     j = _jogador()
     _liquidar(p, forcar=True)
-    linhas = "".join(f"<div class='tb-lin'>Rodada {k + 1} · {_e(_cen()[cid]['ticker'])}<span>{p['resultados'].get(f'{k + 1}:{j}', {}).get('pontos', 0):.1f}</span></div>"
-                     for k, cid in enumerate(p["cenarios"]))
-    st.markdown(f"<div class='tb-troph'><img src='{ART.uri('trofeu')}' alt=''></div>"
-                f"<div class='tb-pts'><div class='n'>{p['pontos'][j]:.1f}</div><small>pontos em {TB.cfg_de(p)['rodadas']} rodadas{' · cenários simulados' if p['demo'] else ''}</small></div>"
-                f"<div class='tb-card'>{linhas}</div>{_cartao_fin(TB.resumo_financeiro(p, j))}", unsafe_allow_html=True)
+    _tela_final(TB.resumo_final(p, j), TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]])
     st.button("Jogar novamente", key="tb_de_novo", icon=":material/replay:", width="stretch", on_click=_de_novo)
     st.button("Voltar ao início do Trader Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_sair)
 
