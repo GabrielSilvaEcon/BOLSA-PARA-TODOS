@@ -101,7 +101,9 @@ _CSS = f"""
 {_P} .tb-pr:nth-child(2){{border-top:0}}
 {_P} .tb-pr .rk{{font-weight:900;font-size:1.05rem;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
 {_P} .tb-pr.p1 .rk{{color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}{_P} .tb-pr.p2 .rk{{color:#E4E6F5 !important;-webkit-text-fill-color:#E4E6F5 !important}}{_P} .tb-pr.p3 .rk{{color:#F2B07A !important;-webkit-text-fill-color:#F2B07A !important}}
-{_P} .tb-pr .nm{{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+{_P} .tb-pr .nm{{display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+{_P} .tb-av{{flex:none;width:30px;height:30px;border-radius:50%;overflow:hidden;background:#1B1545;box-shadow:0 0 0 2px #6C5CFF}}
+{_P} .tb-av img{{width:100%;height:100%;object-fit:cover;display:block}}
 {_P} .tb-pr b{{font-variant-numeric:tabular-nums}}
 {_P} .tb-pr em{{font-style:normal;font-weight:900;min-width:64px;text-align:right;font-variant-numeric:tabular-nums}}
 {_P} .tb-pr em.up{{color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}{_P} .tb-pr em.down{{color:#FF6B87 !important;-webkit-text-fill-color:#FF6B87 !important}}{_P} .tb-pr em.zero{{color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
@@ -466,7 +468,7 @@ def _frag_mesa_online(pid: str) -> None:
     v, p = b["v"], b["p"]
     est = _ss().setdefault(f"tb_ev_{pid}", {})
     try:
-        val = TG.mesa(f"tb_mesa_{pid}", **TG.args_mesa(v, p, est, ag))
+        val = TG.mesa(f"tb_mesa_{pid}", **_args(v, p, est, ag))
     except Exception:
         _ss()["tb_erro"] = "O gráfico não carregou neste navegador."
         _ss().pop("tb_on_pid", None)
@@ -551,6 +553,38 @@ def _linha_xp(info: dict, pago: dict) -> str:
     return f"<div class='tb-xp n'><span>⭐</span><small>{txt}</small></div>" if txt else ""
 
 
+def _moldura() -> str | None:
+    """Cor da moldura que a pessoa equipou na Loja Ticker (aro do avatar no placar). Sem login/sem item: None (aro padrão)."""
+    try:
+        import loja_aparencia as LA
+        cor = (LA.efeito("moldura") or {}).get("cor")
+        return cor if isinstance(cor, str) and len(cor) <= 9 and cor.startswith("#") else None
+    except Exception:
+        return None
+
+
+def _args(v: dict, p: dict, est: dict, agora: float) -> dict:
+    """Argumentos do componente da mesa + a moldura da conta (lida aqui, na tela, e não na montagem pura dos dados)."""
+    a = TG.args_mesa(v, p, est, agora)
+    if a.get("motor") == TB.MOTOR_MESA:
+        a["moldura"] = _moldura()
+    return a
+
+
+_AV_COR = {1: "hue-rotate(185deg) saturate(1.2)", 2: "hue-rotate(95deg)", 3: "hue-rotate(260deg)", 4: "hue-rotate(320deg) saturate(1.3)"}   # igual ao placar da mesa
+
+
+def _avatar_placar(x: dict) -> str:
+    """Avatar do app no placar: o seu com a moldura equipada na Loja; adversários com a raposa em cores diferentes por assento."""
+    import re
+    import arte_conta as AC
+    if x["voce"]:
+        aro = _moldura() or "#34E85E"
+        return f"<span class='tb-av' style='box-shadow:0 0 0 2px {aro},0 0 8px {aro}'><img src='{AC.uri('avatar')}' alt=''></span>"
+    n = int((re.search(r"\d+", x["rotulo"]) or [0])[0] or 0)
+    return f"<span class='tb-av'><img src='{AC.uri('avatar')}' alt='' style='filter:{_AV_COR.get(n, _AV_COR[1])}'></span>"
+
+
 def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago: dict | None = None) -> None:
     """Fim da partida (visual de 'fim de rodada' da referência, nas cores do app): lugar, pontuação e retorno, placar da batalha,
     pontos por rodada, dinheiro da partida e a análise completa (Raio-X de cada rodada). `fz` = TB.resumo_final (já rotulado, sem e-mail)."""
@@ -577,7 +611,7 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago
              f"<i>em {n_rod} rodadas{' · simulado' if demo else ''}</i></div>{ret_html}</div>")
     placar = ""
     if multi:
-        lin = "".join(f"<div class='tb-pr p{x['pos']}{' eu' if x['voce'] else ''}'><span class='rk'>{x['pos']}º</span><span class='nm'>{_e(x['rotulo'])}</span>"
+        lin = "".join(f"<div class='tb-pr p{x['pos']}{' eu' if x['voce'] else ''}'><span class='rk'>{x['pos']}º</span><span class='nm'>{_avatar_placar(x)}{_e(x['rotulo'])}</span>"
                       f"<b>{_sg(x['pontos'])}{TG._pc(x['pontos'], 1)}</b>"
                       + ("<em class='zero'>—</em>" if x["ret_pct"] is None else f"<em class='{'up' if x['ret_pct'] > 0 else ('down' if x['ret_pct'] < 0 else 'zero')}'>{_sg(x['ret_pct'])}{TG._pc(x['ret_pct'])}%</em>")
                       + "</div>" for x in pl)
@@ -874,7 +908,7 @@ def _analise(p: dict) -> None:
     est = _ss().setdefault(f"tb_ev_{chave}", {})
     st.markdown(_CSS_MESA, unsafe_allow_html=True)
     try:
-        val = TG.mesa(chave, **TG.args_mesa(v, p, est, _agora()))
+        val = TG.mesa(chave, **_args(v, p, est, _agora()))
     except Exception:
         _ss()["tb_sem_mesa"] = True                       # componente indisponível neste ambiente: cai para o formulário
         return st.rerun()
@@ -904,7 +938,7 @@ def _frag_mesa() -> None:
     v = TB.visao(p, cen, ag, jog)
     ref = v["candles"][-1]["c"]
     try:
-        val = TG.mesa(f"tb_mesa_{p['id']}", **TG.args_mesa(v, p, est, ag))
+        val = TG.mesa(f"tb_mesa_{p['id']}", **_args(v, p, est, ag))
     except Exception:
         _ss()["tb_sem_mesa"] = True                       # componente indisponível neste ambiente: cai para as telas clássicas
         return st.rerun()
@@ -974,7 +1008,7 @@ def _frag_replay_mesa() -> None:
         return st.rerun()
     v = TB.visao(p, _cenario_atual(p), _agora(), _jogador())
     try:
-        TG.mesa(f"tb_mesa_r_{p['id']}_{p['rodada']}", **TG.args_mesa(v, p, {}, _agora()))
+        TG.mesa(f"tb_mesa_r_{p['id']}_{p['rodada']}", **_args(v, p, {}, _agora()))
     except Exception:
         _ss()["tb_sem_mesa"] = True
         return st.rerun()

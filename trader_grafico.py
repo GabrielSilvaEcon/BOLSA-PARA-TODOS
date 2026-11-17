@@ -64,7 +64,13 @@ def args_mesa(v: dict, p: dict, estado: dict, agora: float | None = None) -> dic
             "candles": TB.candles_sem_data(cand), "ticker": v["ticker"], "tf_nome": TB.TIMEFRAMES[v["tf"]]["nome"], "demo": v["demo"], "rodada": v["rodada"], "rodadas": v["rodadas"],
             "seg": v["segundos"], "ref": cand[-1]["c"], "token": p["id"], "sr": sr, "inicial": inicial, "limites": dict(TB.MAX_MARCAS),
             "erro": estado.get("erro", ""), "erro_seq": estado.get("erro_seq", 0), "ok_seq": estado.get("ok_seq", 0),
-            "motor": v.get("motor", TB.MOTOR_LEGADO), "pausada": bool(v.get("pausada")), "mesa": texto_mesa(v.get("mesa")) if mesa else None, "placar": placar(v) if mesa else None}
+            "motor": v.get("motor", TB.MOTOR_LEGADO), "pausada": bool(v.get("pausada")), "mesa": texto_mesa(v.get("mesa")) if mesa else None, "placar": placar(v) if mesa else None, "moldura": None}
+
+
+def _pct_curto(x: float) -> str:
+    """% do placar com casas que cabem no celular: 2 casas até 10%, 1 até 100%, nenhuma acima (ex.: +3,25% · −21,9% · −300%)."""
+    casas = 2 if abs(x) < 10 else (1 if abs(x) < 100 else 0)
+    return f"{_sinal(x)}{_pc(x, casas)}%"
 
 
 def placar(v: dict) -> dict | None:
@@ -86,7 +92,7 @@ def placar(v: dict) -> dict | None:
         js.sort(key=lambda x: -x["pct"])                                 # estável: no empate, quem já estava na frente continua
     for i, x in enumerate(js, 1):
         x.pop("jog", None)
-        x.update(pos=i, txt=f"{_sinal(x['pct'])}{_pc(x['pct'])}%", cor="up" if x["pct"] > 0 else ("down" if x["pct"] < 0 else "zero"))
+        x.update(pos=i, txt=_pct_curto(x["pct"]), cor="up" if x["pct"] > 0 else ("down" if x["pct"] < 0 else "zero"))
         if x.get("pts") is not None:
             x["pts_txt"] = f"{_sinal(x['pts'])}{_pc(x['pts'], 1)}"
     pat = None if m.get("pat_ini") is None or m.get("total_val") is None else WG.moeda(m["pat_ini"] + m["total_val"])
