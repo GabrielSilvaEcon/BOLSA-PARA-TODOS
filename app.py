@@ -4711,6 +4711,7 @@ _todas_pg.setdefault("inicio", PG_INICIO)   # a página padrão (default=True) t
 educacao_app.registrar_paginas({"renda-fixa": PG_RF, "fiis": PG_FIIS, "criptomoedas": PG_CRIPTO, "simulador": PG_SIM})
 usuarios.exigir_login(marca.LOGO_GRANDE, marca.NOME)   # sem login não abre: não há acesso como visitante
 usuarios.iniciar()                        # carrega ações, perfil e carteiras do usuário
+perfis_app.garantir_perfil()               # perfil de jogador (nome de usuário público) criado já na entrada, uma vez por sessão
 try:                                       # pagamento online: confere cobrança pendente (no máx. 1 consulta a cada 90 s) e libera o plano
     import pagamentos
     _u_pg = usuarios.usuario()

@@ -137,6 +137,17 @@ def meu_perfil() -> dict:
     return doc
 
 
+def garantir_perfil() -> None:
+    """Ao entrar no app: cria o perfil de jogador (do NickName do cadastro) uma vez por sessão, para a pessoa já aparecer com link nos
+    rankings e na busca de amigos sem precisar abrir Meu Perfil antes."""
+    if "_pj_doc" in st.session_state or not _nick_cadastro() or not _ator():
+        return
+    try:
+        meu_perfil()
+    except Exception as e:
+        banco.registrar_erro("perfis_app.garantir_perfil", e)
+
+
 def minha_foto_uri() -> str:
     ss = st.session_state
     if "_pj_foto" not in ss:

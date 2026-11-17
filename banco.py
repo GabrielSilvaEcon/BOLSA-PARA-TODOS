@@ -1417,6 +1417,26 @@ def usuarios_da_conta_liberar(email: str) -> int:
         return 0
 
 
+def sis_perfil_padrao(email: str, apelido: str) -> bool:
+    """Perfil básico de quem joga mas ainda não abriu o perfil desde que ele existe: nasce do NickName que a própria conta já usa
+    em público (o apelido do placar), com a privacidade padrão. Não sobrescreve nada: se a conta já tem perfil, não faz nada.
+    O nome só é usado se a reserva atômica der certo para ESTA conta. True se criou."""
+    import perfis as PF
+    if (sis_estado_ler(email, "perfil_jogador") or {}).get("usuario"):
+        return False
+    novo = PF.inicial(apelido)
+    if not novo["usuario"]:
+        return False
+    try:
+        if not usuario_reservar(Ator(id="sistema", email=seg.normalizar_email(email), papel="usuario"), novo["usuario_k"]):
+            return False
+    except ValueError:
+        return False
+    novo["atualizado"] = seg.iso()
+    sis_estado_gravar(email, "perfil_jogador", novo)
+    return True
+
+
 def sis_perfil_por_usuario(usuario_k: str) -> tuple[str, dict] | None:
     """(e-mail, perfil) da conta dona do nome de usuário. Só para o servidor montar o perfil público: o e-mail nunca vai para a tela."""
     k = _chave_usuario(usuario_k)[len("usuario|"):]

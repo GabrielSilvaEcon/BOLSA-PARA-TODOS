@@ -219,11 +219,24 @@ def _ligas_todas() -> list[dict]:
 def _usuarios_por_hash() -> dict[str, str]:
     """{hash do placar: nome de usuário atual} para levar do ranking ao perfil (o apelido do placar pode estar desatualizado)."""
     import perfis as PF
-    out = {}
+    out, com_perfil = {}, set()
     for r in banco.sis_comp_todos("perfil_jogador"):
         p = PF.sanear(r["dados"])
-        if p["usuario"] and p["privacidade"]["visivel"] != "ninguem":
-            out[J.hash_conta(r["email"])] = p["usuario"]
+        if p["usuario"]:
+            com_perfil.add(r["email"])
+            if p["privacidade"]["visivel"] != "ninguem":
+                out[J.hash_conta(r["email"])] = p["usuario"]
+    criados = 0
+    for r in _placares():                     # quem joga mas ainda não abriu o perfil: ganha o perfil básico do próprio NickName público
+        ap = J.sanear(r["dados"])["apelido"]
+        if r["email"] in com_perfil or not ap or ap.lower() == "jogador" or criados >= 50:
+            continue
+        try:
+            if banco.sis_perfil_padrao(r["email"], ap):
+                criados += 1
+                out[J.hash_conta(r["email"])] = PF.inicial(ap)["usuario"]
+        except Exception as e:
+            banco.registrar_erro("jogos_app.perfil_padrao", e)
     return out
 
 

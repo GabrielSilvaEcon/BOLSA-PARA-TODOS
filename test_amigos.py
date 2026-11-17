@@ -194,3 +194,15 @@ def test_excluir_conta_apaga_relacoes(bd):
     bd.amigo_pedir(A, "bia")
     bd.sis_apagar_conta(A.id, A.email)
     assert not bd.social_relacoes(B) and not bd._cfg_prefixo("amz|") and not bd._cfg_prefixo("blq|")
+
+
+def test_perfil_basico_para_quem_ja_joga(bd):
+    A, = _setup(bd, "Ana")
+    bd._inserir("contas", {"id": "id-z", "email": "zeca@x.com", "nome": "Nome Real Zeca", "criado_em": "2026-01-01T00:00:00Z"})
+    assert bd.sis_perfil_padrao("zeca@x.com", "Zeca_Bull")
+    email, doc = bd.sis_perfil_por_usuario("zeca_bull")
+    assert email == "zeca@x.com" and doc["usuario"] == "Zeca_Bull" and doc["nome"] == "Zeca_Bull" and "Nome Real" not in str(doc)
+    assert not bd.sis_perfil_padrao("zeca@x.com", "Outro_Nome")                 # já tem perfil: não mexe
+    bd._inserir("contas", {"id": "id-w", "email": "w@x.com", "nome": "W", "criado_em": "2026-01-01T00:00:00Z"})
+    assert not bd.sis_perfil_padrao("w@x.com", "ana")                           # nome de outra conta: não toma
+    assert bd.perfil_alvo(A, "zeca_bull")["completo"]
