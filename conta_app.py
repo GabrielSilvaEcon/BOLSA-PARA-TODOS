@@ -501,7 +501,7 @@ def _secao_perfil(u: dict) -> None:
         _resultado(res)
     try:
         import perfis_app                                  # perfil de jogador (público): nome de usuário, avatar, bio e privacidade
-        perfis_app.secao_editar()
+        perfis_app.secao_conta()
     except Exception as e:
         banco.registrar_erro("conta_app.perfil_jogador", e)
 

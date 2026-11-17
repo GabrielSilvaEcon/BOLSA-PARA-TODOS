@@ -36,9 +36,10 @@ AVATARES = {
     "raposa_surpresa": ("arte_cartela", "raposa_surpresa"),
 }
 AVATAR_PADRAO = "raposa"
+FOTO = "foto"                            # avatar = foto enviada pela pessoa (guardada à parte, já reprocessada: perfil_foto.py)
 PRIVACIDADE_PADRAO = {"publico": True, "mostrar_bio": True, "mostrar_nivel": True, "mostrar_conquistas": True, "mostrar_jogos": True}
 EDITAVEIS = ("nome", "usuario", "bio", "avatar", "privacidade", "tema")   # tudo o mais que vier do formulário é ignorado
-PUBLICOS = ("usuario", "nome", "avatar", "bio", "desde", "nivel", "titulo", "xp", "conquistas", "jogos")
+PUBLICOS = ("usuario", "nome", "avatar", "foto", "bio", "desde", "nivel", "titulo", "xp", "conquistas", "jogos")
 PROIBIDOS = ("email", "id", "conta_id", "patrimonio", "carteira", "caixa", "saldo", "tc", "pat", "senha", "papel")
 
 
@@ -96,7 +97,7 @@ def validar_bio(bio) -> str:
 
 def validar_avatar(avatar) -> str:
     a = str(avatar or "")
-    if a not in AVATARES:
+    if a not in AVATARES and a != FOTO:
         raise ErroPerfil("Escolha um dos avatares disponíveis.")
     return a
 
@@ -178,7 +179,8 @@ def editar(atual: dict, form: dict, agora: datetime | None = None, temas: dict |
                 if dias < TROCA_USUARIO_DIAS:
                     raise ErroPerfil(f"Você trocou o nome de usuário há pouco. Dá para trocar de novo em {TROCA_USUARIO_DIAS - int(dias)} dia(s).")
             mud["usuario"] = u
-            novo["usuario_em"] = ag.isoformat(timespec="seconds")
+            if a["usuario_k"]:                                     # só TROCA conta no intervalo (escolher o primeiro nome é livre)
+                novo["usuario_em"] = ag.isoformat(timespec="seconds")
         novo["usuario"], novo["usuario_k"] = u, chave_usuario(u)
     novo["atualizado"] = ag.isoformat(timespec="seconds")
     return novo, mud
@@ -211,13 +213,16 @@ def jogos(doc_placar, ranking_trade: dict | None = None, ranking_ticker: dict | 
             "ticker": {"vitorias": d["ticker"]["v"], "empates": d["ticker"]["e"], "derrotas": d["ticker"]["d"], "posicao": pos(ranking_ticker)}}
 
 
-def publico(perfil: dict, desde: str, prog: dict, jogos_: dict | None) -> dict | None:
+def publico(perfil: dict, desde: str, prog: dict, jogos_: dict | None, foto_uri: str = "") -> dict | None:
     """Visão de OUTRA pessoa: só campos de PUBLICOS, filtrados pela privacidade. None se o perfil for privado ou sem nome de usuário."""
     p = sanear(perfil)
     pv = p["privacidade"]
     if not pv["publico"] or not p["usuario"]:
         return None
-    out = {"usuario": p["usuario"], "nome": p["nome"] or p["usuario"], "avatar": p["avatar"], "desde": str(desde or "")[:7]}
+    out = {"usuario": p["usuario"], "nome": p["nome"] or p["usuario"], "avatar": p["avatar"] if (p["avatar"] != FOTO or foto_uri) else AVATAR_PADRAO,
+           "desde": str(desde or "")[:7]}
+    if out["avatar"] == FOTO:
+        out["foto"] = foto_uri
     if pv["mostrar_bio"] and p["bio"]:
         out["bio"] = p["bio"]
     if pv["mostrar_nivel"]:

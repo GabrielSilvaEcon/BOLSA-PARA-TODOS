@@ -1349,6 +1349,32 @@ def perfil_jogador_gravar(ator: Ator | None, dados: dict) -> None:
     sis_estado_gravar(ator.email, "perfil_jogador", dados)
 
 
+def perfil_foto_ler(ator: Ator | None) -> dict:
+    if not ator:
+        raise SemPermissao("Faça login.")
+    return sis_estado_ler(ator.email, "perfil_foto")
+
+
+def perfil_foto_gravar(ator: Ator | None, doc: dict) -> None:
+    """Grava a foto da conta logada. Só aceita a foto já reprocessada (WebP pequeno): o arquivo enviado nunca chega aqui."""
+    if not ator:
+        raise SemPermissao("Faça login.")
+    import base64
+    try:
+        b = base64.b64decode(str(doc.get("webp") or ""), validate=True)
+    except Exception:
+        raise ValueError("foto inválida")
+    if not (b[:4] == b"RIFF" and b[8:12] == b"WEBP") or len(b) > 120 * 1024:
+        raise ValueError("foto inválida")
+    sis_estado_gravar(ator.email, "perfil_foto", {"v": 1, "webp": doc["webp"], "h": str(doc.get("h") or "")[:16], "em": str(doc.get("em") or "")[:25]})
+
+
+def perfil_foto_apagar(ator: Ator | None) -> None:
+    if not ator:
+        raise SemPermissao("Faça login.")
+    sis_estado_gravar(ator.email, "perfil_foto", {})
+
+
 def usuario_reservar(ator: Ator | None, usuario_k: str) -> bool:
     """Reserva o nome de usuário para a conta logada. True se ficou (ou já era) dela; False se pertence a outra conta.
     Respeita os apelidos que outras contas já têm na Competição (anteriores à reserva)."""

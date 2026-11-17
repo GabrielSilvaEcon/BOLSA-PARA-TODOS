@@ -57,7 +57,7 @@ def hash_conta(email: str) -> str:
 
 # ------------------------------------------------------------------ documento da conta
 def vazio() -> dict:
-    return {"v": 1, "apelido": "", TRADE: {"pts": 0.0, "partidas": 0, "vitorias": 0, "melhor": None, "ids": [], "hist": []},
+    return {"v": 1, "apelido": "", TRADE: {"pts": 0.0, "partidas": 0, "salas": 0, "vitorias": 0, "melhor": None, "ids": [], "hist": []},
             TICKER: {"v": 0, "e": 0, "d": 0, "ids": [], "hist": []}}
 
 
@@ -69,10 +69,13 @@ def sanear(doc) -> dict:
     t = d.get(TRADE) if isinstance(d.get(TRADE), dict) else {}
     part = _int(t.get("partidas"), 0, 10**6)
     lim = part * RODADAS_MAX * PTS_RODADA_MAX
-    out[TRADE].update(pts=round(max(-lim, min(lim, _num(t.get("pts")))), 1), partidas=part, vitorias=_int(t.get("vitorias"), 0, part),
+    hist_t = [h for h in (t.get("hist") or []) if isinstance(h, dict)][:HIST_MAX]
+    salas = _int(t.get("salas"), 0, part) if "salas" in t else min(part, sum(1 for h in hist_t if _int(h.get("n"), 0, 4) >= 2))   # placar antigo: conta pelo histórico
+    out[TRADE].update(pts=round(max(-lim, min(lim, _num(t.get("pts")))), 1), partidas=part, salas=max(salas, _int(t.get("vitorias"), 0, part)),
+                      vitorias=_int(t.get("vitorias"), 0, part),
                       melhor=None if t.get("melhor") is None else round(_num(t.get("melhor")), 1),
                       ids=[str(x)[:40] for x in (t.get("ids") or []) if x][-IDS_GUARDADOS:],
-                      hist=[h for h in (t.get("hist") or []) if isinstance(h, dict)][:HIST_MAX])
+                      hist=hist_t)
     k = d.get(TICKER) if isinstance(d.get(TICKER), dict) else {}
     out[TICKER].update(v=_int(k.get("v")), e=_int(k.get("e")), d=_int(k.get("d")),
                        ids=[str(x)[:40] for x in (k.get("ids") or []) if x][-IDS_GUARDADOS:],
@@ -94,6 +97,7 @@ def registrar_trade(doc, pid: str, pontos: float, rodadas: int, formato: str, po
     venceu = bool(pos == 1 and n_jog >= 2)
     t["pts"] = round(t["pts"] + p, 1)
     t["partidas"] += 1
+    t["salas"] += int(n_jog >= 2)
     t["vitorias"] += int(venceu)
     t["melhor"] = p if t["melhor"] is None else max(t["melhor"], p)
     t["ids"] = (t["ids"] + [pid])[-IDS_GUARDADOS:]
@@ -179,6 +183,19 @@ def ranking_campeoes(*_rankings) -> None:
     if any(JOGOS[j]["campeoes"] is None for j in JOGOS):
         return None
     raise NotImplementedError("regra de normalização ainda não definida")
+
+
+def estatisticas(d) -> dict:
+    """Totais competitivos da conta, só do placar real: partidas (todas), vitórias, empates e derrotas. Taxa de vitórias sobre as partidas
+    que têm vencedor: duelos do Ticker e partidas do Trade em sala (2 a 4 jogadores; 1º lugar = vitória). Partida solo do Trade conta
+    como partida jogada, mas não entra na taxa (não há adversário)."""
+    d = sanear(d)
+    t, k = d[TRADE], d[TICKER]
+    vit = t["vitorias"] + k["v"]
+    der = (t["salas"] - t["vitorias"]) + k["d"]
+    disputadas = t["salas"] + k["v"] + k["e"] + k["d"]
+    return {"partidas": t["partidas"] + k["v"] + k["e"] + k["d"], "vitorias": vit, "empates": k["e"], "derrotas": der,
+            "disputadas": disputadas, "taxa": round(vit / disputadas * 100, 1) if disputadas else None}
 
 
 def resumo(d: dict) -> dict:

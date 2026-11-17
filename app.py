@@ -4247,6 +4247,8 @@ PG_JOGOS = st.Page(jogos_app.pagina_central, title="Central de Jogos", icon=":ma
 PG_JG_RANK = st.Page(jogos_app.pagina_ranking, title="Ranking dos jogos", icon=":material/emoji_events:", url_path="jogos-ranking")
 PG_JG_AMIGOS = st.Page(jogos_app.pagina_amigos, title="Meus amigos", icon=":material/group:", url_path="jogos-amigos")
 PG_JOGADOR = st.Page(perfis_app.pagina_publica, title="Perfil de jogador", icon=":material/badge:", url_path="jogador")
+PG_PERFIL = st.Page(perfis_app.pagina_meu_perfil, title="Meu Perfil", icon=":material/person:", url_path="perfil")
+PG_PERFIL_EDITAR = st.Page(perfis_app.pagina_editar, title="Editar Perfil", icon=":material/edit:", url_path="perfil-editar")
 PG_JG_EVENTOS = st.Page(jogos_app.pagina_eventos, title="Eventos e recompensas", icon=":material/redeem:", url_path="jogos-eventos")
 PG_JOGAR = st.Page(jogar_app.pagina_jogar, title="Central de missões", icon=":material/flag:", url_path="missoes")
 PG_EDU = st.Page(educacao_app.pagina_educacao, title="Educação financeira", icon=":material/school:", url_path="educacao")
@@ -4347,10 +4349,10 @@ paginas = {
 
 # A navegação nativa do Streamlit fica escondida: o menu próprio fica na barra lateral (botão ☰).
 try:
-    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_CONTA, PG_PLANOS, PG_ADMIN]}, position="hidden")
+    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN]}, position="hidden")
 except TypeError:
     st.warning("Esta versão do Streamlit é antiga (`pip install -U streamlit`). Usando o menu lateral.")
-    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_CONTA, PG_PLANOS, PG_ADMIN]})
+    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN]})
 
 
 def _marca_html(tam: int = 34) -> str:
@@ -4553,8 +4555,8 @@ def _abrir_inicio():
 
 
 def _abrir_conta():
-    """Callback do botão Conta da barra: abre Minha conta (perfil, preferências, planos) sem trocar a área do menu."""
-    st.session_state["_nav_pend"] = "conta"
+    """Callback do botão Perfil da barra: abre Meu Perfil (de lá: Editar Perfil, Privacidade e Configurações da conta)."""
+    st.session_state["_nav_pend"] = "perfil"
 
 
 def _abrir_jogar():
@@ -4564,7 +4566,7 @@ def _abrir_jogar():
 
 def _seletor_de_areas():
     """Barra fixa de baixo: Início, Aprender, Jogar (elevado, no centro), Analisar e Perfil. Fica no topo da tela no computador e fixa no rodapé do celular.
-    Jogar abre o Ticker Battle; Perfil abre Minha conta (Carteira fica dentro de Analisar/Perfil)."""
+    Jogar abre a Central de Jogos; Perfil abre Meu Perfil (Carteira fica dentro de Analisar/Perfil)."""
     if not DESIGN_V2:    # com a v2 ligada, a barra é estilizada por design/css.py
         st.markdown("<style>" + _CSS_AREAS_BASE + (_CSS_AREAS_RODAPE if BARRA_RODAPE else "") + "</style>", unsafe_allow_html=True)
     ativa = None if pg.url_path == "notificacoes" else areas.area_da_pagina(pg.url_path)
@@ -4588,7 +4590,7 @@ def _seletor_de_areas():
                       type="primary" if ativa in ("analisar", "wallet") else "secondary", on_click=_abrir_area, args=("analisar",))
         with cols[4]:
             st.button("Perfil", key="area_btn_conta", icon=":material/account_circle:", width="stretch",
-                      type="primary" if pg.url_path in ("conta", "planos", "administracao") else "secondary",
+                      type="primary" if pg.url_path in ("perfil", "perfil-editar", "conta", "planos", "administracao") else "secondary",
                       on_click=_abrir_conta)
 
 
