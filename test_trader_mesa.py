@@ -1697,3 +1697,49 @@ def test_sala_online_resultado_e_fim_montam_placar_e_resumo_so_pela_visao():
             fz = fim["v"]["final"]
             assert [x["rotulo"] for x in fz["placar"]] in (["Jogador 1", "Você"], ["Você", "Jogador 1"]) and len(fz["rodadas"]) == 3 and fz["raiox"]
             assert "@" not in json.dumps(fz)
+
+
+# ====================================================================================================================================
+# XP POR COLOCAÇÃO · única recompensa; nenhuma TickerCoin
+# ====================================================================================================================================
+def test_xp_por_colocacao_entre_quem_jogou():
+    c, p = _rodada_com_vencedor()
+    assert TB.xp_da_partida(p, "ana@x.com")["xp"] == 0                                    # partida ainda não terminou
+    p["fase"] = "fim"
+    xs = {j: TB.xp_da_partida(p, j) for j in p["jogadores"]}
+    assert (xs["ana@x.com"]["xp"], xs["caio@x.com"]["xp"], xs["bia@x.com"]["xp"]) == (25, 15, 10)
+    assert xs["ana@x.com"]["pos"] == 1 and xs["ana@x.com"]["n"] == 3
+    p["pontos"]["caio@x.com"] = p["pontos"]["ana@x.com"]                                   # empate divide a melhor colocação
+    assert TB.xp_da_partida(p, "caio@x.com")["xp"] == TB.xp_da_partida(p, "ana@x.com")["xp"] == 25
+
+
+def test_xp_sala_com_fantasma_vale_como_solo_e_fantasma_nao_ganha():
+    c, p = _rodada_com_vencedor()
+    p["fase"] = "fim"
+    for k in [k for k in p["estrategias"] if not k.endswith("ana@x.com")]:
+        p["estrategias"][k] = {**p["estrategias"][k], "sem_registro": True}               # só a ana registrou leitura
+    assert TB.xp_da_partida(p, "ana@x.com") == {"xp": TB.XP_SOLO, "pos": None, "n": 1}
+    assert TB.xp_da_partida(p, "bia@x.com")["xp"] == 0
+
+
+def test_pagar_xp_uma_vez_por_partida_com_limite_diario_e_sem_tickercoins():
+    from unittest import mock
+    import educacao as ED
+    estado = {"p": ED.normalizar(None)}
+    ea = types.SimpleNamespace(prog=lambda: estado["p"], _set=lambda p: estado.__setitem__("p", ED.normalizar(p)))
+    with app_falso() as (APP, _), mock.patch.dict(sys.modules, {"educacao_app": ea}):
+        import usuarios
+        with mock.patch.object(usuarios, "usuario", return_value={"email": "ana@x.com"}):
+            info = {"xp": 25, "pos": 1, "n": 3}
+            assert APP._pagar_xp("p1", info) == {"xp": 25, "status": "pago"}
+            assert APP._pagar_xp("p1", info) == {"xp": 25, "status": "pago"} and estado["p"]["jornada"]["xp"] == 25   # atualizar a página não paga de novo
+            APP._pagar_xp("p2", info); APP._pagar_xp("p3", info)
+            assert APP._pagar_xp("p4", info) == {"xp": 0, "status": "limite"} and estado["p"]["jornada"]["xp"] == 75
+            assert APP._pagar_xp("p5", {"xp": 0}) == {"xp": 0, "status": "zero"}
+            assert set(ED.normalizar(estado["p"])["trader_xp"]) == {"p1", "p2", "p3"}            # sobrevive à gravação no perfil
+            assert "+25 XP" in APP._linha_xp(info, {"xp": 25, "status": "pago"}) and "1º lugar entre 3" in APP._linha_xp(info, {"xp": 25, "status": "pago"})
+        with mock.patch.object(usuarios, "usuario", return_value=None):
+            assert APP._pagar_xp("p9", {"xp": 25}) == {"xp": 0, "status": "visitante"} and "Entre na sua conta" in APP._linha_xp({}, {"status": "visitante"})
+    src = open("trader_battle_app.py", encoding="utf-8").read() + open("trader_battle.py", encoding="utf-8").read()
+    import re
+    assert not re.search(r"import\s+tickercoins|tickercoins\.|\bTC\.creditar", src)          # o Trader Battle nunca paga TickerCoins

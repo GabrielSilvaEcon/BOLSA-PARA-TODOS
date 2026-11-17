@@ -49,6 +49,9 @@ def normalizar(p) -> dict:
             pass
     base["jornada"] = jornada.normalizar_jornada(p.get("jornada"))
     base["atividade"] = [a for a in (p.get("atividade") or []) if isinstance(a, dict)][-LIMITE_ATIVIDADE:]
+    tx = p.get("trader_xp")                          # Trader Battle: partidas que já deram XP (idempotência e limite diário)
+    if isinstance(tx, dict):
+        base["trader_xp"] = {str(k): {"d": str(v.get("d", ""))[:10], "xp": jornada._int(v.get("xp"), 0, 1000, 0)} for k, v in list(tx.items())[-60:] if isinstance(v, dict)}
     return base
 
 

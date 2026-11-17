@@ -111,6 +111,11 @@ _CSS = f"""
 {_P} .tb-ri .ic{{font-size:1.1rem;line-height:1.3}}
 {_P} .tb-ri b{{display:block;font-size:.7rem;font-weight:900;letter-spacing:.3px;text-transform:uppercase;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
 {_P} .tb-ri p{{margin:1px 0 0;font-size:.82rem;line-height:1.35;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .tb-xp{{display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 0;padding:8px 12px;border-radius:16px;border:2px solid #8B6CFF;background:linear-gradient(160deg,rgba(139,108,255,.3),rgba(12,8,44,.92));box-shadow:0 0 14px rgba(139,108,255,.45)}}
+{_P} .tb-xp span{{font-size:1.3rem}}
+{_P} .tb-xp b{{font-size:1.35rem;font-weight:900;color:#C9A8FF !important;-webkit-text-fill-color:#C9A8FF !important;text-shadow:0 0 10px rgba(176,107,255,.6)}}
+{_P} .tb-xp small{{font-size:.78rem;font-weight:700;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
+{_P} .tb-xp.n{{border-color:rgba(139,108,255,.45);box-shadow:none}}
 {_P} .tb-rx-r{{margin:8px 0 2px;font-weight:900;font-size:.85rem;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}
 {_P} .tb-fim-rod{{text-align:center;margin:6px 0 2px;font-style:italic;font-size:.8rem;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
 {_P} [class*="st-key-tb_estr"] [data-testid="stHorizontalBlock"]{{flex-wrap:nowrap !important;gap:.4rem !important}}
@@ -503,7 +508,48 @@ def _sg(x: float) -> str:
     return "+" if x > 0 else ("−" if x < 0 else "")
 
 
-def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str]) -> None:
+def _pagar_xp(pid: str, info: dict) -> dict:
+    """Credita o XP da partida no progresso de estudo da conta (mesmo XP da Jornada e das missões da Wallet Game), UMA vez por partida
+    e só nas XP_PARTIDAS_DIA primeiras do dia. Nunca TickerCoins. Visitante não ganha (nada é salvo). Falha aqui nunca derruba a tela."""
+    n = int((info or {}).get("xp") or 0)
+    try:
+        import usuarios
+        if not usuarios.usuario():
+            return {"xp": 0, "status": "visitante"}
+        import educacao_app as EA
+        import jornada as JO
+        p = dict(EA.prog())
+        tx = dict(p.get("trader_xp") or {})
+        if pid in tx:
+            return {"xp": tx[pid]["xp"], "status": "pago"}
+        if n <= 0:
+            return {"xp": 0, "status": "zero"}
+        hoje = JO.hoje().isoformat()
+        if sum(1 for v in tx.values() if v.get("d") == hoje) >= TB.XP_PARTIDAS_DIA:
+            return {"xp": 0, "status": "limite"}
+        j = JO.normalizar_jornada(p.get("jornada"))
+        j["xp"] += n
+        j["xp_dia"][hoje] = int(j["xp_dia"].get(hoje, 0)) + n
+        tx[pid] = {"d": hoje, "xp": n}
+        p["jornada"], p["trader_xp"] = j, tx
+        EA._set(p)
+        return {"xp": n, "status": "pago"}
+    except Exception:
+        return {"xp": 0, "status": "erro"}
+
+
+def _linha_xp(info: dict, pago: dict) -> str:
+    st_, n = pago.get("status"), pago.get("xp", 0)
+    if st_ == "pago" and n:
+        onde = f"{info['pos']}º lugar entre {info['n']} jogadores" if info.get("pos") else "partida concluída"
+        return f"<div class='tb-xp'><span>⭐</span><b>+{n} XP</b><small>{onde}</small></div>"
+    txt = {"visitante": "Entre na sua conta para ganhar XP nas partidas.",
+           "limite": f"Você já ganhou XP em {TB.XP_PARTIDAS_DIA} partidas hoje: esta partida não deu XP.",
+           "zero": "Sem XP: você não registrou a leitura em nenhuma rodada."}.get(st_)
+    return f"<div class='tb-xp n'><span>⭐</span><small>{txt}</small></div>" if txt else ""
+
+
+def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago: dict | None = None) -> None:
     """Fim da partida (visual de 'fim de rodada' da referência, nas cores do app): lugar, pontuação e retorno, placar da batalha,
     pontos por rodada, dinheiro da partida e a análise completa (Raio-X de cada rodada). `fz` = TB.resumo_final (já rotulado, sem e-mail)."""
     import wallet_game as WG
@@ -536,7 +582,8 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str]) -> N
         placar = f"<div class='tb-pl'><div class='h'>🏆 Placar da Batalha</div>{lin}</div>"
     rods = "".join(f"<div class='tb-lin'>Rodada {k} · {_e(tickers[k - 1] if k - 1 < len(tickers) else '')}<span class='{'down' if r < 0 else ''}'>{_sg(r)}{TG._pc(r, 1)}</span></div>"
                    for k, r in enumerate(fz["rodadas"], 1))
-    st.markdown(f"<div class='tb-fim-t'>FIM DE PARTIDA!</div>{topo}{stats}{placar}<div class='tb-card'>{rods}</div>{_cartao_fin(fin)}", unsafe_allow_html=True)
+    xp = _linha_xp(fz.get("xp") or {}, pago or {})
+    st.markdown(f"<div class='tb-fim-t'>FIM DE PARTIDA!</div>{topo}{stats}{xp}{placar}<div class='tb-card'>{rods}</div>{_cartao_fin(fin)}", unsafe_allow_html=True)
     with st.expander("Ver análise completa", icon=":material/insights:"):
         for k, linhas in fz["raiox"]:
             st.markdown(f"<div class='tb-rx-r'>Rodada {k}</div>{_raiox_html(linhas)}", unsafe_allow_html=True)
@@ -544,7 +591,7 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str]) -> N
 
 def _fim_online(b: dict) -> None:
     v = b["v"]
-    _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"])
+    _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]))
     st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
     st.button("Voltar ao início do Trader Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_on_desanexar)
 
@@ -614,6 +661,7 @@ def _central() -> None:
         st.markdown("<div class='tb-aviso'>Você recebe o gráfico de uma ação da B3 parado num ponto do passado e tem 120 s para analisar, registrar a leitura "
                     "(direção, tipo e confiança) e fazer suas marcações. No replay (24 candles em 60 s) você opera ao vivo: compra, vende, encerra e ajusta stop e alvo, com uma posição por vez; "
                     "o adversário vê só as entradas e saídas que você executou. Lucro soma e prejuízo tira, tanto no patrimônio quanto nos pontos. Jogo educativo: nenhuma ordem real, nada de recomendação de investimento. "
+                    f"No fim da partida você ganha XP pela colocação (até {TB.XP_PARTIDAS_DIA} partidas por dia, só com conta); o Trader Battle não dá TickerCoins: o dinheiro é só o lucro ou prejuízo das suas operações. "
                     "No modo individual a partida fica só neste navegador; se você atualizar a página, ela é perdida. Em sala com amigos (2 a 4 jogadores) a partida fica "
                     "guardada no servidor: dá para voltar a ela depois de atualizar a página.</div>", unsafe_allow_html=True)
     try:
@@ -979,7 +1027,8 @@ def _de_novo() -> None:
 def _fim(p: dict) -> None:
     j = _jogador()
     _liquidar(p, forcar=True)
-    _tela_final(TB.resumo_final(p, j), TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]])
+    fz = TB.resumo_final(p, j)
+    _tela_final(fz, TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]], _pagar_xp(p["id"], fz["xp"]))
     st.button("Jogar novamente", key="tb_de_novo", icon=":material/replay:", width="stretch", on_click=_de_novo)
     st.button("Voltar ao início do Trader Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_sair)
 

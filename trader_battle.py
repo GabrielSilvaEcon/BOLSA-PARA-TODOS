@@ -782,6 +782,30 @@ def retorno_pct(res: dict | None) -> float | None:
     return round(sum(t["ret"] for t in res.get("operacoes") or []) * 100, 3)
 
 
+# ---- XP por colocação (única recompensa do jogo; nenhuma TickerCoin: o dinheiro é só o lucro/prejuízo das operações na Wallet Game)
+XP_POSICAO = {2: (25, 10), 3: (25, 15, 10), 4: (25, 15, 10, 5)}       # nº de jogadores que jogaram → XP do 1º, 2º, 3º, 4º
+XP_SOLO = 10                                                           # partida individual (ou sala em que só você jogou): sem colocação
+XP_PARTIDAS_DIA = 3                                                    # só as 3 primeiras partidas do dia valem XP
+
+
+def jogou(p: dict, jog: str) -> bool:
+    """Registrou a leitura em pelo menos uma rodada (quem só deixou o tempo passar não conta como jogador)."""
+    return any(k.split(":", 1)[1] == jog and not e.get("sem_registro") for k, e in p["estrategias"].items())
+
+
+def xp_da_partida(p: dict, jog: str) -> dict:
+    """XP que a partida TERMINADA vale para `jog`, pela colocação entre quem de fato jogou (protege contra sala com 'fantasma').
+    Empate em pontos divide a melhor colocação. O limite diário e o crédito ficam com quem grava o progresso (a tela)."""
+    if p["fase"] != "fim" or jog not in p["jogadores"] or not jogou(p, jog):
+        return {"xp": 0, "pos": None, "n": 0}
+    ativos = [j for j in p["jogadores"] if jogou(p, j)]
+    if len(ativos) < 2:
+        return {"xp": XP_SOLO, "pos": None, "n": 1}
+    pts = {x["jog"]: x["pontos"] for x in placar_final(p)}
+    pos = 1 + sum(1 for j in ativos if pts[j] > pts[jog])
+    return {"xp": XP_POSICAO[len(ativos)][pos - 1], "pos": pos, "n": len(ativos)}
+
+
 def _rotulos(p: dict, jog: str) -> dict:
     """Como cada jogador aparece para `jog`: ele mesmo é 'Você', os outros 'Jogador N' (nunca o e-mail)."""
     return {j: ("Você" if j == jog else f"Jogador {n}") for n, j in enumerate(p["jogadores"], 1)}
@@ -803,7 +827,7 @@ def resumo_final(p: dict, jog: str) -> dict:
     pl = [{"rotulo": rot[x["jog"]], "voce": x["jog"] == jog, "pos": x["pos"], "pontos": x["pontos"], "ret_pct": x["ret_pct"]} for x in placar_final(p)]
     meus = [p["resultados"].get(_chave(k, jog)) for k in range(1, n_rod + 1)]
     return {"placar": pl, "rodadas": [round(float(r["pontos"]), 1) if r else 0.0 for r in meus],
-            "raiox": [[k, explicar(r)] for k, r in enumerate(meus, 1) if r]}
+            "raiox": [[k, explicar(r)] for k, r in enumerate(meus, 1) if r], "xp": xp_da_partida(p, jog)}
 
 
 def placar_final(p: dict) -> list[dict]:
