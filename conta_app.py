@@ -499,6 +499,11 @@ def _secao_perfil(u: dict) -> None:
         if res.ok:
             st.session_state["_conta"]["nome"] = res.dado
         _resultado(res)
+    try:
+        import perfis_app                                  # perfil de jogador (público): nome de usuário, avatar, bio e privacidade
+        perfis_app.secao_editar()
+    except Exception as e:
+        banco.registrar_erro("conta_app.perfil_jogador", e)
 
 
 def _salvar_prefs(novas: dict) -> None:

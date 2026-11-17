@@ -215,6 +215,11 @@ def _ligas_todas() -> list[dict]:
     return banco.sis_comp_todos(L.CH_LIGAS)
 
 
+def placares() -> list[dict]:
+    """Placar de todas as contas (uma consulta, cache de 60 s). Também usado pelo perfil público."""
+    return _placares()
+
+
 def _limpar_cache() -> None:
     _placares.clear()
     _ligas_todas.clear()

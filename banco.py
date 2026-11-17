@@ -946,6 +946,7 @@ def sis_apagar_conta(conta_id: str, email: str) -> None:
         except Exception:      # tabelas do Passo 23 ainda não criadas no Supabase: não impede a exclusão da conta
             pass
     comp_ligas_do_dono_apagar(email)
+    usuarios_da_conta_liberar(email)
     _apagar("perfis", {"email": email})
     _apagar("sessoes", {"conta_id": conta_id})
     _apagar("tokens", {"conta_id": conta_id})
@@ -1223,7 +1224,7 @@ def comp_apelido_livre(ator: Ator | None, apelido_k: str) -> bool:
 
 def sis_comp_todos(chave: str, limite: int = 5000) -> list[dict]:
     """[{email, dados}] de todas as contas para uma chave da competição. Só o fechamento diário e o próprio banco usam (sem Ator)."""
-    if chave not in ("comp_ordens", "comp_cart", "comp_ligas", "edu_liga", "jogos_placar"):
+    if chave not in ("comp_ordens", "comp_cart", "comp_ligas", "edu_liga", "jogos_placar", "perfil_jogador"):
         raise ValueError("chave desconhecida")
     return [{"email": r["email"], "dados": _de_js(r["dados"])} for r in _selecionar("monitor_estado", {"chave": chave}, ["email", "dados"], limite=limite)]
 
@@ -1318,6 +1319,84 @@ def comp_liga_definicao(ator: Ator | None, codigo: str) -> dict | None:
     if not d or not d.get("nome"):
         return None
     return {"codigo": c, "nome": str(d["nome"])[:30], "max": int(d.get("max") or 30), "criada": str(d.get("criada") or "")[:10]}
+
+
+# ------------------------------------------------------------------ Perfil de jogador (identidade pública): documento da própria conta + reserva do nome
+# O documento `perfil_jogador` (monitor_estado) só é lido/gravado pela própria conta. A exclusividade do nome de usuário é uma reserva ATÔMICA
+# em config_sistema (`usuario|<nome em minúsculas>`, guardando só um hash da conta): a inserção falha (Duplicado) se outra conta já tem o nome.
+def _h_conta(email: str) -> str:
+    import hashlib
+    return hashlib.sha256(seg.normalizar_email(email).encode()).hexdigest()[:24]
+
+
+def _chave_usuario(usuario_k: str) -> str:
+    k = str(usuario_k or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9_.\-]{3,20}", k):
+        raise ValueError("nome de usuário inválido")
+    return "usuario|" + k
+
+
+def perfil_jogador_ler(ator: Ator | None) -> dict:
+    if not ator:
+        raise SemPermissao("Faça login.")
+    return sis_estado_ler(ator.email, "perfil_jogador")
+
+
+def perfil_jogador_gravar(ator: Ator | None, dados: dict) -> None:
+    """Grava SÓ o perfil de quem está logado (o e-mail vem do ator, nunca da tela)."""
+    if not ator:
+        raise SemPermissao("Faça login.")
+    sis_estado_gravar(ator.email, "perfil_jogador", dados)
+
+
+def usuario_reservar(ator: Ator | None, usuario_k: str) -> bool:
+    """Reserva o nome de usuário para a conta logada. True se ficou (ou já era) dela; False se pertence a outra conta.
+    Respeita os apelidos que outras contas já têm na Competição (anteriores à reserva)."""
+    if not ator:
+        raise SemPermissao("Faça login.")
+    chave = _chave_usuario(usuario_k)
+    meu = _h_conta(ator.email)
+    if not comp_apelido_livre(ator, chave[len("usuario|"):]):
+        return False
+    try:
+        _inserir("config_sistema", {"id": chave, "dados": _js({"h": meu}), "atualizado": seg.iso()})
+        return True
+    except Duplicado:
+        return (cfg_ler(chave) or {}).get("h") == meu
+
+
+def usuario_liberar(ator: Ator | None, usuario_k: str) -> bool:
+    """Libera um nome reservado SÓ se a reserva for da conta logada."""
+    if not ator:
+        raise SemPermissao("Faça login.")
+    chave = _chave_usuario(usuario_k)
+    if (cfg_ler(chave) or {}).get("h") != _h_conta(ator.email):
+        return False
+    cfg_apagar(chave)
+    return True
+
+
+def usuarios_da_conta_liberar(email: str) -> int:
+    """Exclusão de conta: libera as reservas de nome dela (só o sistema chama)."""
+    try:
+        meu, n = _h_conta(email), 0
+        for l in _selecionar("config_sistema", {"id": ("comeca", "usuario|")}, ["id", "dados"], limite=5000):
+            if (_de_js(l["dados"]) or {}).get("h") == meu:
+                cfg_apagar(l["id"])
+                n += 1
+        return n
+    except Exception as e:
+        registrar_erro("banco.usuarios_da_conta_liberar", e)
+        return 0
+
+
+def sis_perfil_por_usuario(usuario_k: str) -> tuple[str, dict] | None:
+    """(e-mail, perfil) da conta dona do nome de usuário. Só para o servidor montar o perfil público: o e-mail nunca vai para a tela."""
+    k = _chave_usuario(usuario_k)[len("usuario|"):]
+    for r in sis_comp_todos("perfil_jogador"):
+        if (r["dados"] or {}).get("usuario_k") == k:
+            return r["email"], r["dados"] or {}
+    return None
 
 
 # ------------------------------------------------------------------ Central de Jogos: placar de cada conta (Trade Battle e Ticker Battle)

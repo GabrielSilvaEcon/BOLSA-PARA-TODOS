@@ -93,6 +93,7 @@ import noticias_app
 import battle_app
 import trader_battle_app
 import jogos_app
+import perfis_app
 import competicao_app
 import jogar_app
 import tickercoins_app
@@ -4245,6 +4246,7 @@ PG_TRADER = st.Page(trader_battle_app.pagina_trader, title="Trade Battle", icon=
 PG_JOGOS = st.Page(jogos_app.pagina_central, title="Central de Jogos", icon=":material/sports_esports:", url_path="jogos")
 PG_JG_RANK = st.Page(jogos_app.pagina_ranking, title="Ranking dos jogos", icon=":material/emoji_events:", url_path="jogos-ranking")
 PG_JG_AMIGOS = st.Page(jogos_app.pagina_amigos, title="Meus amigos", icon=":material/group:", url_path="jogos-amigos")
+PG_JOGADOR = st.Page(perfis_app.pagina_publica, title="Perfil de jogador", icon=":material/badge:", url_path="jogador")
 PG_JG_EVENTOS = st.Page(jogos_app.pagina_eventos, title="Eventos e recompensas", icon=":material/redeem:", url_path="jogos-eventos")
 PG_JOGAR = st.Page(jogar_app.pagina_jogar, title="Central de missões", icon=":material/flag:", url_path="missoes")
 PG_EDU = st.Page(educacao_app.pagina_educacao, title="Educação financeira", icon=":material/school:", url_path="educacao")
@@ -4336,7 +4338,7 @@ paginas = {
     ":material/account_balance_wallet: Carteira": [PG_CART, PG_GESTAO, PG_RISCO, PG_REL, PG_SIM],
     ":material/psychology: Inteligência": [PG_INTEL, PG_NOTICIAS, PG_NOTIF],
     ":material/account_balance_wallet: Wallet Game": [PG_COMP],
-    ":material/sports_esports: Central de Jogos": [PG_JOGOS, PG_TRADER, PG_BATTLE, PG_JG_RANK, PG_JG_AMIGOS, PG_JG_EVENTOS],
+    ":material/sports_esports: Central de Jogos": [PG_JOGOS, PG_TRADER, PG_BATTLE, PG_JG_RANK, PG_JG_AMIGOS, PG_JG_EVENTOS, PG_JOGADOR],
     ":material/school: Aprender": [PG_JORNADA, PG_JOGAR, PG_EDU, PG_GLOSSARIO],
     ":material/compare_arrows: Comparar": [PG_COMPARAR, PG_EVOLUCAO],
     ":material/toll: Loja Ticker": [PG_ECONOMIA],

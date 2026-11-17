@@ -8,7 +8,7 @@ Regras: 3 ou 4 áreas (cabem na barra do celular); cada página em no máximo um
 MAX_AREAS = 4
 
 # Páginas sempre acessíveis, em qualquer área (não pertencem a nenhuma).
-SEMPRE = ("inicio", "conta", "planos", "administracao", "ajuda", "economia", "battle", "trader", "jogos", "jogos-ranking", "jogos-amigos", "jogos-eventos")
+SEMPRE = ("inicio", "conta", "planos", "administracao", "ajuda", "economia", "battle", "trader", "jogos", "jogos-ranking", "jogos-amigos", "jogos-eventos", "jogador")
 
 # `descricao` aparece no cartão da tela Início. A primeira página de cada área é a página padrão (a que abre ao entrar na área pela primeira vez).
 # `entrada` = página que SEMPRE abre ao tocar na área (tela própria com cartões); sem `entrada`, abre a última página visitada.
