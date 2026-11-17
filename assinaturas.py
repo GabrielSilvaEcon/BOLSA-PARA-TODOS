@@ -86,7 +86,7 @@ def parse_dias(txt: str) -> list[int]:
 def cancelar_renovacao(email: str) -> str:
     """Devolve 'fim_da_validade' (mantém até a data) ou 'agora' (plano sem validade volta ao Gratuito na hora)."""
     a = planos.assinatura_de(email)
-    if a["contratado"] in ("gratuito", "visitante") or a["vencida"]:
+    if a["contratado"] == "gratuito" or a["vencida"]:
         raise ValueError("Você não tem uma assinatura paga ativa para cancelar.")
     if a["ate"] is None:
         planos.definir_plano(email, "gratuito", origem="cancelado")

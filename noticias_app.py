@@ -84,7 +84,7 @@ def _agora() -> datetime:
 # =============================================================================== coleta (cache em memória, consultas em paralelo)
 _CACHE: dict = {}
 _LOCK = threading.Lock()
-ORDEM_PLANO = ("visitante", "gratuito", "plus", "premium")
+ORDEM_PLANO = ("gratuito", "plus", "premium")
 # Abas que exigem plano maior (as outras abrem para todos). O que pesa em fontes externas é limitado por planos.RECURSOS (noticias_*).
 ABA_MIN_PLANO = {"Corporativo": "plus", "Cripto": "plus", "Carteira": "plus",
                  "Impacto e sentimento": "premium", "Alertas": "premium", "Assistente": "premium"}
@@ -1267,7 +1267,7 @@ def pagina_noticias(hooks: dict | None = None, cabecalho: bool = True):
     res = leitura()
     abas = ["Principais", "Agenda", "Alertas", "Assistente"]
     _plano = _ss().get("ne_plano_atual") or "gratuito"
-    _rk = lambda p: ORDEM_PLANO.index(p) if p in ORDEM_PLANO else 1
+    _rk = lambda p: ORDEM_PLANO.index(p) if p in ORDEM_PLANO else 0
     bloq = {a: m for a, m in ABA_MIN_PLANO.items() if _rk(_plano) < _rk(m)}
     tabs = secoes.abas([("🔒 " + a) if a in bloq else a for a in abas], key="noticias")
     if res is None:

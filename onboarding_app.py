@@ -206,7 +206,7 @@ def _continuar(a, pid: str, nick: str, previa: bool) -> None:
             st.session_state["onb_erro"] = msg
             return
     st.session_state.pop("onb_erro", None)
-    _gravar(previa, {**_estado(previa), "etapa": 2, "perfil": pid, "nick": nick})      # mantém interesses e nível já escolhidos
+    _gravar(previa, {**_estado(previa), "etapa": 2, "perfil": pid, "nick": nick})      # mantém os interesses já escolhidos
 
 
 def _pos(previa: bool) -> None:
@@ -214,12 +214,11 @@ def _pos(previa: bool) -> None:
     ss = st.session_state
     onb = _estado(previa)
     p = O.perfil(onb["perfil"]) or {}
-    nv = next((n["titulo"] for n in O.NIVEIS if n["id"] == onb["nivel"]), "")
     ob = next((o["titulo"] for o in O.OBJETIVOS if o["id"] == onb["objetivo"]), "")
     st.markdown(_CSS_MIN + _marca() + _stepper(4) + _hero(f"Pronto para caçar, {onb['nick'] or 'jogador'}!", "Seu perfil foi configurado com sucesso. "
                 "Agora você faz parte do universo TickerHunters!", anim=True), unsafe_allow_html=True)
     linhas = "".join(f"<div class='onb-res'><span>{html.escape(k)}</span><b>{html.escape(v)}</b></div>" for k, v in
-                     (("NickName", onb["nick"]), ("Perfil", p.get("titulo", "")), ("Nível", nv), ("Objetivo", ob),
+                     (("NickName", onb["nick"]), ("Perfil", p.get("titulo", "")), ("Objetivo", ob),
                       ("Interesses", f"{len(onb['interesses'])} escolhido(s)")) if v)
     st.markdown(f"<div class='onb-resumo'>{linhas}</div>", unsafe_allow_html=True)
     with st.container(key="onb_continuar"):
@@ -237,13 +236,9 @@ def _alt_interesse(iid: str) -> None:
     st.session_state["onb_int"] = O.alternar_interesse(st.session_state.get("onb_int"), iid)
 
 
-def _set_nivel(nid: str) -> None:
-    st.session_state["onb_niv"] = nid
-
-
 def _salvar2(previa: bool, etapa: int) -> None:
     ss = st.session_state
-    _gravar(previa, {**_estado(previa), "etapa": etapa, "interesses": list(ss.get("onb_int") or []), "nivel": ss.get("onb_niv") or ""})
+    _gravar(previa, {**_estado(previa), "etapa": etapa, "interesses": list(ss.get("onb_int") or [])})
 
 
 def _voltar2(previa: bool) -> None:
@@ -252,7 +247,7 @@ def _voltar2(previa: bool) -> None:
 
 def _continuar2(previa: bool) -> None:
     ss = st.session_state
-    if not O.pode_continuar_2(ss.get("onb_int"), ss.get("onb_niv")):
+    if not O.pode_continuar_2(ss.get("onb_int")):
         return
     _salvar2(previa, 3)
 
@@ -267,10 +262,7 @@ def _tela2(previa: bool) -> None:
     onb = _estado(previa)
     if "onb_int" not in ss:
         ss["onb_int"] = onb["interesses"]
-    if "onb_niv" not in ss:
-        ss["onb_niv"] = onb["nivel"]
     ints = [i for i in (ss.get("onb_int") or []) if i in O.IDS_INT]
-    niv = ss.get("onb_niv") if ss.get("onb_niv") in O.IDS_NIV else ""
     jor = ART.uri("jornada")
     img_j = f"<img class='onb-jor' src='{jor}' alt=''>" if jor else ""
     topo = (f"<div class='onb-hero2'>{img_j}<div class='onb-h'>Sua Jornada</div>"
@@ -290,22 +282,12 @@ def _tela2(previa: bool) -> None:
         if ints:
             st.markdown(f"<div class='onb-msg ok' style='margin-top:8px'>✓ {len(ints)} selecionado(s)</div>", unsafe_allow_html=True)
 
-    with st.container(key="onb_niv"):
-        st.markdown(f"<div class='onb-tit'>{_img('chapeu')}<div><span class='t1'>Como você se considera no mercado financeiro?</span>"
-                    "<small>Escolha apenas uma opção.</small></div></div>", unsafe_allow_html=True)
-        with st.container(key="onb_gn"):
-            for n in O.NIVEIS:
-                with st.container(key=f"onbn_{n['id']}"):
-                    st.markdown(f"<div class='onb-nv{' sel' if n['id'] == niv else ''}'><div class='ok'>✓</div>{_img('niv_' + n['id'])}"
-                                f"<div><b>{html.escape(n['titulo'])}</b><span>{html.escape(n['desc'])}</span></div></div>", unsafe_allow_html=True)
-                    st.button(n["titulo"], key=f"onb_n_{n['id']}", on_click=_set_nivel, args=(n["id"],), width="stretch")
-
-    pode = O.pode_continuar_2(ints, niv)
+    pode = O.pode_continuar_2(ints)
     with st.container(key="onb_nav2"):
         st.button("←  Voltar", key="onb_voltar", on_click=_voltar2, args=(previa,), width="stretch")
         st.button("Continuar  →", key="onb_cont2", type="primary", disabled=not pode, on_click=_continuar2, args=(previa,), width="stretch")
     if not pode:
-        st.markdown("<p class='onb-nota'>Escolha pelo menos um interesse e seu nível para continuar.</p>", unsafe_allow_html=True)
+        st.markdown("<p class='onb-nota'>Escolha pelo menos um interesse para continuar.</p>", unsafe_allow_html=True)
     elif previa:
         st.markdown("<p class='onb-nota'>Modo de prévia (administrador): nada é salvo.</p>", unsafe_allow_html=True)
     st.stop()

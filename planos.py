@@ -1,6 +1,6 @@
 """Etapa 5 · Planos e limites de utilização.
 
-Três planos (Gratuito, Investidor Plus, Investidor Premium) mais o "visitante" (sem conta). Os modos Iniciante, Intermediário e
+Três planos (Gratuito, Investidor Plus, Investidor Premium); o app só abre com conta. Os modos Iniciante, Intermediário e
 Avançado NÃO são planos: valem para todos. Aqui não há preço nem pagamento (isso é a Fase 2); só quanto cada plano pode usar dos
 recursos que consomem fontes externas ou processamento.
  · Os limites abaixo são PONTOS DE PARTIDA, escolhidos para proteger as cotas gratuitas; o administrador muda todos no painel
@@ -17,49 +17,49 @@ import time
 from datetime import datetime, timedelta, timezone
 
 PLANOS = ("gratuito", "plus", "premium")
-ROTULO = {"visitante": "Visitante", "gratuito": "Gratuito", "plus": "Investidor Plus", "premium": "Investidor Premium"}
-ORDEM = ("visitante",) + PLANOS
+ROTULO = {"gratuito": "Gratuito", "plus": "Investidor Plus", "premium": "Investidor Premium"}
+ORDEM = PLANOS
 
 # id: rotulo, tipo ("dia" = por dia; "max" = quantidade máxima; "min" = intervalo mínimo em minutos), aplicado, padrão por plano
 RECURSOS = {
     "ia_mensagens": {"rotulo": "Mensagens ao assistente de IA", "tipo": "dia", "aplicado": True,
-                     "padrao": {"visitante": 3, "gratuito": 5, "plus": 30, "premium": 100}},
+                     "padrao": {"gratuito": 5, "plus": 30, "premium": 100}},
     "ia_resumos": {"rotulo": "Resumos com IA (ativos distintos)", "tipo": "dia", "aplicado": True,
-                   "padrao": {"visitante": 3, "gratuito": 5, "plus": 40, "premium": 120}},
+                   "padrao": {"gratuito": 5, "plus": 40, "premium": 120}},
     "atualizar_dados": {"rotulo": "Botão Atualizar dados (limpa o cache de todos)", "tipo": "dia", "aplicado": True,
-                        "padrao": {"visitante": 2, "gratuito": 3, "plus": 10, "premium": 30}},
+                        "padrao": {"gratuito": 3, "plus": 10, "premium": 30}},
     "alertas_max": {"rotulo": "Alertas de mercado ativos", "tipo": "max", "aplicado": True,
-                    "padrao": {"visitante": 1, "gratuito": 2, "plus": 15, "premium": 50}},
+                    "padrao": {"gratuito": 2, "plus": 15, "premium": 50}},
     "verificacao_min": {"rotulo": "Intervalo mínimo do monitor (minutos)", "tipo": "min", "aplicado": True,
-                        "padrao": {"visitante": 60, "gratuito": 60, "plus": 30, "premium": 15}},
+                        "padrao": {"gratuito": 60, "plus": 30, "premium": 15}},
     "carteira_posicoes": {"rotulo": "Posições na carteira", "tipo": "max", "aplicado": True,
-                          "padrao": {"visitante": 5, "gratuito": 8, "plus": 40, "premium": 300}},
+                          "padrao": {"gratuito": 8, "plus": 40, "premium": 300}},
     "comparador_ativos": {"rotulo": "Ativos no comparador", "tipo": "max", "aplicado": True,
-                          "padrao": {"visitante": 2, "gratuito": 3, "plus": 6, "premium": 10}},
+                          "padrao": {"gratuito": 3, "plus": 6, "premium": 10}},
     # Central de notícias: o que pesa é o número de ativos acompanhados (cada um é uma busca extra em fontes externas), as fotos
     # (cada foto é uma consulta ao Google e à matéria) e a frequência de atualização. Quem consome mais paga o plano maior.
     # Competição de carteiras virtuais: o gratuito participa (atrai e engaja), mas quem negocia mais paga o plano maior.
     "comp_ordens_dia": {"rotulo": "Ordens na competição (por dia)", "tipo": "dia", "aplicado": True,
-                        "padrao": {"visitante": 0, "gratuito": 5, "plus": 20, "premium": 60}},
+                        "padrao": {"gratuito": 5, "plus": 20, "premium": 60}},
     # Ligas de amigos (etapa 2): todos podem ENTRAR (convite de um amigo atrai gente nova), mas CRIAR ligas privadas é do plano Plus em diante.
     "comp_ligas_criar": {"rotulo": "Ligas privadas criadas na competição", "tipo": "max", "aplicado": True,
-                         "padrao": {"visitante": 0, "gratuito": 0, "plus": 3, "premium": 10}},
+                         "padrao": {"gratuito": 0, "plus": 3, "premium": 10}},
     "comp_ligas_entrar": {"rotulo": "Ligas de amigos em que participa (por convite)", "tipo": "max", "aplicado": True,
-                          "padrao": {"visitante": 0, "gratuito": 3, "plus": 10, "premium": 30}},
+                          "padrao": {"gratuito": 3, "plus": 10, "premium": 30}},
     "comp_liga_membros": {"rotulo": "Membros por liga privada criada", "tipo": "max", "aplicado": True,
-                          "padrao": {"visitante": 0, "gratuito": 0, "plus": 30, "premium": 100}},
+                          "padrao": {"gratuito": 0, "plus": 30, "premium": 100}},
     "noticias_ativos": {"rotulo": "Ativos acompanhados na Central de notícias", "tipo": "max", "aplicado": True,
-                        "padrao": {"visitante": 2, "gratuito": 3, "plus": 6, "premium": 10}},
+                        "padrao": {"gratuito": 3, "plus": 6, "premium": 10}},
     "noticias_cartoes": {"rotulo": "Notícias em destaque (aba Principais)", "tipo": "max", "aplicado": True,
-                         "padrao": {"visitante": 5, "gratuito": 5, "plus": 10, "premium": 13}},
+                         "padrao": {"gratuito": 5, "plus": 10, "premium": 13}},
     "noticias_lista": {"rotulo": "Notícias na aba Últimas", "tipo": "max", "aplicado": True,
-                       "padrao": {"visitante": 10, "gratuito": 10, "plus": 30, "premium": 60}},
+                       "padrao": {"gratuito": 10, "plus": 30, "premium": 60}},
     "noticias_fotos": {"rotulo": "Notícias com foto", "tipo": "max", "aplicado": True,
-                       "padrao": {"visitante": 2, "gratuito": 3, "plus": 8, "premium": 14}},
+                       "padrao": {"gratuito": 3, "plus": 8, "premium": 14}},
     "noticias_atualizar": {"rotulo": "Atualizações manuais das notícias", "tipo": "dia", "aplicado": True,
-                           "padrao": {"visitante": 2, "gratuito": 4, "plus": 20, "premium": 60}},
+                           "padrao": {"gratuito": 4, "plus": 20, "premium": 60}},
     "noticias_auto_min": {"rotulo": "Atualização automática das notícias (minutos)", "tipo": "min", "aplicado": True,
-                          "padrao": {"visitante": 120, "gratuito": 120, "plus": 30, "premium": 15}},
+                          "padrao": {"gratuito": 120, "plus": 30, "premium": 15}},
 }
 CH_CFG = "planos_cfg"
 _cache = {"cfg": None, "t": 0.0, "planos": {}}
@@ -149,7 +149,7 @@ def _efetivo(d: dict, carencia: int | None = None) -> str:
 
 def plano_de(email: str | None, papel: str | None = None) -> str:
     if not email:
-        return "visitante"
+        return "gratuito"                                 # o app exige conta; sem e-mail (fora de uma sessão) vale o plano básico
     if papel in ("admin", "suporte"):
         return "premium"
     agora = time.time()
@@ -168,7 +168,7 @@ def plano_de(email: str | None, papel: str | None = None) -> str:
 def assinatura_de(email: str | None, papel: str | None = None) -> dict:
     """Situação da assinatura: plano em vigor, plano contratado, validade, dias, carência, cancelamento e histórico."""
     if not email:
-        return {"plano": "visitante", "contratado": "visitante", "ate": None, "dias": None, "vencida": False, "carencia": False,
+        return {"plano": "gratuito", "contratado": "gratuito", "ate": None, "dias": None, "vencida": False, "carencia": False,
                 "cancelado": False, "origem": "", "historico": []}
     if papel in ("admin", "suporte"):
         return {"plano": "premium", "contratado": "premium", "ate": None, "dias": None, "vencida": False, "carencia": False,
@@ -260,9 +260,10 @@ def listar_assinaturas() -> list[dict]:
 
 
 # ---------------------------------------------------------------- uso diário
-def _estado_visitante() -> dict:
+def _estado_sessao() -> dict:
+    """Uso contado na sessão quando não há e-mail (fora de uma sessão com conta; o app sempre exige login)."""
     import streamlit as st
-    return st.session_state.setdefault("_uso_visitante", {})
+    return st.session_state.setdefault("_uso_sessao", {})
 
 
 def _ator() -> tuple[str | None, str | None]:
@@ -276,14 +277,14 @@ def _ator() -> tuple[str | None, str | None]:
 
 def _doc_uso(email: str | None) -> dict:
     if not email:
-        return _estado_visitante().setdefault(hoje(), {})
+        return _estado_sessao().setdefault(hoje(), {})
     import banco
     return banco.cfg_ler(f"uso|{hoje()}|{_h(email)}") or {}
 
 
 def _gravar_uso(email: str | None, doc: dict) -> None:
     if not email:
-        _estado_visitante()[hoje()] = doc
+        _estado_sessao()[hoje()] = doc
         return
     import banco
     banco.cfg_gravar(f"uso|{hoje()}|{_h(email)}", doc)
@@ -301,7 +302,7 @@ _LOCKS = [threading.Lock() for _ in range(64)]          # um trinco por "faixa" 
 
 
 def _trinco(email: str | None):
-    return _LOCKS[int(hashlib.sha1(str(email or "visitante").encode()).hexdigest()[:6], 16) % 64]
+    return _LOCKS[int(hashlib.sha1(str(email or "sessao").encode()).hexdigest()[:6], 16) % 64]
 
 
 def usar(recurso: str, unico: str | None = None, email: str | None = "?", papel: str | None = None) -> tuple[bool, dict]:
@@ -349,7 +350,7 @@ def _usar(recurso: str, unico: str | None = None, email: str | None = "?", papel
         if RECURSOS[recurso]["tipo"] == "dia":                # Etapa 15: rajada (muitas ações em pouco tempo)
             try:
                 import abuso
-                if abuso.rajada_excedida(email or f"visitante{id(_estado_visitante())}", recurso):   # visitante: por sessão, não compartilhado
+                if abuso.rajada_excedida(email or f"sessao{id(_estado_sessao())}", recurso):
                     info["mensagem"] = "Muitas ações em pouco tempo. Aguarde um minuto e tente de novo."
                     _registrar_negada(email, doc, rajada=True)
                     return False, info
@@ -443,7 +444,7 @@ def permitido_max(recurso: str, quantidade_atual: int, email: str | None = "?", 
 
 
 def limite_atual(recurso: str, email: str | None = "?", papel: str | None = None) -> tuple[int, str]:
-    """Limite do plano da pessoa logada (ou visitante) para um recurso e o nome do plano. Nunca levanta erro."""
+    """Limite do plano da pessoa logada para um recurso e o nome do plano. Nunca levanta erro."""
     try:
         if email == "?":
             email, papel = _ator()

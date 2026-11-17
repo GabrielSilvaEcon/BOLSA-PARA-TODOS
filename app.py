@@ -113,7 +113,6 @@ import analise_app as AP
 import inicio_noticias
 import cabecalho_global
 
-import json
 import streamlit as st
 
 try:
@@ -4360,7 +4359,7 @@ PGS_MODO_CRIPTO = PGS_CRIPTO_FUND + [PG_TEC]
 def plano_do_usuario() -> str:
     u = usuarios.usuario()
     if not u:
-        return "visitante"
+        return "gratuito"
     try:
         return __import__("planos").plano_de(u["email"], u.get("papel"))
     except Exception:
@@ -4623,7 +4622,7 @@ def _cabecalho_conta():
     """Cartão do topo da janela da conta: avatar, apelido (do onboarding), nível e XP reais (os mesmos do cabeçalho do app)."""
     import conta_menu
     u = usuarios.usuario()
-    nome = "Visitante"
+    nome = "Jogador"
     if u:
         try:
             import onboarding as _onb_m
@@ -4703,7 +4702,7 @@ conta_app.TODAS.update({u_: p_.title for u_, p_ in _todas_pg.items()})
 jogar_app.registrar_paginas({"competicao": PG_COMP, "jornada": PG_JORNADA})
 _todas_pg.setdefault("inicio", PG_INICIO)   # a página padrão (default=True) tem url_path "" no Streamlit: sem este alias, "inicio" nunca era achado e o botão Início não navegava
 educacao_app.registrar_paginas({"renda-fixa": PG_RF, "fiis": PG_FIIS, "criptomoedas": PG_CRIPTO, "simulador": PG_SIM})
-usuarios.exigir_login(marca.LOGO_GRANDE, marca.NOME)   # sem login configurado nos secrets, abre como visitante
+usuarios.exigir_login(marca.LOGO_GRANDE, marca.NOME)   # sem login não abre: não há acesso como visitante
 usuarios.iniciar()                        # carrega ações, perfil e carteiras do usuário
 try:                                       # pagamento online: confere cobrança pendente (no máx. 1 consulta a cada 90 s) e libera o plano
     import pagamentos

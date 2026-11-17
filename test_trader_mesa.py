@@ -1169,14 +1169,11 @@ def test_app_individual_inicia_a_mesa_no_formato_escolhido_com_aposta_de_1_por_c
         assert TB.cfg_de(APP._partida())["formato"] == "normal"                           # padrão
 
 
-def test_app_visitante_joga_a_mesa_sem_aposta_e_sem_tocar_na_carteira():
-    with app_falso(jog="visitante") as (APP, lanc):
+def test_app_sem_conta_nao_inicia_partida():
+    with app_falso(jog="") as (APP, lanc):
         APP._ss()["tb_tf"] = "15m"
         APP._iniciar()
-        p = APP._partida()
-        assert TB.motor_de(p) == 2 and p["apostas"] == {} and p["stakes"] == {}
-        APP._stake_rodada(p)
-        assert lanc == {} and p["stakes"] == {}
+        assert APP._partida() is None and "Entre na sua conta" in APP._ss()["tb_erro"] and lanc == {}
 
 
 def test_app_sem_caixa_nao_inicia_e_mostra_a_mensagem():
@@ -1700,8 +1697,8 @@ def test_pagar_xp_uma_vez_por_partida_com_limite_diario_e_sem_tickercoins():
             assert APP._pagar_xp("p5", {"xp": 0}) == {"xp": 0, "status": "zero"}
             assert set(ED.normalizar(estado["p"])["trader_xp"]) == {"p1", "p2", "p3"}            # sobrevive à gravação no perfil
             assert "+25 XP" in APP._linha_xp(info, {"xp": 25, "status": "pago"}) and "1º lugar entre 3" in APP._linha_xp(info, {"xp": 25, "status": "pago"})
-        with mock.patch.object(usuarios, "usuario", return_value=None):
-            assert APP._pagar_xp("p9", {"xp": 25}) == {"xp": 0, "status": "visitante"} and "Entre na sua conta" in APP._linha_xp({}, {"status": "visitante"})
+        with mock.patch.object(usuarios, "usuario", return_value=None):              # sem conta (o app nem abre assim): nada é creditado
+            assert APP._pagar_xp("p9", {"xp": 25}) == {"xp": 0, "status": "erro"} and APP._linha_xp({}, {"status": "erro"}) == ""
     src = open("trader_battle_app.py", encoding="utf-8").read() + open("trader_battle.py", encoding="utf-8").read()
     import re
     assert not re.search(r"import\s+tickercoins|tickercoins\.|\bTC\.creditar", src)          # o Trader Battle nunca paga TickerCoins

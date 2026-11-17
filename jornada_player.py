@@ -327,7 +327,7 @@ def _verificar(eid: str, resposta) -> None:
 
 
 def _moedas(r: dict, antes: set, p) -> int:
-    """TickerCoins ganhas nesta sessão (0 se visitante, desligado ou já pagas antes). Nunca atrapalha o fim da lição; XP não muda."""
+    """TickerCoins ganhas nesta sessão (0 sem conta, desligado ou já pagas antes). Nunca atrapalha o fim da lição; XP não muda."""
     try:
         conta = _ss().get("_conta")
         if not conta:

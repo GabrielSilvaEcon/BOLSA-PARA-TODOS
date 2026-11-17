@@ -47,7 +47,7 @@ def _conta() -> dict | None:
 
 def _plano() -> str:
     c = _conta()
-    return planos.plano_de(c["email"], c["papel"]) if c else "visitante"
+    return planos.plano_de(c["email"], c["papel"]) if c else "gratuito"
 
 
 def _fmt(iso) -> str:
@@ -60,7 +60,7 @@ def _sinal(n: int) -> str:
 
 
 def saldo_atual(forcar: bool = False) -> int | None:
-    """Saldo da conta logada (None se visitante ou sem banco). Cache de 30 s na sessão para o cabeçalho não consultar o banco
+    """Saldo da conta logada (None sem login ou sem banco). Cache de 30 s na sessão para o cabeçalho não consultar o banco
     a cada clique; `esquecer_saldo()` zera o cache depois de compra ou recompensa. Nunca levanta erro."""
     try:
         c = _conta()

@@ -189,7 +189,7 @@ LIMITE_PERDA_X = round(LIMITE_PERDA_PCT_PAT / PCT_APOSTA, 9)
 def financeiro_rodada(r: dict, aposta: dict | None) -> dict | None:
     """Efeito em dinheiro de UMA rodada, calculado só no servidor. A operação usa o valor apostado inteiro, sem alavancagem:
     resultado = aposta × variação do preço entre a entrada e a saída (para quem vende, a conta é ao contrário).
-    Quem aguardou não mexe no patrimônio. Toda operação é concluída (stop, alvo, encerramento manual ou fim do replay). Sem aposta (visitante) devolve None."""
+    Quem aguardou não mexe no patrimônio. Toda operação é concluída (stop, alvo, encerramento manual ou fim do replay). Sem aposta devolve None."""
     if not aposta:
         return None
     op, est = r.get("operacao"), r["estrategia"]
@@ -1301,7 +1301,7 @@ def registrar_acao(p: dict, cenario: dict, jog: str, dados: dict, agora: float) 
 # ------------------------------------------------------------------ financeiro (patrimônio) e pontuação da rodada
 def _stake(p: dict, r: int, jog: str) -> dict | None:
     """Aposta de referência da rodada r: 1% do patrimônio calculado no INÍCIO da rodada, fixa durante ela (cada operação usa este mesmo valor, não é
-    recalculada a cada operação). Sem registro da rodada, vale a mais recente anterior, depois a aposta da partida. Sem nenhuma (visitante): None."""
+    recalculada a cada operação). Sem registro da rodada, vale a mais recente anterior, depois a aposta da partida. Sem nenhuma: None."""
     s = p.get("stakes") or {}
     for rr in range(r, 0, -1):
         if _chave(rr, jog) in s:
@@ -1323,7 +1323,7 @@ def definir_stake(p: dict, jog: str, rodada: int, stake: float, pat: float) -> b
 def financeiro_mesa(trades: list[dict], ap: dict | None) -> dict | None:
     """Efeito em dinheiro da rodada: soma de TODAS as operações encerradas, cada uma com a mesma aposta de referência (stake × retorno).
     Como as operações se acumulam, a perda da rodada pode ultrapassar 1% do patrimônio (cada operação perde no máximo a aposta, mas há várias).
-    Sem aposta (visitante), devolve None."""
+    Sem aposta, devolve None."""
     if not ap:
         return None
     stake, pat = float(ap["stake"]), float(ap["pat"])

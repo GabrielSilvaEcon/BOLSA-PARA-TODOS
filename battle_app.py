@@ -229,7 +229,7 @@ def _ir(tela: str) -> None:
 
 
 def _pessoa() -> dict:
-    """Baralho e histórico da pessoa. Conta logada: banco (uma leitura por sessão). Visitante: só nesta sessão."""
+    """Baralho e histórico da pessoa. Conta logada: banco (uma leitura por sessão); sem conta (fora de uma sessão): só na memória."""
     ss = st.session_state
     if "bt_pessoa" not in ss:
         em = _email()

@@ -30,12 +30,6 @@ INTERESSES = (
     {"id": "tecnologia", "titulo": "Tecnologia"}, {"id": "esg", "titulo": "ESG"}, {"id": "outros", "titulo": "Outros"},
 )
 IDS_INT = tuple(i["id"] for i in INTERESSES)
-NIVEIS = (
-    {"id": "iniciante", "titulo": "Iniciante", "desc": "Estou começando a aprender."},
-    {"id": "intermediario", "titulo": "Intermediário", "desc": "Já conheço os principais conceitos."},
-    {"id": "avancado", "titulo": "Avançado", "desc": "Tenho experiência e analiso o mercado."},
-)
-IDS_NIV = tuple(n["id"] for n in NIVEIS)
 
 # Tela 3 — Seu objetivo (um só objetivo principal). `icone` é o nome da imagem em arte_onboarding.
 OBJETIVOS = (
@@ -71,7 +65,7 @@ def normalizar(onb) -> dict:
     ints = d.get("interesses")
     ints = [i for i in IDS_INT if isinstance(ints, (list, tuple)) and i in ints]      # só ids conhecidos, sem repetir, na ordem do catálogo
     return {"v": VERSAO, "etapa": min(max(etapa, 1), len(ETAPAS)), "perfil": pid, "nick": nick if C.apelido_valido(nick)[0] else "",
-            "interesses": ints, "nivel": d.get("nivel") if d.get("nivel") in IDS_NIV else "",
+            "interesses": ints,
             "objetivo": d.get("objetivo") if d.get("objetivo") in IDS_OBJ else "", "concluido": d.get("concluido") is True}
 
 
@@ -112,9 +106,9 @@ def pode_continuar(pid, estado_nick: str) -> bool:
 ETAPAS_PRONTAS = 3             # quantas telas já existem (hoje as 3). Ao criar a Tela 2, subir para 2, e assim por diante
 
 
-def pode_continuar_2(interesses, nivel) -> bool:
-    """Tela 2: pelo menos um interesse e um nível de conhecimento."""
-    return bool([i for i in (interesses or []) if i in IDS_INT]) and nivel in IDS_NIV
+def pode_continuar_2(interesses) -> bool:
+    """Tela 2: pelo menos um interesse (não há escolha de nível na entrada)."""
+    return bool([i for i in (interesses or []) if i in IDS_INT])
 
 
 def pode_concluir(objetivo) -> bool:
@@ -127,7 +121,7 @@ def perfil_do_usuario(onb) -> dict:
     n = normalizar(onb)
     if not n["concluido"]:
         return {}
-    return {"perfil_investidor": n["perfil"], "interesses": n["interesses"], "nivel": n["nivel"], "objetivo": n["objetivo"]}
+    return {"perfil_investidor": n["perfil"], "interesses": n["interesses"], "objetivo": n["objetivo"]}
 
 
 def alternar_interesse(atual, iid: str) -> list:

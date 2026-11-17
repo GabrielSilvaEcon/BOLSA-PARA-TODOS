@@ -671,10 +671,6 @@ def pagina_conta() -> None:
     _cabecalho("Minha conta", "Seu painel, seus dados e como mantê-los protegidos.")
     u = usuarios.usuario()
     if not u:
-        st.markdown(_msg("Você está como visitante e nada fica salvo. Entre para guardar suas empresas, seu perfil e suas carteiras.", "info"),
-                    unsafe_allow_html=True)
-        if usuarios.acesso_obrigatorio():
-            st.button("Entrar", icon=":material/login:", type="primary", on_click=usuarios.sair_visitante, key="entrar_conta")
         return
     st.markdown(f"<div class='ct-li'><div><div class='t'>{_e(u['nome'])}</div><div class='s'>{_e(u['email'])}</div></div>"
                 f"<div>{_chip(perm.ROTULOS.get(u['papel'], 'Usuário'), 'ok' if u['papel'] != 'usuario' else '')}</div></div>",
@@ -1026,7 +1022,7 @@ def _adm_consumo(a) -> None:
     st.markdown(_titulo("Páginas por plano", "A divisão sugerida já vale: Gratuito, Investidor Plus e Investidor Premium abrem páginas diferentes. Cada página trancada ganha cadeado no menu e fica bloqueada também por URL direta. Aqui você muda o plano mínimo de cada uma. Início, Alertas, Planos, Minha conta e Ajuda nunca são trancadas."), unsafe_allow_html=True)
     with st.expander("Escolher plano mínimo por página"):
         atuais = paginas_plano.ler()
-        opcoes = ["todos"] + [p for p in paginas_plano.PLANOS_ORDEM if p != "visitante"]
+        opcoes = ["todos"] + list(paginas_plano.PLANOS_ORDEM)
         rot = lambda x: "Todos os planos" if x == "todos" else paginas_plano.ROTULO[x]
         novos_min = {}
         for url, titulo in sorted(_PAGINAS_PLANO().items(), key=lambda kv: kv[1]):

@@ -10,8 +10,8 @@ as duas checagens usam as mesmas funções.
 """
 from __future__ import annotations
 
-PLANOS_ORDEM = ("visitante", "gratuito", "plus", "premium")
-ROTULO = {"visitante": "Visitante", "gratuito": "Gratuito", "plus": "Investidor Plus", "premium": "Investidor Premium"}
+PLANOS_ORDEM = ("gratuito", "plus", "premium")
+ROTULO = {"gratuito": "Gratuito", "plus": "Investidor Plus", "premium": "Investidor Premium"}
 NUNCA_TRANCAR = frozenset({"inicio", "notificacoes", "planos", "conta", "ajuda", "administracao"})
 CH_CFG = "paginas_plano_cfg"
 PADRAO_MINIMOS = {
@@ -26,11 +26,11 @@ PADRAO_MINIMOS = {
 
 
 def normalizar(cfg) -> dict:
-    """{url_path: plano_minimo}. Descarta planos desconhecidos, páginas essenciais e o plano 'visitante' (todos o têm)."""
+    """{url_path: plano_minimo}. Descarta planos desconhecidos, páginas essenciais e o plano 'gratuito' (todos o têm)."""
     out = {}
     if isinstance(cfg, dict):
         for url, pl in (cfg.get("minimos", cfg) if isinstance(cfg.get("minimos", cfg), dict) else {}).items():
-            if isinstance(url, str) and url not in NUNCA_TRANCAR and pl in PLANOS_ORDEM and pl != "visitante":
+            if isinstance(url, str) and url not in NUNCA_TRANCAR and pl in PLANOS_ORDEM and pl != "gratuito":
                 out[url] = pl
     return out
 
@@ -40,11 +40,11 @@ def plano_minimo(url_path: str, cfg: dict | None) -> str | None:
 
 
 def liberada(url_path: str, plano: str | None, cfg: dict | None) -> bool:
-    """A página abre para este plano? Plano desconhecido conta como visitante (o mais baixo)."""
+    """A página abre para este plano? Plano desconhecido conta como gratuito (o mais baixo)."""
     minimo = plano_minimo(url_path, cfg)
     if minimo is None:
         return True
-    p = plano if plano in PLANOS_ORDEM else "visitante"
+    p = plano if plano in PLANOS_ORDEM else "gratuito"
     return PLANOS_ORDEM.index(p) >= PLANOS_ORDEM.index(minimo)
 
 
@@ -55,7 +55,7 @@ def paginas_do_plano(minimos: dict | None, plano: str) -> list[str]:
 
 def explicacao(titulo: str, minimo: str, plano: str | None) -> dict:
     """Texto claro do bloqueio: o que é, qual plano libera e qual é o plano atual."""
-    atual = ROTULO.get(plano if plano in ROTULO else "visitante")
+    atual = ROTULO.get(plano if plano in ROTULO else "gratuito")
     return {"titulo": f"{titulo}: disponível no plano {ROTULO[minimo]}",
             "texto": f"Seu plano atual é {atual}. Esta ferramenta pede o plano {ROTULO[minimo]} ou superior. "
                      "Nada do que você já cadastrou foi perdido; o resto do app continua liberado.",

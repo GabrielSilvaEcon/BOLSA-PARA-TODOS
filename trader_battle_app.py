@@ -64,7 +64,6 @@ _CSS = f"""
 {_P} .tb-fin.up .v{{color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}
 {_P} .tb-fin.down{{border-color:#FF3D63 !important;background:linear-gradient(160deg,rgba(255,61,99,.18),rgba(10,7,32,.9)) !important}}
 {_P} .tb-fin.down .v{{color:#FF6B87 !important;-webkit-text-fill-color:#FF6B87 !important}}
-{_P} .tb-fin0{{font-size:.78rem;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
 {_P} .st-key-tb_jogar button,{_P} .st-key-tb_salvar button,{_P} .st-key-tb_prox button,{_P} .st-key-tb_de_novo button{{height:48px !important;border:0 !important;border-radius:14px !important;font-weight:900 !important;
   background:linear-gradient(90deg,#2EE86B,#14C9B5) !important;box-shadow:0 0 16px rgba(46,232,107,.4) !important}}
 {_P} :is(.st-key-tb_jogar,.st-key-tb_salvar,.st-key-tb_prox,.st-key-tb_de_novo) button :is(p,span){{color:#06240F !important;-webkit-text-fill-color:#06240F !important;font-weight:900 !important}}
@@ -222,9 +221,9 @@ def _jogador() -> str:
     try:
         import usuarios
         u = usuarios.usuario()
-        return (u or {}).get("email") or "visitante"
+        return (u or {}).get("email") or ""
     except Exception:
-        return "visitante"
+        return ""
 
 
 def _partida() -> dict | None:
@@ -298,13 +297,14 @@ def _iniciar() -> None:
         fmt = _formato(tf)
         cen = TD.escolher(tf, int(_agora()) % 100000, rodadas=TB.FORMATOS[fmt])
         jog = _jogador()
-        apostas = None
-        if jog != "visitante":                                   # logado: entra com 1% do patrimônio; visitante joga só por pontos, sem mexer em carteira
-            try:
-                apostas = {jog: TCA.aposta_de(jog, (_conta() or {}).get("id"), mesa=True)}
-            except TCA.SemSaldo as e:
-                _ss()["tb_erro"] = str(e)
-                return
+        if not jog:                                              # o app só abre com conta; sem ela não há partida
+            _ss()["tb_erro"] = "Entre na sua conta para jogar."
+            return
+        try:                                                     # cada partida vale 1% do patrimônio da Wallet Game
+            apostas = {jog: TCA.aposta_de(jog, (_conta() or {}).get("id"), mesa=True)}
+        except TCA.SemSaldo as e:
+            _ss()["tb_erro"] = str(e)
+            return
         _ss()["tb_cen"] = TD.por_id([cen])
         _ss()["tb_p"] = TB.nova_partida(cen, tf, [jog], _agora(), apostas=apostas, formato=fmt)
         _zerar_rascunho()
@@ -493,11 +493,7 @@ def _central_online(painel: str | None) -> None:
     """Painel aberto pelos cards 'Jogar com Amigos' (criar sala) e 'Entrar em uma Sala' (código). Sala exige conta."""
     if not painel:
         return
-    em = _email_online()
     with st.container(key="tb_painel"):
-        if not em:
-            st.markdown("<div class='tb-aviso'>Entre na sua conta para criar ou entrar em uma sala (2 a 4 jogadores).</div>", unsafe_allow_html=True)
-            return
         if painel == "amigos":
             st.markdown("<div class='tb-cap'>Crie a sala e passe o código para 1 a 3 amigos. Todos veem o mesmo gráfico, o mesmo relógio e a mesma rodada.</div>",
                         unsafe_allow_html=True)
@@ -558,7 +554,7 @@ def _frag_mesa_online(pid: str) -> None:
 def _cartao_fin(fin: dict | None) -> str:
     """Cartão do dinheiro da partida: quanto os trades renderam (ou custaram) em T$ e em %, somando as rodadas. Vazio para quem jogou sem aposta."""
     if not fin:
-        return "<div class='tb-card tb-fin0'>Jogada sem aposta (visitante): só pontos, o patrimônio não mudou. Entre na sua conta para jogar valendo patrimônio.</div>"
+        return ""
     import wallet_game as WG
     pnl = fin["pnl"]
     cor = "up" if pnl > 0 else ("down" if pnl < 0 else "zero")
@@ -589,12 +585,12 @@ def _sg(x: float) -> str:
 
 def _pagar_xp(pid: str, info: dict) -> dict:
     """Credita o XP da partida no progresso de estudo da conta (mesmo XP da Jornada e das missões da Wallet Game), UMA vez por partida
-    e só nas XP_PARTIDAS_DIA primeiras do dia. Nunca TickerCoins. Visitante não ganha (nada é salvo). Falha aqui nunca derruba a tela."""
+    e só nas XP_PARTIDAS_DIA primeiras do dia. Nunca TickerCoins. Falha aqui nunca derruba a tela."""
     n = int((info or {}).get("xp") or 0)
     try:
         import usuarios
         if not usuarios.usuario():
-            return {"xp": 0, "status": "visitante"}
+            return {"xp": 0, "status": "erro"}
         import educacao_app as EA
         import jornada as JO
         p = dict(EA.prog())
@@ -624,8 +620,7 @@ def _linha_xp(info: dict, pago: dict) -> str:
         if info.get("xp_pts"):
             onde += f" ({info['xp_pos']} XP) + {info['xp_pts']} XP pela pontuação"
         return f"<div class='tb-xp'><span>⭐</span><b>+{n} XP</b><small>{onde}</small></div>"
-    txt = {"visitante": "Entre na sua conta para ganhar XP nas partidas.",
-           "limite": f"Você já ganhou XP em {TB.XP_PARTIDAS_DIA} partidas hoje: esta partida não deu XP.",
+    txt = {"limite": f"Você já ganhou XP em {TB.XP_PARTIDAS_DIA} partidas hoje: esta partida não deu XP.",
            "zero": "Sem XP: você não registrou a leitura em nenhuma rodada."}.get(st_)
     return f"<div class='tb-xp n'><span>⭐</span><small>{txt}</small></div>" if txt else ""
 

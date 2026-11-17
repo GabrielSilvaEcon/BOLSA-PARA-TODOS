@@ -6,7 +6,7 @@ Duas formas de entrar, uma só conta (identificada pelo e-mail):
 
 Este módulo liga a identidade à sessão do Streamlit e guarda/carrega os dados da pessoa (ações em análise, perfil,
 carteiras, preferências...) em UM JSON por conta, pelo banco.py, que confere na própria camada de dados que o dono
-é quem está logado. Sem [auth] e sem e-mail configurados nos secrets o app abre como visitante e nada é salvo.
+é quem está logado. O app só abre com conta: sem [auth] e sem e-mail configurados nos secrets ele não abre (não há acesso como visitante).
 
 Isolamento entre usuários: ao sair, ou ao trocar de conta na mesma sessão do navegador, TODO o session_state é apagado
 (só o código do navegador permanece), para que nada da conta anterior apareça na seguinte.
@@ -68,7 +68,7 @@ def senha_disponivel() -> bool:
 
 
 def acesso_obrigatorio() -> bool:
-    """Se o app deve mostrar a tela de entrada (em vez de abrir direto como visitante)."""
+    """Se há alguma forma de entrar configurada (Google ou e-mail e senha)."""
     return _configurado() or senha_disponivel()
 
 
@@ -312,7 +312,7 @@ def _aplicar_cookie_pendente() -> None:
 
 
 def usuario():
-    """{'email', 'nome', 'id', 'papel', 'provedor'} de quem está logado, ou None (visitante)."""
+    """{'email', 'nome', 'id', 'papel', 'provedor'} de quem está logado, ou None (ainda na tela de entrada)."""
     c = st.session_state.get("_conta")
     if not c:
         return None
@@ -320,7 +320,7 @@ def usuario():
 
 
 def ator():
-    """Quem age, no formato que a camada de dados exige. None se for visitante."""
+    """Quem age, no formato que a camada de dados exige. None se ninguém entrou."""
     c = st.session_state.get("_conta")
     return banco.Ator(id=c["id"], email=c["email"], papel=c["papel"]) if c else None
 
@@ -336,11 +336,6 @@ def pode(permissao: str) -> bool:
 
 def preferencias() -> dict:
     return P.normalizar(st.session_state.get("prefs"))
-
-
-def sair_visitante():
-    """Volta para a tela de login."""
-    st.session_state.pop("_visitante", None)
 
 
 def sair():
@@ -359,7 +354,8 @@ def sair():
 
 
 def exigir_login(logo_uri: str = "", nome: str = "TickerHunters"):
-    """Resolve quem está na sessão. Sem login e com acesso configurado, mostra a tela de entrada e interrompe o app."""
+    """Resolve quem está na sessão. Sem login, mostra a tela de entrada e interrompe o app: não há acesso como visitante.
+    Sem nenhuma forma de entrar configurada nos secrets, o app não abre (mostra o aviso e para)."""
     _aplicar_cookie_pendente()
     if acesso_obrigatorio() or _google_dados():
         _resolver_identidade()
@@ -367,7 +363,8 @@ def exigir_login(logo_uri: str = "", nome: str = "TickerHunters"):
     if u:
         return u
     if not acesso_obrigatorio():
-        return None
+        st.error("O TickerHunters só abre com login. Configure nos secrets o login com Google ([auth]) ou o envio de e-mail para entrar com e-mail e senha.")
+        st.stop()
     import conta_app
     conta_app.tela_acesso(logo_uri, nome)
     st.stop()

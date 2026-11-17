@@ -21,7 +21,7 @@ def _milhar(n) -> str:
 
 
 def cabecalho_html(nome: str, nivel: int | None = None, xp_no_nivel: int = 0, faixa: int = 0, pct: float = 0.0, maximo: bool = False) -> str:
-    """Título, subtítulo e cartão do usuário. Sem `nivel` (visitante), mostra só o nome."""
+    """Título, subtítulo e cartão do usuário. Sem `nivel`, mostra só o nome."""
     av = ART.uri("avatar")
     arte = ART.uri("cabecalho")
     avatar = f"<div class='cta-av'><img src='{av}' alt=''></div>" if av else ""

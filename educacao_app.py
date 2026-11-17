@@ -2,7 +2,7 @@
 
 Regras desta tela:
 - Todo o conteúdo é aberto a todos; os três modos (iniciante/intermediário/avançado) mudam só a apresentação (modos.py), não há planos nem preços.
-- O progresso fica em st.session_state["edu_progresso"] e é gravado no perfil da conta (usuarios.CHAVES): individual e isolado. Visitante estuda, mas nada é salvo.
+- O progresso fica em st.session_state["edu_progresso"] e é gravado no perfil da conta (usuarios.CHAVES): individual e isolado. 
 - Dados reais vêm das fontes do app, com fonte e data; o que não existe aparece como "indisponível". Exemplos numéricos fora disso são sempre marcados como HIPOTÉTICOS.
 - Nada aqui recomenda compra ou venda, nem usa pontos para incentivar operações.
 """
@@ -71,10 +71,6 @@ def _set(p: dict) -> None:
 
 def modo() -> str:
     return prog()["modo"]
-
-
-def _salvo() -> bool:
-    return bool(usuarios.usuario())
 
 
 def _barra(pct: float) -> str:
@@ -201,8 +197,6 @@ def _aba_painel() -> None:
         C._kpi("Perguntas acertadas", f"{certas}/{len(E.QUIZ)}", "ok"),
         C._kpi("Trilhas concluídas", f"{len(p['certificados'])}/{len(E.TRILHAS)}", "info"),
     ]), unsafe_allow_html=True)
-    if not _salvo():
-        st.markdown(C._msg("Você está navegando como visitante: o progresso vale só nesta sessão. Entre na sua conta para salvá-lo.", "aviso"), unsafe_allow_html=True)
     dif = ED.dificuldades(p)
     if dif:
         st.markdown(C._titulo("Assuntos para reforçar", "Onde as respostas mais recentes indicam dúvida. Isso orienta o estudo e não é uma nota."), unsafe_allow_html=True)
