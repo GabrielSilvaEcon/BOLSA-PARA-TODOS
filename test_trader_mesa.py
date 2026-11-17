@@ -1054,6 +1054,22 @@ def test_argumentos_do_componente_nao_vazam_futuro_nem_segredos_do_adversario():
     assert ana["propria"] is None and ana["operacao"] is None                             # o motor antigo não aparece na mesa
 
 
+def test_tela_mostra_o_ativo_e_o_horario_mas_nunca_a_data_do_historico():
+    import re
+    c = _cenario(fn_replay=_sobe)
+    p = _partida(c)
+    for agora in (p["t_fase"] - 1, ag(p, 5)):                         # na análise e no replay
+        a = G.args_mesa(TB.visao(p, c, agora, "ana"), p, {}, agora)
+        txt = json.dumps(a, default=str)
+        assert a["ticker"] == "TEST3"
+        assert "2026" not in txt and not re.search(r"\d{4}-\d{2}-\d{2}|\d{2}/\d{2}", txt)     # nem ISO nem dd/mm
+        assert all(re.fullmatch(r"\d{2}:\d{2}", k["t"]) for k in a["candles"])
+        dias = [k["d"] for k in a["candles"]]
+        assert dias[0] == 1 and dias == sorted(dias) and dias[-1] > 1          # o dia da partida avança, sem dizer qual é
+    assert a["candles"][0]["t"] == "10:00" and a["candles"][-1]["d"] == TB.candles_sem_data(c["candles"])[len(a["candles"]) - 1]["d"]
+    assert TB.rotulo_horario(a["candles"][0]) == "D1 10:00"
+
+
 def test_ritmo_de_2_5_segundos_vem_do_servidor_e_para_na_pausa():
     c = _cenario(fn_replay=_sobe)
     p = _partida(c)

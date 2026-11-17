@@ -108,6 +108,23 @@ def validar_cenario(c: dict) -> tuple[bool, str]:
     return True, ""
 
 
+def candles_sem_data(candles: list[dict]) -> list[dict]:
+    """Candles como vão para a TELA: só o horário (HH:MM) e o dia da partida (1, 2, 3...), nunca a data do calendário, para que ninguém
+    procure o histórico fora do jogo. A contagem começa no 1º candle da lista (sempre o 1º do cenário), então é estável entre atualizações."""
+    out, dia, ant = [], 0, None
+    for k in candles:
+        t = str(k["t"])
+        if t[:10] != ant:
+            dia, ant = dia + 1, t[:10]
+        out.append({**k, "t": t[11:16], "d": dia})
+    return out
+
+
+def rotulo_horario(k: dict) -> str:
+    """Rótulo do eixo de tempo para um candle de `candles_sem_data` (ex.: 'D2 14:30')."""
+    return f"D{k['d']} {k['t']}"
+
+
 def dataframe(candles: list[dict]):
     """Candles do jogo → DataFrame OHLCV (formato do analise_tecnica)."""
     import pandas as pd

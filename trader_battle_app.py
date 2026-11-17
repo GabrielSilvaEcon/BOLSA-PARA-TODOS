@@ -215,10 +215,6 @@ def _ind_cfg() -> dict:
             "ema": int(g("tb_i_nema", 9)) if g("tb_i_ema", False) else 0, "rsi": 14 if g("tb_i_rsi", False) else 0, "sr": bool(g("tb_i_sr", False))}
 
 
-def _rotulo(t: str) -> str:
-    return f"{t[8:10]}/{t[5:7]} {t[11:16]}"
-
-
 def _figura(v: dict, marcas: dict, linhas: dict | None = None, divisor: bool = False):
     """Figura do gráfico com só o que está em `v` (candles revelados). `linhas`: entrada/stop/alvo (aparecem só depois de travada a estratégia)."""
     import plotly.graph_objects as go
@@ -227,7 +223,7 @@ def _figura(v: dict, marcas: dict, linhas: dict | None = None, divisor: bool = F
     n = len(cand)
     cfg = _ind_cfg()
     ind = TB.indicadores(cand, cfg)
-    lab = [_rotulo(k["t"]) for k in cand]
+    lab = [TB.rotulo_horario(k) for k in TB.candles_sem_data(cand)]     # sem data: só dia da partida e horário
     na, total = v["n_analise"], v["total_replay"]
     linhas_h = [1.0] + ([0.22] if cfg["vol"] else []) + ([0.26] if cfg["rsi"] else [])
     fig = make_subplots(rows=len(linhas_h), cols=1, shared_xaxes=True, vertical_spacing=0.02, row_heights=[h / sum(linhas_h) for h in linhas_h])
