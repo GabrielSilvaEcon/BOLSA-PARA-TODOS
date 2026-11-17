@@ -37,8 +37,12 @@ def inserir(email, conta, chave, tipo, valor, dia, desc, meta, agora):
 def do(e): return sum(v["valor"] for v in LANC.values() if v["email"] == e)
 TCA.WG._inserir_credito, TCA.WG.sincronizar, TCA.conta_id = inserir, (lambda e: {}), (lambda e: "id-" + e)
 TCA.situacao = lambda e: {"pat": PAT[e] + do(e), "caixa": CAIXA0[e] + do(e)}
-r = OL.criar_sala(EM[0], "15m", None, FORMATO)
+ANTIGA = FORMATO == "antiga"
+if ANTIGA: EM = EM[:2]
+r = OL.criar_sala(EM[0], "15m", None, "rapida" if ANTIGA else FORMATO)
 for e in EM[1:]: OL.entrar_na_sala(e, r["codigo"], None)
+if ANTIGA:                                                   # sala gravada antes da mesa: sem formato → regras antigas (motor 1)
+    d = OL._row(r["id"])["dados"]; d["sala"].pop("formato"); banco._atualizar_n("tb_partidas", {"id": r["id"]}, {"dados": banco._js(d)})
 OL.iniciar(r["id"], EM[0], None); PID = r["id"]
 EST = {e: {} for e in EM}; TRAFEGO = {e: [] for e in EM}; LOCK = threading.Lock()
 
@@ -72,6 +76,8 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, json.dumps({"fase": d["fase"], "rodada": d["rodada"], "pontos": d["pontos"], "lanc": LANC, "caixa": {e: TCA.situacao(e)["caixa"] for e in EM},
                 "resultados": {k: {"pontos": v["pontos"], "pnl": (v.get("fin") or {}).get("pnl"), "limite": v.get("limite_atingido"), "ops": [(t["direcao"], round(t["entrada"], 4), round(t["saida"], 4), t["motivo"]) for t in v["operacoes"]]} for k, v in d["resultados"].items()},
                 "n_acoes": len(d["acoes"])}, default=str))
+        if u.path == "/salvar":
+            e = EM[int(q["u"][0])]; OL.salvar(PID, e, {"direcao": "alta", "tipo": "continuacao", "confianca": 3, "entrada": 10.0, "stop": 9.8, "alvo": 10.6}, None, time.time()); return self._send(200, "{}")
         if u.path == "/trafego":
             e = EM[int(q["u"][0])]; return self._send(200, json.dumps(TRAFEGO[e]))
         self._send(404, "{}")

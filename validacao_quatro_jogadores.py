@@ -1,6 +1,6 @@
 import json, subprocess, sys, time, re, os, urllib.request
 from playwright.sync_api import sync_playwright
-PROJ, PORT = sys.argv[1], 8766
+PROJ, PORT = sys.argv[1], int(os.environ.get('PORTA', 8766))
 SH = "/home/claude/w/e2e/shots"; os.makedirs(SH, exist_ok=True)
 srv = subprocess.Popen([sys.executable, "validacao_servidor.py", PROJ, str(PORT), "rapida"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 print(srv.stdout.readline().strip(), flush=True)
@@ -62,12 +62,15 @@ with sync_playwright() as pw:
     for i in range(4): shot(i, "r1_02_apos_spike")
     am = json.loads(ev(0, "JSON.stringify(__TB.A.mesa)"))
     chk("Ana: limite de 3% acionado, posição encerrada, bloqueada", am["limite"]["bloqueado"] and am["posicao"] is None and am["operacoes"][0]["motivo"] == "limite", json.dumps(am["operacoes"]))
+    chk("Ana: painel mostra 'Risco 3,00% de 3%'", "Risco 3,00% de 3%" in ev(0, "document.querySelector('#sm').innerText"))
     chk("Ana: botões COMPRAR/VENDER desabilitados e aviso na tela", ev(0, "document.querySelector('#m-buy').disabled&&document.querySelector('#m-sell').disabled") and "limite de perda atingido" in ev(0, "document.querySelector('#sm').innerText"))
     bm = json.loads(ev(1, "JSON.stringify(__TB.A.mesa)")); dm = json.loads(ev(3, "JSON.stringify(__TB.A.mesa)"))
     chk("Bia saiu no alvo e Dani no stop, sem bloqueio", bm["operacoes"][0]["motivo"] == "alvo" and dm["operacoes"][0]["motivo"] == "stop" and not bm["limite"]["bloqueado"] and not dm["limite"]["bloqueado"])
     chk("Bia e Dani podem operar de novo (nova operação na hora, direção contrária)", bm["pode_abrir"] and dm["pode_abrir"])
     clique(1, "#m-sell"); time.sleep(2.2)
     chk("Bia reabre na direção contrária", json.loads(ev(1, "JSON.stringify(__TB.A.mesa.posicao)"))["direcao"] == "baixa")
+    if os.environ.get("CURTO"):
+        br.close(); srv.terminate(); print(f"\nCURTO {sum(1 for r in RES if r[1])}/{len(RES)} OK"); sys.exit(0)
     clique(2, "#m-buy"); time.sleep(2.2); clique(2, "#m-enc"); time.sleep(2.2)                   # Caio só agora opera e encerra (preço 45 plano: 0%)
     # ------------------------------------------------------------- resultado da rodada
     for i in range(4): espera(i, "__TB.S.modo==='resultado'", 90)
