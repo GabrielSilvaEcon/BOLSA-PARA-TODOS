@@ -137,4 +137,11 @@ t("mesa: candle novo entra na fila e a tela não é reconstruída (mesmo token m
   h.render(args({ motor: 2, mesa: mesaSem(), candles: candles(127), revelados: 7 })); yes(h.sb.window.__TB.S === S1, "mesmo estado"); eq(h.els["o-stop"].value, "10,5", "o que o jogador digitou foi preservado");
   eq(S1.cands.length + S1.fila.length, 127);
 });
+t("gráfico: iframe que nasce estreito ganha o zoom certo quando chega à largura real, e mudar a largura preserva os candles visíveis", () => {
+  const h = carregar(); let w = 120; h.els.cvw.getBoundingClientRect = () => ({ width: w, height: 420, top: 0, left: 0 });
+  h.render(args({ modo: "analise", fase_key: "1-analise", motor: 2, mesa: null, candles: candles(120), revelados: 0, prox_ms: null, inicial: null }));
+  const S = h.sb.window.__TB.S, slots = pw => pw / S.cw;
+  w = 360; h.sb.window.__TB.fit(); yes(Math.abs(slots(360 - 46) - 93) < 0.01, "na largura real o zoom inicial mostra 90 candles + folga, veio " + slots(360 - 46));
+  w = 300; h.sb.window.__TB.fit(); yes(Math.abs(slots(300 - 40) - 93) < 0.01, "girar/redimensionar mantém os mesmos candles na tela, veio " + slots(300 - 40));
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

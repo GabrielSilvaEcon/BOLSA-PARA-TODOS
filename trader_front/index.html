@@ -304,9 +304,13 @@ function fit(){
 function resize(){
   const w=$("cvw");if(!w||!cv)return;const r=w.getBoundingClientRect(),d=window.devicePixelRatio||1;
   if(r.width<2||r.height<2)return;
+  const pw0=W?W-axisW():0;
   W=Math.round(r.width);H=Math.round(r.height);
   cv.width=Math.round(W*d);cv.height=Math.round(H*d);ctx.setTransform(d,0,0,d,0,0);
-  if(S&&!S.zi){S.zi=1;zoomInicial()}
+  // o iframe nasce estreito e só depois ganha a largura real: o zoom inicial só fica valendo com largura de verdade,
+  // e qualquer mudança de largura depois disso preserva os candles visíveis (escala a largura do candle, não a janela).
+  if(S&&!S.zi){zoomInicial();if(W>=200)S.zi=1}
+  else if(S&&S.cw&&pw0>0){const pw=W-axisW();if(Math.abs(pw-pw0)>1)S.cw*=pw/pw0}
   draw();
 }
 
