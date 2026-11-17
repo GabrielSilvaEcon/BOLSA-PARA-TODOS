@@ -37,9 +37,15 @@ AVATARES = {
 }
 AVATAR_PADRAO = "raposa"
 FOTO = "foto"                            # avatar = foto enviada pela pessoa (guardada à parte, já reprocessada: perfil_foto.py)
-PRIVACIDADE_PADRAO = {"publico": True, "mostrar_bio": True, "mostrar_nivel": True, "mostrar_conquistas": True, "mostrar_jogos": True}
+# Privacidade. `visivel`: quem abre o perfil (todos os jogadores logados, só amigos ou ninguém). `pedidos`: quem pode enviar solicitação de amizade.
+# mostrar_jogos = estatísticas competitivas (vitórias, derrotas, taxa, pontos, posições); mostrar_historico = últimas partidas.
+VISIVEL = {"todos": "Todos os jogadores", "amigos": "Só meus amigos", "ninguem": "Ninguém (só eu)"}
+PEDIDOS = {"todos": "Qualquer jogador", "ninguem": "Ninguém"}
+PRIVACIDADE_PADRAO = {"visivel": "todos", "mostrar_bio": True, "mostrar_nivel": True, "mostrar_conquistas": True, "mostrar_jogos": True,
+                      "mostrar_historico": True, "pedidos": "todos"}
 EDITAVEIS = ("nome", "usuario", "bio", "avatar", "privacidade", "tema")   # tudo o mais que vier do formulário é ignorado
-PUBLICOS = ("usuario", "nome", "avatar", "foto", "bio", "desde", "nivel", "titulo", "xp", "conquistas", "jogos")
+PUBLICOS = ("usuario", "nome", "avatar", "foto", "bio", "desde", "nivel", "titulo", "xp", "conquistas", "medalhas", "jogos", "estat", "historico")
+HIST_PUBLICO = 10                        # últimas partidas mostradas no perfil de outra pessoa
 PROIBIDOS = ("email", "id", "conta_id", "patrimonio", "carteira", "caixa", "saldo", "tc", "pat", "senha", "papel")
 
 
@@ -104,7 +110,25 @@ def validar_avatar(avatar) -> str:
 
 def validar_privacidade(p) -> dict:
     d = p if isinstance(p, dict) else {}
-    return {k: (d[k] if isinstance(d.get(k), bool) else v) for k, v in PRIVACIDADE_PADRAO.items()}
+    out = {k: (d[k] if isinstance(d.get(k), bool) else v) for k, v in PRIVACIDADE_PADRAO.items() if isinstance(v, bool)}
+    vis = d.get("visivel")
+    if vis not in VISIVEL:                                   # documento antigo: `publico` (sim/não) vira todos/ninguém
+        vis = "ninguem" if d.get("publico") is False else PRIVACIDADE_PADRAO["visivel"]
+    out["visivel"] = vis
+    out["pedidos"] = d.get("pedidos") if d.get("pedidos") in PEDIDOS else PRIVACIDADE_PADRAO["pedidos"]
+    return out
+
+
+def pode_ver(privacidade: dict, amigo: bool, dono: bool = False) -> bool:
+    """Quem pode abrir o perfil (decisão única, usada pelo banco antes de entregar qualquer dado)."""
+    if dono:
+        return True
+    vis = validar_privacidade(privacidade)["visivel"]
+    return vis == "todos" or (vis == "amigos" and bool(amigo))
+
+
+def aceita_pedidos(privacidade: dict) -> bool:
+    return validar_privacidade(privacidade)["pedidos"] == "todos"
 
 
 def validar_tema(tema, temas: dict) -> str:
@@ -200,8 +224,10 @@ def progresso(edu_progresso) -> dict:
         res, unidades = {"xp": 0}, 0
     xp = int(res.get("xp") or 0)
     nv = NV.nivel_de(xp)
-    ok, total = EM.totais(EM.colecao(EM.contexto(res, unidades, nv, [], False)))     # conquistas de estudo (não depende de carteira)
-    return {"xp": xp, "nivel": nv, "titulo": NV.titulo(nv), "conquistas": ok, "conquistas_total": total}
+    col = EM.colecao(EM.contexto(res, unidades, nv, [], False))                       # conquistas de estudo (não depende de carteira)
+    ok, total = EM.totais(col)
+    medalhas = [{"emblema": str(i.get("emblema") or "🏅")[:4], "nome": str(i.get("nome") or "")[:40]} for c in col for i in c["itens"] if i["ok"]]
+    return {"xp": xp, "nivel": nv, "titulo": NV.titulo(nv), "conquistas": ok, "conquistas_total": total, "medalhas": medalhas}
 
 
 def jogos(doc_placar, ranking_trade: dict | None = None, ranking_ticker: dict | None = None) -> dict:
@@ -213,11 +239,23 @@ def jogos(doc_placar, ranking_trade: dict | None = None, ranking_ticker: dict | 
             "ticker": {"vitorias": d["ticker"]["v"], "empates": d["ticker"]["e"], "derrotas": d["ticker"]["d"], "posicao": pos(ranking_ticker)}}
 
 
-def publico(perfil: dict, desde: str, prog: dict, jogos_: dict | None, foto_uri: str = "") -> dict | None:
-    """Visão de OUTRA pessoa: só campos de PUBLICOS, filtrados pela privacidade. None se o perfil for privado ou sem nome de usuário."""
+def historico_publico(doc_placar) -> list[dict]:
+    """Últimas partidas dos dois jogos, só o resultado (data, jogo, pontos ou resultado). Sem adversários e sem ids."""
+    import jogos as J
+    d = J.sanear(doc_placar)
+    out = [{"em": str(h.get("em") or "")[:16], "jogo": J.TRADE, "pts": round(float(h.get("pts") or 0), 1),
+            "pos": h.get("pos") if isinstance(h.get("pos"), int) else None, "n": int(h.get("n") or 1)} for h in d[J.TRADE]["hist"]]
+    out += [{"em": str(h.get("em") or "")[:16], "jogo": J.TICKER, "r": h.get("r") if h.get("r") in ("v", "e", "d") else ""} for h in d[J.TICKER]["hist"]]
+    return sorted(out, key=lambda h: h["em"], reverse=True)[:HIST_PUBLICO]
+
+
+def publico(perfil: dict, desde: str, prog: dict, jogos_: dict | None, foto_uri: str = "", *, amigo: bool = False,
+            estat: dict | None = None, historico: list | None = None) -> dict | None:
+    """Visão de OUTRA pessoa: só campos de PUBLICOS, filtrados pela privacidade. None se ela não deixa esta pessoa ver o perfil
+    (visível a ninguém, ou só a amigos e quem vê não é amigo) ou se não tem nome de usuário."""
     p = sanear(perfil)
     pv = p["privacidade"]
-    if not pv["publico"] or not p["usuario"]:
+    if not pode_ver(pv, amigo) or not p["usuario"]:
         return None
     out = {"usuario": p["usuario"], "nome": p["nome"] or p["usuario"], "avatar": p["avatar"] if (p["avatar"] != FOTO or foto_uri) else AVATAR_PADRAO,
            "desde": str(desde or "")[:7]}
@@ -229,10 +267,21 @@ def publico(perfil: dict, desde: str, prog: dict, jogos_: dict | None, foto_uri:
         out.update(nivel=prog["nivel"], titulo=prog["titulo"], xp=prog["xp"])
     if pv["mostrar_conquistas"]:
         out["conquistas"] = {"ok": prog["conquistas"], "total": prog["conquistas_total"]}
+        out["medalhas"] = list(prog.get("medalhas") or [])
     if pv["mostrar_jogos"] and jogos_:
         out["jogos"] = jogos_
+        if estat:
+            out["estat"] = {k: estat[k] for k in ("partidas", "vitorias", "empates", "derrotas", "taxa") if k in estat}
+    if pv["mostrar_historico"] and historico:
+        out["historico"] = historico[:HIST_PUBLICO]
     assert set(out) <= set(PUBLICOS)
     return out
+
+
+def restrito(perfil: dict) -> dict:
+    """Cartão mínimo de um perfil "só amigos" visto por quem não é amigo: nome, usuário e avatar do app (sem foto, bio ou estatísticas)."""
+    p = sanear(perfil)
+    return {"usuario": p["usuario"], "nome": p["nome"] or p["usuario"], "avatar": p["avatar"] if p["avatar"] != FOTO else AVATAR_PADRAO}
 
 
 def privado(perfil: dict, conta: dict, prog: dict, jogos_: dict | None, tema: str) -> dict:

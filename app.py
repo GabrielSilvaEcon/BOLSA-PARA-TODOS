@@ -4788,8 +4788,9 @@ if DESIGN_V2 and HUD_TOPO:                 # linha 2 do cabeçalho: sequência, 
     except Exception:
         pass
 _nav = st.session_state.pop("_nav_pend", None) or ("inicio" if st.session_state.pop("ps_ir_inicio", False) else None)
+_nav_qp = st.session_state.pop("_nav_qp", None)       # parâmetros da página de destino (ex.: /jogador?u=<usuário>)
 if _nav and _nav in _todas_pg and _todas_pg[_nav].url_path != pg.url_path:
-    st.switch_page(_todas_pg[_nav])         # botão "Abrir" da busca de ativos ou "Analisar …" da pesquisa global
+    st.switch_page(_todas_pg[_nav], query_params=_nav_qp)   # botão "Abrir" da busca de ativos, "Analisar …" da pesquisa global, perfil de jogador
 if AREAS_ATIVAS:
     _seletor_de_areas()                     # botões das áreas no topo, em qualquer tela (etapa A3)
 if LAYOUT_COMPACTO:

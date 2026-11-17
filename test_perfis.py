@@ -37,9 +37,9 @@ def test_nome_de_exibicao_bio_e_avatar():
 def test_formulario_nao_muda_xp_pontos_conquistas_nem_dados_da_conta():
     atual = PF.inicial("Ana_99")
     form = {"nome": "Ana", "xp": 99999, "nivel": 50, "conquistas": 999, "pontos": 1e9, "email": "x@y.com", "id": "outro", "patrimonio": 1e9,
-            "usuario_k": "zzz", "privacidade": {"publico": False, "hack": True}}
+            "usuario_k": "zzz", "privacidade": {"visivel": "ninguem", "hack": True}}
     novo, mud = PF.editar(atual, form, AGORA, TEMAS)
-    assert novo["nome"] == "Ana" and novo["privacidade"]["publico"] is False and "hack" not in novo["privacidade"]
+    assert novo["nome"] == "Ana" and novo["privacidade"]["visivel"] == "ninguem" and "hack" not in novo["privacidade"]
     assert not set(novo) & {"xp", "nivel", "conquistas", "pontos", "email", "id", "patrimonio"} and novo["usuario_k"] == "ana_99" and mud == {}
 
 
@@ -71,10 +71,10 @@ def test_perfil_publico_so_tem_campos_permitidos_e_nada_financeiro():
 
 def test_privacidade_esconde_o_que_a_pessoa_desligou():
     doc = PF.editar(PF.inicial("Ana_99"), {"bio": "Oi!", "privacidade": {"mostrar_bio": False, "mostrar_nivel": False, "mostrar_jogos": False,
-                                                                           "mostrar_conquistas": False}}, AGORA, TEMAS)[0]
+                                                                           "mostrar_conquistas": False, "mostrar_historico": False}}, AGORA, TEMAS)[0]
     pub = PF.publico(doc, "2026-01-05", PROG, JOGOS)
     assert set(pub) == {"usuario", "nome", "avatar", "desde"}
-    privado = PF.editar(doc, {"privacidade": {"publico": False}}, AGORA, TEMAS)[0]
+    privado = PF.editar(doc, {"privacidade": {"visivel": "ninguem"}}, AGORA, TEMAS)[0]
     assert PF.publico(privado, "2026-01-05", PROG, JOGOS) is None and PF.publico(PF.vazio(), "", PROG, JOGOS) is None
 
 
@@ -96,8 +96,8 @@ def test_dados_derivados_vem_das_fontes_reais():
 
 
 def test_documento_adulterado_volta_ao_padrao():
-    d = PF.sanear({"usuario": "<script>", "nome": "x", "avatar": "http://x", "bio": "https://golpe", "privacidade": {"publico": "sim"}})
-    assert d["usuario"] == "" and d["nome"] == "" and d["avatar"] == PF.AVATAR_PADRAO and d["bio"] == "" and d["privacidade"]["publico"] is True
+    d = PF.sanear({"usuario": "<script>", "nome": "x", "avatar": "http://x", "bio": "https://golpe", "privacidade": {"visivel": "hacker", "pedidos": 1}})
+    assert d["usuario"] == "" and d["nome"] == "" and d["avatar"] == PF.AVATAR_PADRAO and d["bio"] == "" and d["privacidade"]["visivel"] == "todos" and d["privacidade"]["pedidos"] == "todos"
 
 
 # ------------------------------------------------------------------ banco: só a própria conta grava; nome de usuário exclusivo

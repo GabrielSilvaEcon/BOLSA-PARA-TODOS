@@ -78,6 +78,14 @@ CSS = "<style>" + "".join(l.strip() for l in f"""
 {_P} :is(.st-key-pj_editar,.st-key-pe_salvar) button{{min-height:48px !important;border:0 !important;border-radius:16px !important;font-weight:900 !important;
   background:linear-gradient(90deg,#2EE86B,#14C9B5) !important;box-shadow:0 0 16px rgba(46,232,107,.45) !important}}
 {_P} :is(.st-key-pj_editar,.st-key-pe_salvar) button :is(p,span){{color:#06240F !important;-webkit-text-fill-color:#06240F !important}}
+{_P} .pj-rel{{display:flex;align-items:center;justify-content:center;min-height:42px;padding:6px 10px;border-radius:16px;border:1.5px solid {VERDE};
+  font-weight:800;font-size:.86rem;color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important;background:rgba(52,232,94,.1);text-align:center}}
+{_P} .pj-hl{{display:flex;flex-direction:column;gap:5px}}
+{_P} .pj-h{{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:14px;background:rgba(20,14,70,.75);border:1.5px solid rgba(139,108,255,.35)}}
+{_P} .pj-h span{{font-weight:800;font-size:.84rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .pj-h small{{margin-left:6px;font-weight:600;font-size:.72rem;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .pj-h b{{font-size:.84rem;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .pj-h b.ok{{color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}{_P} .pj-h b.no{{color:#FF6B87 !important;-webkit-text-fill-color:#FF6B87 !important}}
 @media (max-width:420px){{{_P} .pj-g{{grid-template-columns:repeat(2,minmax(0,1fr))}}{_P} .pj-jg{{grid-template-columns:1fr}}}}
 """.splitlines()) + "</style>"
 
@@ -221,8 +229,9 @@ def _ranking_de(email: str) -> tuple[dict | None, dict | None]:
 
 
 def perfil_publico(usuario: str) -> dict | None:
-    """Perfil público de `usuario` montado das fontes reais (Jornada, placar dos jogos, data da conta). None se não existir ou for privado.
-    Cache curto por nome. O e-mail da pessoa só circula aqui dentro e nunca entra no resultado."""
+    """O que a conta logada pode ver do perfil de `usuario`, montado das fontes reais (Jornada, placar dos jogos, data da conta).
+    A permissão é decidida no banco (`perfil_alvo`: bloqueio e privacidade); aqui só se projeta o permitido por `perfis.publico`.
+    None = não existe, bloqueado ou privado. Devolve {"pub", "h", "rel", "completo", "dono", "aceita"}. O e-mail nunca sai daqui."""
     try:
         k = PF.chave_usuario(PF.validar_usuario(usuario))
     except PF.ErroPerfil:
@@ -230,21 +239,29 @@ def perfil_publico(usuario: str) -> dict | None:
     cache = st.session_state.setdefault("_pj_pub", {})
     if k in cache and time.time() - cache[k][0] < _CACHE_PUB_S:
         return cache[k][1]
-    pub = None
+    out = None
     try:
-        achado = banco.sis_perfil_por_usuario(k)
-        if achado:
-            email, doc = achado
-            conta = banco.sis_conta_por_email(email) or {}
-            prog = PF.progresso((banco.sis_dados_de(email) or {}).get("edu_progresso"))
-            rt, rk = _ranking_de(email)
-            jg = PF.jogos(banco.sis_estado_ler(email, "jogos_placar"), rt, rk)
-            foto = FT.uri(banco.sis_estado_ler(email, "perfil_foto")) if PF.sanear(doc)["avatar"] == PF.FOTO else ""
-            pub = PF.publico(doc, conta.get("criado_em"), prog, jg, foto)
+        import amigos as AM
+        import jogos as J
+        alvo = banco.perfil_alvo(_ator(), k)
+        if alvo:
+            email, doc = alvo["email"], alvo["doc"]
+            pv = PF.sanear(doc)["privacidade"]
+            if alvo["completo"]:
+                conta = banco.sis_conta_por_email(email) or {}
+                prog = PF.progresso((banco.sis_dados_de(email) or {}).get("edu_progresso"))
+                rt, rk = _ranking_de(email)
+                placar = banco.sis_estado_ler(email, "jogos_placar")
+                foto = FT.uri(banco.sis_estado_ler(email, "perfil_foto")) if PF.sanear(doc)["avatar"] == PF.FOTO else ""
+                pub = PF.publico(doc, conta.get("criado_em"), prog, PF.jogos(placar, rt, rk), foto,
+                                 amigo=alvo["rel"] == AM.AMIGOS, estat=J.estatisticas(placar), historico=PF.historico_publico(placar))
+            else:
+                pub = PF.restrito(doc)
+            out = {"pub": pub, "h": alvo["h"], "rel": alvo["rel"], "completo": alvo["completo"], "dono": alvo["dono"], "aceita": PF.aceita_pedidos(pv)}
     except Exception as e:
         banco.registrar_erro("perfis_app.publico", e)
-    cache[k] = (time.time(), pub)
-    return pub
+    cache[k] = (time.time(), out)
+    return out
 
 
 def _dados_meus() -> dict:
@@ -362,7 +379,7 @@ def pagina_meu_perfil() -> None:
 
 
 # ------------------------------------------------------------------ TELA · Editar Perfil (rascunho até salvar)
-_CAMPOS = ("pe_nome", "pe_usuario", "pe_bio", "pe_avatar", "pe_tema", "pe_moldura", "pe_tema_loja", "pe_pub", "pe_mbio", "pe_mnivel", "pe_mconq", "pe_mjogos",
+_CAMPOS = ("pe_nome", "pe_usuario", "pe_bio", "pe_avatar", "pe_tema", "pe_moldura", "pe_tema_loja", "pe_vis", "pe_ped", "pe_mbio", "pe_mnivel", "pe_mconq", "pe_mjogos", "pe_mhist",
            "pe_foto", "pe_remover", "pe_zoom", "pe_x", "pe_y", "pe_up", "pe_foco")
 
 
@@ -375,8 +392,8 @@ def _iniciar_rascunho() -> None:
             ss.pop(k, None)
     p, pv = meu_perfil(), meu_perfil()["privacidade"]
     ss.update(pe_nome=p["nome"] or p["usuario"], pe_usuario=p["usuario"], pe_bio=p["bio"], pe_avatar=p["avatar"],
-              pe_tema=PR.normalizar(ss.get("prefs"))["tema"], pe_pub=pv["publico"], pe_mbio=pv["mostrar_bio"], pe_mnivel=pv["mostrar_nivel"],
-              pe_mconq=pv["mostrar_conquistas"], pe_mjogos=pv["mostrar_jogos"], pe_zoom=1.0, pe_x=0.0, pe_y=0.0)
+              pe_tema=PR.normalizar(ss.get("prefs"))["tema"], pe_vis=pv["visivel"], pe_ped=pv["pedidos"], pe_mbio=pv["mostrar_bio"],
+              pe_mnivel=pv["mostrar_nivel"], pe_mconq=pv["mostrar_conquistas"], pe_mjogos=pv["mostrar_jogos"], pe_mhist=pv["mostrar_historico"], pe_zoom=1.0, pe_x=0.0, pe_y=0.0)
     ss["pe_moldura"] = itens_loja("moldura")[1] or ""
     ss["pe_tema_loja"] = itens_loja("tema")[1] or ""
 
@@ -421,9 +438,10 @@ def _remover_foto() -> None:
 def _salvar_edicao() -> None:
     ss = st.session_state
     form = {"nome": ss.get("pe_nome", ""), "usuario": ss.get("pe_usuario", ""), "bio": ss.get("pe_bio", ""), "avatar": ss.get("pe_avatar", PF.AVATAR_PADRAO),
-            "tema": ss.get("pe_tema"), "privacidade": {"publico": bool(ss.get("pe_pub")), "mostrar_bio": bool(ss.get("pe_mbio")),
-                                                        "mostrar_nivel": bool(ss.get("pe_mnivel")), "mostrar_conquistas": bool(ss.get("pe_mconq")),
-                                                        "mostrar_jogos": bool(ss.get("pe_mjogos"))}}
+            "tema": ss.get("pe_tema"), "privacidade": {"visivel": ss.get("pe_vis"), "pedidos": ss.get("pe_ped"),
+                                                        "mostrar_bio": bool(ss.get("pe_mbio")), "mostrar_nivel": bool(ss.get("pe_mnivel")),
+                                                        "mostrar_conquistas": bool(ss.get("pe_mconq")), "mostrar_jogos": bool(ss.get("pe_mjogos")),
+                                                        "mostrar_historico": bool(ss.get("pe_mhist"))}}
     ok, msg = salvar(form, ss.get("pe_foto"), bool(ss.get("pe_remover")))
     if not ok:
         ss["_pe_aviso"] = (False, msg)
@@ -452,6 +470,11 @@ def pagina_editar() -> None:
         if foco:
             ss["pe_foco"] = foco
     st.markdown("<div class='pj-cab'>✏️ Editar Perfil</div>", unsafe_allow_html=True)
+    try:
+        import amigos_app as AMA
+        AMA.mostrar_msg()
+    except Exception:
+        pass
     av = ss.pop("_pe_aviso", None)
     if av:
         (st.success if av[0] else st.error)(av[1], icon=":material/check_circle:" if av[0] else ":material/error:")
@@ -513,12 +536,21 @@ def pagina_editar() -> None:
     st.selectbox("Preferência visual", list(PR.TEMAS), key="pe_tema", format_func=lambda t: PR.TEMAS[t])
     # ---- privacidade
     with st.expander("🔒 Privacidade", expanded=ss.get("pe_foco") == "privacidade"):
-        st.toggle("Perfil público (outras pessoas podem abrir seu perfil)", key="pe_pub")
-        st.toggle("Mostrar a biografia", key="pe_mbio")
+        st.radio("Quem pode ver meu perfil", list(PF.VISIVEL), key="pe_vis", format_func=lambda v: PF.VISIVEL[v])
+        st.caption("Com \"Só meus amigos\", quem não é seu amigo vê apenas seu nome e avatar, para poder pedir amizade.")
+        st.toggle("Mostrar estatísticas competitivas (vitórias, derrotas, pontos e posições)", key="pe_mjogos")
+        st.toggle("Mostrar histórico de partidas", key="pe_mhist")
+        st.toggle("Mostrar conquistas e medalhas", key="pe_mconq")
         st.toggle("Mostrar nível e XP", key="pe_mnivel")
-        st.toggle("Mostrar conquistas", key="pe_mconq")
-        st.toggle("Mostrar desempenho nos jogos", key="pe_mjogos")
+        st.toggle("Mostrar a biografia", key="pe_mbio")
+        st.radio("Quem pode me enviar solicitações de amizade", list(PF.PEDIDOS), key="pe_ped", format_func=lambda v: PF.PEDIDOS[v], horizontal=True)
         st.caption("Nunca aparecem para outras pessoas: e-mail, patrimônio, carteira, saldos de T$ ou Ticker Coins e o ID da conta.")
+        st.markdown("**Jogadores bloqueados**")
+        try:
+            import amigos_app as AMA
+            AMA.secao_bloqueados()
+        except Exception as e:
+            banco.registrar_erro("perfis_app.bloqueados", e)
     c1, c2 = st.columns([1.4, 1])
     c1.button("Salvar", key="pe_salvar", icon=":material/save:", width="stretch", on_click=_salvar_edicao)
     c2.button("Cancelar", key="pe_cancelar", icon=":material/close:", width="stretch", on_click=_cancelar)
@@ -539,28 +571,111 @@ def secao_conta() -> None:
     c2.button("Editar perfil", key="ct_pj_edit", icon=":material/edit:", width="stretch", on_click=_ir, args=("perfil-editar",), kwargs={"pe_novo": True, "pe_foco": None})
 
 
+def _hist_html(h: dict) -> str:
+    import jogos as J
+    quando = f"{h['em'][8:10]}/{h['em'][5:7]}" if len(h.get("em", "")) >= 10 else ""
+    if h["jogo"] == J.TRADE:
+        v = h.get("pts", 0)
+        res = (f"{h['pos']}º de {h['n']} · " if h.get("pos") and h.get("n", 1) >= 2 else "Solo · ") + _fmt_pts(v) + " pts"
+        cls = "ok" if v > 0 else "no" if v < 0 else ""
+    else:
+        res, cls = {"v": ("Vitória", "ok"), "e": ("Empate", ""), "d": ("Derrota", "no")}.get(h.get("r"), ("—", ""))
+    return f"<div class='pj-h'><span>{_e(J.NOME[h['jogo']])}<small>{_e(quando)}</small></span><b class='{cls}'>{_e(res)}</b></div>"
+
+
+def _acoes_publicas(usuario: str, v: dict) -> None:
+    """Botões do perfil de outra pessoa conforme a relação. Cada um chama o banco, que confere a permissão de novo."""
+    import amigos as AM
+    import amigos_app as AMA
+    h, rel = v["h"], v["rel"]
+    if rel == AM.AMIGOS:
+        c1, c2 = st.columns([1.4, 1])
+        with c1.popover("Convidar para jogar", icon=":material/sports_esports:", width="stretch"):
+            st.caption("Cria uma sala privada e avisa seu amigo com o código.")
+            st.button("Trade Battle", key="pp_cv_trade", icon=":material/candlestick_chart:", width="stretch", on_click=AMA.convidar, args=(h, "trade"))
+            st.button("Ticker Battle", key="pp_cv_ticker", icon=":material/style:", width="stretch", on_click=AMA.convidar, args=(h, "ticker"))
+        c2.markdown("<div class='pj-rel'>✓ Amigos</div>", unsafe_allow_html=True)
+    elif rel == AM.ENVIADA:
+        st.button("Cancelar solicitação", key="pp_cancelar", icon=":material/close:", width="stretch", on_click=AMA.cancelar, args=(h,))
+    elif rel == AM.RECEBIDA:
+        st.markdown(f"<div class='pj-rel'>@{_e(usuario)} quer ser seu amigo</div>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        c1.button("Aceitar", key="pp_aceitar", icon=":material/check:", type="primary", width="stretch", on_click=AMA.aceitar, args=(h,))
+        c2.button("Recusar", key="pp_recusar", icon=":material/close:", width="stretch", on_click=AMA.recusar, args=(h,))
+    elif v["aceita"]:
+        st.button("Adicionar amigo", key="pp_add", icon=":material/person_add:", width="stretch", on_click=AMA.pedir, args=(usuario,))
+    else:
+        st.caption("Este jogador não está recebendo solicitações de amizade.")
+    with st.expander("Mais opções", icon=":material/more_horiz:"):
+        if rel == AM.AMIGOS:
+            st.button("Remover amigo", key="pp_remover", icon=":material/person_remove:", width="stretch", on_click=AMA.remover, args=(h,))
+        st.markdown("**Denunciar perfil**")
+        st.selectbox("Motivo", list(AM.MOTIVOS), key=f"pp_den_mot_{h}", format_func=lambda m: AM.MOTIVOS[m], index=None, placeholder="Escolha o motivo")
+        st.text_area("Detalhes (opcional)", key=f"pp_den_txt_{h}", max_chars=AM.TEXTO_DENUNCIA_MAX, height=80)
+        st.button("Enviar denúncia", key="pp_den", icon=":material/flag:", width="stretch", on_click=AMA.denunciar, args=(h,))
+        st.markdown("**Bloquear**")
+        st.caption("Desfaz a amizade e os pedidos, e vocês deixam de ver o perfil um do outro. Dá para desbloquear em Editar Perfil › Privacidade.")
+        conf = st.checkbox(f"Quero bloquear @{usuario}", key=f"pp_blq_ok_{h}")
+        st.button("Bloquear usuário", key="pp_blq", icon=":material/block:", width="stretch", disabled=not conf, on_click=AMA.bloquear, args=(h,))
+
+
 def pagina_publica() -> None:
-    """Perfil público de um jogador (/jogador?u=<nome de usuário>). Só o que a pessoa permitiu; nada financeiro."""
+    """Perfil público de outro jogador (/jogador?u=<nome de usuário>): só o que a pessoa permitiu; nada financeiro. Ações de amizade,
+    convite para jogar, denúncia e bloqueio."""
     st.markdown(CSS, unsafe_allow_html=True)
+    import amigos_app as AMA
+    st.markdown(AMA.CSS, unsafe_allow_html=True)
+    AMA.mostrar_msg()
     u = str(st.query_params.get("u") or "")
-    p = perfil_publico(u) if u else None
-    if not p:
-        st.markdown("<div class='pj-vazio'>Perfil não encontrado ou privado.</div>", unsafe_allow_html=True)
+    v = perfil_publico(u) if u and _ator() else None
+    if not v:
+        st.markdown("<div class='pj-vazio'>Perfil não encontrado ou indisponível.</div>", unsafe_allow_html=True)
+        st.button("Voltar para Meus Amigos", key="pp_voltar", icon=":material/group:", on_click=_ir, args=("jogos-amigos",))
+        return
+    p = v["pub"]
+    if v["dono"]:
+        st.markdown("<div class='pj-vazio'>Este é o seu perfil.</div>", unsafe_allow_html=True)
+        st.button("Abrir Meu Perfil", key="pp_meu", icon=":material/person:", width="stretch", on_click=_ir, args=("perfil",))
         return
     desde = p.get("desde") or ""
-    nivel = f" · Nível {p['nivel']} · {p['titulo']}" if p.get("nivel") else ""
-    st.markdown(f"<div class='pj-hero'>{_avatar_html(p['avatar'], p.get('foto', ''))}<div class='pj-nome'>{_e(p['nome'])}</div>"
-                f"<div class='pj-user'>@{_e(p['usuario'])}{_e(nivel)}</div>" + (f"<div class='pj-bio'>{_e(p['bio'])}</div>" if p.get("bio") else "")
+    nivel = f"<span class='pj-nv'>Nível {p['nivel']}</span>" if p.get("nivel") else ""
+    st.markdown(f"<div class='pj-hero'>{nivel}{_avatar_html(p['avatar'], p.get('foto', ''))}<div class='pj-nome'>{_e(p['nome'])}</div>"
+                f"<div class='pj-user'>@{_e(p['usuario'])}{' · ' + _e(p['titulo']) if p.get('titulo') else ''}</div>"
+                + (f"<div class='pj-bio'>{_e(p['bio'])}</div>" if p.get("bio") else "")
                 + (f"<div class='pj-desde'>No TickerHunters desde {desde[5:7]}/{desde[:4]}</div>" if len(desde) >= 7 else "") + "</div>", unsafe_allow_html=True)
-    itens = []
-    if isinstance(p.get("conquistas"), dict):
-        itens.append(f"<div class='ou'><small>Conquistas</small><b>{p['conquistas']['ok']}/{p['conquistas']['total']}</b></div>")
-    j = p.get("jogos") or {}
-    if j.get("trade"):
-        itens.append(f"<div><small>Trade Battle</small><b>{'#' + str(j['trade']['posicao']) if j['trade']['posicao'] else '—'}</b></div>")
-    if j.get("ticker"):
-        itens.append(f"<div><small>Ticker Battle</small><b>{'#' + str(j['ticker']['posicao']) if j['ticker']['posicao'] else '—'}</b></div>")
     if p.get("xp") is not None:
-        itens.append(f"<div class='ok'><small>XP</small><b>{p['xp']}</b></div>")
-    if itens:
-        st.markdown("<div class='pj-g'>" + "".join(itens) + "</div>", unsafe_allow_html=True)
+        import nivel as NV
+        ne = NV.estado(p["xp"])
+        st.markdown(f"<div class='pj-xp'><div class='l'>⭐ {p['xp']} XP<span>{'Nível máximo' if ne['maximo'] else 'Nível ' + str(ne['nivel'])}</span></div>"
+                    f"<div class='pj-bar'><i style='width:{ne['pct'] * 100:.0f}%'></i></div></div>", unsafe_allow_html=True)
+    _acoes_publicas(p["usuario"], v)
+    if not v["completo"]:
+        st.markdown("<div class='pj-vazio'>🔒 Este perfil é visível só para amigos. Adicione para ver as conquistas e o desempenho.</div>", unsafe_allow_html=True)
+        return
+    es = p.get("estat")
+    if es:
+        taxa = f"{es['taxa']:.0f}%" if es.get("taxa") is not None else "—"
+        st.markdown("<div class='pj-sec'>📊 Desempenho</div><div class='pj-g'>"
+                    f"<div><small>Partidas</small><b>{es['partidas']}</b></div><div class='ok'><small>Vitórias</small><b>{es['vitorias']}</b></div>"
+                    f"<div class='no'><small>Derrotas</small><b>{es['derrotas']}</b></div><div class='ou'><small>Taxa de vitórias</small><b>{taxa}</b></div></div>",
+                    unsafe_allow_html=True)
+    j = p.get("jogos")
+    if j:
+        t, k = j["trade"], j["ticker"]
+        pos = lambda x: f"#{x}" if x else "—"
+        st.markdown("<div class='pj-sec'>🎮 Jogos e rankings</div><div class='pj-jg'>"
+                    f"<div style='--c:{VERDE};--f:rgba(20,110,80,.6)'><div class='t'>Trade Battle<em>{pos(t['posicao'])}</em></div>"
+                    f"<p>Pontos<b>{_fmt_pts(t['pontos'])}</b></p><p>Partidas<b>{t['partidas']}</b></p><p>1º lugar em sala<b>{t['vitorias']}</b></p></div>"
+                    f"<div style='--c:{ROXO};--f:rgba(110,70,230,.55)'><div class='t'>Ticker Battle<em>{pos(k['posicao'])}</em></div>"
+                    f"<p>Vitórias<b>{k['vitorias']}</b></p><p>Empates<b>{k['empates']}</b></p><p>Derrotas<b>{k['derrotas']}</b></p></div></div>",
+                    unsafe_allow_html=True)
+    if isinstance(p.get("conquistas"), dict):
+        md = p.get("medalhas") or []
+        st.markdown(f"<div class='pj-sec'>🏅 Conquistas e medalhas<small>{p['conquistas']['ok']} de {p['conquistas']['total']}</small></div>"
+                    + ("<div class='pj-md'>" + "".join(f"<div class='ok'><i>{_e(m['emblema'])}</i><span>{_e(m['nome'])}</span></div>" for m in md[:12]) + "</div>"
+                       if md else "<div class='pj-vazio'>Nenhuma conquista ainda.</div>"), unsafe_allow_html=True)
+    if p.get("historico"):
+        st.markdown("<div class='pj-sec'>🕑 Últimas partidas</div><div class='pj-hl'>" + "".join(_hist_html(h) for h in p["historico"]) + "</div>",
+                    unsafe_allow_html=True)
+    if not (es or j or p.get("historico")):
+        st.caption("Este jogador escolheu não mostrar as estatísticas.")

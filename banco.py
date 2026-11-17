@@ -946,6 +946,7 @@ def sis_apagar_conta(conta_id: str, email: str) -> None:
         except Exception:      # tabelas do Passo 23 ainda não criadas no Supabase: não impede a exclusão da conta
             pass
     comp_ligas_do_dono_apagar(email)
+    social_da_conta_apagar(email)
     usuarios_da_conta_liberar(email)
     _apagar("perfis", {"email": email})
     _apagar("sessoes", {"conta_id": conta_id})
@@ -1423,6 +1424,263 @@ def sis_perfil_por_usuario(usuario_k: str) -> tuple[str, dict] | None:
         if (r["dados"] or {}).get("usuario_k") == k:
             return r["email"], r["dados"] or {}
     return None
+
+
+# ------------------------------------------------------------------ Amigos, bloqueios, denúncias e convites para jogar (regras em amigos.py)
+# Tudo em config_sistema, com hashes de conta (nunca e-mail) nos ids. Cada função parte da conta LOGADA (ator) e só mexe nas linhas em que
+# ela é uma das pontas; a outra ponta vem do nome de usuário (resolvido aqui) ou de um hash que a própria tela recebeu do servidor.
+def _cfg_inserir(chave: str, dados: dict) -> None:
+    _inserir("config_sistema", {"id": str(chave)[:80], "dados": _js(dados), "atualizado": seg.iso()})
+
+
+def _cfg_prefixo(prefixo: str, limite: int = 1000) -> list[dict]:
+    return [{"id": r["id"], "dados": _de_js(r["dados"]) or {}} for r in _selecionar("config_sistema", {"id": ("comeca", prefixo)}, ["id", "dados"], limite=limite)]
+
+
+def _hash_ok(h: str) -> str:
+    h = str(h or "")
+    if not re.fullmatch(r"[0-9a-f]{24}", h):
+        raise ValueError("jogador inválido")
+    return h
+
+
+def _eu_h(ator: Ator | None) -> str:
+    if not ator:
+        raise SemPermissao("Faça login.")
+    return _h_conta(ator.email)
+
+
+def social_relacoes(ator: Ator | None) -> dict[str, dict]:
+    """{hash do outro: {estado, em}} da conta logada (amigos, pedidos enviados e recebidos). Uma consulta."""
+    import amigos as AM
+    eu = _eu_h(ator)
+    return AM.relacoes(_cfg_prefixo(f"amz|{eu}|"), f"amz|{eu}|")
+
+
+def social_bloqueados(ator: Ator | None) -> list[str]:
+    eu = _eu_h(ator)
+    return [r["id"][len(f"blq|{eu}|"):] for r in _cfg_prefixo(f"blq|{eu}|")]
+
+
+def social_bloqueado_por(ator: Ator | None) -> set[str]:
+    """Hashes das contas que bloquearam a conta logada (para não mostrá-las na busca nem na lista). Uma consulta."""
+    eu = _eu_h(ator)
+    return {r["id"].split("|")[1] for r in _selecionar("config_sistema", {"id": ("contem", f"|{eu}")}, ["id"], limite=2000)
+            if r["id"].startswith("blq|") and r["id"].endswith(f"|{eu}")}
+
+
+def _bloqueio_entre(a: str, b: str) -> bool:
+    return bool(_selecionar("config_sistema", {"id": f"blq|{a}|{b}"}, ["id"], limite=1) or _selecionar("config_sistema", {"id": f"blq|{b}|{a}"}, ["id"], limite=1))
+
+
+def sis_perfis_por_hash() -> dict[str, tuple[str, dict]]:
+    """{hash da conta: (e-mail, perfil)} de todas as contas com perfil (uma consulta). Só para o servidor."""
+    return {_h_conta(r["email"]): (r["email"], r["dados"] or {}) for r in sis_comp_todos("perfil_jogador")}
+
+
+def _notificar(email: str, dedup: str, titulo: str, texto: str, pagina: str) -> None:
+    try:
+        sis_notif_inserir(email, {"dedup": dedup, "categoria": "sistema", "importancia": "media", "titulo": titulo[:200], "texto": texto,
+                                  "origem": "amigos", "pagina": pagina})
+    except Exception as e:
+        registrar_erro("banco.amigos.notificar", e)
+
+
+def _meu_usuario(ator: Ator) -> str:
+    return str((sis_estado_ler(ator.email, "perfil_jogador") or {}).get("usuario") or "Um jogador")[:20]
+
+
+def amigo_pedir(ator: Ator | None, usuario_k: str) -> str:
+    """Envia (ou, se a outra pessoa já tinha pedido, aceita) uma solicitação de amizade. Devolve "enviado" ou "aceito".
+    Valida: não a si mesmo, não bloqueado, ainda não amigos, privacidade de quem recebe e limites."""
+    import amigos as AM
+    import perfis as PF
+    eu = _eu_h(ator)
+    achado = sis_perfil_por_usuario(usuario_k)
+    if not achado:
+        raise AM.ErroAmigos("Jogador não encontrado.")
+    email_alvo, doc = achado
+    alvo = _h_conta(email_alvo)
+    rel = social_relacoes(ator)
+    acao = AM.conferir_pedido(eu, alvo, (rel.get(alvo) or {}).get("estado"), _bloqueio_entre(eu, alvo),
+                              PF.aceita_pedidos(PF.sanear(doc)["privacidade"]),
+                              sum(1 for x in rel.values() if x["estado"] == AM.AMIGOS), sum(1 for x in rel.values() if x["estado"] == AM.ENVIADA))
+    if acao == "aceitar":
+        amigo_responder(ator, alvo, True)
+        return "aceito"
+    agora = seg.iso()
+    try:                                                     # a linha de quem recebe é a trava atômica
+        _cfg_inserir(f"amz|{alvo}|{eu}", {"estado": AM.RECEBIDA, "em": agora})
+    except Duplicado:
+        dele = (cfg_ler(f"amz|{alvo}|{eu}") or {}).get("estado")
+        if dele == AM.ENVIADA:                               # pedidos cruzados ao mesmo tempo: viram amizade
+            cfg_gravar(f"amz|{alvo}|{eu}", {"estado": AM.AMIGOS, "em": agora})
+            cfg_gravar(f"amz|{eu}|{alvo}", {"estado": AM.AMIGOS, "em": agora})
+            return "aceito"
+    cfg_gravar(f"amz|{eu}|{alvo}", {"estado": AM.ENVIADA, "em": agora})
+    _notificar(email_alvo, f"amz|{eu}|{agora[:10]}", f"{_meu_usuario(ator)} quer ser seu amigo no TickerHunters",
+               "Abra Meus Amigos para aceitar ou recusar a solicitação.", "jogos-amigos")
+    return "enviado"
+
+
+def amigo_responder(ator: Ator | None, h_outro: str, aceitar: bool) -> bool:
+    """Aceita ou recusa uma solicitação RECEBIDA pela conta logada. False se não havia solicitação."""
+    import amigos as AM
+    eu, outro = _eu_h(ator), _hash_ok(h_outro)
+    if (cfg_ler(f"amz|{eu}|{outro}") or {}).get("estado") != AM.RECEBIDA or _bloqueio_entre(eu, outro):
+        return False
+    if not aceitar:
+        cfg_apagar(f"amz|{eu}|{outro}")
+        cfg_apagar(f"amz|{outro}|{eu}")
+        return True
+    agora = seg.iso()
+    cfg_gravar(f"amz|{eu}|{outro}", {"estado": AM.AMIGOS, "em": agora})
+    cfg_gravar(f"amz|{outro}|{eu}", {"estado": AM.AMIGOS, "em": agora})
+    dono = sis_perfis_por_hash().get(outro)
+    if dono:
+        _notificar(dono[0], f"amz_ok|{eu}", f"{_meu_usuario(ator)} aceitou sua solicitação de amizade", "Agora vocês podem se comparar em Meus Amigos.",
+                   "jogos-amigos")
+    return True
+
+
+def amigo_remover(ator: Ator | None, h_outro: str) -> bool:
+    """Desfaz a amizade, cancela o pedido enviado ou recusa o recebido (as duas linhas). Só se a conta logada for uma das pontas."""
+    eu, outro = _eu_h(ator), _hash_ok(h_outro)
+    if not cfg_ler(f"amz|{eu}|{outro}"):
+        return False
+    cfg_apagar(f"amz|{eu}|{outro}")
+    cfg_apagar(f"amz|{outro}|{eu}")
+    cfg_apagar(f"cvj|{eu}|{outro}")
+    cfg_apagar(f"cvj|{outro}|{eu}")
+    return True
+
+
+def bloquear(ator: Ator | None, h_outro: str) -> None:
+    """Bloqueia: desfaz amizade, pedidos e convites, e os perfis deixam de se ver nos dois sentidos."""
+    eu, outro = _eu_h(ator), _hash_ok(h_outro)
+    if eu == outro:
+        raise ValueError("Você não pode bloquear a si mesmo.")
+    for k in (f"amz|{eu}|{outro}", f"amz|{outro}|{eu}", f"cvj|{eu}|{outro}", f"cvj|{outro}|{eu}"):
+        cfg_apagar(k)
+    cfg_gravar(f"blq|{eu}|{outro}", {"em": seg.iso()})
+
+
+def desbloquear(ator: Ator | None, h_outro: str) -> bool:
+    eu, outro = _eu_h(ator), _hash_ok(h_outro)
+    if not _selecionar("config_sistema", {"id": f"blq|{eu}|{outro}"}, ["id"], limite=1):
+        return False
+    cfg_apagar(f"blq|{eu}|{outro}")
+    return True
+
+
+def denunciar(ator: Ator | None, h_alvo: str, motivo: str, texto: str = "") -> bool:
+    """Registra uma denúncia de perfil para a administração. False se a mesma conta já denunciou este perfil hoje."""
+    import amigos as AM
+    eu, alvo = _eu_h(ator), _hash_ok(h_alvo)
+    if eu == alvo:
+        raise AM.ErroAmigos("Você não pode denunciar o próprio perfil.")
+    motivo, texto = AM.validar_denuncia(motivo, texto)
+    dono = sis_perfis_por_hash().get(alvo)
+    if not dono:
+        raise AM.ErroAmigos("Jogador não encontrado.")
+    chave = f"den|{eu}|{alvo}|{seg.iso()[:10]}"
+    try:
+        _cfg_inserir(chave, {"alvo": alvo, "alvo_usuario": str((dono[1] or {}).get("usuario") or "")[:20], "motivo": motivo, "texto": texto, "em": seg.iso()})
+    except Duplicado:
+        return False
+    auditar(ator.id, "perfil.denuncia", None, {"alvo": alvo, "motivo": motivo})
+    for r in _selecionar("contas", {"papel": "admin"}, ["email"], limite=50):
+        _notificar(r["email"], chave, f"Denúncia de perfil: @{(dono[1] or {}).get('usuario', '')}"[:200], f"{AM.MOTIVOS[motivo]}. {texto}".strip(), "administracao")
+    return True
+
+
+def sis_denuncias(limite: int = 100) -> list[dict]:
+    """Denúncias para a administração (sem e-mail: só o nome de usuário denunciado)."""
+    out = [{**r["dados"], "id": r["id"]} for r in _cfg_prefixo("den|", limite)]
+    return sorted(out, key=lambda d: str(d.get("em") or ""), reverse=True)
+
+
+def convite_jogo_enviar(ator: Ator | None, h_amigo: str, jogo: str, codigo: str) -> None:
+    """Convida um AMIGO para a sala privada que a conta logada acabou de criar no fluxo normal do jogo."""
+    import amigos as AM
+    eu, outro = _eu_h(ator), _hash_ok(h_amigo)
+    if jogo not in AM.JOGOS_CONVITE:
+        raise ValueError("jogo inválido")
+    cod = re.sub(r"[^A-Za-z0-9]", "", str(codigo or ""))[:12]
+    if not cod:
+        raise AM.ErroAmigos("A sala não tem código.")
+    if (cfg_ler(f"amz|{eu}|{outro}") or {}).get("estado") != AM.AMIGOS or _bloqueio_entre(eu, outro):
+        raise AM.ErroAmigos("Você só pode convidar amigos.")
+    cfg_gravar(f"cvj|{outro}|{eu}", {"jogo": jogo, "codigo": cod, "em": seg.iso()})
+    dono = sis_perfis_por_hash().get(outro)
+    if dono:
+        _notificar(dono[0], f"cvj|{eu}|{cod}", f"{_meu_usuario(ator)} convidou você para o {AM.JOGOS_CONVITE[jogo]}",
+                   f"Código da sala: {cod}. Abra Meus Amigos para entrar.", "jogos-amigos")
+
+
+def convites_recebidos(ator: Ator | None) -> list[dict]:
+    """Convites para jogar ainda válidos, só de amigos e sem bloqueio."""
+    import amigos as AM
+    from datetime import datetime
+    eu = _eu_h(ator)
+    rel = social_relacoes(ator)
+    agora = datetime.fromisoformat(seg.iso())
+    out = []
+    for r in _cfg_prefixo(f"cvj|{eu}|"):
+        de = r["id"][len(f"cvj|{eu}|"):]
+        if (rel.get(de) or {}).get("estado") == AM.AMIGOS and AM.convite_valido(r["dados"], agora):
+            out.append({"h": de, "jogo": r["dados"]["jogo"], "codigo": r["dados"]["codigo"], "em": r["dados"]["em"]})
+    return out
+
+
+def convite_apagar(ator: Ator | None, h_de: str) -> None:
+    cfg_apagar(f"cvj|{_eu_h(ator)}|{_hash_ok(h_de)}")
+
+
+def perfil_alvo(ator: Ator | None, usuario_k: str) -> dict | None:
+    """Porta de entrada para ver o perfil de alguém (permissão no servidor): None se não existe, se há bloqueio entre as contas ou se a
+    privacidade dele não deixa esta conta ver nem o cartão básico. Devolve {email (só para o servidor), doc, h, rel, dono, completo}.
+    `completo` False = perfil "só amigos" visto por quem não é amigo: a tela mostra só nome e avatar (e o botão de adicionar)."""
+    import amigos as AM
+    import perfis as PF
+    eu = _eu_h(ator)
+    try:
+        achado = sis_perfil_por_usuario(usuario_k)
+    except ValueError:
+        return None
+    if not achado:
+        return None
+    email, doc = achado
+    alvo = _h_conta(email)
+    if alvo == eu:
+        return {"email": email, "doc": doc, "h": alvo, "rel": None, "dono": True, "completo": True}
+    if _bloqueio_entre(eu, alvo):
+        return None
+    rel = (cfg_ler(f"amz|{eu}|{alvo}") or {}).get("estado")
+    pv = PF.sanear(doc)["privacidade"]
+    completo = PF.pode_ver(pv, rel == AM.AMIGOS)
+    if not completo and pv["visivel"] != "amigos":
+        return None
+    return {"email": email, "doc": doc, "h": alvo, "rel": rel, "dono": False, "completo": completo}
+
+
+def sis_ativos_desde(desde_iso: str, limite: int = 5000) -> dict[str, str]:
+    """{e-mail: último login} das contas que entraram desde `desde_iso` (uma consulta; usado só para o indicador de atividade de amigos)."""
+    return {r["email"]: r["ultimo_login"] for r in _selecionar("contas", {"ultimo_login": ("gte", desde_iso)}, ["email", "ultimo_login"], limite=limite)}
+
+
+def social_da_conta_apagar(email: str) -> int:
+    """Exclusão de conta: apaga amizades, pedidos, bloqueios e convites em que ela aparece (só o sistema chama)."""
+    try:
+        h, n = _h_conta(email), 0
+        for r in _selecionar("config_sistema", {"id": ("contem", h)}, ["id"], limite=5000):
+            if r["id"].split("|")[0] in ("amz", "blq", "cvj"):
+                cfg_apagar(r["id"])
+                n += 1
+        return n
+    except Exception as e:
+        registrar_erro("banco.social_da_conta_apagar", e)
+        return 0
 
 
 # ------------------------------------------------------------------ Central de Jogos: placar de cada conta (Trade Battle e Ticker Battle)

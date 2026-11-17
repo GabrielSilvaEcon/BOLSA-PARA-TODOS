@@ -215,6 +215,32 @@ def _ligas_todas() -> list[dict]:
     return banco.sis_comp_todos(L.CH_LIGAS)
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def _usuarios_por_hash() -> dict[str, str]:
+    """{hash do placar: nome de usuário atual} para levar do ranking ao perfil (o apelido do placar pode estar desatualizado)."""
+    import perfis as PF
+    out = {}
+    for r in banco.sis_comp_todos("perfil_jogador"):
+        p = PF.sanear(r["dados"])
+        if p["usuario"] and p["privacidade"]["visivel"] != "ninguem":
+            out[J.hash_conta(r["email"])] = p["usuario"]
+    return out
+
+
+def _lista_clicavel(chave: str, linhas: list[dict], jogo: str) -> None:
+    """Linhas do ranking; tocar em alguém abre o perfil público (quem esconde o perfil continua no ranking, sem link)."""
+    import amigos_app as AMA
+    try:
+        nomes = _usuarios_por_hash()
+    except Exception:
+        nomes = {}
+    st.markdown(AMA.CSS, unsafe_allow_html=True)
+    with st.container(key=f"{chave}_lista"):
+        for x in linhas:
+            u = None if x["eu"] else nomes.get(x["h"])
+            AMA.linha_clicavel(f"{chave}_{x['pos']}", "<div class='jg-lista'>" + _linha_rank(x, jogo) + "</div>", u, f"Ver perfil de {x['apelido']}")
+
+
 def placares() -> list[dict]:
     """Placar de todas as contas (uma consulta, cache de 60 s). Também usado pelo perfil público."""
     return _placares()
@@ -223,6 +249,7 @@ def placares() -> list[dict]:
 def _limpar_cache() -> None:
     _placares.clear()
     _ligas_todas.clear()
+    _usuarios_por_hash.clear()
 
 
 def ranking(jogo: str) -> dict | None:
@@ -418,6 +445,32 @@ def _podio(rk: dict, jogo: str) -> str:
     return "<div class='jg-podio'>" + "".join(out) + "</div>"
 
 
+def _podio_clicavel(rk: dict, jogo: str) -> None:
+    """Pódio com um botão invisível sobre cada jogador (2º, 1º, 3º, na ordem do desenho) que abre o perfil público."""
+    import amigos_app as AMA
+    try:
+        nomes = _usuarios_por_hash()
+    except Exception:
+        nomes = {}
+    top = rk["linhas"][:3]
+    ordem = [top[i] if i < len(top) else None for i in (1, 0, 2)]
+    st.markdown(f"<style>{_P} .st-key-jg_pod{{position:relative;gap:0 !important}}"
+                f"{_P} .st-key-jg_pod_b{{position:absolute !important;inset:0;z-index:3;display:grid !important;grid-template-columns:1fr 1.15fr 1fr;gap:6px !important}}"
+                f"{_P} .st-key-jg_pod_b > div{{width:auto !important;height:100%}}"
+                f"{_P} .st-key-jg_pod_b .stButton,{_P} [data-testid='stMain'] .st-key-jg_pod_b .stButton > button[data-testid]{{width:100% !important;height:100% !important;"
+                f"opacity:0 !important;min-height:0 !important;background:transparent !important;border:0 !important;box-shadow:none !important}}</style>",
+                unsafe_allow_html=True)
+    with st.container(key="jg_pod"):
+        st.markdown(_podio(rk, jogo), unsafe_allow_html=True)
+        with st.container(key="jg_pod_b"):
+            for i, x in enumerate(ordem):
+                u = nomes.get(x["h"]) if x and not x["eu"] else None
+                if u:
+                    st.button(f"Ver perfil de {x['apelido']}", key=f"jg_pod_{i}", on_click=AMA.ir_jogador, args=(u,))
+                else:
+                    st.markdown("&nbsp;")
+
+
 def _var(v) -> str:
     if v is None:
         return "<span class='vr eq'>—</span>"
@@ -460,14 +513,17 @@ def pagina_ranking() -> None:
                   args=("trader" if jogo == J.TRADE else "battle",))
         return
     crit = "pontos acumulados nas partidas terminadas" if jogo == J.TRADE else "vitórias nos duelos (contra o sistema e online)"
-    st.markdown(f"<div class='jg-card'><p>Classificação por {crit}. Variação ▲▼ desde o início do dia.</p></div>" + _podio(rk, jogo), unsafe_allow_html=True)
+    st.markdown(f"<div class='jg-card'><p>Classificação por {crit}. Variação ▲▼ desde o início do dia. Toque em um jogador para ver o perfil.</p></div>",
+                unsafe_allow_html=True)
+    _podio_clicavel(rk, jogo)
     eu = rk["eu"]
     resto = rk["linhas"][3:50]
     if eu and eu["pos"] > 3 + len(resto):                       # fora do pódio e da lista mostrada: aparece à parte (senão já está destacado)
         st.markdown("<div class='jg-sec'>Sua posição</div><div class='jg-lista'>" + _linha_rank(eu, jogo) + "</div>", unsafe_allow_html=True)
     if resto:
-        st.markdown("<div class='jg-sec'>Classificação<small>" + f"{rk['total']} jogador{'es' if rk['total'] != 1 else ''}" + "</small></div><div class='jg-lista'>"
-                    + "".join(_linha_rank(x, jogo) for x in resto) + "</div>", unsafe_allow_html=True)
+        st.markdown("<div class='jg-sec'>Classificação<small>" + f"{rk['total']} jogador{'es' if rk['total'] != 1 else ''}" + "</small></div>",
+                    unsafe_allow_html=True)
+        _lista_clicavel("jg_rk", resto, jogo)
     st.caption(f"Atualizado às {_agora():%H:%M} · atualiza sozinho a cada minuto.")
     if st.button("Atualizar agora", key="jg_rk_atual", icon=":material/refresh:"):
         _limpar_cache()
@@ -571,11 +627,21 @@ def _msg_amigos() -> None:
 
 
 def pagina_amigos() -> None:
-    _cabecalho("Meus Amigos", "Compare seus resultados com quem você convidar.")
+    _cabecalho("Meus Amigos", "Seus amigos, solicitações, convites e comparação de resultados.")
     navegacao("jogos-amigos")
     a = _ator()
     if not a:
         return
+    conv = L.extrair_convite(st.query_params.get("liga"))
+    aba = st.segmented_control("Seção", ["Amigos", "Ligas"], default="Ligas" if conv else "Amigos", key="jg_am_aba", label_visibility="collapsed") or "Amigos"
+    if aba == "Amigos":
+        import amigos_app as AMA
+        AMA.secao_amigos()
+        return
+    _secao_ligas(a)
+
+
+def _secao_ligas(a) -> None:
     conv = L.extrair_convite(st.query_params.get("liga"))
     if conv and not st.session_state.get("jg_am_cod"):
         st.session_state["jg_am_cod"] = L.formatar_codigo(conv)
@@ -608,7 +674,7 @@ def pagina_amigos() -> None:
         elif not rk["total"]:
             st.markdown(f"<div class='jg-vazio'>Ninguém desta liga terminou uma partida do {_e(J.NOME[jogo])} ainda.</div>", unsafe_allow_html=True)
         else:
-            st.markdown("<div class='jg-lista'>" + "".join(_linha_rank(x, jogo) for x in rk["linhas"]) + "</div>", unsafe_allow_html=True)
+            _lista_clicavel("jg_lg", rk["linhas"], jogo)
         try:
             import email_envio
             link = L.link_convite(email_envio.url_base(), atual)
