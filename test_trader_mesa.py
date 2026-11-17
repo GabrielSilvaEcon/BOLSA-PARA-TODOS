@@ -1707,10 +1707,24 @@ def test_xp_por_colocacao_entre_quem_jogou():
     assert TB.xp_da_partida(p, "ana@x.com")["xp"] == 0                                    # partida ainda não terminou
     p["fase"] = "fim"
     xs = {j: TB.xp_da_partida(p, j) for j in p["jogadores"]}
-    assert (xs["ana@x.com"]["xp"], xs["caio@x.com"]["xp"], xs["bia@x.com"]["xp"]) == (25, 15, 10)
-    assert xs["ana@x.com"]["pos"] == 1 and xs["ana@x.com"]["n"] == 3
+    bonus = int(p["pontos"]["ana@x.com"] // TB.XP_POR_PONTOS)
+    assert p["pontos"]["ana@x.com"] > 0 > p["pontos"]["bia@x.com"] and bonus > 0
+    assert (xs["ana@x.com"]["xp"], xs["caio@x.com"]["xp"], xs["bia@x.com"]["xp"]) == (30 + bonus, 18, 10)     # pontuação negativa não tira XP
+    assert xs["ana@x.com"]["pos"] == 1 and xs["ana@x.com"]["n"] == 3 and xs["ana@x.com"]["xp_pts"] == bonus and xs["bia@x.com"]["xp_pts"] == 0
     p["pontos"]["caio@x.com"] = p["pontos"]["ana@x.com"]                                   # empate divide a melhor colocação
-    assert TB.xp_da_partida(p, "caio@x.com")["xp"] == TB.xp_da_partida(p, "ana@x.com")["xp"] == 25
+    assert TB.xp_da_partida(p, "caio@x.com")["xp"] == TB.xp_da_partida(p, "ana@x.com")["xp"] == 30 + bonus
+
+
+def test_xp_cresce_com_o_tamanho_da_sala_e_nunca_e_negativo():
+    for n, tab in TB.XP_POSICAO.items():
+        assert len(tab) == n and list(tab) == sorted(tab, reverse=True) and min(tab) > 0
+    assert [TB.XP_POSICAO[n][0] for n in (2, 3, 4)] == sorted({TB.XP_POSICAO[n][0] for n in (2, 3, 4)}) and TB.XP_POSICAO[2][0] > TB.XP_SOLO
+    c, p = _rodada_com_vencedor()
+    p["fase"] = "fim"
+    for pts in (-300.0, -0.1, 0.0, 9.9, 10.0, 250.0):
+        p["pontos"]["bia@x.com"] = pts
+        x = TB.xp_da_partida(p, "bia@x.com")
+        assert x["xp"] >= 0 and x["xp_pts"] == max(0, int(pts // 10)) and x["xp"] == x["xp_pos"] + x["xp_pts"]
 
 
 def test_xp_sala_com_fantasma_vale_como_solo_e_fantasma_nao_ganha():
@@ -1718,7 +1732,8 @@ def test_xp_sala_com_fantasma_vale_como_solo_e_fantasma_nao_ganha():
     p["fase"] = "fim"
     for k in [k for k in p["estrategias"] if not k.endswith("ana@x.com")]:
         p["estrategias"][k] = {**p["estrategias"][k], "sem_registro": True}               # só a ana registrou leitura
-    assert TB.xp_da_partida(p, "ana@x.com") == {"xp": TB.XP_SOLO, "pos": None, "n": 1}
+    x = TB.xp_da_partida(p, "ana@x.com")
+    assert (x["pos"], x["n"], x["xp_pos"]) == (None, 1, TB.XP_SOLO) and x["xp"] == TB.XP_SOLO + max(0, int(p["pontos"]["ana@x.com"] // 10))
     assert TB.xp_da_partida(p, "bia@x.com")["xp"] == 0
 
 

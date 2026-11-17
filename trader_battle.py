@@ -782,9 +782,11 @@ def retorno_pct(res: dict | None) -> float | None:
     return round(sum(t["ret"] for t in res.get("operacoes") or []) * 100, 3)
 
 
-# ---- XP por colocação (única recompensa do jogo; nenhuma TickerCoin: o dinheiro é só o lucro/prejuízo das operações na Wallet Game)
-XP_POSICAO = {2: (25, 10), 3: (25, 15, 10), 4: (25, 15, 10, 5)}       # nº de jogadores que jogaram → XP do 1º, 2º, 3º, 4º
+# ---- XP (única recompensa do jogo; nenhuma TickerCoin: o dinheiro é só o lucro/prejuízo das operações na Wallet Game)
+# XP = colocação (cresce com o tamanho da sala) + bônus da pontuação (só a parte positiva). Nunca é negativo.
+XP_POSICAO = {2: (20, 10), 3: (30, 18, 10), 4: (40, 25, 15, 8)}     # nº de jogadores que jogaram → XP do 1º, 2º, 3º, 4º
 XP_SOLO = 10                                                           # partida individual (ou sala em que só você jogou): sem colocação
+XP_POR_PONTOS = 10                                                     # +1 XP a cada 10 pontos positivos da partida (100 pontos = +10 XP)
 XP_PARTIDAS_DIA = 3                                                    # só as 3 primeiras partidas do dia valem XP
 
 
@@ -794,16 +796,20 @@ def jogou(p: dict, jog: str) -> bool:
 
 
 def xp_da_partida(p: dict, jog: str) -> dict:
-    """XP que a partida TERMINADA vale para `jog`, pela colocação entre quem de fato jogou (protege contra sala com 'fantasma').
-    Empate em pontos divide a melhor colocação. O limite diário e o crédito ficam com quem grava o progresso (a tela)."""
+    """XP que a partida TERMINADA vale para `jog`: colocação entre quem de fato jogou (protege contra sala com 'fantasma'; mais jogadores,
+    mais XP) + bônus pela pontuação positiva. Pontuação negativa não tira XP. Empate em pontos divide a melhor colocação.
+    O limite diário e o crédito ficam com quem grava o progresso (a tela)."""
+    nada = {"xp": 0, "pos": None, "n": 0, "xp_pos": 0, "xp_pts": 0}
     if p["fase"] != "fim" or jog not in p["jogadores"] or not jogou(p, jog):
-        return {"xp": 0, "pos": None, "n": 0}
+        return nada
+    pts = {x["jog"]: x["pontos"] for x in placar_final(p)}
+    bonus = max(0, int(pts[jog] // XP_POR_PONTOS))
     ativos = [j for j in p["jogadores"] if jogou(p, j)]
     if len(ativos) < 2:
-        return {"xp": XP_SOLO, "pos": None, "n": 1}
-    pts = {x["jog"]: x["pontos"] for x in placar_final(p)}
+        return {"xp": XP_SOLO + bonus, "pos": None, "n": 1, "xp_pos": XP_SOLO, "xp_pts": bonus}
     pos = 1 + sum(1 for j in ativos if pts[j] > pts[jog])
-    return {"xp": XP_POSICAO[len(ativos)][pos - 1], "pos": pos, "n": len(ativos)}
+    base = XP_POSICAO[len(ativos)][pos - 1]
+    return {"xp": base + bonus, "pos": pos, "n": len(ativos), "xp_pos": base, "xp_pts": bonus}
 
 
 def _rotulos(p: dict, jog: str) -> dict:

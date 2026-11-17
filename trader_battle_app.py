@@ -542,6 +542,8 @@ def _linha_xp(info: dict, pago: dict) -> str:
     st_, n = pago.get("status"), pago.get("xp", 0)
     if st_ == "pago" and n:
         onde = f"{info['pos']}º lugar entre {info['n']} jogadores" if info.get("pos") else "partida concluída"
+        if info.get("xp_pts"):
+            onde += f" ({info['xp_pos']} XP) + {info['xp_pts']} XP pela pontuação"
         return f"<div class='tb-xp'><span>⭐</span><b>+{n} XP</b><small>{onde}</small></div>"
     txt = {"visitante": "Entre na sua conta para ganhar XP nas partidas.",
            "limite": f"Você já ganhou XP em {TB.XP_PARTIDAS_DIA} partidas hoje: esta partida não deu XP.",
@@ -661,7 +663,7 @@ def _central() -> None:
         st.markdown("<div class='tb-aviso'>Você recebe o gráfico de uma ação da B3 parado num ponto do passado e tem 120 s para analisar, registrar a leitura "
                     "(direção, tipo e confiança) e fazer suas marcações. No replay (24 candles em 60 s) você opera ao vivo: compra, vende, encerra e ajusta stop e alvo, com uma posição por vez; "
                     "o adversário vê só as entradas e saídas que você executou. Lucro soma e prejuízo tira, tanto no patrimônio quanto nos pontos. Jogo educativo: nenhuma ordem real, nada de recomendação de investimento. "
-                    f"No fim da partida você ganha XP pela colocação (até {TB.XP_PARTIDAS_DIA} partidas por dia, só com conta); o Trader Battle não dá TickerCoins: o dinheiro é só o lucro ou prejuízo das suas operações. "
+                    f"No fim da partida você ganha XP pela colocação (mais jogadores na sala, mais XP) e pela pontuação positiva; XP nunca é negativo (até {TB.XP_PARTIDAS_DIA} partidas por dia, só com conta); o Trader Battle não dá TickerCoins: o dinheiro é só o lucro ou prejuízo das suas operações. "
                     "No modo individual a partida fica só neste navegador; se você atualizar a página, ela é perdida. Em sala com amigos (2 a 4 jogadores) a partida fica "
                     "guardada no servidor: dá para voltar a ela depois de atualizar a página.</div>", unsafe_allow_html=True)
     try:
