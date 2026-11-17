@@ -81,7 +81,7 @@ def liquidar(p: dict, agora: datetime | None = None) -> int:
                 continue
             sinal = "lucro" if fin["pnl"] > 0 else "prejuízo"
             nops = f" em {fin['n_ops']} operações" if fin.get("n_ops", 0) > 1 else ""
-            desc = f"Trader Battle · rodada {rod}: {sinal} de {WG.moeda(abs(fin['pnl']))}{nops} ({fin['pct_aposta']:+.2f}% da aposta)"
+            desc = f"Trade Battle · rodada {rod}: {sinal} de {WG.moeda(abs(fin['pnl']))}{nops} ({fin['pct_aposta']:+.2f}% da aposta)"
             try:
                 if WG._inserir_credito(j, conta, f"trader:{p['id']}:{rod}:{j}", "trader", fin["pnl"], WG.hoje_brt(agora).isoformat(), desc,
                                        {"partida": p["id"], "rodada": rod, "aposta": fin["aposta"], "pct_aposta": fin["pct_aposta"], "n_ops": fin.get("n_ops", 1)}, agora):

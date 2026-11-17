@@ -157,7 +157,7 @@ def aplicar_creditos(estado: dict, creditos: list[dict]) -> tuple[dict, int]:
             e["caixa"] = round(float(e.get("caixa", 0.0)) + v, 2)
             ja.append(c["chave"])
             vistos.add(c["chave"])
-            e.setdefault("ext", []).append({"d": str(c.get("dia") or (c.get("criado_em") or "")[:10]), "tipo": "trader", "m": str(c.get("descricao") or "Trader Battle")[:60], "v": v})
+            e.setdefault("ext", []).append({"d": str(c.get("dia") or (c.get("criado_em") or "")[:10]), "tipo": "trader", "m": str(c.get("descricao") or "Trade Battle")[:60], "v": v})
             n += 1
             continue
         if v <= 0:

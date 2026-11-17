@@ -438,7 +438,7 @@ def _email_online() -> str | None:
 
 
 def _msg_online(e: Exception) -> str:
-    return str(e) if isinstance(e, (TOD.ErroSala, TB.ErroTrader)) else "Servidor de salas indisponível agora. Confira se as tabelas do Trader Battle foram criadas no banco."
+    return str(e) if isinstance(e, (TOD.ErroSala, TB.ErroTrader)) else "Servidor de salas indisponível agora. Confira se as tabelas do Trade Battle foram criadas no banco."
 
 
 def _on_criar() -> None:
@@ -706,7 +706,7 @@ def _fim_online(b: dict) -> None:
     v = b["v"]
     _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]))
     st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
-    st.button("Voltar ao início do Trader Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_on_desanexar)
+    st.button("Voltar ao início do Trade Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_on_desanexar)
 
 
 def _pagina_online(pid: str) -> None:
@@ -722,7 +722,7 @@ def _pagina_online(pid: str) -> None:
         _ss()["tb_erro"] = "A sala foi cancelada."
         return st.rerun()
     if b["estado"] == "sala":
-        st.markdown(f"<div class='tb-hero'><img src='{ART.uri('hero')}' alt='Trader Battle'></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tb-hero'><img src='{ART.uri('hero')}' alt='Trade Battle'></div>", unsafe_allow_html=True)
         _frag_sala(pid)
         st.button("Sair da sala", key="tb_voltar", icon=":material/logout:", width="stretch", on_click=_on_sair_sala, args=(pid,))
         return
@@ -769,7 +769,7 @@ def _escolher_formato(tf: str, f: str) -> None:
 
 def _central() -> None:
     st.markdown(_CSS_CENTRAL, unsafe_allow_html=True)
-    st.markdown(f"<div class='tb-hero'><img src='{ART.uri('hero')}' alt='Trader Battle'></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='tb-hero'><img src='{ART.uri('hero')}' alt='Trade Battle'></div>", unsafe_allow_html=True)
     tf = st.segmented_control("Timeframe", list(TB.TIMEFRAMES), default="15m", key="tb_tf",
                               format_func=lambda k: TB.TIMEFRAMES[k]["nome"], label_visibility="collapsed") or "15m"
     if _n_reais(tf) < TB.MIN_CENARIOS_REAIS:
@@ -799,7 +799,7 @@ def _central() -> None:
     st.button("Voltar para sua sala/partida" if ativa else "Entrar em uma Sala", key="tb_sala_row", icon=":material/login:", width="stretch",
               on_click=(_on_voltar_partida if ativa else _painel), args=((ativa,) if ativa else ("entrar",)))
     _central_online(None if ativa else painel)
-    st.markdown("<div class='tb-sobre'><div class='h'>⭐ Sobre o Trader Battle</div><div class='g'>"
+    st.markdown("<div class='tb-sobre'><div class='h'>⭐ Sobre o Trade Battle</div><div class='g'>"
                 "<div><i>👥</i><b>2-4</b><small>jogadores</small></div>"
                 f"<div><i>📅</i><b>{' · '.join(str(n) for n in TB.FORMATOS.values())}</b><small>rodadas</small></div>"
                 f"<div><i>📊</i><b>{TB.T_ANALISE_S}s/{int(TB.T_REPLAY_MESA_S)}s</b><small>análise e replay</small></div>"
@@ -810,7 +810,7 @@ def _central() -> None:
         st.markdown("<div class='tb-aviso'>Você recebe o gráfico de uma ação da B3 parado num ponto do passado e tem 120 s para analisar, registrar a leitura "
                     "(direção, tipo e confiança) e fazer suas marcações. No replay (24 candles em 60 s) você opera ao vivo: compra, vende, encerra e ajusta stop e alvo, com uma posição por vez; "
                     "o adversário vê só as entradas e saídas que você executou. Lucro soma e prejuízo tira, tanto no patrimônio quanto nos pontos. Jogo educativo: nenhuma ordem real, nada de recomendação de investimento. "
-                    f"No fim da partida você ganha XP pela colocação (mais jogadores na sala, mais XP) e pela pontuação positiva; XP nunca é negativo (até {TB.XP_PARTIDAS_DIA} partidas por dia, só com conta); o Trader Battle não dá TickerCoins: o dinheiro é só o lucro ou prejuízo das suas operações. "
+                    f"No fim da partida você ganha XP pela colocação (mais jogadores na sala, mais XP) e pela pontuação positiva; XP nunca é negativo (até {TB.XP_PARTIDAS_DIA} partidas por dia, só com conta); o Trade Battle não dá TickerCoins: o dinheiro é só o lucro ou prejuízo das suas operações. "
                     "No modo individual a partida fica só neste navegador; se você atualizar a página, ela é perdida. Em sala com amigos (2 a 4 jogadores) a partida fica "
                     "guardada no servidor: dá para voltar a ela depois de atualizar a página.</div>", unsafe_allow_html=True)
     try:
@@ -1179,7 +1179,7 @@ def _fim(p: dict) -> None:
     fz = TB.resumo_final(p, j)
     _tela_final(fz, TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]], _pagar_xp(p["id"], fz["xp"]))
     st.button("Jogar novamente", key="tb_de_novo", icon=":material/replay:", width="stretch", on_click=_de_novo)
-    st.button("Voltar ao início do Trader Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_sair)
+    st.button("Voltar ao início do Trade Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_sair)
 
 
 # ------------------------------------------------------------------ página

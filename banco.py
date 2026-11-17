@@ -249,7 +249,7 @@ def sql_trader_online() -> str:
     """Script do Trader Battle multiplayer para o SQL Editor do Supabase (idempotente; só cria o que falta)."""
     ddl = [x + ";" for x in _ddl("postgres") if " tb_" in x.split("\n", 1)[0] or "ux_tb_" in x or "ix_tb_" in x]
     return "\n".join([
-        "-- Trader Battle multiplayer · tabelas tb_partidas e tb_jogadores. Seguro para rodar mais de uma vez. Cole tudo e clique em Run.",
+        "-- Trade Battle multiplayer · tabelas tb_partidas e tb_jogadores. Seguro para rodar mais de uma vez. Cole tudo e clique em Run.",
         "begin;",
         *ddl,
         "-- Segurança: RLS ligado e sem nenhuma política = só o servidor do app (chave secreta) lê e escreve; ele entrega a cada jogador só o que ele pode ver.",

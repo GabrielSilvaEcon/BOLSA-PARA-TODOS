@@ -269,7 +269,7 @@ SINONIMOS = {
     "calculadoras": "calculadora imposto ir rendimento",
     "competicao": "wallet game ranking ligas carteira virtual",
     "battle": "ticker battle duelo cartas baralho batalha jogo",
-    "trader": "trader battle analise tecnica candles grafico replay estrategia",
+    "trader": "trade battle trader battle analise tecnica candles grafico replay estrategia",
     "jornada": "licoes xp estudo trilha",
     "missoes": "desafios metas conquistas",
     "economia": "economia ticker tickercoins moedas saldo tc recompensas loja extrato beneficios",

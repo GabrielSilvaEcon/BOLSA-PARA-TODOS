@@ -4541,7 +4541,7 @@ PG_INTEL = st.Page(pagina_intel_app, title="Radar da carteira", icon=":material/
 PG_NOTIF = st.Page(notif_app.pagina_notificacoes, title="Alertas", icon=":material/notifications:", url_path="notificacoes")
 PG_COMP = st.Page(competicao_app.pagina_competicao, title="Wallet Game", icon=":material/emoji_events:", url_path="competicao")
 PG_BATTLE = st.Page(battle_app.pagina_battle, title="Ticker Battle", icon=":material/sports_esports:", url_path="battle")
-PG_TRADER = st.Page(trader_battle_app.pagina_trader, title="Trader Battle", icon=":material/show_chart:", url_path="trader")
+PG_TRADER = st.Page(trader_battle_app.pagina_trader, title="Trade Battle", icon=":material/show_chart:", url_path="trader")
 PG_JOGAR = st.Page(jogar_app.pagina_jogar, title="Central de missões", icon=":material/flag:", url_path="missoes")
 PG_EDU = st.Page(educacao_app.pagina_educacao, title="Educação financeira", icon=":material/school:", url_path="educacao")
 PG_JORNADA = st.Page(educacao_app.pagina_jornada, title="Jornada", icon=":material/route:", url_path="jornada")
@@ -4633,7 +4633,7 @@ paginas = {
     ":material/psychology: Inteligência": [PG_INTEL, PG_NOTICIAS, PG_NOTIF],
     ":material/account_balance_wallet: Wallet Game": [PG_COMP],
     ":material/sports_esports: Ticker Battle": [PG_BATTLE],
-    ":material/show_chart: Trader Battle": [PG_TRADER],
+    ":material/show_chart: Trade Battle": [PG_TRADER],
     ":material/school: Aprender": [PG_JORNADA, PG_JOGAR, PG_EDU, PG_GLOSSARIO],
     ":material/compare_arrows: Comparar": [PG_COMPARAR, PG_EVOLUCAO],
     ":material/toll: Loja Ticker": [PG_ECONOMIA],
@@ -5074,7 +5074,7 @@ if DESIGN_V2 and HUD_TOPO:                 # linha 2 do cabeçalho: sequência, 
         except Exception:
             pass
         _itens.append(("battle", PG_BATTLE, "Battle", "Duelo", ":material/sports_esports:"))     # acesso ao Ticker Battle (posição provisória)
-        _itens.append(("trader", PG_TRADER, "Trader", "Candles", ":material/show_chart:"))     # Trader Battle (análise técnica)
+        _itens.append(("trader", PG_TRADER, "Trade", "Candles", ":material/show_chart:"))     # Trader Battle (análise técnica)
         try:                                                     # aviso de ganho: "+30 XP", "+5 Ticker Coins", sequência e nível novo (uma vez por mudança)
             import ganhos as _gn
             _quem = getattr(usuarios.ator(), "email", "") or ""
