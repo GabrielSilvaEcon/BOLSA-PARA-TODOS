@@ -181,7 +181,7 @@ def html_linha(x: dict, extra: str = "", atividade: str | None = None) -> str:
 
 # ------------------------------------------------------------------ ações (callbacks): mensagem clara de sucesso ou erro
 def _msg(ok: bool, texto: str) -> None:
-    _ss()["_am_msg_tela"] = (ok, texto)
+    _ss()["_amsg_tela"] = (ok, texto)
 
 
 def _acao(fn, sucesso: str, *a, **kw) -> bool:
@@ -278,6 +278,10 @@ def convidar(h: str, jogo: str) -> None:
     finally:
         limpar()
     _msg(True, f"Convite enviado! Sala {cod} criada: seu amigo recebe o aviso e entra por Meus Amigos.")
+    try:
+        st.toast(f"Convite enviado! Sala {cod}: seu amigo recebe o aviso.", icon="🎮")
+    except Exception:
+        pass
     ss["_nav_pend"] = destino
 
 
@@ -318,7 +322,7 @@ def recusar_convite(h: str) -> None:
 
 
 def mostrar_msg() -> None:
-    m = _ss().pop("_am_msg_tela", None)
+    m = _ss().pop("_amsg_tela", None)
     if m:
         (st.success if m[0] else st.error)(m[1], icon=":material/check_circle:" if m[0] else ":material/error:")
 
