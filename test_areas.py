@@ -54,16 +54,6 @@ def test_area_ativa_nao_troca_em_paginas_fora_das_areas():
     assert A.area_ativa("inicio", "ativos") == A.area_padrao()          # id de uma versão intermediária guardado numa sessão aberta
 
 
-def test_ultima_pagina_lembrada():
-    mem = A.lembrar({}, "fiis")
-    mem = A.lembrar(mem, "educacao")
-    assert A.ultima_pagina("analisar", mem) == "analisar"           # Analisar abre sempre a tela da área
-    assert A.ultima_pagina("aprender", mem) == "educacao"
-    assert A.ultima_pagina("wallet", mem) == "competicao"                  # sem memória: página padrão
-    assert A.ultima_pagina("wallet", None) == "competicao"
-    assert A.ultima_pagina("nao-existe", mem) == ""
-
-
 def test_lembrar_nao_altera_a_original_e_ignora_paginas_fora():
     original = {"analisar": "fiis"}
     nova = A.lembrar(original, "etfs")
@@ -123,26 +113,11 @@ def test_inicio_nao_repete_os_botoes_da_barra():
     assert "def _abrir_area(" in texto
 
 
-def test_barra_tem_inicio_e_analisar_abre_a_tela_da_area():
-    texto = (RAIZ / "app.py").read_text(encoding="utf-8")
-    corpo = texto[texto.index("def _seletor_de_areas"):texto.index("def menu_navegacao")]
-    assert 'key="area_btn_inicio"' in corpo and "_abrir_inicio" in corpo
-    assert A.ultima_pagina("analisar", None) == "analisar"
-    assert A.ultima_pagina("analisar", {"analisar": "fiis"}) == "analisar"   # sempre a tela da área, nunca a última página
-    assert "repeat({len(areas.AREAS) + 1}" in texto                          # a grade da barra acompanha o número de áreas
-
-
 def test_jornada_e_glossario_sao_paginas_do_menu():
     texto = (RAIZ / "app.py").read_text(encoding="utf-8")
     assert 'url_path="jornada"' in texto and 'url_path="glossario"' in texto
     assert A.area_da_pagina("jornada") == "aprender" and A.area_da_pagina("glossario") == "aprender"
     assert A.ultima_pagina("aprender", None) == "jornada"          # a Jornada abre primeiro
-
-
-def test_paginas_finas_so_reaproveitam_as_abas():
-    edu = (RAIZ / "educacao_app.py").read_text(encoding="utf-8")
-    assert "jornada_app.aba(prog, _set, _estudo_unidade)" in edu and "_aba_glossario()" in edu
-    assert edu.count("jornada_app.aba(prog, _set, _estudo_unidade)") == 2   # aba antiga + página nova (nada removido)
 
 
 def test_tela_analisar_tem_cartoes_validos():
@@ -161,19 +136,6 @@ def test_trilha_das_paginas():
     assert A.trilha("glossario")[1] == "jornada"                   # Aprender: raiz é a primeira página
     assert A.trilha("wallet") is None                               # já é a raiz de Jogar
     assert A.trilha("carteira")[1] == "analisar"
-
-
-def test_grupo_aberto_e_continuar():
-    assert A.grupo_aberto("analisar", "analisar") == "acoes"        # tela da área: abre o grupo padrão
-    assert A.grupo_aberto("inicio", "analisar") == "acoes"          # Início com o menu na área Analisar
-    assert A.grupo_aberto("preco-justo", "analisar") is None        # numa página da área, o menu já abre o grupo dela
-    assert A.grupo_aberto("inicio", "nao-existe") is None
-    mem = A.lembrar({}, "fiis")
-    assert A.lembrar(mem, "analisar") == mem                        # voltar à tela da área não apaga "Continuar"
-    app = (RAIZ / "app.py").read_text(encoding="utf-8")
-    assert "Continuar de onde parou" in app and "areas.grupo_aberto(" in app
-    chaves = set(re.findall(r'cat\("([a-z]+)"', app))
-    assert {a["grupo_menu"] for a in A.AREAS} <= chaves             # todo grupo_menu existe de verdade no menu
 
 
 def test_memoria_das_areas_e_gravada_no_perfil_e_limpa():

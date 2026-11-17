@@ -14,7 +14,6 @@ from datetime import datetime, timedelta, timezone
 
 import macro_ativos as MA
 import macro_cenario as MC
-import macro_fontes as MF
 
 SALTO_NOTA = 0.30           # mudança de nota (de -1 a +1) desde o último aviso que justifica um novo aviso sem troca de veredito
 FORCA_RISCO = 0.70          # valor do fator (0 a 1) a partir do qual ele é um "risco forte"

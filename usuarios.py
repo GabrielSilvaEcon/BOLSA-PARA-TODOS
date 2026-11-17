@@ -14,7 +14,6 @@ Isolamento entre usuários: ao sair, ou ao trocar de conta na mesma sessão do n
 import json
 import time
 import uuid
-from html import escape as _esc
 
 import streamlit as st
 
@@ -23,7 +22,6 @@ import contas
 import email_envio as mail
 import permissoes as perm
 import prefs as P
-import seguranca as seg
 
 # O que é guardado: estas chaves do session_state e qualquer chave que comece com um destes prefixos.
 CHAVES = ("sel_ativos", "perfil", "fonte_dados", "universo", "cores_ativos",
@@ -196,28 +194,6 @@ html body .st-key-login_card [data-baseweb="base-input"] {{border:0 !important;}
 </style>"""
 
 
-def _diagnostico() -> dict:
-    """Informações sem dados pessoais para descobrir por que o login não conclui."""
-    from urllib.parse import urlparse
-    d = {}
-    for rot, fn in (
-        ("conectado", lambda: bool(st.user.is_logged_in)),
-        ("campos do usuário", lambda: list(st.user.to_dict().keys())),
-        ("cookies recebidos", lambda: list(st.context.cookies.keys())),
-        ("endereço acessado", lambda: st.context.headers.get("Host")),
-        ("endereço do redirect_uri", lambda: urlparse(st.secrets["auth"]["redirect_uri"]).netloc),
-        ("redirect_uri termina em /oauth2callback", lambda: st.secrets["auth"]["redirect_uri"].endswith("/oauth2callback")),
-        ("tem cookie_secret", lambda: bool(st.secrets["auth"].get("cookie_secret"))),
-        ("tem [auth.google]", lambda: all(k in st.secrets["auth"]["google"] for k in ("client_id", "client_secret", "server_metadata_url"))),
-        ("versão do streamlit", lambda: st.__version__),
-    ):
-        try:
-            d[rot] = fn()
-        except Exception as e:
-            d[rot] = f"erro: {e.__class__.__name__}"
-    return d
-
-
 def _google_dados():
     try:
         if _configurado() and st.user.is_logged_in:
@@ -362,11 +338,6 @@ def preferencias() -> dict:
     return P.normalizar(st.session_state.get("prefs"))
 
 
-def eh_visitante() -> bool:
-    return bool(st.session_state.get("_visitante")) and not usuario()
-
-
-
 def sair_visitante():
     """Volta para a tela de login."""
     st.session_state.pop("_visitante", None)
@@ -385,12 +356,6 @@ def sair():
     st.session_state["_cookie_pend"] = ("limpar", "")
     if via == "google" or (_google_dados() is not None):
         st.logout()
-
-
-def menu_visitante(sufixo: str = "d"):
-    st.markdown("**Visitante**")
-    st.caption("Você está sem conta: nada fica salvo.")
-    st.button("Entrar", icon=":material/login:", on_click=sair_visitante, width="stretch", key=f"entrar_{sufixo}")
 
 
 def exigir_login(logo_uri: str = "", nome: str = "TickerHunters"):
@@ -476,16 +441,6 @@ def salvar():
 def primeiro_nome() -> str:
     u = usuario()
     return (u["nome"].split()[0][:12]) if u else ""
-
-
-def menu_conta(sufixo: str = "d"):
-    """Nome, e-mail e botão Sair. Desenhar dentro de um popover ou container."""
-    u = usuario()
-    if not u:
-        return
-    st.markdown(f"**{_esc(u['nome'])}**")
-    st.caption(u["email"])
-    st.button("Sair", icon=":material/logout:", on_click=sair, width="stretch", key=f"sair_{sufixo}")
 
 
 def apagar_dados_salvos() -> bool:

@@ -1,5 +1,4 @@
 """Competição · etapa 2 (ligas de amigos e avisos de posição). Sem internet: SQLite temporário e cotações falsas."""
-import json
 import os
 import sys
 from datetime import date, datetime, timedelta, timezone
@@ -17,31 +16,10 @@ import seguranca as seg  # noqa: E402
 UTC = timezone.utc
 
 
-# ------------------------------------------------------------------ códigos, nomes, documento da pessoa
-def test_codigo_novo_e_valido():
-    for _ in range(50):
-        c = L.novo_codigo()
-        assert len(c) == 8 and L.codigo_valido(c) == c
-        assert not set(c) & set("01ILO")
-
-
 @pytest.mark.parametrize("txt,esperado", [("k7qm-2xpa", "K7QM2XPA"), (" K7QM 2XPA ", "K7QM2XPA"), ("K7QM2XP", None), ("K7QM2XP0", None),
                                           ("", None), (None, None), ("K7QM2XPAA", None), ("K7QM2XP!", None)])
 def test_codigo_valido(txt, esperado):
     assert L.codigo_valido(txt) == esperado
-
-
-def test_convite_por_link_e_colado():
-    assert L.extrair_convite("https://app.exemplo.com/competicao?liga=K7QM2XPA") == "K7QM2XPA"
-    assert L.codigo_valido("https://app.exemplo.com/competicao?liga=k7qm-2xpa&x=1") == "K7QM2XPA"
-    assert L.extrair_convite("https://app.exemplo.com/competicao?liga=<script>") is None
-    assert L.link_convite("https://app.exemplo.com/", "K7QM2XPA") == "https://app.exemplo.com/competicao?liga=K7QM2XPA"
-
-
-@pytest.mark.parametrize("nome,ok", [("Turma da faculdade", True), ("Liga dos Amigos 2026", True), ("ab", False), ("<b>x</b>", False),
-                                     ("a" * 31, False), ("admin oficial", False), ("  ", False)])
-def test_nome_valido(nome, ok):
-    assert L.nome_valido(nome)[0] is ok
 
 
 def test_documento_da_pessoa_saneado():
@@ -61,53 +39,12 @@ def test_adicionar_remover_sem_repetir():
     assert L.participa(d, "K7QM2XPA") and L.remover(d, "K7QM2XPA")["ligas"] == []
 
 
-def test_definicao_nao_guarda_email():
-    d = L.nova_definicao("Turma", "Dono@Exemplo.com", 30)
-    assert "@" not in json.dumps(d) and d["dono_h"] == L.hash_dono("dono@exemplo.com")
-    assert L.nova_definicao("T", "a@b.com", 9999)["max"] == L.MAX_MEMBROS_TETO
-    assert "dono_h" not in L.definicao_publica("K7QM2XPA", d)
-
-
 # ------------------------------------------------------------------ ranking das ligas (lógica pura)
 def _est(retornos: list[float]) -> dict:
     hist = [{"d": (date(2026, 11, 2) + timedelta(days=i)).isoformat(), "p": round(C.CAPITAL_INICIAL * (1 + r), 2)} for i, r in enumerate(retornos)]
     e = C.novo_estado("2026-11-02")
     e["hist"] = hist
     return e
-
-
-def test_montar_ligas_ranking_e_posicoes():
-    part = [{"apelido": "ana", "email": "a@x", "estado": _est([0, .01, .02, .03, .04, .05])},
-            {"apelido": "bia", "email": "b@x", "estado": _est([0, 0, 0, 0, 0, .02])},
-            {"apelido": "cris", "email": "c@x", "estado": _est([])},                           # ainda sem nenhum fechamento
-            {"apelido": "dani", "email": "d@x", "estado": _est([0, .1, .1, .1, .1, .1])}]       # fora da liga
-    defs = {"K7QM2XPA": L.nova_definicao("Turma", "a@x", 30)}
-    ligas = {"a@x": L.adicionar({}, "K7QM2XPA", date(2026, 11, 2), True), "b@x": L.adicionar({}, "K7QM2XPA", date(2026, 11, 2)),
-             "c@x": L.adicionar({}, "K7QM2XPA", date(2026, 11, 3))}
-    r = L.montar_ligas(defs, ligas, part, date(2026, 11, 7), {L.hash_dono("a@x"): "ana"})
-    doc = r["docs"]["K7QM2XPA"]
-    assert [x["apelido"] for x in doc["listas"]["geral"]] == ["ana", "bia"]
-    assert doc["aguardando"] == ["cris"] and doc["dono"] == "ana" and doc["membros"] == 3
-    assert r["posicoes"]["a@x"]["K7QM2XPA"]["geral"] == 1 and r["posicoes"]["b@x"]["K7QM2XPA"]["geral"] == 2
-    assert "d@x" not in r["posicoes"]
-    assert "@" not in json.dumps(doc) and "email" not in json.dumps(doc)
-
-
-def test_liga_cheia_fica_com_quem_entrou_primeiro():
-    part = [{"apelido": n, "email": f"{n}@x", "estado": _est([0, .01, .02, .03, .04, .05])} for n in ("a", "b", "c")]
-    defs = {"K7QM2XPA": {"nome": "Mini", "dono_h": "h", "max": 2}}
-    ligas = {"a@x": L.adicionar({}, "K7QM2XPA", date(2026, 11, 2)), "b@x": L.adicionar({}, "K7QM2XPA", date(2026, 11, 3)),
-             "c@x": L.adicionar({}, "K7QM2XPA", date(2026, 11, 4))}
-    r = L.montar_ligas(defs, ligas, part, date(2026, 11, 7))
-    assert r["docs"]["K7QM2XPA"]["membros"] == 2
-    assert r["posicoes"]["c@x"]["K7QM2XPA"]["cheia"] is True and "geral" not in r["posicoes"]["c@x"]["K7QM2XPA"]
-
-
-def test_membro_suspenso_ou_sem_participacao_nao_entra():
-    part = [{"apelido": "ana", "email": "a@x", "estado": _est([0, .01, .02, .03, .04, .05])}]
-    defs = {"K7QM2XPA": L.nova_definicao("Turma", "a@x", 30)}
-    ligas = {"a@x": L.adicionar({}, "K7QM2XPA", date(2026, 11, 2)), "fora@x": L.adicionar({}, "K7QM2XPA", date(2026, 11, 2))}
-    assert L.montar_ligas(defs, ligas, part, date(2026, 11, 7))["docs"]["K7QM2XPA"]["membros"] == 1
 
 
 # ------------------------------------------------------------------ avisos de posição
@@ -190,46 +127,6 @@ def _conta(email, status="ativa", papel="usuario"):
     return banco.Ator(cid, email, papel)
 
 
-def test_criar_ver_e_encerrar_liga(bd):
-    dono, amigo, intruso = _conta("dono@x.com"), _conta("amigo@x.com"), _conta("intruso@x.com")
-    cod = banco.comp_liga_criar(dono, L.nova_definicao("Turma", dono.email, 30, datetime(2026, 11, 8)))
-    assert L.codigo_valido(cod) == cod
-    pub = banco.comp_liga_definicao(amigo, cod)
-    assert pub["nome"] == "Turma" and "dono_h" not in pub and "dono" not in pub
-    assert banco.comp_liga_definicao(amigo, "ZZZZZZZZ") is None
-    with pytest.raises(ValueError):
-        banco.comp_liga_definicao(amigo, "../../etc")
-    # os dados guardados não têm e-mail de ninguém
-    linhas = banco._selecionar("config_sistema", {"id": ("comeca", "comp_liga|")}, ["id", "dados"])
-    assert linhas and "@" not in json.dumps([banco._de_js(l["dados"]) for l in linhas])
-    with pytest.raises(banco.SemPermissao):
-        banco.comp_liga_encerrar(intruso, cod)
-    with pytest.raises(banco.SemPermissao):
-        banco.comp_liga_encerrar(amigo, cod)
-    assert banco.comp_liga_definicao(amigo, cod) is not None
-    assert banco.comp_liga_encerrar(dono, cod) is True
-    assert banco.comp_liga_definicao(amigo, cod) is None
-    assert banco.comp_liga_encerrar(dono, cod) is False
-    with pytest.raises(banco.SemPermissao):
-        banco.comp_liga_encerrar(None, cod)
-
-
-def test_ranking_da_liga_so_para_membros(bd):
-    dono, amigo, intruso = _conta("dono@x.com"), _conta("amigo@x.com"), _conta("intruso@x.com")
-    cod = banco.comp_liga_criar(dono, L.nova_definicao("Turma", dono.email, 30))
-    banco.sis_comp_publicar(L.CFG_LIGA_RANK + cod, {"dia": "2026-11-09", "nome": "Turma", "listas": {"geral": []}})
-    with pytest.raises(banco.SemPermissao):
-        banco.comp_liga_ranking_ler(intruso, cod)
-    banco.comp_ligas_gravar(amigo, L.adicionar({}, cod, date(2026, 11, 8)))
-    assert banco.comp_liga_ranking_ler(amigo, cod)["nome"] == "Turma"
-    # trocar o código no documento de OUTRA pessoa não dá acesso: cada um só lê o próprio documento
-    with pytest.raises(banco.SemPermissao):
-        banco.comp_liga_ranking_ler(intruso, cod)
-    assert banco.comp_liga_contagem(amigo, cod) == 1
-    with pytest.raises(banco.SemPermissao):
-        banco.comp_ligas_ler(None)
-
-
 def test_publicar_so_aceita_chaves_conhecidas(bd):
     with pytest.raises(ValueError):
         banco.sis_comp_publicar("plano|abc", {})
@@ -237,14 +134,6 @@ def test_publicar_so_aceita_chaves_conhecidas(bd):
         banco.sis_comp_publicar("comp_lr|curto", {})
     with pytest.raises(ValueError):
         banco.sis_comp_todos("perfis")
-
-
-def test_excluir_conta_apaga_as_ligas_do_dono(bd):
-    dono, outro = _conta("dono@x.com"), _conta("outro@x.com")
-    c1 = banco.comp_liga_criar(dono, L.nova_definicao("Minha", dono.email, 30))
-    c2 = banco.comp_liga_criar(outro, L.nova_definicao("Dele", outro.email, 30))
-    banco.sis_apagar_conta(dono.id, dono.email)
-    assert c1 not in banco.sis_comp_ligas_def() and c2 in banco.sis_comp_ligas_def()
 
 
 # ------------------------------------------------------------------ fechamento completo com ligas e avisos

@@ -4,7 +4,6 @@ O HUD do topo registra os ganhos; o pop-up abre no fim da execução (depois da 
 página já abriu o dela (conquista, bônus, recibo), os ganhos esperam e aparecem na próxima execução."""
 from __future__ import annotations
 
-import html
 
 import streamlit as st
 

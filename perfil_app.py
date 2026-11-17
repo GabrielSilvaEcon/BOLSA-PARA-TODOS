@@ -13,10 +13,7 @@ import streamlit as st
 import emblemas as EM
 import emblemas_app as EMA
 import jornada as JO
-import jornada_arte as ART
-import nivel as NV
 import novidades as NO
-import visual_loja as VL
 import passe as PA
 import usuarios
 
@@ -100,31 +97,6 @@ def _barra(pct: float, classe: str = "pf-bar") -> str:
     return f"<div class='{classe}'><i style='width:{max(0.0, min(1.0, pct)) * 100:.0f}%'></i></div>"
 
 
-# ------------------------------------------------------------------ HTML
-def html_perfil(nome: str, est: dict, r: dict, unidades: int, col: list[dict], titulos: list[str], ap: dict | None = None) -> str:
-    ok, total = EM.totais(col)
-    leg = ("Nível máximo alcançado." if est["maximo"] else f"Faltam {est['falta']} XP para {est['proximo_titulo']}")
-    ap = ap or {}
-    enfeite = "".join(_e(x["emoji"]) for x in (ap.get("selo"), {"emoji": ap.get("distintivo")} if isinstance(ap.get("distintivo"), str) else ap.get("distintivo")) if x and x.get("emoji"))
-    fundo = VL.estilo_fundo(ap.get("fundo"))
-    hero = (f"<div class='pf-hero'{(' style=' + chr(34) + fundo + chr(34)) if fundo else ''}><div class='pf-id'>{VL.html_moldura(ART.mascote(humor='perfil', tamanho=88), ap.get('moldura'))}"
-            f"<div class='tx'><div class='pf-nome'>{_e(nome)}{(' <span class=' + chr(39) + 'pf-en' + chr(39) + '>' + enfeite + '</span>') if enfeite else ''}</div><span class='pf-tit'>{_e(est['titulo'])}</span>"
-            f"<div class='pf-niv'>Nível {est['nivel']} · {est['xp']} XP</div></div></div>"
-            f"{_barra(est['pct'])}<div class='pf-leg'>{_e(leg)}</div></div>")
-    kpis = (("XP de estudo", r["xp"]), ("Ofensiva atual", f"{r['ofensiva']} d"), ("Melhor ofensiva", f"{r.get('melhor_ofensiva', 0)} d"),
-            ("Lições feitas", r["licoes_feitas"]), ("Unidades completas", unidades), ("Emblemas", f"{ok}/{total}"))
-    grade = "<div class='pf-grid'>" + "".join(f"<div class='pf-k'><div class='v'>{_e(v)}</div><div class='l'>{_e(l)}</div></div>" for l, v in kpis) + "</div>"
-    honras = [f"🎖️ {t}" for t in titulos]
-    hon = ("<div class='pf-hon'>" + "".join(f"<span class='pf-chip'>{_e(h)}</span>" for h in honras) + "</div>") if honras else (
-        "<div class='pf-vazio'>Ainda sem honrarias. Estude na Jornada e suba no passe da temporada para ganhar as primeiras.</div>")
-    emb = [i["emblema"] for c in col for i in c["itens"] if i["ok"]][:12]
-    embl = ("<div class='pf-emb'>" + "".join(f"<span>{_e(x)}</span>" for x in emb) + "</div>") if emb else (
-        "<div class='pf-vazio'>Seus emblemas aparecem aqui quando você conquistar o primeiro.</div>")
-    nota = ("<div class='pf-nota'>O perfil mostra só o que você já fez no app. Emblemas e títulos são honrarias: não pagam XP, "
-            "Ticker Coins nem T$.</div>")
-    return (hero + grade + "<div class='pf-sec'>Honrarias</div>" + hon + "<div class='pf-sec'>Emblemas</div>" + embl + nota)
-
-
 def html_passe(e: dict, hist: list[dict]) -> str:
     quando = "Temporada encerrada" if e["encerrada"] else ("Termina hoje" if e["dias_restantes"] == 0 else
                                                           f"Faltam {e['dias_restantes']} dia{'s' if e['dias_restantes'] != 1 else ''}")
@@ -166,26 +138,6 @@ def tela_passe(prog) -> None:
     st.markdown(html_passe(PA.estado(xd, hoje), PA.historico(xd, hoje)), unsafe_allow_html=True)
 
 
-def tela_perfil(prog) -> None:
-    st.markdown(CSS, unsafe_allow_html=True)
-    p = prog()
-    r = {**JO.resumo(p), "melhor_ofensiva": JO.melhor_ofensiva(p)}
-    est = NV.estado(r["xp"])
-    unidades = sum(1 for u in JO.mapa(p) if u.get("completa"))
-    res, cart = _wallet()
-    col = EM.colecao(EMA.contexto_da_tela(res, cart))
-    u = usuarios.usuario()
-    nome = (u or {}).get("nome") or "Jogador"
-    pas = PA.estado(_xp_dia(p), _agora().date())
-    try:
-        import loja_aparencia as LA
-        ap = LA.atual()
-    except Exception:
-        ap = {}
-    st.markdown(VL.CSS_MOLDURA, unsafe_allow_html=True)
-    st.markdown(html_perfil(nome, est, r, unidades, col, pas["titulos"], ap), unsafe_allow_html=True)
-
-
 # ------------------------------------------------------------------ celebração de novidades (emblema novo / marco do passe)
 CSS_FESTA = """<style>
 .cl-f{position:relative;overflow:hidden;margin:8px 0 12px;padding:16px 14px;border-radius:24px;text-align:center;background:linear-gradient(135deg,#4B34A8,#1B1545);
@@ -205,27 +157,10 @@ CSS_FESTA = """<style>
 CSS_FESTA = "".join(l.strip() for l in CSS_FESTA.splitlines())
 
 
-def html_festa(emblemas: list[dict], marcos: list[dict], fx: dict | None = None) -> str:
-    """Cartão de comemoração. `emblemas` = itens da coleção; `marcos` = itens de PA.marcos_de. Nada aqui paga XP, TC ou T$."""
-    linhas = [f"<div class='l' style='--c:{html.escape(e['cor'])}'><b>{html.escape(e['emblema'])}</b>"
-              f"<span>Emblema: {html.escape(e['nome'])}<small>{html.escape(e['descricao'])}</small></span></div>" for e in emblemas]
-    linhas += [f"<div class='l' style='--c:#3DDC97'><b>{html.escape(m['simbolo'])}</b>"
-               f"<span>Passe: {html.escape(m['nome'])}<small>{html.escape(m['honraria'])} · {m['xp']} XP na temporada</small></span></div>" for m in marcos]
-    n = len(linhas)
-    conf = VL.html_confete(fx, 10) if fx else "<i></i><i></i><i></i><i></i><i></i>"
-    return ((VL.CSS_CONFETE if fx else "") + f"<div class='cl-f'>{conf}<div class='t'>{'Nova conquista!' if n == 1 else 'Novas conquistas!'}</div>"
-            + "".join(linhas) + "</div>")
-
-
 def _visto(prog, set_prog, emb: list[str], passe: list[str]) -> None:
     p = prog()
     p["jornada"] = NO.registrar(JO._jor(p), emb, passe)
     set_prog(p)
-
-
-def _abrir_perfil_festa(prog, set_prog, emb, passe) -> None:
-    _visto(prog, set_prog, emb, passe)
-    st.session_state["jor_vista"] = "perfil"
 
 
 _POP_CSS = ("<style>html body [data-testid='stDialog'] [role='dialog'] " + '.cl-pop{display:flex;align-items:center;gap:12px;background:url(data:image/svg+xml;utf8,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%20400%20200%27%20preserveAspectRatio=%27xMidYMax%20slice%27%3E%3Cdefs%3E%3ClinearGradient%20id=%27g%27%20x1=%270%27%20y1=%270%27%20x2=%270%27%20y2=%271%27%3E%3Cstop%20offset=%270%27%20stop-color=%27%232EE59D%27%20stop-opacity=%27.14%27/%3E%3Cstop%20offset=%271%27%20stop-color=%27%232EE59D%27%20stop-opacity=%270%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg%20stroke-width=%273%27%20stroke-linecap=%27round%27%20opacity=%27.2%27%3E%3Cg%20stroke=%27%232EE59D%27%3E%3Cpath%20d=%27M250%20150v-40M250%20135v-20%27/%3E%3Cpath%20d=%27M280%20140v-50%27/%3E%3Cpath%20d=%27M310%20120v-60%27/%3E%3Cpath%20d=%27M340%20100v-60%27/%3E%3Cpath%20d=%27M370%2080v-55%27/%3E%3C/g%3E%3Cg%20stroke=%27%23FF5B6E%27%3E%3Cpath%20d=%27M220%20160v-30%27/%3E%3Cpath%20d=%27M190%20170v-25%27/%3E%3C/g%3E%3C/g%3E%3Cg%20fill=%27%232EE59D%27%20opacity=%27.12%27%3E%3Crect%20x=%27243%27%20y=%27115%27%20width=%2714%27%20height=%2728%27%20rx=%273%27/%3E%3Crect%20x=%27273%27%20y=%2798%27%20width=%2714%27%20height=%2734%27%20rx=%273%27/%3E%3Crect%20x=%27303%27%20y=%2775%27%20width=%2714%27%20height=%2738%27%20rx=%273%27/%3E%3Crect%20x=%27333%27%20y=%2755%27%20width=%2714%27%20height=%2736%27%20rx=%273%27/%3E%3Crect%20x=%27363%27%20y=%2735%27%20width=%2714%27%20height=%2734%27%20rx=%273%27/%3E%3C/g%3E%3Cg%20fill=%27%23FF5B6E%27%20opacity=%27.12%27%3E%3Crect%20x=%27213%27%20y=%27135%27%20width=%2714%27%20height=%2720%27%20rx=%273%27/%3E%3Crect%20x=%27183%27%20y=%27148%27%20width=%2714%27%20height=%2716%27%20rx=%273%27/%3E%3C/g%3E%3Cpath%20d=%27M20%20175%20L90%20150%20L140%20160%20L200%20120%20L260%20125%20L330%2070%20L395%2025%20L395%20200%20L20%20200Z%27%20fill=%27url%28%23g%29%27/%3E%3Cpath%20d=%27M20%20175%20L90%20150%20L140%20160%20L200%20120%20L260%20125%20L330%2070%20L395%2025%27%20fill=%27none%27%20stroke=%27%2336B7E8%27%20stroke-width=%273%27%20opacity=%27.22%27/%3E%3Cg%20fill=%27%23FFD76A%27%20opacity=%27.14%27%3E%3Ccircle%20cx=%2740%27%20cy=%2730%27%20r=%272%27/%3E%3Ccircle%20cx=%27120%27%20cy=%2755%27%20r=%271.6%27/%3E%3Ccircle%20cx=%27190%27%20cy=%2725%27%20r=%272%27/%3E%3Ccircle%20cx=%2770%27%20cy=%2795%27%20r=%271.5%27/%3E%3Ccircle%20cx=%27160%27%20cy=%2785%27%20r=%271.5%27/%3E%3C/g%3E%3C/svg%3E) right bottom/auto 120% no-repeat,radial-gradient(circle at 15% 0%,rgba(242,184,75,.2),transparent 55%),linear-gradient(160deg,#2A2160,#1A1440 80%);border:1px solid #4B3F9A;border-radius:16px;padding:8px 12px;margin:6px 0;box-shadow:0 0 14px rgba(242,184,75,.14)}'.replace("html body [data-testid='stDialog'] [role='dialog'] ", "")

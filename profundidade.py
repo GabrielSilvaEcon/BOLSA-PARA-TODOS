@@ -125,21 +125,6 @@ def sugeridas(modo: str) -> frozenset:
 _ORDEM = {"iniciante": 0, "intermediario": 1, "avancado": 2}
 
 
-def visivel_no_menu(url_path: str, modo: str, ver_todas: bool = False, pagina_atual: str = "") -> bool:
-    """A página aparece no menu? Sempre aparece quando é a página aberta, quando a pessoa pediu 'ver todas' ou quando não é classificada."""
-    if ver_todas or url_path == pagina_atual:
-        return True
-    minimo = MENU_MIN.get(url_path)
-    if minimo is None:
-        return True
-    return _ORDEM.get(modo, 1) >= _ORDEM[minimo]
-
-
-def escondidas(modo: str, urls) -> list[str]:
-    """Páginas (da lista) que o nível atual esconde do menu."""
-    return [u for u in urls if not visivel_no_menu(u, modo)]
-
-
 # ---------------------------------------------------------------- abas por profundidade nas páginas de cada classe
 # Em cada classe, a análise Essencial mostra só as abas do essencial; a Detalhada soma as principais; a Aprofundada mostra todas.
 _R, _M, _C = "rapida", "mediana", "completa"

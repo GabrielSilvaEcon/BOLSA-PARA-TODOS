@@ -11,7 +11,6 @@ except ImportError:                                       # ambiente sem Streaml
     from unittest.mock import MagicMock
     sys.modules["streamlit"] = MagicMock()
 
-import areas as A
 import educacao as ED
 import jogar as JG
 import jornada as JO
@@ -121,21 +120,6 @@ def _estado(pesos: dict, caixa: float = 0.0):
     return {"v": 1, "caixa": caixa, "pos": {t: {"q": v / 10, "pm": 10.0} for t, v in pesos.items()}, "ult": {t: 10.0 for t in pesos}}
 
 
-def test_diversificada_exige_cinco_ativos_e_nenhum_concentrado():
-    boa = JG.diversificada(_estado({t: 20_000 for t in ("A1", "B1", "C1", "D1", "E1")}))
-    assert boa["ok"] and boa["ativos"] == 5 and abs(boa["maior_peso"] - 0.2) < 1e-9
-    assert not JG.diversificada(_estado({t: 25_000 for t in ("A1", "B1", "C1", "D1")}))["ok"]                       # só 4 ativos
-    assert not JG.diversificada(_estado({"A1": 40_000, "B1": 15_000, "C1": 15_000, "D1": 15_000, "E1": 15_000}))["ok"]   # um com 40%
-    assert not JG.diversificada(_estado({}, caixa=100_000))["ok"]                                                 # tudo em caixa
-    assert not JG.diversificada({})["ok"] and not JG.diversificada(None)["ok"]
-
-
-def test_diversificada_nao_olha_se_deu_lucro_ou_prejuizo():
-    est = _estado({t: 20_000 for t in ("A1", "B1", "C1", "D1", "E1")})
-    perdendo = {**est, "ult": {t: 5.0 for t in est["pos"]}}                       # todos caíram 50%
-    assert JG.diversificada(perdendo)["ok"] == JG.diversificada(est)["ok"] is True
-
-
 # ------------------------------------------------------------------ J4: ligação com a Jornada
 def test_desafios_comecam_trancados_e_abrem_ao_concluir_a_unidade():
     novo = ED.novo_progresso()
@@ -193,21 +177,6 @@ def test_resumo_junta_tudo_para_a_tela():
     r = JG.resumo(_com_xp({"2026-11-11": 25}), QUARTA)
     assert r["feitas"] == 2 and len(r["missoes"]) == 3 and r["xp_hoje"] == 25
     assert r["pontos"]["total"] >= 25 + 2 * JG.PTS_MISSAO
-
-
-# ------------------------------------------------------------------ fiação no app
-def test_area_jogar_tem_a_pagina_nova_e_a_competicao():
-    assert A.paginas_da_area("jogar") == ["jogar", "competicao"]
-    assert A.area_da_pagina("jogar") == "jogar" and A.ultima_pagina("jogar", None) == "jogar"
-    assert A.problemas() == []
-
-
-def test_app_registra_a_pagina_e_o_menu():
-    texto = (RAIZ / "app.py").read_text(encoding="utf-8")
-    assert 'url_path="jogar"' in texto and "import jogar_app" in texto
-    assert "jogar_app.registrar_paginas(" in texto
-    assert "PG_JOGAR" in texto[texto.index("paginas = {"):texto.index("# A navegação nativa")]      # registrada no st.navigation
-    assert 'cat("competicao", "Jogar"' in texto and "PG_COMP" in texto                               # a Competição segue no menu
 
 
 def test_tela_nao_importa_nada_de_calculo_de_carteira():

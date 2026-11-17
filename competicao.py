@@ -17,7 +17,6 @@ from __future__ import annotations
 import copy
 import math
 import re
-import uuid
 from datetime import date, datetime, timedelta
 
 import ativos_jogo as A
@@ -182,29 +181,8 @@ def patrimonio(estado: dict, precos: dict | None = None) -> float:
     return total
 
 
-def dia_execucao(agora: datetime) -> str:
-    """Data do fechamento em que uma ordem feita agora será executada."""
-    d = agora.date()
-    if d.weekday() < 5 and agora.hour < HORA_CORTE:
-        return d.isoformat()
-    d += timedelta(days=1)
-    while d.weekday() >= 5:
-        d += timedelta(days=1)
-    return d.isoformat()
-
-
-def fase_execucao(agora: datetime) -> str:
-    """"M" = preço do meio-dia (ordem feita antes das 12h, ou depois do corte/fim de semana para o próximo pregão); "F" = fechamento (12h às 17h)."""
-    return "F" if agora.date().weekday() < 5 and HORA_MEIO_DIA <= agora.hour < HORA_CORTE else "M"
-
-
 def rotulo_execucao(o: dict) -> str:
     return "no preço do meio-dia" if o.get("f") == "M" else "no fechamento"
-
-
-def nova_ordem(agora: datetime, lado: str, ticker: str, qtd: int) -> dict:
-    return {"id": uuid.uuid4().hex[:12], "ts": agora.strftime("%Y-%m-%dT%H:%M:%S"), "l": lado, "t": str(ticker).upper().strip(),
-            "q": int(qtd), "x": dia_execucao(agora), "f": fase_execucao(agora)}
 
 
 def pendentes_validas(estado: dict, pendentes: list[dict]) -> list[dict]:

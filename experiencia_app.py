@@ -135,12 +135,6 @@ def glossario_da_pagina(url_path: str) -> None:
         pass
 
 
-def menu_expander() -> None:
-    with st.expander("Meu modo", icon=":material/tune:"):
-        st.caption(f"Agora: {E.ROTULOS[modo()]}")
-        seletor("menu", compacto=True)
-
-
 def pagina_bloco() -> None:
     st.markdown("#### Modo de uso")
     st.write("Escolha como o app se apresenta para você. É só a apresentação: mesmo preço, mesmas ferramentas, mesmos ativos e nenhum dado muda.")

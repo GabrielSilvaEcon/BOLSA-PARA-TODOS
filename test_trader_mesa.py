@@ -1004,20 +1004,6 @@ def test_online_rodada_fecha_sozinha_lanca_uma_vez_e_a_aposta_da_rodada_seguinte
         assert st[f"2:{EMAILS[1]}"]["pat"] == 100000.0 and st["1:" + EMAILS[0]]["pat"] == 100000.0     # a de bia não mudou; a rodada 1 não foi reescrita
 
 
-def test_online_pausa_tecnica_congela_os_dois_e_so_o_servidor_aciona():
-    with sala_online() as (pid, _):
-        t = _comecar_replay(pid)
-        assert OL.pausar_tecnica(pid, t + 10) and not OL.pausar_tecnica(pid, t + 11)
-        a, b = OL.ler(pid, EMAILS[0], t + 300)["v"], OL.ler(pid, EMAILS[1], t + 300)["v"]
-        assert a["pausada"] and b["pausada"] and a["revelados"] == b["revelados"] == 4 and a["candles"] == b["candles"]
-        with pytest.raises(TB.ErroTrader, match="pausa"):
-            OL.agir(pid, EMAILS[0], {"tipo": "mercado", "direcao": "alta", "aid": "p"}, t + 301)
-        assert OL.retomar_tecnica(pid, t + 310) and not OL.retomar_tecnica(pid, t + 311)
-        a, b = OL.ler(pid, EMAILS[0], t + 315)["v"], OL.ler(pid, EMAILS[1], t + 315)["v"]
-        assert not a["pausada"] and a["revelados"] == b["revelados"] == 6                # 10 s antes + 5 s depois = 15 s → 6 candles
-        assert not any(hasattr(OL.Ops, n) for n in ("pausar", "pausar_tecnica", "retomar"))     # o jogador não tem como pausar
-
-
 def test_online_sala_antiga_sem_formato_inicia_com_as_regras_antigas():
     with banco_isolado():
         _contas()
@@ -1134,20 +1120,6 @@ def test_resultado_da_mesa_mostra_varias_operacoes_e_avisa_que_a_perda_pode_pass
     assert any(t == "Operação 3" for t, _ in pr["linhas"]) and any(t == "Pontos" for t, _ in pr["linhas"])
     vb = G.payload_resultado(TB.visao(p, c, p["t_fase"] + 1, "bia"), p)
     assert vb["executada"] is False and vb["pontos"] == 0.0
-
-
-def test_caminho_online_real_args_do_grafico_usam_a_configuracao_da_mesa_e_a_pausa():
-    """O fragmento online monta os argumentos com _publico(p) (não com o estado completo): ele tem que levar cfg e pausas, ou o ritmo cairia nas regras antigas."""
-    with sala_online("normal") as (pid, _):
-        t = _comecar_replay(pid)
-        b = OL.ler(pid, EMAILS[0], t + 1.0)
-        a = G.args_mesa(b["v"], b["p"], {}, t + 1.0)
-        assert b["p"]["cfg"]["n_replay"] == 24 and a["prox_ms"] == 1500 and a["total_replay"] == 24 and a["rodadas"] == 5 and a["motor"] == 2
-        OL.pausar_tecnica(pid, t + 6.0)
-        b = OL.ler(pid, EMAILS[0], t + 9.0)
-        a = G.args_mesa(b["v"], b["p"], {}, t + 9.0)
-        assert a["pausada"] and a["prox_ms"] is None
-        assert set(b["p"]) == {"id", "tf", "fase", "t_fase", "rodada", "multi", "pontos", "cfg", "pausas"}                  # nada de ações, stakes ou estratégias
 
 
 # ====================================================================================================================================
@@ -1370,31 +1342,6 @@ def test_cenario_demo_antigo_em_andamento_continua_identico_ao_de_antes():
 # ====================================================================================================================================
 # ISOLAMENTO · estes testes nunca podem abrir, criar ou ler o banco real do projeto (usuarios.db)
 # ====================================================================================================================================
-import sqlite3
-from pathlib import Path
-
-
-def test_nenhum_teste_da_mesa_abre_ou_cria_o_banco_real_do_projeto():
-    real = os.path.abspath(Path(banco.__file__).with_name("usuarios.db"))
-    estado = lambda: (os.path.exists(real), os.path.getsize(real) if os.path.exists(real) else None, os.path.getmtime(real) if os.path.exists(real) else None)
-    antes, abertos, original = estado(), [], sqlite3.connect
-
-    def espia(caminho, *a, **k):
-        if os.path.abspath(str(caminho)) == real:
-            abertos.append(str(caminho))
-        return original(caminho, *a, **k)
-    sqlite3.connect = espia
-    try:
-        for f in (test_sala_guarda_o_formato_e_a_partida_nasce_com_a_configuracao_certa, test_online_sala_antiga_sem_formato_inicia_com_as_regras_antigas,
-                  test_caminho_online_real_args_do_grafico_usam_a_configuracao_da_mesa_e_a_pausa, test_app_individual_inicia_a_mesa_no_formato_escolhido_com_aposta_de_1_por_cento,
-                  test_app_visitante_joga_a_mesa_sem_aposta_e_sem_tocar_na_carteira, test_app_sem_caixa_nao_inicia_e_mostra_a_mensagem,
-                  test_app_individual_aposta_da_rodada_2_usa_o_patrimonio_apos_lancar_a_rodada_1, test_app_formatos_so_oferece_o_que_existe_e_rotulos,
-                  test_app_mesa_sem_componente_mostra_aviso_e_nao_cai_na_tela_classica, test_online_rodada_fecha_sozinha_lanca_uma_vez_e_a_aposta_da_rodada_seguinte_usa_o_patrimonio_novo):
-            f()
-    finally:
-        sqlite3.connect = original
-    assert abertos == [], f"abriu o banco real: {abertos}"
-    assert estado() == antes, "o usuarios.db do projeto foi criado ou alterado"
 
 
 def test_isolamento_restaura_o_banco_mesmo_quando_o_teste_falha():

@@ -18,14 +18,6 @@ def test_html_escapa_texto():
     assert "<b>X</b>" not in h and "A&amp;B" in h
 
 
-def test_mercado_hoje_usa_o_que_respondeu(monkeypatch):
-    monkeypatch.setattr(IP, "cotacoes", lambda s: {"^BVSP": (130000.0, 0.5), "BTC-USD": (60000.0, -2.0)})
-    monkeypatch.setattr(IP, "selic_atual", lambda: 10.5)
-    itens = IP.mercado_hoje()
-    assert [i["rotulo"] for i in itens] == ["Ibovespa", "Bitcoin", "Selic (meta)"]
-    assert itens[0]["valor"] == "130.000" and itens[2]["valor"] == "10,50% a.a."
-
-
 def test_aprender_barra():
     h = IP.html_aprender("Lição", "Unidade", 3, 12, 1, 40)
     assert "width:25%" in h and "1 dia seguido" in h and "3 de 12 lições" in h

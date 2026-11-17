@@ -16,7 +16,7 @@ import zipfile
 import pandas as pd
 
 import crescimento as cr
-from fundos import baixar, cnpj_valido, formatar_cnpj, so_digitos   # reutiliza download e validação de CNPJ
+from fundos import formatar_cnpj, so_digitos  # reutiliza download e validação de CNPJ
 
 URL_INF_MENSAL = "https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/inf_mensal_fii_{ano}.zip"
 
@@ -230,27 +230,6 @@ def buscar_por_nome(geral: pd.DataFrame, texto: str, limite: int = 40) -> list[t
     nomes = d[c_n].map(_chave)
     ach = d[nomes.map(lambda n: all(p in n for p in palavras))]
     return [(formatar_cnpj(r[c_c]), str(r[c_n])) for _, r in ach.head(limite).iterrows()]
-
-
-def cnpj_por_isin(geral: pd.DataFrame, isin_prefixo: str) -> str | None:
-    """Casa por ISIN se o arquivo trouxer a coluna (BRXXXXCTF...). None se não houver coluna ou se houver ambiguidade."""
-    if geral is None or geral.empty:
-        return None
-    c_i, c_c = _achar(geral.columns, *CAMPOS["isin"]), _achar(geral.columns, *CAMPOS["cnpj"])
-    if c_i is None or c_c is None or not isin_prefixo:
-        return None
-    ach = geral[geral[c_i].fillna("").str.upper().str.startswith(isin_prefixo.upper())][c_c].dropna().unique()
-    return formatar_cnpj(ach[0]) if len(ach) == 1 else None
-
-
-# =============================================================================== coleta (rede)
-def coletar_anos(anos: list[int]) -> dict[int, dict[str, pd.DataFrame]]:
-    out = {}
-    for a in anos:
-        c = baixar(URL_INF_MENSAL.format(ano=a))
-        if c is not None:
-            out[a] = ler_zip(c)
-    return out
 
 
 def juntar_anos(por_ano: dict[int, dict[str, pd.DataFrame]]) -> dict[str, pd.DataFrame]:

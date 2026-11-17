@@ -10,7 +10,7 @@ Histórico e baralho de cada pessoa: monitor_estado (chave `battle`), com a mesm
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pandas as pd
 

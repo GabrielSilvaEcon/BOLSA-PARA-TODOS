@@ -146,14 +146,6 @@ def _rotulo_opcao(t) -> str:
         return str(t)
 
 
-def _ao_escolher(chave: str):
-    """Ao escolher a empresa: busca o preço atual e já o coloca no campo 'Preço pago'."""
-    sel = st.session_state.get(f"sel_{chave}")
-    tk = _resolver(sel) if sel else None
-    atual = _preco_atual(tk)[0] if tk else None
-    st.session_state[f"pm_{chave}"] = round(float(atual), 2) if atual else 0.0
-
-
 def _registrar(chave: str, caixa):
     """Compra pela carteira única (a do Wallet Game): mesmo caixa, regras e extrato. O jogo executa ao preço de agora."""
     import carteira_unica as CU

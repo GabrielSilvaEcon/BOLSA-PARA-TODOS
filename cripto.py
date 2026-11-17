@@ -242,8 +242,6 @@ def analisar_protocolo(slug: str) -> dict:
     }
 
 
-
-
 # ------------------------------------------------------------------ formatação
 def usd(v) -> str:
     if v is None:
@@ -378,27 +376,6 @@ def indicadores(a: dict) -> list[dict]:
     return out
 
 
-def _html_card(c: dict) -> str:
-    cor, fundo = COR_CLS[c["cls"]]
-    esc = _html.escape
-    itens = "".join(
-        f'<div><div style="font-size:.68rem;color:{MUTED};text-transform:uppercase;letter-spacing:.6px;'
-        f'font-weight:700;">{esc(r)}</div><div style="font-size:1.05rem;font-weight:800;color:{TEXT};">{esc(v)}</div></div>'
-        for r, v in c["linhas"])
-    return (
-        f'<div style="background:{SURFACE};border:1px solid {BORDER};border-top:3px solid {cor};border-radius:16px;'
-        f'padding:14px 16px;margin-bottom:10px;min-height:235px;">'
-        f'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
-        f'<div style="font-size:1.02rem;font-weight:800;color:{TEXT};">{c["icone"]} {esc(c["titulo"])}</div>'
-        f'<span style="background:{fundo};color:{cor};padding:3px 11px;border-radius:999px;font-size:.74rem;'
-        f'font-weight:800;white-space:nowrap;">{ICONE_STATUS[c["status"]]} {esc(c["status"])}</span></div>'
-        f'<div style="font-size:.78rem;color:{MUTED};margin:2px 0 10px;">{esc(c["nota"])}</div>'
-        f'<div style="display:flex;flex-wrap:wrap;gap:8px 22px;">{itens}</div>'
-        f'<div style="font-size:.86rem;color:{TEXT};line-height:1.45;margin-top:12px;">{esc(c["texto"])}</div></div>')
-
-
-
-
 # ----------------------------------------------------------------------- busca
 def _norm(s) -> str:
     """Minúsculas, sem acento e sem pontuação: 'MakerDAO / Sky' -> 'makerdao sky'."""
@@ -515,22 +492,6 @@ def setores_curados() -> list[tuple[str, str, list]]:
     return [s for s in SETORES if not todos or s[1] in todos]
 
 
-def buscar_setores(termo: str) -> list[tuple[str, str]]:
-    """Setores (id, nome) que combinam com o texto digitado (nome em português, apelidos ou nome em inglês)."""
-    q = _norm(termo)
-    if len(q) < 2:
-        return []
-    achados: dict[str, str] = {}
-    for nome, cid, apelidos in setores_curados():
-        if q in _norm(nome) or any(q == _norm(a) or (len(q) >= 3 and q in _norm(a)) for a in apelidos):
-            achados[cid] = nome
-    if len(q) >= 3:
-        for cid, nome in listar_setores().items():
-            if q in _norm(nome) and cid not in achados:
-                achados[cid] = nome
-    return list(achados.items())[:5]
-
-
 @st.cache_data(ttl=600, show_spinner=False)
 def moedas_do_setor(categoria: str, quantas: int = 10) -> list[dict]:
     """As maiores moedas de um setor por valor de mercado, com preço e variação. Levanta ErroAPI se falhar."""
@@ -546,13 +507,6 @@ def moedas_do_setor(categoria: str, quantas: int = 10) -> list[dict]:
                     "var24": c.get("price_change_percentage_24h_in_currency", c.get("price_change_percentage_24h")),
                     "var7": c.get("price_change_percentage_7d_in_currency"), "mcap": c.get("market_cap")})
     return out
-
-
-def _escolher_setor(cid: str):
-    """Mostra um setor (usado pelos botões de resultado da busca)."""
-    st.session_state["cripto_setor_sel"] = "🔎 Outro setor (lista completa)"
-    st.session_state["cripto_setor_all"] = cid
-    st.session_state["cripto_setor_n"] = 10
 
 
 def _mais_do_setor():
@@ -786,20 +740,6 @@ def _grafico_tvl(hist: list) -> go.Figure | None:
     return fig
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @st.cache_data(ttl=3600, show_spinner=False)
 def inflacao_anual(gecko_id: str) -> float | None:
     """Inflação do último ano, estimada: quanto cresceu a oferta em circulação (Market Cap ÷ preço) em 365 dias,
@@ -815,8 +755,6 @@ def inflacao_anual(gecko_id: str) -> float | None:
         return None
     ini, fim = sorted(oferta[:7])[3], sorted(oferta[-7:])[3]
     return (fim / ini - 1) * 100 if ini > 0 else None
-
-
 
 
 # ------------------------------------------------------- dados do motor setorial

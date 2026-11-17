@@ -330,13 +330,3 @@ def pagina_fiis():
     _pagina_fundo("fiis")
 
 
-def pagina_fundos_acoes():
-    _pagina_fundo("acoes")
-
-
-def pagina_multimercados():
-    _pagina_fundo("multi")
-
-
-def pagina_fundos_rf():
-    _pagina_fundo("rf")

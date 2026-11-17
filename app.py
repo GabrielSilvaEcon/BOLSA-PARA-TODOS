@@ -1,7 +1,6 @@
 
 
 
-
 """
 TickerHunters - Preço justo, DCF, múltiplos, dividendos, técnica, ranking por perfil, economia e carteira.
 
@@ -44,11 +43,7 @@ import menu_grupos
 import incorporar
 
 
-
-
 try:
-    import dados as _dados  # noqa: F401  (confere se o arquivo existe)
-    import glossario as _glossario  # noqa: F401
     import recursos as rec
 except ImportError as e:
     st.error(f"Não consegui importar **{e.name}**. Se for um arquivo do projeto (recursos.py, dados.py, "
@@ -56,7 +51,6 @@ except ImportError as e:
              "Se for um pacote, inclua no requirements.txt.")
     st.stop()
 import tecnica as tec
-import leitura_macro as lm
 
 import assistente
 import carteira
@@ -83,7 +77,6 @@ import paginas_plano
 import educacao_app
 import protecao
 import cripto
-import moeda
 import cripto_analise
 import cripto_app
 import fundamentalista_cripto
@@ -115,7 +108,6 @@ import inicio_painel as IP
 import inicio_home
 import analisar_visual
 import analise_visual as AN
-import arte_analisar as AA_
 import componentes_ux as CUX
 import analise_app as AP
 import inicio_noticias
@@ -156,10 +148,6 @@ BRAND, BRAND_DARK, SUN = "#1F7A55", "#17604A", "#C9A227"
 GOOD, FAIR, BAD = "#2E7D4F", "#A8650B", "#B83A3A"
 SOFT = "#E3E8EE"    # fundo de realce suave (hover, menu ativo)
 MUTED_ESC = "#B9B2D9"   # texto secundário legível sobre o fundo escuro (MUTED é cinza-escuro, só serve em fundo claro)
-
-
-def svg_uri(svg: str) -> str:
-    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
 
 
 LOGO_SVG = marca.LOGO_SVG
@@ -450,27 +438,7 @@ def eh_financeiro(tk: str) -> bool:
     return tk in FINANCEIRAS_EUA if not eh_b3(tk) else tk.startswith(FINANCEIRAS)
 
 
-from dados import (  # camada de dados (arquivo dados.py)
-    _sep,
-    _token,
-    brl,
-    buscar_brapi,
-    buscar_caixa_brapi,
-    buscar_caixa_yahoo,
-    buscar_fundamentus,
-    buscar_macro_bcb,
-    buscar_macro_ipea,
-    buscar_yahoo,
-    estilizar,
-    fx_anual,
-    fx_atual,
-    historico_brapi,
-    historico_yahoo,
-    eh_b3,
-    normaliza,
-    num,
-    pct,
-)
+from dados import _token, brl, buscar_brapi, buscar_caixa_brapi, buscar_caixa_yahoo, buscar_fundamentus, buscar_macro_ipea, buscar_yahoo, estilizar, fx_anual, fx_atual, historico_brapi, historico_yahoo, eh_b3, normaliza, num, pct
 
 
 # ---------------------------------------------------------------- normalização e validação
@@ -937,15 +905,6 @@ def tendencia_5a(ticker: str):
         return None
 
 
-def linha_tendencia(t) -> str:
-    if not t:
-        return (f'<div style="margin-top:10px;"><div class="lbl">Tendência · diário, 5 anos{tip("Tendência")}</div>'
-                f'<div class="val" style="color:{MUTED_ESC}">— sem dados</div></div>')
-    ic, cor = TEND_VIS[t]
-    return (f'<div style="margin-top:10px;"><div class="lbl">Tendência · diário, 5 anos{tip("Tendência")}</div>'
-            f'<div class="val" style="color:{cor}">{ic} {t}</div></div>')
-
-
 # ---------------------------------------------------------------- componentes de interface
 def perfil_atual() -> str:
     p = st.session_state.get("perfil", "Moderado")
@@ -973,41 +932,6 @@ def _adicionar(tk: str):
         st.session_state.universo.append(tk)
     if tk not in st.session_state.sel_ativos:
         st.session_state.sel_ativos = st.session_state.sel_ativos + [tk]
-
-
-def _adicionar_varios(chave: str):
-    for tk in st.session_state.get(chave, []):
-        _adicionar(tk)
-    st.session_state[chave] = []
-
-
-def _processar_termos(texto: str) -> str:
-    """Aceita tickers ou nomes de empresa, separados por vírgula. Devolve a mensagem para a pessoa."""
-    termos = []
-    for p in re.split(r"[,;]+", texto or ""):
-        sub = p.split()
-        if len(sub) > 1 and all(rec.REGEX_TICKER.fullmatch(rec.normalizar_ticker(s)) for s in sub):
-            termos += sub
-        elif p.strip():
-            termos.append(p.strip())
-    novos, falhas = [], []
-    for termo in termos:
-        tk = rec.resolver_termo(termo)
-        if tk:
-            _adicionar(tk)
-            novos.append(tk)
-        else:
-            falhas.append(termo)
-    partes = []
-    if novos:
-        partes.append("Adicionado: " + ", ".join(novos))
-    if falhas:
-        partes.append("Não encontrei: " + ", ".join(falhas) + ". Confira o nome ou digite o ticker (ex.: WEGE3 ou AAPL).")
-    return " · ".join(partes)
-
-
-def _adicionar_ticker():  # formulário de Ajustes
-    st.session_state["msg_add"] = _processar_termos(st.session_state.get("novo_ticker", ""))
 
 
 ETFS_NOMES = {"BOVA11": "iShares Ibovespa", "IVVB11": "iShares S&P 500", "SMAL11": "iShares Small Caps", "VOO": "Vanguard S&P 500",
@@ -1128,10 +1052,6 @@ def _pesquisar_ativo_cb():
     _definir_busca(st.session_state.get("ativo_q_in", ""))
 
 
-def _tirar_ativo(tk: str):
-    st.session_state["sel_ativos"] = [t for t in st.session_state.get("sel_ativos", []) if t != tk]
-
-
 def campo_pesquisar_ativo(placeholder: str = ""):
     """Único campo de busca do Início: nome ou código de qualquer ativo do app."""
     with st.form("home_busca", clear_on_submit=True):
@@ -1189,10 +1109,6 @@ def resultados_da_busca(q: str):
     if r["candidatos"]:
         st.markdown('<div style="color:#D6D0F5 !important;-webkit-text-fill-color:#D6D0F5;font-size:.95rem;margin:8px 0;">'
                     'Escolha um resultado para abrir. Se não achou, tente o código do ativo.</div>', unsafe_allow_html=True)
-
-
-def _home_adicionar():  # caixa de busca da página inicial (antiga; mantida para quem ainda a chama)
-    st.session_state["msg_home"] = _processar_termos(st.session_state.get("home_q", ""))
 
 
 def estado_vazio():
@@ -1594,20 +1510,6 @@ def modo_atual() -> str:
     return m if m in MODOS else "Ações"
 
 
-def _trocar_modo():
-    escolhido = st.session_state.get("modo_home")
-    if escolhido in MODOS:  # clicar na opção ativa a desmarca; nesse caso o modo atual é mantido
-        st.session_state["modo_ativo_v"] = escolhido
-
-
-def seletor_modo():
-    """Abas com o tipo de ativo (Ações B3, Ações EUA, FIIs, ETFs, Fundos, Renda fixa, Cripto) no topo do card principal (o CSS as sobrepõe à borda do card)."""
-    with st.container(key="home_modo"):
-        st.segmented_control("O que você quer analisar?", MODOS, default=modo_atual(), key="modo_home",
-                             format_func=lambda m: ROTULO_MODO[m], on_change=_trocar_modo,
-                             label_visibility="collapsed")
-
-
 # ---------------------------------------------------------------- Início: criptomoedas
 def _qtd(v) -> str:
     """Quantidade de tokens em formato curto (21 mi, 120,2 mi)."""
@@ -1619,16 +1521,6 @@ def _qtd(v) -> str:
     return f"{v:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def _simbolos_cripto():
-    """(pares da Binance, a Binance respondeu?). Sem resposta, vale a lista de pares populares."""
-    if ccxt is not None:
-        try:
-            return set(binance_simbolos(binance_exchange())), True
-        except Exception:
-            pass
-    return set(PARES_POPULARES), False
-
-
 def _gecko_do_par(base: str):
     """(id, nome) da moeda na CoinGecko a partir do símbolo do par, ou (None, None)."""
     try:
@@ -1637,38 +1529,6 @@ def _gecko_do_par(base: str):
         return None, None
     alvo = next((r for r in res if str(r["simbolo"]).upper() == base), res[0] if res else None)
     return (alvo["id"], alvo["nome"]) if alvo else (None, None)
-
-
-def _home_cripto_adicionar(texto=None):
-    """Aceita BTC/USDT, btcusdt, eth/brl ou o nome da moeda (Bitcoin, Solana…) e guarda o par."""
-    texto = (texto if texto is not None else st.session_state.get("home_q_cripto", "") or "").strip()
-    if not texto:
-        st.session_state["msg_home_cripto"] = "Digite um par (BTC/USDT) ou o nome de uma criptomoeda."
-        return
-    simbolos, binance_ok = _simbolos_cripto()
-    par = normaliza_par(texto, simbolos)
-    if binance_ok and par not in simbolos:  # pode ter digitado o nome (Bitcoin) em vez do símbolo
-        try:
-            for r in cripto.buscar_moedas(texto):
-                cand = f"{str(r['simbolo']).upper()}/USDT"
-                if cand in simbolos:
-                    par = cand
-                    break
-        except Exception:
-            pass
-    if not par or (binance_ok and par not in simbolos):
-        st.session_state["msg_home_cripto"] = (f"Não encontrei “{texto}” no mercado à vista da Binance. "
-                                               "Tente o par completo, como SOL/USDT.")
-        return
-    pares = list(st.session_state.get("home_pares_cripto", []))
-    if par in pares:
-        pares.remove(par)
-    st.session_state["home_pares_cripto"] = [par] + pares          # o mais recente aparece primeiro
-    st.session_state["graf_par"] = par                              # a Análise gráfica abre neste par
-    st.session_state["msg_home_cripto"] = ""
-    gid, nome = _gecko_do_par(par.split("/")[0])                    # as páginas de fundamentos usam a CoinGecko
-    if gid:
-        cripto._adicionar_cripto(gid, nome)
 
 
 def _home_cripto_remover(par: str):
@@ -1806,70 +1666,6 @@ def resumo_cripto(par: str):
                 _card_resumo(**cfg)
 
 
-def _analise_completa_cripto(par: str):
-    """Tudo que as páginas de cripto mostram para um par, em abas (sem links para outras páginas)."""
-    base, cot = par.split("/")
-    gid, nome = _gecko_do_par(base)
-    st.session_state["_embutido"] = True
-    try:
-        t_nota, t_geral, t_rede, t_emis = secoes.abas(
-            ["⭐ Nota fundamentalista", "🪙 Visão geral", "🔗 Rede e adoção", "📈 Emissão e receitas"])
-        with t_nota:
-            if gid:
-                fundamentalista_cripto._mostrar_moeda(gid)
-            else:
-                st.info("Não achei esta moeda na CoinGecko, então a nota fundamentalista não está disponível.")
-        for aba, modo in ((t_geral, "cripto"), (t_rede, "onchain"), (t_emis, "receitas")):
-            with aba:
-                if gid:
-                    cripto._mostrar_moeda(gid, modo)
-                else:
-                    st.info("Moeda não encontrada na CoinGecko.")
-    finally:
-        st.session_state["_embutido"] = False
-
-
-def _inicio_cripto():
-    """Início no modo Criptomoedas: mesmo card de busca das ações, com exemplos e atalhos de pares da Binance."""
-    pares = st.session_state.get("home_pares_cripto", [])
-    if not pares:
-        md('<div class="hero2 com-abas"><h1>Qual criptoativo você quer entender?</h1>'
-           '<p>Digite o par ou o nome e veja fundamentos, rede e emissão em linguagem simples.</p></div>')
-    with st.container(key="home_busca_box"):
-        with st.form("home_busca_cripto", clear_on_submit=True):
-            c1, c2 = st.columns([5, 1.6], vertical_alignment="center")
-            c1.text_input("Criptoativo", key="home_q_cripto", label_visibility="collapsed",
-                          placeholder="Ex.: BTC/USDT, ETH/BRL, Solana...")
-            c2.form_submit_button("Analisar", type="primary", on_click=_home_cripto_adicionar, width="stretch")
-        msg = st.session_state.get("msg_home_cripto", "")
-        if msg:
-            st.caption(msg)
-    if not pares:
-        md(IP.html_secao("Comece por uma destas", "empresas mais buscadas", "estrela"))
-        for col, p in zip(st.columns(len(COTAS_HOME_CRIPTO)), COTAS_HOME_CRIPTO):
-            col.button(p, key=f"home_pop_{p}", on_click=_home_cripto_adicionar, args=(p,), width="stretch")
-        return
-    cabecalho("🏠", "Suas criptomoedas", "Resumo de fundamentos, rede, emissão e análise gráfica (Binance).")
-    with st.spinner("Montando o resumo de cada análise..."):
-        for par in pares[:3]:
-            resumo_cripto(par)
-    if len(pares) > 3:
-        st.caption(f"Mostrando 3 de {len(pares)} pares, para não estourar o limite de consultas da CoinGecko.")
-    md('<div class="sec" style="margin-top:22px;">📚 Análise completa</div>')
-    alvo = pares[:3][0] if len(pares[:3]) == 1 else st.selectbox("Par", pares[:3], key="home_cripto_full",
-                                                                  help="A análise completa abre para um par por vez.")
-    _analise_completa_cripto(alvo)
-    st.caption("Resumos simplificados. Criptomoedas são muito voláteis e você pode perder todo o valor investido. "
-               "Indicadores técnicos servem para estudo, não são recomendação.")
-
-
-def _inicio_fundos():
-    """Fundos de investimento (CVM): o tipo é escolhido aqui e a análise é a mesma das páginas de fundos."""
-    tipos = {"acoes": "Fundos de Ações", "multi": "Multimercados", "rf": "Fundos de Renda Fixa"}
-    t = st.segmented_control("Tipo de fundo", list(tipos), default="acoes", format_func=tipos.get, key="home_tipo_fundo") or "acoes"
-    fundos_app.pagina_fundos(t, atalho_comparar=atalho_comparar)
-
-
 @st.cache_data(ttl=600, show_spinner=False)
 def _mercado_hoje_cache() -> list:
     return IP.mercado_hoje()
@@ -1959,14 +1755,6 @@ def _painel_inicio(ativos: list):
                 st.page_link(PG_JORNADA, label="Revisar a Jornada", icon=":material/route:")
     except Exception:
         pass
-
-
-def _continuar_aprendendo(lid: str):
-    """Retoma a lição em andamento (se houver) ou abre a próxima; em ambos os casos vai para a Jornada."""
-    if st.session_state.get("jor_sessao"):
-        st.session_state["_nav_pend"] = "missoes" if st.session_state.get("jor_origem") == "missoes" else "jornada"
-    else:
-        _comecar_licao_inicio(lid)
 
 
 def _ir_home(destino: str, estado: dict | None = None):
@@ -2081,10 +1869,6 @@ def pagina_inicio():
         st.caption("Quer ver as contas por trás? Troque para a análise Mediana ou Completa acima. Isto é uma leitura educativa, não uma recomendação.")
 
 
-def profundidade_atual() -> str:
-    return profundidade_app.atual()
-
-
 def seletor_profundidade() -> str:
     return profundidade_app.seletor()
 
@@ -2167,18 +1951,6 @@ def resumo_do_dia_ui(modo: str):
        f"<div style='color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF;margin-top:4px'>{html.escape(r['frase'])}</div>"
        + (f"<div style='color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6;font-size:.8rem;margin-top:8px'>Na sua carteira real:</div>{setores}" if setores else "")
        + f"<div style='color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6;font-size:.76rem;margin-top:8px'>{html.escape(idade['texto'])}{velha}. {html.escape(r['aviso'])}</div></div>")
-
-
-def primeiros_passos_ui():
-    """Trilha de 3 passos (Iniciante). Não é mais mostrada em nenhuma página; o código fica guardado."""
-    st.markdown("**Primeiros passos**")
-    for col, p in zip(st.columns(3), PROF.PRIMEIROS_PASSOS):
-        with col.container(border=True):
-            st.markdown(f"**{p['titulo']}**")
-            st.caption(p["texto"])
-            if p["pagina"]:
-                alvo = {"educacao": PG_EDU, "preco-justo": PG_PRECO}[p["pagina"]]
-                st.page_link(alvo, label=p["rotulo"], icon=":material/arrow_forward:")
 
 
 # ---------------------------------------------------------------- página: comparar ativos (motor universal: comparador.py)
@@ -2662,12 +2434,6 @@ def pagina_intel_app():
     intel_app.pagina_intel(_coletar_para_intel, perfil_atual(), cabecalho=False, topo=_radar_busca, extras=[
         ("📰", "Notícias e eventos", lambda: _carregar_sob_demanda("intel_ld_not", "Carregar notícias e eventos",
                                                                  lambda: noticias_app.pagina_noticias(_hooks_noticias(), cabecalho=False)))])
-
-
-def _bloco_intel(codigo, cripto: bool = False):
-    """Sinais, riscos e notícias de UM ativo dentro das páginas dele (usa a leitura da central ou analisa só este)."""
-    if codigo:
-        intel_app.painel_ativo(str(codigo), _coletar_para_intel, perfil_atual(), cripto=cripto)
 
 
 def pagina_tecnica_avancada_app():
@@ -3563,30 +3329,6 @@ def render_resultados(res: list, pref: str = "r"):
                                    on_click=_adicionar, args=(tk,), disabled=ja, width="stretch")
 
 
-# ---------------------------------------------------------------- páginas: economia e saúde das empresas
-def cartao_serie(titulo, df, anos, fmt, cor, unid="", barra=False, degrau=False):
-    if df.empty:
-        st.warning(f"{titulo}: dados indisponíveis no momento.")
-        return
-    s = df.loc[df.index >= df.index.max() - pd.DateOffset(years=anos), "valor"].dropna()
-    if s.empty:
-        st.warning(f"{titulo}: sem dados no período.")
-        return
-    delta = None
-    if len(s) > 1:
-        delta = _sep(f"{s.iloc[-1] - s.iloc[-2]:+.2f}") + (f" {unid}" if unid else "")
-    st.metric(titulo, fmt(s.iloc[-1]), delta=delta, delta_color="off",
-              help=f"Última leitura: {s.index[-1]:%d/%m/%Y}")
-    fig = go.Figure()
-    if barra:
-        fig.add_bar(x=s.index, y=s, marker_color=cor)
-    else:
-        fig.add_scatter(x=s.index, y=s, mode="lines", line=dict(color=cor, width=2, shape="hv" if degrau else "linear"))
-    fig.update_layout(height=250, **PLOT)
-    fig.update_yaxes(**GRID)
-    st.plotly_chart(fig, width="stretch", key=f"serie_{titulo}")
-
-
 # (título, [(código, modo), ...], formatador, cor, unidade do delta, o que monitorar)
 # O 1º código é o que você pediu; os seguintes são reserva, usados só se o primeiro vier vazio.
 # modo: "valor"  -> mostra a série como vem
@@ -3655,34 +3397,6 @@ def _serie_ipea(codigos, modo_unused=None):
 
 # versão com cache de 1 hora: evita refazer as chamadas ao Ipeadata a cada clique
 _serie_ipea_cache = st.cache_data(ttl=3600, show_spinner=False)(_serie_ipea)
-
-
-def painel_assistente(anos: int):
-    """Resume, em frases, o que os números atuais estão dizendo (sem explicar o que cada indicador é)."""
-    st.markdown("#### 🤖 O que os dados estão dizendo")
-    with st.spinner("Lendo os indicadores..."):
-        selic, ipca = buscar_macro_bcb(432, 10), buscar_macro_bcb(13522, 10)
-        leituras = [lm.ler_selic(selic, ipca, anos), lm.ler_ipca(ipca, anos),
-                    lm.ler_dolar(buscar_macro_bcb(1, 10), anos),
-                    lm.ler_desemprego(buscar_macro_bcb(24369, 10), anos)]
-        for cats in IPEA_CATEGORIAS.values():
-            for titulo, codigos, *_ in cats:
-                if titulo in lm.SPEC_IPEA:
-                    _, _, df_ = _serie_ipea_cache(codigos)
-                    leituras.append(lm.ler_ipea(titulo, df_, unidade_pts="pontos" in titulo))
-    leituras = [l for l in leituras if l]
-    sintese = lm.montar_sintese(leituras)
-    md(f'<div class="ctx neu"><div class="t">Resumo do cenário</div>'
-       f'<div class="x">{html.escape(sintese)}</div></div>')
-    with st.expander(f"Ver as {len(leituras)} leituras individuais"):
-        cols = st.columns(2)
-        for i, l in enumerate(leituras):
-            with cols[i % 2]:
-                md(f'<div class="ctx {l["tom"]}"><div class="t">{html.escape(l["titulo"])}</div>'
-                   f'<div class="x">{html.escape(l["texto"])}</div></div>')
-        st.code(lm.texto_plano(sintese, leituras), language=None)
-    st.caption("Leitura automática por regras simples. Verde = favorável à bolsa, vermelho = pede atenção, "
-               "amarelo = neutro. Não é recomendação de investimento.")
 
 
 def pagina_macro():
@@ -3980,10 +3694,6 @@ def figura_cripto(df: pd.DataFrame, ind: pd.DataFrame, altura: int = 720, visive
     return fig
 
 
-
-
-
-
 TV_INTERVALOS = {"1m": "1", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "1d": "D", "1w": "W"}
 
 
@@ -4004,8 +3714,6 @@ def tradingview_cripto(par: str, intervalo_binance: str, altura: int = 640):
 <div style="height:{altura}px;width:100%;"><div id="tv_cripto" style="height:100%;width:100%;"></div></div>
 <script src="https://s3.tradingview.com/tv.js"></script>
 <script>new TradingView.widget({json.dumps(cfg)});</script>""", altura)
-
-
 
 
 def _bloco_tendencia(r: dict, titulo: str, preco_txt: str = ""):
@@ -4301,13 +4009,6 @@ html body .stApp.stApp [class*="st-key-an_tg_"] button [data-testid="stIconMater
 """
 
 
-def _pesquisar_da_analise():
-    """Busca digitada na tela Analisar: abre o Início já na pesquisa, com o resultado."""
-    _definir_busca(st.session_state.get("an_q_in", ""))
-    st.session_state["home_busca_modo"] = True
-    st.session_state["_nav_pend"] = "inicio"
-
-
 def _abrir_tipo(cid: str):
     """Abre a tela do tipo de ativo (botões das análises dele, sem menu expansivo)."""
     st.session_state["an_tipo"] = cid
@@ -4356,7 +4057,6 @@ def _pagina_hub(area_id: str):
                     continue
                 st.button(f"Abrir {c['titulo']}", key=f"an_tg_{v['id']}", icon=":material/arrow_forward:", width="stretch",
                           on_click=_abrir_tipo, args=(v["id"],))
-
 
 
 def resumo_simples(d: dict, P: dict):
@@ -4906,21 +4606,6 @@ def menu_navegacao():
                 st.session_state.pop("_area_forcada", None)
         else:
             st.session_state["area_ativa"] = areas.area_ativa(pg.url_path, st.session_state.get("area_ativa"))
-
-
-def ajustes_laterais():
-    """Ajustes técnicos (fonte de dados e atualização) só para suporte e administração (permissão sistema.dados); ficam no menu da conta, no topo."""
-    if usuarios.pode("sistema.dados"):
-        st.caption("**Ajustes técnicos**")
-        st.selectbox("Fonte de dados", FONTES, key="fonte_dados")
-        if st.button("Atualizar dados", icon=":material/refresh:", width="stretch", key="ajuste_atualizar"):
-            liberado, info_plano = __import__("planos").usar("atualizar_dados")
-            if not liberado:
-                st.warning(info_plano.get("mensagem") or "Limite diário atingido.")
-            else:
-                st.cache_data.clear()
-                __import__("cache_central").limpar_tudo()
-                st.rerun()
 
 
 @st.dialog("Pesquisar")

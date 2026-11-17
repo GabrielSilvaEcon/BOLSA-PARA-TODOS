@@ -18,7 +18,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from statistics import NormalDist
 
 import numpy as np
@@ -72,27 +72,9 @@ def padronizar_dias_uteis(s: pd.Series | None) -> pd.Series:
     return x[x.index.dayofweek < 5]
 
 
-def frequencia_dias(s: pd.Series | None) -> float | None:
-    """Mediana de dias entre observações (1 = diária; ~7 = semanal; ~30 = mensal). Serve para recusar comparação entre frequências diferentes."""
-    if s is None or len(s) < 5:
-        return None
-    d = np.diff(pd.DatetimeIndex(s.index).values).astype("timedelta64[D]").astype(float)
-    return float(np.median(d)) if len(d) else None
-
-
 def retornos(s: pd.Series | None) -> pd.Series:
     x = padronizar_dias_uteis(s)
     return x.pct_change().dropna() if len(x) > 1 else pd.Series(dtype=float)
-
-
-def retornos_comparaveis(a: pd.Series, b: pd.Series, tolerancia_dias: float = 3.0) -> tuple[bool, str]:
-    """True se as duas séries têm frequência compatível (ambas diárias). Série mensal contra diária dá volatilidade incomparável e é recusada."""
-    fa, fb = frequencia_dias(a), frequencia_dias(b)
-    if fa is None or fb is None:
-        return False, "histórico curto demais para saber a frequência"
-    if abs(fa - fb) > 0.5 and max(fa, fb) > tolerancia_dias:
-        return False, f"frequências diferentes (a cada {fa:g} e {fb:g} dias): volatilidades não são comparáveis diretamente"
-    return True, ""
 
 
 JANELAS_VOL = {"1 mês": 21, "3 meses": 63, "6 meses": 126, "12 meses": 252, "2 anos": 504}
@@ -389,10 +371,6 @@ def matriz_corr(series: dict[str, pd.Series], janela: int | None = None, minimo:
     return rets.corr() if rets.shape[1] >= 2 else pd.DataFrame()
 
 
-def correlacoes_em_janelas(series: dict[str, pd.Series], janelas: dict | None = None) -> dict:
-    return {nome: matriz_corr(series, n) for nome, n in (janelas or {"3 meses": 63, "6 meses": 126, "12 meses": 252, "Todo o histórico": None}).items()}
-
-
 def mudancas_de_correlacao(series: dict[str, pd.Series], curta: int = 63, longa: int = 252, limite: float = 0.30) -> list[dict]:
     """Pares cuja correlação recente (curta) difere da de longo prazo em ≥ `limite`. Subida de correlação = menos diversificação do que o histórico longo sugere."""
     c, l_ = matriz_corr(series, curta), matriz_corr(series, longa)
@@ -498,11 +476,6 @@ def liquidez_fundo(p: dict) -> dict:
         return {"ok": False, "motivo": "prazo de resgate (cotização + liquidação) do fundo não está nos dados; consulte o regulamento"}
     return {"ok": True, "dias_liquidar": float(d), "dias_liquidar_estresse": float(d), "metodo": "prazo de resgate informado", "adv": None, "freq": None, "impacto_pct": None,
             "spread": None, "profundidade": None}
-
-
-def nota_liquidez(dias: float | None) -> float | None:
-    """Nota 0–100: até 1 dia = 0; 60 dias ou mais = 100 (interpolação linear)."""
-    return interpolar(dias, 1.0, 60.0)
 
 
 def liquidez_da_carteira(posicoes: list[dict], liq: dict[str, dict]) -> dict:

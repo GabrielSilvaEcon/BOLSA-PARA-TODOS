@@ -12,18 +12,14 @@ Nada é comprado, vendido ou alterado. "Inteligência" aqui = regras e estatíst
 """
 from __future__ import annotations
 
-import json
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from urllib.parse import quote_plus
 
-import numpy as np
 import pandas as pd
 import streamlit as st
-import secoes
 
-import comparador
 import crescimento as cr
 import evolucao
 import analise_tecnica as T
@@ -647,37 +643,6 @@ def _aba_riscos(res):
     st.caption("Riscos de crédito, liquidez e câmbio da carteira inteira ficam em Gestão de carteira → Risco.")
 
 
-def _aba_noticias(res):
-    nots = [n for n in res["noticias"]]
-    st.caption("Títulos, fontes e datas vêm do RSS do Google Notícias, sem texto completo. O tom é uma leitura aproximada por palavras e "
-               "NÃO prevê preço. Clique na fonte original para ler. Conteúdo suspeito é ocultado.")
-    if not nots:
-        st.info("Nenhuma notícia relevante nas fontes consultadas (ou o serviço de notícias não respondeu agora).")
-        return
-    c1, c2, c3 = st.columns(3)
-    nivel = c1.selectbox("Relevância mínima", ["media", "alta", "baixa"], key="intel_n_nivel")
-    cats = c2.multiselect("Categorias", list(I.CATEGORIAS_NOTICIA), key="intel_n_cats")
-    tom = c3.selectbox("Tom", ["todos", "positivo", "negativo", "neutro"], key="intel_n_tom")
-    lim = {"baixa": 0, "media": 35, "alta": 60}[nivel]
-    ocultas = sum(1 for n in nots if n.get("conteudo_suspeito"))
-    mostrar = [n for n in nots if n["relevancia"] >= lim and not n.get("conteudo_suspeito") and (not cats or set(cats) & set(n["categorias"]))
-               and (tom == "todos" or n["tom"] == tom)]
-    mostrar.sort(key=lambda n: (-n["relevancia"], n.get("data") or ""))
-    for n in mostrar[:25]:
-        icone = {"positivo": "🟢", "negativo": "🔴", "neutro": "⚪"}[n["tom"]]
-        alvo = n.get("ativo") or "Mercado"
-        link = f" · [fonte original]({n['url']})" if n.get("url") else ""
-        st.markdown(f"{icone} **{_md(alvo)}** · {_md(n['titulo'])}{link}")
-        extra = f" · {n['repetidas']} repetida(s) agrupada(s) ({_md(', '.join(n['fontes'][:3]))})" if n.get("repetidas") else ""
-        alt = " · **pode alterar fundamentos**" if n.get("pode_alterar_fundamentos") else ""
-        st.caption(f"{_md(n['fonte'])} · {(n.get('data') or 'data n/d')[:10]} · relevância {n['nivel']} ({n['relevancia']}) · "
-                   f"{', '.join(n['categorias']) or 'sem categoria'}{alt}{extra}")
-    if not mostrar:
-        st.info("Nenhuma notícia com esses filtros.")
-    if ocultas:
-        st.caption(f"{ocultas} notícia(s) com texto de aparência suspeita (tentando dar ordens ao sistema) foram ocultadas e não entram em alertas nem no assistente.")
-
-
 def _padroes_alerta():
     return [I.nova_regra("variacao_preco", "*", {"limite_pct": 5, "direcao": "queda", "janela": "1d"}, "alta"),
             I.nova_regra("risco", "*", {"gravidade_min": "alta"}, "alta"),
@@ -755,68 +720,6 @@ def _aba_alertas(res):
             for h in reversed(hist[-40:]):
                 st.markdown(f"- {h['quando'][:16].replace('T', ' ')} · **{_md(h['titulo'])}** ({h['prioridade']})")
             st.button("Limpar histórico", key="intel_hist_limpar", on_click=lambda: _ss().__setitem__(CH_HIST, []))
-
-
-def _tabela_ranking(rk: dict):
-    st.markdown(f"**{rk['titulo']}**")
-    st.caption(f"Critérios: {rk['criterios']} · atualização: {rk['atualizacao'] or 'n/d'}" + (f" · prioridades suas aplicadas: {', '.join(rk['prioridades_aplicadas'])}" if rk.get("prioridades_aplicadas") else ""))
-    linhas = []
-    for i in rk["itens"]:
-        if "nota" in i:
-            linhas.append({"#": i["posicao"], "Ativo": i["id"], "Nota": i["nota"], "Cobertura (%)": (i["cobertura"] or 0) * 100,
-                           "Principais riscos": ("; ".join(i.get("riscos") or [])[:140] or "—"), "Justificativa": i["justificativa"],
-                           "Dados até": i.get("data_ref") or "n/d"})
-        else:
-            linhas.append({"#": i["posicao"], "Ativo": i["id"], "Valor": i["valor"], "Principais riscos": ("; ".join(i.get("riscos") or [])[:140] or "—"),
-                           "Justificativa": i["justificativa"], "Dados até": i.get("data_ref") or "n/d"})
-    st.dataframe(pd.DataFrame(linhas), hide_index=True, width="stretch")
-    if rk.get("sem_dado"):
-        st.caption("Sem o dado (fora do ranking): " + ", ".join(rk["sem_dado"]))
-    st.caption(rk["aviso"])
-
-
-def montar_rankings(res: dict) -> dict:
-    ok = [a for a in res["ativos"] if not a["erro"]]
-    p = prefs()
-    out = {}
-    for c in I.CLASSES_TODAS:
-        itens = [a for a in ok if a["classe"] == c]
-        if itens:
-            out[c] = I.montar_ranking(itens, c, prefs=p)
-    temas = {}
-    acoes = [a for a in ok if a["classe"] == "acao"]
-    if any(a["ind"].get("saldo_fundamentos") is not None for a in acoes):
-        temas["acao_fundamentos"] = I.ranking_por_valor(acoes, "acao", "saldo_fundamentos", "Ações com fundamentos em melhora", False,
-                                                         "Sinais de melhora menos sinais de atenção no diagnóstico de balanços")
-    fiis = [a for a in ok if a["classe"] == "fii"]
-    if any(a["ind"].get("pilar_renda") is not None for a in fiis):
-        temas["fii_renda"] = I.ranking_por_valor(fiis, "fii", "pilar_renda", "FIIs com renda mais consistente", False, "Nota do pilar Renda (0–100)")
-    etfs = [a for a in ok if a["classe"] == "etf"]
-    temas["etf_custo"] = I.ranking_por_valor(etfs, "etf", "taxa_adm", "ETFs de menor custo", True, "Taxa de administração", "% a.a.") if etfs else None
-    crip = [a for a in ok if a["classe"] == "cripto"]
-    temas["cripto_uso"] = I.ranking_por_valor(crip, "cripto", "tvl", "Criptomoedas com maior utilização (TVL)", False, "TVL em US$") if crip else None
-    out["_temas"] = {k: v for k, v in temas.items() if v and v["itens"]}
-    return out
-
-
-def _aba_rankings(res):
-    rks = montar_rankings(res)
-    st.caption("Cada ranking compara só ativos da MESMA classe, com a régua própria dela. Nota é triagem educacional, não ordem de compra.")
-    classes = [c for c in I.CLASSES_TODAS if c in rks]
-    if not classes:
-        st.info("Nenhum ativo com dados para ranquear. Adicione favoritos ou posições e atualize a leitura.")
-        return
-    c = st.radio("Classe", classes, format_func=lambda x: I.ROTULO_CLASSE[x], horizontal=True, key="intel_rk_classe")
-    _tabela_ranking(rks[c])
-    if len(rks[c]["itens"]) < 2:
-        st.caption("Só há um ativo desta classe na leitura: adicione outros aos favoritos para formar um ranking.")
-    temas = rks["_temas"]
-    if temas:
-        st.markdown("#### Rankings temáticos")
-        for t in temas.values():
-            _tabela_ranking(t)
-    elif any(a["classe"] == "etf" for a in res["ativos"]):
-        st.caption("Ranking de custo de ETFs indisponível: a taxa de administração ainda não tem fonte integrada.")
 
 
 def _aba_monitoramento(res):
@@ -970,37 +873,6 @@ def _salvar_prefs():
     ss[CH_PREFS] = I.normalizar_prefs(novo)
 
 
-def _aba_preferencias():
-    p = prefs()
-    st.caption("A leitura respeita estas escolhas: classes lidas, favoritos, seu perfil de risco (limites de volatilidade e queda), horizonte, "
-               "critérios prioritários nos rankings, tipos de alerta, frequência e referências de comparação.")
-    c1, c2 = st.columns(2)
-    c1.multiselect("Classes de interesse", I.CLASSES_TODAS, key="intel_p_classes", format_func=lambda x: I.ROTULO_CLASSE[x],
-                   on_change=_salvar_prefs, **_opt("intel_p_classes", "default", p["classes"]))
-    c2.text_input("Ativos favoritos (códigos separados por vírgula)", key="intel_p_fav", on_change=_salvar_prefs,
-                  **_padrao("intel_p_fav", ", ".join(p["favoritos"])))
-    c3, c4 = st.columns(2)
-    c3.selectbox("Nível de risco desejado", list(I.LIMITES_RISCO), key="intel_p_risco", on_change=_salvar_prefs,
-                 **_opt("intel_p_risco", "index", list(I.LIMITES_RISCO).index(p["risco"])))
-    c4.selectbox("Horizonte de investimento", list(I.HORIZONTES), key="intel_p_hor", on_change=_salvar_prefs,
-                 **_opt("intel_p_hor", "index", list(I.HORIZONTES).index(p["horizonte"])))
-    st.multiselect("Indicadores (pilares) prioritários", sorted(PILARES_CONHECIDOS), key="intel_p_pil", on_change=_salvar_prefs,
-                   **_opt("intel_p_pil", "default", [x for x in p["pilares_prioritarios"] if x in PILARES_CONHECIDOS]))
-    c5, c6 = st.columns(2)
-    c5.multiselect("Tipos de alerta ativos (vazio = todos)", list(I.TIPOS_ALERTA), key="intel_p_tipos", format_func=lambda x: I.TIPOS_ALERTA[x],
-                   on_change=_salvar_prefs, **_opt("intel_p_tipos", "default", p["tipos_alerta"]))
-    c6.selectbox("Frequência das notificações", list(I.FREQUENCIAS), key="intel_p_freq", format_func=lambda x: I.ROTULO_FREQ[x],
-                 on_change=_salvar_prefs, **_opt("intel_p_freq", "index", list(I.FREQUENCIAS).index(p["frequencia"])))
-    bench = ["CDI", "Ibovespa", "IPCA", "Dólar", "S&P 500"]
-    st.multiselect("Referências de comparação", bench, key="intel_p_bench", on_change=_salvar_prefs,
-                   **_opt("intel_p_bench", "default", [b for b in p["benchmarks"] if b in bench]))
-    _salvar_prefs()
-    st.caption("As preferências ficam salvas no seu perfil (se você estiver logado). A leitura só muda quando você atualiza.")
-    with st.expander("O que ainda depende de novas fontes (limites desta versão)"):
-        for t in SEM_FONTE:
-            st.markdown(f"- {t}")
-
-
 def pagina_intel(coletor, perfil: str = "Moderado", cabecalho: bool = True, extras=None, topo=None):
     """Radar: cada análise é um menu expansivo (o primeiro aberto). `extras` = [(emoji, título, função)] vira menus no fim, na mesma lista."""
     import profundidade_app as _PA
@@ -1040,31 +912,3 @@ def pagina_intel(coletor, perfil: str = "Moderado", cabecalho: bool = True, extr
         st.caption(I.AVISO_LEGAL)
 
 
-def painel_ativo(codigo: str, coletor, perfil: str = "Moderado", cripto: bool = False):
-    """Bloco compacto para as páginas de cada ativo e da carteira: usa a leitura da central, se existir; senão oferece analisar só este ativo."""
-    res = leitura()
-    item = next((a for a in (res or {}).get("ativos", []) if a["id"].upper() == str(codigo).upper() and not a["erro"]), None)
-    with st.expander("Inteligência: sinais, riscos e notícias deste ativo", icon=":material/psychology:"):
-        if item is None:
-            st.caption("Este ativo ainda não está na leitura da Central de inteligência.")
-            if st.button("Analisar este ativo agora", key=f"intel_um_{codigo}"):
-                try:
-                    a = (coletor([], [codigo], perfil) if cripto else coletor([codigo], [], perfil))[0]
-                    nt = I.processar_noticias(_noticias_rss(f"{codigo} when:14d")["itens"], codigo, None, _agora())
-                    item = analisar_ativo(a, ["consulta"], [n for n in nt if n["relevancia"] >= 20][:5])
-                    st.session_state[f"_intel_um_{codigo}"] = item
-                except Exception as e:
-                    st.warning(f"Não consegui analisar agora ({e.__class__.__name__}).")
-            item = st.session_state.get(f"_intel_um_{codigo}")
-            if item is None:
-                return
-        if item.get("erro"):
-            st.warning(f"Sem dados agora: {item['erro']}")
-            return
-        _detalhe(item)
-        for x in item["anomalias"]:
-            st.markdown(f"- 📈 {_md(x['texto'])} *({_md(x.get('status') or x['natureza'])})*")
-        for n in item["noticias"][:4]:
-            if not n.get("conteudo_suspeito"):
-                st.markdown(f"- 📰 {_md(I.resumo_noticia(n))}" + (f" [fonte]({n['url']})" if n.get("url") else ""))
-        st.caption(I.AVISO_LEGAL)

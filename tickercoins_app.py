@@ -11,11 +11,8 @@ import streamlit as st
 
 import banco
 import planos
-import moedas_arte as MA
 import loja_aparencia as LA
-import loja_catalogo as LC
 import loja_vitrine as VT
-import jornada_icones as IC
 import arte_tickerhunters as AT
 import fx_arte as FX
 import visual_loja as VL
@@ -38,7 +35,6 @@ html body .stApp.stApp .tc-neg{color:#FF6B8A;font-weight:800;}
 html body .stApp.stApp .tc-pre{border-style:dashed;opacity:.9;}
 html body .stApp.stApp .tc-aviso{color:#9C94C9;font-size:.78rem;margin-top:10px;}
 </style>"""
-
 
 
 def _e(x) -> str:
@@ -296,10 +292,6 @@ def _pedir(pid: str) -> None:
     st.session_state["tc_conf"] = {"pid": pid, "req": uuid.uuid4().hex, "abrir": True}
 
 
-def _cancelar() -> None:
-    st.session_state.pop("tc_conf", None)
-
-
 def _confirmar() -> None:
     cf = st.session_state.pop("tc_conf", None)
     c = _conta()
@@ -408,113 +400,16 @@ def _hoje() -> date:
     return datetime.now(timezone(timedelta(hours=-3))).date()
 
 
-def _card_produto(p: dict, c: dict, s: int, possui: set, eq: dict) -> None:
-    ok, motivo = TC.pode_comprar(c["id"], p["id"], _plano())
-    stt = VT.status(p, possui, eq, s, _hoje())
-    rr = VT.raridade(p)
-    jan = LC.texto_janela(p)
-    st.markdown(f"<div class='lj-card r-{rr['id']}{' tem' if stt['tem'] else ''}' style='--rc:{_e(rr['cor'])}'>{_previa_html(p)}<div class='lj-tx'><div class='lj-n'>{_e(p['nome'])}</div>"
-                f"<div class='lj-d'>{_e(p['descricao'])}</div><div class='lj-m'><span class='lj-r'>{_e(rr['rotulo'])}</span><span class='lj-p'>🪙 {p['preco']} TC</span>"
-                f"<span class='lj-s {stt['cls']}'>{_e(stt['rotulo'])}</span>"
-                + (f"<span class='lj-ev'>{_e(jan)}</span>" if jan else (f"<span class='lj-v'>{_e(TC.rotulo_validade(p['validade_h']))}</span>" if p['validade_h'] is not None else ""))
-                + "</div></div></div>", unsafe_allow_html=True)
-    cf = st.session_state.get("tc_conf")
-    kind = p["efeito"]["kind"]
-    if stt["tem"] and VT.equipavel(p):
-        tema = kind == "tema"
-        if eq.get(kind) == p["id"]:
-            st.button("Voltar ao tema padrão" if tema else "Tirar", key=f"tc_tira_{p['id']}", width="stretch", on_click=_usar, args=(None, kind))
-        else:
-            st.button("Aplicar tema" if tema else "Usar", key=f"tc_usa_{p['id']}", type="primary", width="stretch", on_click=_usar, args=(p["id"], kind))
-    elif stt["tem"]:
-        pass
-    elif not ok:
-        st.caption(motivo)
-    elif s < p["preco"]:
-        pass                                                   # a etiqueta "Faltam X TC" do cartão já diz isso
-    else:
-        st.button("Comprar", key=f"tc_c_{p['id']}", width="stretch", on_click=_pedir, args=(p["id"],))
-
-
 _ICONES_LOJA = {"temas": ("estrela", "#B89CFF"), "especiais": ("escudo", "#F2B84B"), "beneficios": ("raio", "#3DDC97"),
                 "molduras": ("escudo", "#F2B84B"), "fundos": ("grafico", "#5CC8FF"), "efeitos": ("raio", "#FF8AD8"), "selos": ("estrela", "#FFD66B")}
-
-
-def _nav_loja() -> list:
-    n = st.session_state.get("loja_nav")
-    return [x for x in n if isinstance(x, str)][:2] if isinstance(n, list) else []
 
 
 def _ir(caminho: list) -> None:
     st.session_state["loja_nav"] = list(caminho)
 
 
-def _voltar_loja() -> None:
-    st.session_state["loja_nav"] = _nav_loja()[:-1]
-
-
 def _contar(sub: str) -> int:
     return len(VT.itens_da_categoria(TC.produtos(), sub))
-
-
-def _sub_grupo(grupo: str) -> str:
-    subs = VT.subs_do_grupo(grupo)
-    if len(subs) == 1:
-        n = _contar(subs[0])
-        return f"{n} {'item' if n == 1 else 'itens'}" if n else "Em breve"
-    return " · ".join(VT.ROTULOS[x] for x in subs[:2]) + ("…" if len(subs) > 2 else "")
-
-
-def _css_cartoes_loja(prefixo: str, ids: list, icones: dict, subs: dict) -> str:
-    q = "html body .stApp.stApp.stApp"
-    v = "".join(f'.st-key-{prefixo}_{i}{{--ac:{icones.get(i, ("estrela", "#B89CFF"))[1]};--ic:url("{IC.uri(*icones.get(i, ("estrela", "#B89CFF")))}");--sub:"{subs.get(i, "")}"}}' for i in ids)
-    k = f'[class*="st-key-{prefixo}_"] button'
-    return ("<style>" + v
-            + f'{q} .st-key-{prefixo}{{display:flex !important;flex-direction:column !important;gap:10px !important;margin:8px 0}}'
-            + f'{q} {k}{{width:100% !important;min-height:76px !important;height:auto !important;padding:10px 40px 10px 70px !important;position:relative !important;border-radius:20px !important;text-align:left !important;'
-            'background:linear-gradient(135deg,color-mix(in srgb,var(--ac) 18%,#1B1B5E),#17154F 75%) !important;border:1.5px solid color-mix(in srgb,var(--ac) 65%,transparent) !important;'
-            'box-shadow:0 4px 0 color-mix(in srgb,var(--ac) 25%,#0B0821),0 0 16px -8px var(--ac) !important}'
-            + f'{q} {k}:before{{content:"";position:absolute;left:14px;top:50%;width:44px;height:44px;margin-top:-22px;background:var(--ic) center/contain no-repeat;filter:drop-shadow(0 0 6px var(--ac))}}'
-            + f'{q} {k}:after{{content:"\\203A";position:absolute;right:16px;top:50%;margin-top:-17px;font-size:1.7rem;font-weight:800;color:var(--ac)}}'
-            + f'{q} {k}>div{{width:100% !important;justify-content:flex-start !important;text-align:left !important;margin:0 !important}}'
-            + f'{q} {k} [data-testid="stMarkdownContainer"]{{width:100% !important;text-align:left !important}}'
-            + f'{q} {k} p{{margin:0 !important;text-align:left !important;font-size:1.02rem !important;font-weight:800 !important;color:#fff !important;-webkit-text-fill-color:#fff !important}}'
-            + f'{q} {k} p:after{{content:var(--sub);display:block;font-size:.76rem;font-weight:500;color:#C5B3FF;-webkit-text-fill-color:#C5B3FF;margin-top:2px}}'
-            + f'{q} {k}:active{{transform:translateY(3px)}}</style>')
-
-
-def _cartoes_loja(itens: list, prefixo: str, icones: dict, caminho: list | None = None) -> None:
-    """Cartões de navegação (padrão da Home): tocar abre a tela seguinte, sem empilhar seletores."""
-    ids = [i for i, _r, _s in itens]
-    st.markdown(_css_cartoes_loja(prefixo, ids, icones, {i: _e(sub) for i, _r, sub in itens}), unsafe_allow_html=True)
-    with st.container(key=prefixo):
-        for i, rot, _sub in itens:
-            st.button(rot, key=f"{prefixo}_{i}", on_click=_ir, args=((caminho or []) + [i],), use_container_width=True)
-
-
-def _loja_tela(caminho: list, c: dict, s, possui: set, eq: dict) -> None:
-    grupo = caminho[0]
-    if grupo not in VT.GRUPO_IDS:
-        _ir([])
-        st.rerun()
-    subs = VT.subs_do_grupo(grupo)
-    sub = caminho[1] if len(caminho) > 1 and caminho[1] in subs else None
-    if len(subs) == 1:
-        sub = subs[0]
-    st.markdown(ES.css_voltar("lj_voltar"), unsafe_allow_html=True)
-    st.button("‹ Voltar", key="lj_voltar", on_click=_voltar_loja)
-    if sub is None:
-        st.markdown(f"<div class='tc-sec'>{_e(VT.GRUPO_ROTULOS[grupo])}</div>", unsafe_allow_html=True)
-        _cartoes_loja([(x, VT.ROTULOS[x], _sub_grupo(x)) for x in subs], "lj_s", _ICONES_LOJA, [grupo])
-        return
-    st.markdown(f"<div class='tc-sec'>{_e(VT.ROTULOS[sub] if len(subs) > 1 else VT.GRUPO_ROTULOS[grupo])}</div>", unsafe_allow_html=True)
-    itens = VT.itens_da_categoria(TC.produtos(), sub)
-    if not itens:
-        st.markdown(f"<div class='lj-pre'><b>Em preparação</b><span>{_e(VT.texto_preparacao(sub) or 'Nenhum item disponível agora.')}</span></div>", unsafe_allow_html=True)
-    st.markdown(VL.CSS_PREVIA + VL.CSS_MOLDURA, unsafe_allow_html=True)
-    for p in itens:
-        _card_produto(p, c, s, possui, eq)
-
 
 
 _dialog = getattr(st, "dialog", None) or (lambda *a, **k: (lambda f: f))     # st.dialog existe no Streamlit real (>= 1.34)
@@ -645,12 +540,6 @@ SECOES = ["Recompensas", "Loja", "Extrato"]
 _CORPOS = {"Recompensas": _recompensas, "Loja": _loja, "Extrato": _extrato}
 
 
-def ir_para(secao: str = "Recompensas") -> None:
-    """Escolhe a seção que a Economia Ticker abre (use antes de navegar para a página 'economia')."""
-    if secao in SECOES:
-        st.session_state["eco_sec"] = secao
-
-
 def _voltar_inicio() -> None:
     st.session_state["_nav_pend"] = "inicio"
 
@@ -704,29 +593,6 @@ CSS_CAB = (
     'html body .stApp.stApp .st-key-topo_perfil .st-key-topo_tc button p{display:block !important;color:#FFD66B !important;font-weight:800;font-size:.85rem;margin:0;white-space:nowrap;}'
     'html body .stApp.stApp .st-key-topo_perfil .st-key-topo_tc button [data-testid="stIconMaterial"]{font-size:20px !important;color:#FFD66B !important;}'
 )
-
-
-def _css_cab() -> str:
-    """CSS do chip; com moeda_tc.webp no repositório, a moeda dourada substitui o ícone genérico."""
-    u = MA.uri("tc")
-    if not u:
-        return CSS_CAB + '@media (max-width:1100px){html body .stApp.stApp .st-key-topo_tc{display:none !important}}'
-    return CSS_CAB + ('@media (max-width:1100px){html body .stApp.stApp .st-key-topo_tc{display:none !important}}'      # no celular/tablet o TC vive na linha de status
-                      'html body .stApp.stApp .st-key-topo_perfil .st-key-topo_tc button [data-testid="stIconMaterial"]{font-size:0 !important;color:transparent !important;'
-                      f'width:24px;height:24px;background:url("{u}") center/contain no-repeat;display:inline-block;flex:none}}')
-
-
-def _abrir_economia() -> None:
-    st.session_state["_nav_pend"] = "economia"
-
-
-def chip_cabecalho() -> None:
-    """Botão 'moeda + saldo' do cabeçalho; leva à Economia Ticker. Só para quem está logado e com o banco pronto."""
-    s = saldo_atual()
-    if s is None:
-        return
-    st.markdown("<style>" + _css_cab() + "</style>", unsafe_allow_html=True)
-    st.button(f"{s if s < 10000 else '9999+'} TC", key="topo_tc", icon=":material/toll:", type="tertiary", on_click=_abrir_economia)
 
 
 # ------------------------------------------------------------------ painel administrativo (seção "TickerCoins")

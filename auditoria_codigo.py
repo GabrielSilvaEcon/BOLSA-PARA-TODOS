@@ -223,20 +223,6 @@ def _arquivos_todos(raiz: str):
             yield os.path.join(d, nome)
 
 
-def historico_git(raiz: str, limite: int = 400) -> list[Achado]:
-    """Procura segredos no histórico (git log -p), se houver um repositório git disponível. Sem git, devolve vazio."""
-    if not os.path.isdir(os.path.join(raiz, ".git")):
-        return []
-    try:
-        p = subprocess.run(["git", "-C", raiz, "log", "-p", f"-n{int(limite)}", "--no-color"], capture_output=True, text=True, timeout=60)  # seg-ok: comando fixo, sem shell e sem texto do usuário
-    except Exception:
-        return []
-    out = []
-    for a in varrer_segredos(p.stdout or "", "histórico-git"):
-        out.append(Achado(a.arquivo, 0, a.severidade, "segredo-no-historico", a.detalhe))
-    return out
-
-
 def varrer_repositorio(raiz: str, incluir_testes: bool = False) -> list[Achado]:
     out: list[Achado] = []
     for caminho in _arquivos(raiz):

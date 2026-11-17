@@ -118,7 +118,3 @@ def test_cartao_escapa_html_do_motivo_e_do_id():
     assert "<script>" not in h and "<img>" not in h and "&lt;script&gt;" in h
 
 
-def test_modo_cor_sem_carteira_e_sempre_tom():
-    assert APP.modo_cor({"ativos": [{"id": "BTC", "peso": 0}]}) == "tom"
-    assert APP.modo_cor({"ativos": []}) == "tom"
-    assert "Tom positivo" in APP.legenda_cor_html("tom") and "favorecer" in APP.legenda_cor_html("carteira")

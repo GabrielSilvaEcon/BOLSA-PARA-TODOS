@@ -14,7 +14,6 @@ import streamlit as st
 
 import arte_battle as ART
 import arte_cartela as CT
-import arte_tickerhunters as AT
 import battle as B
 import battle_app as BA
 import battle_online as O

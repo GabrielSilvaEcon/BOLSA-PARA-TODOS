@@ -182,11 +182,6 @@ def circuito_aberto_ate(pid: str) -> float:
     return e["aberto_ate"] if e and e["aberto_ate"] > time.time() else 0.0
 
 
-def fechar_circuito(pid: str) -> None:
-    with _lock:
-        _circ.pop(pid, None)
-
-
 # ---------------------------------------------------------------- contagem
 def _carregar_dia(dia: str) -> dict:
     try:
@@ -303,11 +298,6 @@ def _razao(pid: str, dia: str) -> tuple[float, str]:
         if r > melhor:
             melhor, qual = r, "limite mensal"
     return melhor, qual
-
-
-def _estourou(pid: str, dia: str) -> str:
-    r, q = _razao(pid, dia)
-    return q if r >= 1 else ""
 
 
 def contar(pid: str, n: int = 1) -> bool:

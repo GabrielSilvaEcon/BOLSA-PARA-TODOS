@@ -174,12 +174,6 @@ def texto_janela(item: dict) -> str:
     return f"{item.get('evento') or 'Temporada'}: {f(j[0])} a {f(j[1])}"
 
 
-def paleta_do_item(item: dict | None) -> dict | None:
-    if not item or (item.get("efeito") or {}).get("kind") != "tema":
-        return None
-    return PALETAS.get(item["efeito"].get("paleta"))
-
-
 def validar() -> list[str]:
     """Problemas do catálogo (lista vazia = ok). Usada nos testes para que um item novo mal feito não passe despercebido."""
     erros, vistos = [], set()

@@ -19,10 +19,6 @@ ROTULOS = {s[0]: s[1] for s in SUBGRUPOS}
 IDS = tuple(s[0] for s in SUBGRUPOS)
 
 
-def subs_do_grupo(grupo: str) -> tuple:
-    return tuple(s[0] for s in SUBGRUPOS if s[2] == grupo)
-
-
 def categoria_de(produto: dict) -> str | None:
     """Subcategoria do item ('temas', 'molduras', 'fundos', 'efeitos', 'selos', 'beneficios')."""
     return LC.subgrupo_de((produto.get("efeito") or {}).get("kind"))
@@ -32,10 +28,6 @@ def itens_da_categoria(catalogo: list[dict], cat: str) -> list[dict]:
     """Itens da subcategoria, dos mais comuns para os mais raros e, dentro da raridade, do mais barato ao mais caro."""
     itens = [p for p in catalogo if categoria_de(p) == cat]
     return sorted(itens, key=lambda p: (LC.RARIDADES.get(p.get("raridade"), LC.RARIDADES["comum"])["ordem"], p["preco"]))
-
-
-def texto_preparacao(cat: str) -> str | None:
-    return next((s[3] for s in SUBGRUPOS if s[0] == cat), None)
 
 
 def equipavel(produto: dict) -> bool:

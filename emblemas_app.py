@@ -28,19 +28,6 @@ CSS = """<style>
 </style>"""
 
 
-def html_colecao(col: list[dict]) -> str:
-    ok, total = EM.totais(col)
-    partes = [f"<div class='em-top'><b>{ok}/{total}</b><span>emblemas conquistados</span></div>"]
-    for c in col:
-        cards = "".join(
-            f"<div class='em-c{'' if i['ok'] else ' off'}' style='--c:{_e(i['cor'])}'><div class='e'>{_e(i['emblema'])}</div>"
-            f"<div class='n'>{_e(i['nome'])}</div><div class='d'>{_e(i['descricao'])}</div>"
-            f"<div class='s'>{'Conquistado' if i['ok'] else 'Bloqueado'}</div></div>" for i in c["itens"])
-        partes.append(f"<div class='em-sec'>{_e(c['categoria'])}<i>{c['ok']}/{c['total']}</i></div><div class='em-grade'>{cards}</div>")
-    partes.append("<div class='em-nota'>Emblemas são honrarias: não pagam XP, Ticker Coins nem T$. Os prêmios continuam nas missões e conquistas.</div>")
-    return "".join(partes)
-
-
 def contexto_da_tela(res: dict, cart: dict | None) -> dict:
     """ctx dos emblemas com o que a Wallet Game e a Jornada já calcularam. Qualquer falha de leitura vira 'sem dado', nunca erro."""
     resumo, unidades, nivel = {}, 0, 1

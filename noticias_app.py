@@ -642,18 +642,6 @@ def card_html(g: dict, agora: datetime | None = None, destaque: bool = False, mo
             f'<div class="nw-m">{meta}</div><div class="nw-chips">{"".join(chips)}</div>{porque}{avisos}</div>')
 
 
-def barra_sentimento_html(s: dict | None) -> str:
-    """Barra empilhada com a proporção de cada tom nos últimos 3 dias (cobertura, não preço)."""
-    r = (s or {}).get("recente") or {}
-    tot = r.get("total") or 0
-    if not tot:
-        return ""
-    cores = [("positivo", "#3DDC97", "Positivas"), ("neutro", "#BDB5E6", "Neutras"), ("incerto", "#F2B84B", "Incertas"), ("negativo", "#FF6B6B", "Negativas")]
-    barra = "".join(f'<i style="width:{r[k] / tot * 100:.1f}%;background:{c}"></i>' for k, c, _ in cores if r.get(k))
-    leg = "".join(f'<span><b style="background:{c}"></b>{n} {r.get(k, 0)}</span>' for k, c, n in cores)
-    return f'<div class="nw-bar">{barra}</div><div class="nw-leg">{leg}</div>'
-
-
 ROT_COR_CARTEIRA, ROT_COR_TOM = "Efeito na minha carteira", "Tom da notícia"
 
 
@@ -666,21 +654,6 @@ def modo_cor(res: dict | None = None) -> str:
     if res is not None and not _tem_carteira(res):
         return "tom"
     return "tom" if st.session_state.get("ne_cor_modo") == ROT_COR_TOM else "carteira"
-
-
-def legenda_cor_html(modo: str) -> str:
-    itens = ([("#3DDC97", "Pode favorecer sua carteira"), ("#FF6B6B", "Pode pressionar"), ("#F2B84B", "Efeito misto ou incerto"), ("#BDB5E6", "Sem efeito direto")]
-             if modo == "carteira" else
-             [("#3DDC97", "Tom positivo"), ("#FF6B6B", "Tom negativo"), ("#F2B84B", "Incerto"), ("#BDB5E6", "Neutro")])
-    return '<div class="nw-leg">' + "".join(f'<span><b style="background:{c}"></b>{n}</span>' for c, n in itens) + "</div>"
-
-
-def _escolher_cor(res: dict) -> None:
-    """Escolha de como colorir os cartões (só aparece com carteira). Chamada UMA vez por página: as duas abas de cartões reutilizam a escolha."""
-    if _tem_carteira(res):
-        st.caption("Colorir os cartões por")
-        ES.abas("ne_cor_modo", [ROT_COR_CARTEIRA, ROT_COR_TOM], default=ROT_COR_CARTEIRA, colunas=2)
-        st.caption("Efeito na minha carteira: verde se a notícia pode favorecer suas posições, vermelho se pode pressionar. Tom da notícia: só o jeito como o texto é escrito.")
 
 
 def _seletor_cor(res: dict) -> str:
@@ -947,39 +920,6 @@ def _aba_carteira(res):
     df = pd.DataFrame([{"Cenário": x["cenario"], "Pode se beneficiar (%)": round(x["beneficia_pct"], 1), "Pode ser pressionada (%)": round(x["pressiona_pct"], 1),
                         "Efeito misto (%)": round(x["misto_pct"], 1), "Sem regra (%)": round(x["sem_regra_pct"], 1), "Mais expostas": ", ".join(x["ativos_pressionados"]) or "—"} for x in c["exposicao"]])
     st.dataframe(df, hide_index=True, width="stretch")
-
-
-def _aba_impacto(res):
-    st.caption("Leitura por regras: cada acontecimento mostra quais ativos seus PODEM ser afetados e por quê. Não afirma valorização nem queda.")
-    s = res["sentimento"].get("_geral")
-    if s:
-        r = s["recente"]
-        _cartoes = IA._cartoes
-        _cartoes([("Positivas", str(r["positivo"]), "good"), ("Negativas", str(r["negativo"]), "bad"), ("Neutras", str(r["neutro"]), "na"), ("Incertas", str(r["incerto"]), "fair")], 4)
-        for k, t in s["sinais"]:
-            st.info(t)
-        st.caption(s["aviso"])
-    for d in res.get("divergencias_preco") or []:
-        st.warning(f"{d['ativo']}: {d['texto']}")
-    st.markdown("#### Impactos possíveis")
-    imp = sorted(res["impactos"], key=lambda i: -i["relevancia"])
-    if not res["ativos"]:
-        st.info("Sem ativos cadastrados, os impactos aparecem sem lista de ativos afetados. Adicione ativos à carteira ou aos favoritos.")
-    if not imp:
-        st.caption("Nenhum acontecimento relevante associado aos seus ativos nesta leitura.")
-    for i in imp[:25]:
-        with st.expander(f"{_NIVEL[i['nivel']]} · {I.escapar_md(i['titulo'][:110])} — {I.escapar_md(i.get('nome_regra') or i['tipo_impacto'])}"):
-            st.markdown(f"**Justificativa:** {I.escapar_md(i['justificativa'])}")
-            st.markdown(f"**Horizonte provável:** {I.escapar_md(i['horizonte'])} · **Confiança da análise:** {i['confianca']} · **Origem:** {I.escapar_md(i.get('fonte') or 'n/d')} ({I.escapar_md(i.get('status') or '')})")
-            if i.get("setores"):
-                st.markdown("**Setores relacionados:** " + ", ".join(i["setores"]))
-            for a in i["ativos"][:12]:
-                st.markdown(f"- **{I.escapar_md(a['id'])}** — pode ser {I.escapar_md(a['direcao'])}: {I.escapar_md(a['porque'])}")
-            if not i["ativos"]:
-                st.caption("Nenhum ativo seu se encaixa nesta regra (classes/setores expostos: " + ", ".join(i.get("classes_expostas") or i.get("setores") or ["n/d"]) + ").")
-            if i.get("url"):
-                st.markdown(_link("Fonte original", i["url"]))
-            st.caption(i["limite"])
 
 
 def _padroes_ne():

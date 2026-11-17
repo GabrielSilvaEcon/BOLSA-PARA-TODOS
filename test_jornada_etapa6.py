@@ -45,19 +45,6 @@ def test_sons_sao_diferentes_entre_si_e_nome_desconhecido_nao_existe():
     assert SOM.som_do_resultado({"meta_nova": True}) == "meta" and SOM.som_do_resultado({"meta_nova": False}) == "concluida"
 
 
-# ------------------------------------------------------------------ preferência de som
-def test_som_padrao_ligado_e_gravado_na_conta():
-    p = ED.novo_progresso()
-    assert JO.som_ligado(p)
-    p = JO.definir_som(p, False)
-    assert not JO.som_ligado(p)
-    assert not JO.som_ligado(ED.normalizar(p))                          # sobrevive à normalização que lê/grava no perfil
-    p, _ = _fazer(p, "l_risco", T0)
-    assert not JO.som_ligado(p)                                         # concluir lição não religa o som
-    assert not JO.som_ligado(JO.definir_meta(p, 30))                    # nem mudar a meta
-    assert JO.resumo(p, T0)["som"] is False
-
-
 def test_som_valor_invalido_volta_ao_padrao():
     for lixo in ("false", 0, None, "nao", []):
         assert ED.normalizar({"jornada": {"som": lixo}})["jornada"]["som"] is True
@@ -212,14 +199,6 @@ def test_revisao_nao_marca_licao_recente():
     assert "jor_recente" not in st.session_state
 
 
-# ------------------------------------------------------------------ animações (HTML/CSS puros)
-def test_barra_anima_so_quando_enche():
-    assert "anima" in PL.html_barra(0.5, "x", de=0.25) and "--de:25%" in PL.html_barra(0.5, "x", de=0.25)
-    assert "anima" not in PL.html_barra(0.5, "x", de=0.5)               # errou: a barra não anda
-    assert "anima" not in PL.html_barra(0.5, "x")
-    assert "width:100%" in PL.html_barra(7, "x") and "width:0%" in PL.html_barra(-1, "x")
-
-
 def test_tela_final_tem_contagem_confete_e_escapa_texto():
     base = {"xp": 15, "acertos_primeira": 6, "total": 6, "revisao": False, "ofensiva": 3, "meta_atingida": False}
     h = PL.html_fim({**base, "perfeita": True})
@@ -239,14 +218,6 @@ def test_mapa_anima_so_o_icone_recente_concluido():
     assert "st-key-jor_nc_l_risco" in css and "jor-conquista" in css and "jor-selo" in css
     assert "jor-conquista" not in APP.css_icones(m, None)
     assert "jor-conquista" not in APP.css_icones(m, "l_juros")                  # lição ainda não concluída: sem animação
-
-
-def test_stats_chama_viva_e_barra_da_meta():
-    r = JO.resumo(_fazer(ED.novo_progresso(), "l_risco", T0)[0], T0)
-    h = APP.html_stats(r)
-    assert "viva" in h and "jor-metabar" in h and "width:75%" in h              # 15 de 20 XP
-    r0 = JO.resumo(ED.novo_progresso(), T0)
-    assert "viva" not in APP.html_stats(r0) and "width:0%" in APP.html_stats(r0)
 
 
 # ------------------------------------------------------------------ lembrete de estudo (notif.py)

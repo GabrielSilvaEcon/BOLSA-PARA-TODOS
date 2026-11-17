@@ -313,26 +313,6 @@ def resolver_termo(termo: str) -> str | None:
     return None
 
 
-def buscar_online(consulta: str, n: int = 8) -> list[dict]:
-    """Reserva: procura no Yahoo Finance empresas da B3 que não estão no catálogo."""
-    try:
-        import yfinance as yf
-        quotes = yf.Search(consulta, max_results=n, news_count=0).quotes
-    except Exception:
-        return []
-    out = []
-    for r in quotes or []:
-        sym = str(r.get("symbol", ""))
-        if not sym.endswith(".SA"):
-            continue
-        tk = sym[:-3]
-        if tk in POR_TICKER or not REGEX_TICKER.fullmatch(tk):
-            continue
-        out.append({"nome": r.get("longname") or r.get("shortname") or tk,
-                    "tickers": [tk], "ticker": tk, "setor": "Resultado da internet", "dominio": ""})
-    return out
-
-
 # ------------------------------------------------------------------ logos
 _LOGO_CACHE: dict[str, tuple[float, str, bool]] = {}
 _LOGO_RETENTAR_S = 600

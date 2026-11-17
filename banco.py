@@ -245,58 +245,6 @@ def sql_supabase() -> str:
     return "\n".join(partes) + "\n"
 
 
-def sql_trader_online() -> str:
-    """Script do Trader Battle multiplayer para o SQL Editor do Supabase (idempotente; só cria o que falta)."""
-    ddl = [x + ";" for x in _ddl("postgres") if " tb_" in x.split("\n", 1)[0] or "ux_tb_" in x or "ix_tb_" in x]
-    return "\n".join([
-        "-- Trade Battle multiplayer · tabelas tb_partidas e tb_jogadores. Seguro para rodar mais de uma vez. Cole tudo e clique em Run.",
-        "begin;",
-        *ddl,
-        "-- Segurança: RLS ligado e sem nenhuma política = só o servidor do app (chave secreta) lê e escreve; ele entrega a cada jogador só o que ele pode ver.",
-        "alter table tb_partidas enable row level security;",
-        "alter table tb_jogadores enable row level security;",
-        "revoke all on tb_partidas from anon, authenticated;",
-        "revoke all on tb_jogadores from anon, authenticated;",
-        "commit;",
-    ]) + "\n"
-
-
-def sql_battle_online() -> str:
-    """Script ÚNICO do Ticker Battle Online para o SQL Editor do Supabase (idempotente). Só cria o que falta: não mexe nas tabelas existentes."""
-    ts = "to_char(now() at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')"
-    ddl = [x + ";" for x in _ddl("postgres") if " bt_" in x.split("\n", 1)[0] or "ux_bt_" in x or "ix_bt_" in x]
-    return "\n".join([
-        "-- Ticker Battle Online · tabelas bt_fila e bt_partidas. Seguro para rodar mais de uma vez. Cole tudo e clique em Run.",
-        "begin;",
-        *ddl,
-        "-- Segurança: RLS ligado e SEM nenhuma política = a chave pública (anon) e a de usuários logados no Supabase não leem nem escrevem.",
-        "-- Só o servidor do app (chave secreta/service_role) acessa. O servidor confere quem participa de cada partida e entrega a cada jogador só o que ele pode ver",
-        "-- (a escolha do adversário fica dentro do JSON `dados`, que nunca sai do servidor).",
-        "alter table bt_fila enable row level security;",
-        "alter table bt_partidas enable row level security;",
-        "revoke all on bt_fila from anon, authenticated;",
-        "revoke all on bt_partidas from anon, authenticated;",
-        "-- Limpeza: fila expirada, salas esquecidas e partidas paradas. O app já faz isso a cada consulta; esta função é a rede de segurança",
-        "-- (pode ser agendada com pg_cron: select cron.schedule('bt-limpar', '*/5 * * * *', 'select bt_limpar()');).",
-        "create or replace function bt_limpar() returns integer language plpgsql security definer set search_path = public as $$",
-        "declare n integer := 0; k integer;",
-        "begin",
-        f"  delete from bt_fila where expira_em < {ts}; get diagnostics k = row_count; n := n + k;",
-        f"  update bt_partidas set status = 'cancelada', motivo = 'cancelada', finalizada_em = {ts}, atualizado = {ts}, versao = versao + 1",
-        f"   where status = 'aguardando' and atualizado < to_char((now() - interval '15 minutes') at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"');",
-        "  get diagnostics k = row_count; n := n + k;",
-        f"  update bt_partidas set status = 'cancelada', motivo = 'cancelada', finalizada_em = {ts}, atualizado = {ts}, versao = versao + 1",
-        f"   where status in ('pronta','em_jogo') and atualizado < to_char((now() - interval '10 minutes') at time zone 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"');",
-        "  get diagnostics k = row_count; n := n + k;",
-        "  return n;",
-        "end $$;",
-        "revoke all on function bt_limpar() from public, anon, authenticated;",
-        "insert into schema_versao (versao, aplicada_em, descricao) values "
-        f"({SCHEMA_BT}, {ts}, 'Ticker Battle Online: fila e partidas') on conflict (versao) do nothing;",
-        "commit;",
-    ]) + "\n"
-
-
 # ------------------------------------------------------------------ configuração
 _caminho_sqlite: Path = Path(__file__).with_name("usuarios.db")
 _forcar_sqlite = False
@@ -1283,16 +1231,6 @@ def sis_comp_todos(chave: str, limite: int = 5000) -> list[dict]:
 _ID_TEMP = r"\d{4}-(?:0[1-9]|1[0-2]|T[1-4])"
 
 
-def comp_temp_ler(tid: str) -> dict:
-    """Ranking público de uma temporada (mensal `2026-11` ou trimestral `2026-T4`): só apelido e retorno %. Sem banco de configuração, devolve vazio."""
-    if not re.fullmatch(_ID_TEMP, str(tid)):
-        raise ValueError("temporada inválida")
-    try:
-        return cfg_ler("comp_temp|" + str(tid))
-    except Exception:
-        return {}
-
-
 def sis_comp_publicar(chave: str, dados: dict) -> None:
     if (chave not in ("comp_ranking", "comp_precos") and not re.fullmatch(r"comp_lr\|[A-Z2-9]{8}", str(chave))
             and not re.fullmatch(r"comp_temp\|" + _ID_TEMP, str(chave))):
@@ -1320,12 +1258,6 @@ def comp_ligas_ler(ator: Ator | None) -> dict:
     return sis_estado_ler(ator.email, "comp_ligas")
 
 
-def comp_ligas_gravar(ator: Ator | None, dados: dict) -> None:
-    if not ator:
-        raise SemPermissao("Faça login.")
-    sis_estado_gravar(ator.email, "comp_ligas", dados)
-
-
 def comp_liga_definicao(ator: Ator | None, codigo: str) -> dict | None:
     """Nome e tamanho máximo da liga, para quem tem o código (nunca o dono). None se não existir."""
     if not ator:
@@ -1335,65 +1267,6 @@ def comp_liga_definicao(ator: Ator | None, codigo: str) -> dict | None:
     if not d or not d.get("nome"):
         return None
     return {"codigo": c, "nome": str(d["nome"])[:30], "max": int(d.get("max") or 30), "criada": str(d.get("criada") or "")[:10]}
-
-
-def comp_liga_contagem(ator: Ator | None, codigo: str) -> int:
-    """Quantas contas têm o código da liga no próprio documento (conferência de vaga antes de entrar)."""
-    if not ator:
-        raise SemPermissao("Faça login.")
-    c = _cod_liga(codigo)
-    n = 0
-    for r in sis_comp_todos("comp_ligas"):
-        if any(isinstance(x, dict) and x.get("c") == c for x in (r["dados"] or {}).get("ligas") or []):
-            n += 1
-    return n
-
-
-def comp_liga_criar(ator: Ator | None, definicao: dict) -> str:
-    """Grava a definição de uma liga nova com um código inédito e devolve o código. O hash do dono vem do ator (não da tela)."""
-    if not ator:
-        raise SemPermissao("Faça login.")
-    import hashlib
-    import secrets
-    alfabeto = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-    doc = {"v": 1, "nome": str(definicao["nome"])[:30], "max": int(definicao["max"]), "criada": str(definicao.get("criada") or "")[:10],
-           "dono_h": hashlib.sha256(ator.email.strip().lower().encode()).hexdigest()[:24]}
-    for _ in range(8):
-        c = "".join(secrets.choice(alfabeto) for _ in range(8))
-        if not cfg_ler("comp_liga|" + c):
-            cfg_gravar("comp_liga|" + c, doc)
-            return c
-    raise ErroBanco("não foi possível gerar um código de liga inédito")
-
-
-def comp_liga_encerrar(ator: Ator | None, codigo: str) -> bool:
-    """Só o dono encerra a liga (apaga a definição e o ranking). False se a liga não existe; SemPermissao se não for o dono."""
-    if not ator:
-        raise SemPermissao("Faça login.")
-    import hashlib
-    c = _cod_liga(codigo)
-    d = cfg_ler("comp_liga|" + c)
-    if not d:
-        return False
-    if d.get("dono_h") != hashlib.sha256(ator.email.strip().lower().encode()).hexdigest()[:24]:
-        raise SemPermissao("Só quem criou a liga pode encerrá-la.")
-    cfg_apagar("comp_liga|" + c)
-    cfg_apagar("comp_lr|" + c)
-    return True
-
-
-def comp_liga_ranking_ler(ator: Ator | None, codigo: str) -> dict:
-    """Ranking publicado da liga. Só entrega a quem tem o código no próprio documento (membro); para os demais, SemPermissao."""
-    if not ator:
-        raise SemPermissao("Faça login.")
-    c = _cod_liga(codigo)
-    meus = (sis_estado_ler(ator.email, "comp_ligas") or {}).get("ligas") or []
-    if not any(isinstance(x, dict) and x.get("c") == c for x in meus):
-        raise SemPermissao("Você não participa dessa liga.")
-    try:
-        return cfg_ler("comp_lr|" + c)
-    except Exception:
-        return {}
 
 
 def edu_liga_ler(ator: Ator | None) -> dict:

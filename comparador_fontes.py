@@ -13,7 +13,6 @@ Regras: nenhuma fonte paga é ativada sem autorização; chaves só em secrets/v
 """
 from __future__ import annotations
 
-import math
 import os
 import threading
 import time
@@ -95,20 +94,6 @@ def chave_da_fonte(id_: str) -> str | None:
     return os.environ.get(nome) or None
 
 
-def fontes_usaveis(classe: str | None = None) -> list[dict]:
-    """Fontes ativas ou de reserva (nunca as desativadas), na ordem do catálogo; as que exigem chave só se a chave existir."""
-    out = []
-    for f in FONTES:
-        if f["status"] not in ("ativa", "reserva"):
-            continue
-        if classe and classe not in f["classes"]:
-            continue
-        if f["chave"] and not chave_da_fonte(f["id"]):
-            continue
-        out.append(f)
-    return out
-
-
 def tabela_fontes() -> pd.DataFrame:
     rot = {"ativa": "Em uso", "reserva": "Reserva", "desativada": "Desativada (precisa da sua autorização)"}
     return pd.DataFrame([{"Fonte": f["nome"], "Tipo": f["tipo"], "Situação": rot[f["status"]], "Chave": "sim" if f["chave"] else "não",
@@ -153,22 +138,6 @@ class Limitador:
 
 LIMITADORES = {"yahoo": Limitador(30, 60, 0.2), "coingecko": Limitador(20, 60, 1.0), "bcb": Limitador(30, 60, 0.2),
                "brapi": Limitador(10, 60, 1.0), "cvm": Limitador(10, 60, 0.5)}
-
-
-def com_tentativas(fn, tentativas: int = 3, espera: float = 1.0, dormir=time.sleep, limitador: Limitador | None = None):
-    """Chama `fn()` até `tentativas` vezes, com espera crescente (1×, 2×, 4×...). Respeita o limitador. Devolve (resultado, erros).
-    Se todas falharem, resultado é None e `erros` traz o NOME do tipo de cada erro (nunca a mensagem: pode conter chave ou URL)."""
-    erros: list[str] = []
-    for i in range(max(1, tentativas)):
-        try:
-            if limitador is not None:
-                limitador.esperar()
-            return fn(), erros
-        except Exception as e:
-            erros.append(e.__class__.__name__)
-            if i < tentativas - 1:
-                dormir(espera * (2 ** i))
-    return None, erros
 
 
 # =============================================================================== cadeia de fontes

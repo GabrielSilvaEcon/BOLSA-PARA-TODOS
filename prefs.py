@@ -117,12 +117,3 @@ def normalizar(p) -> dict:
     }
 
 
-def alternar_favorito(prefs: dict, ticker: str) -> dict:
-    p = normalizar(prefs)
-    t = normalizar_ticker(ticker)
-    if not _TICKER.match(t):
-        return p
-    fav = list(p["ativos_favoritos"])
-    fav.remove(t) if t in fav else fav.append(t)
-    p["ativos_favoritos"] = fav[:_MAX_FAV]
-    return normalizar(p)

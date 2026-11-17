@@ -13,11 +13,9 @@ Nada é comprado ou vendido; nenhum candle, preço ou volume é inventado: dado 
 """
 from __future__ import annotations
 
-import json
 import re
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 import secoes
@@ -228,10 +226,6 @@ def _eixos_comuns(fig, intradia: bool, cripto: bool, n_linhas: int):
     breaks = [] if (intradia or cripto) else [{"bounds": ["sat", "mon"]}]
     fig.update_xaxes(showgrid=True, gridcolor=GRADE, rangebreaks=breaks, showspikes=True, spikemode="across", spikethickness=1)
     fig.update_yaxes(showgrid=True, gridcolor=GRADE, zeroline=False)
-
-
-def _hover_fmt(moeda: str) -> str:
-    return "%{y:,.2f}"
 
 
 def construir_figura(df: pd.DataFrame, cfg: dict, resumo: dict | None, janela_n: int, eventos: dict | None, moeda: str, classe: str,

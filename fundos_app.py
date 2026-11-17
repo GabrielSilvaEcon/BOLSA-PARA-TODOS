@@ -1225,7 +1225,6 @@ def pagina_fundos(chave: str, atalho_comparar=None):
 def botao_carteira_fundo(fx: dict):
     """Leva o fundo (por CNPJ) para a carteira escolhida (Virtual ou Real), guardando o CNPJ e o valor aplicado."""
     import carteira_destino as cd
-    import moeda
 
     def _form(destino):
         vv = st.number_input("Valor aplicado (R$)", min_value=0.0, step=100.0, key=f"cwf_v_{fx['id']}")

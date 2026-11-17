@@ -310,11 +310,6 @@ def resultado_final(duelo: dict) -> str:
     return "vitoria" if p["jogador"] > p["adversario"] else ("derrota" if p["jogador"] < p["adversario"] else "empate")
 
 
-def pode_jogar_alguma(duelo: dict, cartas: dict, hoje: date) -> bool:
-    """Ainda existe ao menos uma carta do jogador com adversária e atributo possíveis? (evita duelo travado)."""
-    return any(adversaria_da_rodada(duelo, cartas, t, hoje) for t in cartas_disponiveis(duelo))
-
-
 # ------------------------------------------------------------------ texto educativo (Raio-X)
 def explicar(reg: dict, cartas: dict) -> dict:
     """Textos da rodada, a partir do registro dela: significado, relevância, regra, quem venceu e por quê, limites e o que não se pode concluir."""
@@ -333,7 +328,3 @@ def explicar(reg: dict, cartas: dict) -> dict:
             "limites": m["limites"], "nao_conclui": m["nao_conclui"]}
 
 
-def resumo_educativo(reg: dict, cartas: dict) -> str:
-    """Uma frase curta para a Arena (o Raio-X completo fica na tela final)."""
-    e = explicar(reg, cartas)
-    return f"{e['nome']}: {e['significa']} {e['porque']}"

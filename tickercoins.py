@@ -27,7 +27,6 @@ from datetime import datetime, timedelta, timezone
 import banco
 import loja_catalogo as LC
 import permissoes
-import seguranca as seg
 
 MOEDA = {"id": "tickercoin", "nome": "TickerCoins", "simbolo": "TC"}
 AVISO = ("TickerCoins são créditos de uso dentro do app. Não são dinheiro, investimento nem valor mobiliário, "
@@ -256,32 +255,6 @@ def debitar(conta_id: str, valor: int, origem: str, descricao: str, chave: str, 
     return _lancar(conta_id, "debito", -_valor_ok(valor), "confirmada", origem, descricao, chave, ref, dados, exige_saldo=True, agora=agora)
 
 
-def registrar_pendente(conta_id: str, valor: int, origem: str, descricao: str, chave: str, dados: dict | None = None,
-                       agora: datetime | None = None) -> dict:
-    """Recompensa aguardando validação (ex.: anúncio ainda não confirmado pelo provedor). Não mexe no saldo."""
-    d = {**(dados or {}), "valor": _valor_ok(valor)}
-    return _lancar(conta_id, "pendente", 0, "pendente", origem, descricao, chave, "", d, agora=agora)
-
-
-def confirmar_pendente(conta_id: str, chave_pendente: str, agora: datetime | None = None) -> dict:
-    p = _por_chave(chave_pendente)
-    if not p or p["conta_id"] != conta_id or p["tipo"] != "pendente":
-        raise ErroTC("Recompensa pendente não encontrada.")
-    if p["estado"] == "cancelada":
-        raise ErroTC("Esta recompensa foi cancelada.")
-    linha = creditar(conta_id, int(p["dados"].get("valor", 0)), p["origem"], p["descricao"], f"conf:{chave_pendente}", chave_pendente, agora=agora)
-    if p["estado"] == "pendente":
-        banco._atualizar("tc_livro", {"id": p["id"]}, {"estado": "confirmada"})
-    return linha
-
-
-def cancelar_pendente(conta_id: str, chave_pendente: str) -> None:
-    p = _por_chave(chave_pendente)
-    if not p or p["conta_id"] != conta_id or p["tipo"] != "pendente" or p["estado"] != "pendente":
-        raise ErroTC("Nada a cancelar.")
-    banco._atualizar("tc_livro", {"id": p["id"]}, {"estado": "cancelada"})
-
-
 def estornar(conta_id: str, chave_original: str, motivo: str, agora: datetime | None = None) -> dict:
     """Desfaz um DÉBITO (devolve as moedas). Idempotente. Estornar um crédito é recusado se deixaria o saldo negativo."""
     o = _por_chave(chave_original)
@@ -418,7 +391,6 @@ def abrir_bau_diario(conta_id: str, agora: datetime | None = None) -> dict:
     return {"raridade": (linha.get("dados") or {}).get("raridade") or r, "valor": int(linha["delta"]), "novo": not linha.get("duplicado")}
 
 
-
 # ------------------------------------------------------------------ Baús por progresso (marcos do passe e semana de ofensiva)
 def _bau_valido(el: dict) -> tuple[str, str, str | None]:
     """Valida o pedido (origem, ref, raridade). O cliente nunca manda prêmio: só qual baú quer abrir; o valor vem da configuração."""
@@ -472,7 +444,6 @@ def abrir_bau(conta_id: str, el: dict, agora: datetime | None = None) -> dict:
         raise ErroTC("Este baú está indisponível.")
     linha = creditar(conta_id, valor, f"bonus:bau_{o}", f"Baú ({o}) {ref}", _chave_bau(conta_id, o, ref), ref, {"raridade": rar}, agora=agora)
     return {"raridade": (linha.get("dados") or {}).get("raridade") or rar, "valor": int(linha["delta"]), "novo": not linha.get("duplicado")}
-
 
 
 def recompensar_sessao(conta_id: str, resultado: dict, conquistas_novas: list | None = None, agora: datetime | None = None) -> list[dict]:
@@ -536,48 +507,6 @@ def anuncios_status() -> dict:
     return {"disponivel": True, "motivo": ""}
 
 
-def _tentativa_invalida(conta_id: str | None, provedor: str, motivo: str) -> None:
-    try:
-        banco.auditar(conta_id, "tc.fraude", None, {"prov": str(provedor)[:30], "motivo": str(motivo)[:80]})
-    except Exception:
-        pass
-
-
-def creditar_anuncio(conta_id: str, provedor: str, payload: dict, agora: datetime | None = None) -> dict:
-    """Credita um anúncio concluído, SÓ se o provedor confirmar a autenticidade. Devolve {"ok", "erro", "linha"}."""
-    agora = _agora(agora)
-    st = anuncios_status()
-    p = PROVEDORES.get(provedor)
-    if not st["disponivel"] or p is None:
-        _tentativa_invalida(conta_id, provedor, "provedor indisponível")
-        return {"ok": False, "erro": st["motivo"] or "Provedor desconhecido."}
-    try:
-        res = p.verificar(payload or {})
-    except Exception:
-        res = None
-    if not res or not res.get("tx") or res.get("conta_id") != conta_id:
-        _tentativa_invalida(conta_id, provedor, "notificação inválida")
-        return {"ok": False, "erro": "Não foi possível confirmar a visualização do anúncio."}
-    a = config()["anuncios"]
-    ini = _iso(inicio_do_dia(agora))
-    hoje = banco._selecionar("tc_livro", {"conta_id": conta_id, "criado_em": ("gte", ini), "origem": ("comeca", "anuncio")}, ["criado_em", "tipo"],
-                             ordem="criado_em", desc=True, limite=200)
-    hoje = [x for x in hoje if x["tipo"] == "credito"]
-    chave = f"anuncio:{provedor}:{res['tx']}"
-    if _por_chave(chave):
-        return {"ok": False, "erro": "Esta recompensa já foi creditada.", "duplicada": True}
-    if len(hoje) >= int(a["limite_dia"]):
-        _tentativa_invalida(conta_id, provedor, "limite diário")
-        return {"ok": False, "erro": "Você atingiu o limite diário de anúncios recompensados."}
-    if hoje:
-        ult = _de_iso(hoje[0]["criado_em"])
-        if ult and agora - ult < timedelta(minutes=int(a["intervalo_min"])):
-            _tentativa_invalida(conta_id, provedor, "intervalo")
-            return {"ok": False, "erro": f"Aguarde {int(a['intervalo_min'])} minutos entre os anúncios."}
-    linha = creditar(conta_id, int(a["valor"]), f"anuncio:{provedor}", "Anúncio recompensado assistido", chave, str(res["tx"]), agora=agora)
-    return {"ok": True, "linha": linha}
-
-
 # ------------------------------------------------------------------ catálogo da Loja Ticker (só o que o app realmente entrega)
 CATEGORIAS = {"ferramentas": "Ferramentas e análises", "educacao": "Educação", "personalizacao": "Personalização", "experiencias": "Experiências e desafios"}
 
@@ -635,18 +564,6 @@ def produto(pid: str) -> dict | None:
 def produtos(categoria: str | None = None, so_ativos: bool = True) -> list[dict]:
     out = [produto(p["id"]) for p in CATALOGO if not categoria or p["categoria"] == categoria]
     return [p for p in out if p and (p["ativo"] or not so_ativos)]
-
-
-def rotulo_validade(v) -> str:
-    if v is None:
-        return "Permanente"
-    if v == "meia_noite":
-        return "Até a meia-noite"
-    if v == 24:
-        return "24 horas"
-    if v % 24 == 0:
-        return f"{v // 24} dias"
-    return f"{v} horas"
 
 
 def _expira_em(p: dict, agora: datetime) -> str | None:
@@ -807,19 +724,6 @@ def equipar(conta_id: str, email: str, pid: str | None, tipo: str, agora: dateti
     except Exception:
         raise ErroTC("Não foi possível salvar a escolha agora.")
     return atual
-
-
-def aparencia(email: str) -> dict:
-    """{espaço: efeito do item equipado | None} para cada tipo equipável (tema, moldura, fundo, efeitos, selo, distintivo).
-    Mantém as chaves antigas: "distintivo" = emoji e "moldura" = cor (usadas por telas anteriores)."""
-    e = equipado(email)
-    out = {}
-    for k in LC.equipaveis():
-        p = _POR_ID.get(e.get(k))
-        out[k] = dict(p["efeito"], id=p["id"], nome=p["nome"], raridade=p.get("raridade")) if p and p["efeito"]["kind"] == k else None
-    out["distintivo"] = (out["distintivo"] or {}).get("emoji")
-    out["moldura"] = (out["moldura"] or {}).get("cor")
-    return out
 
 
 # ------------------------------------------------------------------ administração (cada operação exige permissão e é auditada)

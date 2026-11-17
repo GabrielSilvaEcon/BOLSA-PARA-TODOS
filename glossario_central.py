@@ -455,17 +455,6 @@ def achar(termo) -> dict | None:
     return TERMOS.get(_INDICE.get(_norm(termo), ""))
 
 
-def sigla_de(rotulo) -> str | None:
-    """Sigla do glossário para um rótulo de tela ('P/L', 'ROE (%)', 'DY 12m (%)'); None se não for um termo conhecido."""
-    e = achar(rotulo)
-    if e:
-        return e["sigla"]
-    r = _norm(re.sub(r"\s*\([^)]*\)\s*", " ", str(rotulo)))
-    for suf in (" 12m", " 5a", " 5 anos", " s/ media 5a"):
-        r = r.removesuffix(suf)
-    return _INDICE.get(r.strip())
-
-
 def nome_completo(termo, com_sigla: bool = True) -> str:
     """'Preço sobre Lucro (P/L)'. Se o termo não existe, devolve o texto recebido."""
     e = achar(termo)

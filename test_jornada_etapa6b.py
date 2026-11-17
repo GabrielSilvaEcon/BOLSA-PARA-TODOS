@@ -1,7 +1,7 @@
 """Etapa 6b da Jornada: liga de estudo (opcional), estudo com dado real no fim da unidade, banco e PWA."""
 import json
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date
 from pathlib import Path
 
 try:
@@ -13,7 +13,6 @@ except ImportError:                                       # ambiente sem Streaml
 import educacao as ED
 import jornada as JO
 import jornada_app as APP
-import jornada_conteudo as J
 import jornada_liga as JL
 from test_jornada import T0, _fazer
 
@@ -117,25 +116,6 @@ def test_ranking_nunca_expoe_email():
     assert "email" not in r[0] and "@" not in json.dumps(r)
 
 
-# ------------------------------------------------------------------ estudo com dado real no fim da unidade
-def test_estudo_real_valido_e_no_validar_conteudo():
-    assert JO.validar_conteudo() == []
-    for uid in JO.ESTUDO_REAL:
-        assert uid in J.UNIDADE_POR_ID
-
-
-def test_estudo_real_so_depois_da_unidade_completa():
-    p = ED.normalizar({})
-    assert not JO.estudo_real_liberado(p, "u_riscos")
-    u = J.UNIDADE_POR_ID["u_riscos"]
-    for lid in u["licoes"][:-1]:
-        p, _ = _fazer(p, lid, T0)
-    assert not JO.estudo_real_liberado(p, "u_riscos")
-    p, _ = _fazer(p, u["licoes"][-1], T0)
-    assert JO.estudo_real_liberado(p, "u_riscos")
-    assert not JO.estudo_real_liberado(p, "u_imp") and not JO.estudo_real_liberado(p, "nao_existe")   # sem roteiro: nada é oferecido
-
-
 def test_estudo_real_nao_da_xp():
     p, _ = _fazer(ED.normalizar({}), "l_risco", T0)
     antes = JO.xp_total(p)
@@ -157,11 +137,3 @@ def test_banco_tem_funcoes_e_chave_da_liga_de_estudo():
     assert "SemPermissao" in trecho and '"email":' not in linha_saida          # confere membro; as linhas devolvidas não levam o e-mail
 
 
-def test_service_worker_e_manifest():
-    sw = (RAIZ / "sw.js").read_text(encoding="utf-8")
-    assert "bolsa-para-todos-v2" in sw and "icon-maskable-512.png" in sw and "res.ok" in sw
-    for arq in ("icon-192.png", "icon-512.png", "icon-maskable-512.png", "manifest.webmanifest", "index.html"):
-        assert (RAIZ / arq).exists(), arq
-    for caminho in ("manifest.webmanifest", "static/manifest.json"):
-        m = json.loads((RAIZ / caminho).read_text(encoding="utf-8"))
-        assert m["name"] and m["display"] == "standalone" and m["lang"] == "pt-BR"

@@ -89,11 +89,6 @@ def html_ranking_corpo(r: dict, logado: bool, participa: bool) -> str:
     return f"<div class='hm-rk-grid'>{chips}{extra}</div><div class='hm-nota'>{nota}</div>"
 
 
-def html_ranking(r: dict, logado: bool, participa: bool) -> str:
-    """Cartão completo (usado nos testes e como alternativa sem botão)."""
-    return f"<div class='hm-card hm-ranking'>{_CAB}{html_ranking_corpo(r, logado, participa)}</div>"
-
-
 # ------------------------------------------------------------------ desempenho da carteira
 def _linha(x: dict, positivo: bool) -> str:
     cl = A.CLASSES.get(x.get("classe")) or {"cor": "#8B6CFF", "icone": "•"}

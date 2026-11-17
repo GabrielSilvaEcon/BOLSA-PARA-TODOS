@@ -9,7 +9,6 @@ Escolhas são secretas: `visao()` nunca devolve a escolha do adversário antes d
 from __future__ import annotations
 
 import copy
-import hashlib
 import secrets
 from datetime import date, datetime, timedelta, timezone
 
@@ -269,11 +268,3 @@ def registro_historico(d: dict, lado: str) -> dict:
             "rodadas": v["reg"], "cartas": {t: d["cartas"][t] for t in d["cartas"] if t in d["usadas"]["a"] + d["usadas"]["b"]}}
 
 
-def resumo_rodada(r: dict, cartas: dict) -> dict:
-    """Texto para o Raio-X: reaproveita B.explicar para cada atributo avaliado."""
-    out = []
-    for c in r["cmp"]:
-        reg = {"ind": c["ind"], "jog": r["a"]["tk"], "adv": r["b"]["tk"], "va": c["va"], "vb": c["vb"], "venc": {"a": "jogador", "b": "adversario", "empate": "empate"}[c["venc"]],
-               "melhor": B.INDICADORES[c["ind"]]["melhor"], "n": r["n"]}
-        out.append({**B.explicar(reg, cartas), "de": c["de"]})
-    return {"itens": out}

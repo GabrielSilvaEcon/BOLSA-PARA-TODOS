@@ -16,7 +16,6 @@ Nada aqui é recomendação: descreve condições econômicas, não prevê o pre
 """
 from __future__ import annotations
 
-import math
 
 import macro_fontes as MF
 

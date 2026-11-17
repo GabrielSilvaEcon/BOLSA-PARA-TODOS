@@ -7,11 +7,9 @@ compartilhado, sem custo por usuário); as regras estão em macro_cenario e macr
 from __future__ import annotations
 
 import html
-from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import streamlit as st
-import secoes
 
 import experiencia_app as EA
 import leitura as LT

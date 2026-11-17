@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import estilo_app as ES
-import arte_tickerhunters as AT
 import html
 
 import streamlit as st
@@ -15,10 +14,8 @@ import streamlit as st
 import educacao_app as EA
 import jogar as JG
 import jornada_icones as IC
-import jornada_liga_app as LIGA
 import jornada_player as PLAYER
 import missoes_visual as MV
-import tema
 import usuarios
 
 _PAGINAS: dict = {}
@@ -58,14 +55,6 @@ def _e(x) -> str:
 def _barra(atual, alvo) -> str:
     pct = 0 if not alvo else max(0.0, min(1.0, atual / alvo)) * 100
     return f"<div class='jg-bar'><i style='width:{pct:.0f}%'></i></div>"
-
-
-def _card_progresso(titulo: str, texto: str, atual, alvo, ok: bool, pontos: int, extra: str = "") -> str:
-    marca = "✓ " if ok else ""
-    return (f"<div class='jg-card {'ok' if ok else ''}'><div class='jg-top'><div style='min-width:0'>"
-            f"<div class='jg-t'>{marca}{_e(titulo)}</div><div class='jg-s'>{_e(texto)}</div></div>"
-            f"<div class='jg-pt'>+{pontos} pts</div></div>{_barra(atual, alvo)}"
-            f"<div class='jg-nota'>{_e(atual)} de {_e(alvo)}</div>{extra}</div>")
 
 
 # ------------------------------------------------------------------ ações

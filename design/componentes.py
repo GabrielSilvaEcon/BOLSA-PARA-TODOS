@@ -79,14 +79,6 @@ def vazio(titulo: str, texto: str = "", icone_nome: str = "info") -> str:
     return f"<div class='dz-vazio'>{icone(icone_nome, 40)}<div class='dz-vazio-t'>{_e(titulo)}</div>{tx}</div>"
 
 
-def barra_progresso(valor, rotulo: str = "", detalhe: str = "") -> str:
-    """Barra de 0 a 100 com rótulo à esquerda e detalhe à direita."""
-    v = _pct(valor)
-    topo = f"<div class='dz-bp-t'><span>{_e(rotulo)}</span><span>{_e(detalhe)}</span></div>" if (rotulo or detalhe) else ""
-    return (f"<div class='dz-bp'>{topo}<div class='dz-bp-f' role='progressbar' aria-valuemin='0' aria-valuemax='100' aria-valuenow='{v:.0f}'>"
-            f"<i style='width:{v:.1f}%'></i></div></div>")
-
-
 def anel(valor, rotulo: str = "", tam: int = 96, texto_central: str = "") -> str:
     """Anel de progresso (0 a 100) com o número no centro. Serve para nota de diversificação, nível e metas."""
     v = _pct(valor)
@@ -145,21 +137,6 @@ def lista_ranking(itens: list, medalhas: bool = False) -> str:
             f"<div class='dz-rk-n'><div class='dz-rk-nome'>{_e(x.get('nome'))} {tag}</div>{sub}</div>"
             f"<div class='dz-rk-v dz-{cls}'>{_e(x.get('valor'))}</div></div>")
     return "<div class='dz-rklista'>" + "".join(out) + "</div>"
-
-
-def cartao_posicao(titulo: str, classe: str, valor: str, resultado, peso, detalhe: str = "", cor: str = "") -> str:
-    """Posição da carteira: ativo, classe, valor, resultado colorido e barra de peso (0 a 100)."""
-    try:
-        r = float(resultado)
-        cls = "pos" if r > 0 else ("neg" if r < 0 else "neu")
-        rtxt = f"{'+' if r > 0 else ''}{numero_br(r, 1)}%"
-    except (TypeError, ValueError):
-        cls, rtxt = "neu", "—"
-    cor_css = f" style='border-left-color:{_e(cor)}'" if cor and cor.startswith("#") and len(cor) in (4, 7) else ""
-    d = f"<div class='dz-pos-d'>{_e(detalhe)}</div>" if detalhe else ""
-    return (f"<div class='dz-posc'{cor_css}><div class='dz-posc-t'><div><div class='dz-posc-n'>{_e(titulo)}</div>"
-            f"<div class='dz-posc-c'>{_e(classe)}</div></div><div class='dz-posc-v'>{_e(valor)}"
-            f"<div class='dz-var dz-{cls}'>{_e(rtxt)}</div></div></div>{barra_progresso(peso, 'Peso na carteira', f'{_pct(peso):.0f}%')}{d}</div>")
 
 
 def tabela_cartoes(colunas: list, linhas: list) -> str:

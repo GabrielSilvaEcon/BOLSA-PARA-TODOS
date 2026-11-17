@@ -123,13 +123,6 @@ _LIMITE_ATE = 0.0            # instante (time.time) até o qual não se consulta
 _FALHAS_TICKER: dict = {}    # símbolo -> (instante, tipo do erro)
 
 
-def _resetar_estado():
-    """Zera as pausas (usado nos testes)."""
-    global _LIMITE_ATE
-    _LIMITE_ATE = 0.0
-    _FALHAS_TICKER.clear()
-
-
 def _marcar_limite():
     global _LIMITE_ATE
     _LIMITE_ATE = time.time() + PAUSA_LIMITE_S
@@ -218,14 +211,6 @@ def _cache(ttl: int):
         _FUNCOES_COM_CACHE.append(f)
         return f
     return deco
-
-
-def _limpar_cache():
-    for f in _FUNCOES_COM_CACHE:
-        try:
-            f.clear()
-        except Exception:
-            pass
 
 
 # Erros não são guardados em cache (a função levanta exceção): só leituras bem-sucedidas.

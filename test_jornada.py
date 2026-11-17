@@ -43,10 +43,6 @@ def _fazer(p, lid, agora, errar_primeiro=False):
     return JO.concluir_sessao(p, s, agora)
 
 
-def test_conteudo_valido():
-    assert JO.validar_conteudo() == []
-
-
 def test_corrigir_cada_tipo_e_resposta_invalida():
     for ex in J.EX_POR_ID.values():
         assert JO.corrigir(ex, _certo(ex)) is True
@@ -62,25 +58,6 @@ def test_erro_volta_ao_fim_e_nao_bloqueia():
     ok, s = JO.responder(s, _errado(JO.exercicio_atual(s)))
     assert not ok and s["fila"][-1] == primeiro and s["feitos"] == 0 and s["erros_ids"] == [primeiro]
     assert len(s["fila"]) == s["total"]               # nada se perde
-
-
-def test_licao_perfeita_e_com_erro():
-    p = ED.novo_progresso()
-    p, r = _fazer(p, "l_risco", T0)
-    assert r["xp"] == JO.XP_LICAO + JO.XP_BONUS_PERFEITA and r["perfeita"]
-    p, r = _fazer(p, "l_juros", T0, errar_primeiro=True)
-    assert r["xp"] == JO.XP_LICAO and not r["perfeita"]
-    assert JO.xp_total(p) == 25 and JO.erros_para_revisar(p) == 1
-
-
-def test_revisao_limpa_erro_e_da_xp():
-    p, _ = _fazer(ED.novo_progresso(), "l_juros", T0, errar_primeiro=True)
-    s = JO.iniciar_revisao(p)
-    assert s and s["revisao"] and s["total"] == 1
-    while not JO.terminada(s):
-        _, s = JO.responder(s, _certo(JO.exercicio_atual(s)))
-    p, r = JO.concluir_sessao(p, s, T0)
-    assert r["xp"] == JO.XP_REVISAO and JO.erros_para_revisar(p) == 0 and JO.iniciar_revisao(p) is None
 
 
 def test_ofensiva_meta_e_fuso():

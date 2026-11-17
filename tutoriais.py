@@ -448,7 +448,3 @@ def buscar(consulta: str) -> list[str]:
     return achados
 
 
-def etapa_para_nivel(etapa: dict, modo: str) -> dict:
-    """Blocos da etapa no nível: 'aprofundar' traz o texto do nível (ini/avanc) e o resto é comum."""
-    extra = etapa["ini"] if modo == "iniciante" else (etapa["avanc"] if modo == "avancado" else "")
-    return {**etapa, "nivel_extra": extra}

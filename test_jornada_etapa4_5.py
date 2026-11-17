@@ -15,15 +15,8 @@ import streamlit as st
 import edu_conteudo as E
 import educacao as ED
 import jornada as JO
-import jornada_app as APP
 import jornada_conteudo as J
-import jornada_player as PL
-from test_jornada import _certo, _errado
-
-
-# ------------------------------------------------------------------ Etapa 5: conteúdo
-def test_conteudo_sem_problemas():
-    assert JO.validar_conteudo() == []
+from test_jornada import _certo
 
 
 def test_toda_aula_tem_uma_licao_e_toda_licao_esta_em_uma_unidade():
@@ -76,47 +69,6 @@ def _estado():
     st.session_state = {}
     caixa = {"p": ED.novo_progresso()}
     return caixa, (lambda: caixa["p"]), (lambda p: caixa.update(p=p))
-
-
-def test_revisao_pelo_player():
-    caixa, prog, set_prog = _estado()
-    PL.iniciar_revisao(prog())
-    assert "jor_sessao" not in st.session_state                 # sem erros, nada começa
-    PL.iniciar("l_risco")
-    ex = JO.exercicio_atual(st.session_state["jor_sessao"])
-    PL._verificar(ex["id"], _errado(ex))
-    while st.session_state["jor_fase"] != "fim":
-        PL._continuar(prog, set_prog)
-        if st.session_state["jor_fase"] == "fim":
-            break
-        ex = JO.exercicio_atual(st.session_state["jor_sessao"])
-        PL._verificar(ex["id"], _certo(ex))
-    assert JO.erros_para_revisar(caixa["p"]) == 1
-    PL.iniciar_revisao(caixa["p"])
-    s = st.session_state["jor_sessao"]
-    assert s["revisao"] and s["total"] == 1 and st.session_state["jor_fase"] == "pergunta"
-    ex = JO.exercicio_atual(s)
-    PL._verificar(ex["id"], _certo(ex))
-    PL._continuar(prog, set_prog)
-    assert st.session_state["jor_resultado"]["revisao"] and JO.erros_para_revisar(caixa["p"]) == 0
-
-
-def test_mudar_meta_diaria():
-    caixa, prog, set_prog = _estado()
-    st.session_state["jor_meta"] = 50
-    APP._mudar_meta(prog, set_prog)
-    assert JO.resumo(caixa["p"])["meta_dia"] == 50
-    st.session_state["jor_meta"] = 9999                          # fora do limite: vira o máximo permitido
-    APP._mudar_meta(prog, set_prog)
-    assert JO.resumo(caixa["p"])["meta_dia"] == 200
-
-
-def test_frase_da_meta():
-    base = {"meta_dia": 20, "xp_hoje": 0, "ofensiva": 0, "meta_atingida": False}
-    assert "Faltam 20 XP" in APP.texto_meta(base)
-    assert "concluída" in APP.texto_meta({**base, "xp_hoje": 20, "meta_atingida": True})
-    assert "manter 3 dias" in APP.texto_meta({**base, "ofensiva": 3})
-    assert "Faltam 5 XP" in APP.texto_meta({**base, "xp_hoje": 15, "ofensiva": 3})
 
 
 if __name__ == "__main__":

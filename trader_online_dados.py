@@ -360,37 +360,6 @@ def agir(pid: str, email: str, dados: dict, agora: float | None = None) -> None:
     _acao(pid, email, agora, lambda p, cen: TB.registrar_acao(p, cen, email, dados, agora))
 
 
-def pausar_tecnica(pid: str, agora: float | None = None) -> bool:
-    """Pausa técnica DA PARTIDA (para todos ao mesmo tempo). Função do servidor/administração: não é exposta ao jogador."""
-    agora = time.time() if agora is None else agora
-    feito = []
-
-    def f(d):
-        if not d.get("p") or d.get("cancelada"):
-            return d
-        n = copy.deepcopy(d)
-        cen = _cenario(n)
-        feito[:] = [TB.pausar(n["p"], agora, {cen["id"]: cen})]
-        return d if n["p"]["versao"] == d["p"]["versao"] else n
-    _mutar(pid, f, agora)
-    return bool(feito and feito[0])
-
-
-def retomar_tecnica(pid: str, agora: float | None = None) -> bool:
-    """Retoma a partida pausada, no mesmo instante para todos."""
-    agora = time.time() if agora is None else agora
-    feito = []
-
-    def f(d):
-        if not d.get("p") or d.get("cancelada"):
-            return d
-        n = copy.deepcopy(d)
-        feito[:] = [TB.retomar(n["p"], agora)]
-        return d if n["p"]["versao"] == d["p"]["versao"] else n
-    _mutar(pid, f, agora)
-    return bool(feito and feito[0])
-
-
 def pronto(pid: str, email: str, agora: float | None = None) -> None:
     agora = time.time() if agora is None else agora
     _acao(pid, email, agora, lambda p, cen: TB.marcar_pronto(p, email, agora))

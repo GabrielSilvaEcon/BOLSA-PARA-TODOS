@@ -2233,29 +2233,6 @@ def responder_tecnica(pergunta: str, ctx: dict | None) -> dict:
     return resp(f"{ativo} em {ate}: " + (f"tendência de {tend} (confiança {t['confianca']})." if tend else "sem tendência classificável com o histórico disponível."), L, cons)
 
 
-def relatorio_tecnico_md(r: dict, titulo: str | None = None) -> str:
-    """Relatório em Markdown de UM ativo, só com o que está no resumo técnico (sem inventar). Texto escapado para exibição."""
-    esc = I.escapar_md
-    L = [f"# {esc(titulo or 'Análise técnica · ' + str(r.get('ativo') or ''))}", "", f"_{AVISO_LEGAL}_", ""]
-    if not r.get("disponivel"):
-        L += ["Sem leitura técnica utilizável: " + esc(" ".join(r.get("avisos") or ["histórico insuficiente."]))]
-        return "\n".join(L)
-    moeda = r.get("moeda", "BRL")
-    t = r["tendencia"]
-    L += [f"**Dados até {esc(str(r.get('ate')))}** · preço {fmt_preco(r['preco'], moeda)}", "", "## Tendência",
-          f"{t['tendencia'] or 'indefinida'} (confiança {t['confianca']})"] + [f"- {esc(c['nome'])}: {esc(c['texto'])}" for c in t["criterios"]]
-    mt = r["multitemporal"]
-    if mt:
-        L += ["", "## Multitemporal", esc(mt["conclusao"])] + [f"- {p['horizonte']} ({p['rotulo']}): {p['tendencia'] or 'sem leitura'}" for p in mt["periodos"]]
-    n = r["niveis"]
-    L += ["", "## Suportes e resistências"] + [f"- {z['tipo']} {fmt_preco(z['preco'], moeda)} ({z['toques']} toques)" for z in n["resistencias"] + n["suportes"]]
-    L += ["", "## Sinais"] + [f"- **{s['titulo']}** (evidência {s['confianca']}): {esc(s['justificativa'])} Invalida: {esc(' '.join(s['invalida']))}" for s in r["sinais"]]
-    if r["padroes"]:
-        L += ["", "## Padrões"] + [f"- {p['nome']} — {p['estado']}, confiança {p['confianca_rotulo']}. Invalida: {esc(p['invalidacao'])}" for p in r["padroes"]]
-    L += ["", "## Dados", esc(descrever_fonte(r.get("meta") or {}, r.get("qualidade"), r.get("lacunas")))]
-    return "\n".join(L)
-
-
 # =============================================================================== linhas de tendência e histórico de sinais
 def linhas_de_tendencia(df: pd.DataFrame, w: int | None = None, janela: int = 150) -> list[dict]:
     """Retas ligando os DOIS ÚLTIMOS fundos e os DOIS ÚLTIMOS topos (pivôs) da janela, estendidas até o último candle. São auxílios

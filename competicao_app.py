@@ -5,10 +5,7 @@ import html
 import re
 from datetime import date, datetime, timedelta, timezone
 
-import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
-import secoes
 import estilo_app as ES
 import carteira_visual as CV
 import arte_tickerhunters as AT
@@ -17,9 +14,7 @@ import ativos_jogo as A
 import banco
 import competicao as C
 import cotacoes_jogo as CJ
-import diversificacao as D
 import diversificar_app as DV
-import fundos as fd
 import tema
 import usuarios
 import wallet_game as WG
@@ -45,22 +40,6 @@ def _n(v, casas: int = 1) -> str:
     return DC.numero_br(v, casas)
 
 
-def _itens_ranking(linhas: list, eu: str, medalha: dict | None = None, risco: bool = False) -> list:
-    """Linhas do ranking -> itens do componente de cartões (sem tabela crua)."""
-    out = []
-    for x in linhas:
-        x = dict(x, ret=0.0 if abs(x["ret"]) < 0.00005 else x["ret"], dd=0.0 if abs(x["dd"]) < 0.00005 else x["dd"])   # evita "-0,00%"
-        if risco:
-            valor = f"Sharpe {_n(x['sh'], 2)}"
-            sub = f"Volatilidade {_n(x['vol'] * 100)}% · retorno {_pc(x['ret'])} · queda máx. {_n(x['dd'] * 100)}% · {x['dias']} pregões"
-        else:
-            valor = _pc(x["ret"])
-            sub = f"Queda máxima {_n(x['dd'] * 100)}% · {x['dias']} pregões"
-        out.append({"pos": x["pos"], "nome": x["apelido"], "valor": valor, "tom": x["ret"], "sub": sub,
-                    "voce": x["apelido"].lower() == eu})
-    return out
-
-
 def _data_br(iso: str | None) -> str:
     try:
         return date.fromisoformat(str(iso)[:10]).strftime("%d/%m/%Y")
@@ -71,14 +50,6 @@ def _data_br(iso: str | None) -> str:
 @st.cache_data(ttl=120, show_spinner=False)
 def _publico(chave: str) -> dict:
     return banco.comp_publico_ler(chave)
-
-
-@st.cache_data(ttl=120, show_spinner=False)
-def _temp(tid: str) -> dict:
-    try:
-        return banco.comp_temp_ler(tid)
-    except Exception:                                   # banco.py desatualizado ou leitura falhou: a aba mostra "sem resultado" em vez de derrubar a página
-        return {}
 
 
 def _pessoa(a, forcar: bool = False) -> dict:
@@ -128,16 +99,6 @@ def _participar(a, perfil: dict):
         except Exception:
             pass
         st.rerun()
-
-
-# ------------------------------------------------------------------ ranking
-def _tabela_risco(linhas: list, eu: str, periodo: str = "Desde o início"):
-    """Ranking ajustado ao risco: Sharpe (retorno por unidade de risco), volatilidade anual, retorno e queda máxima."""
-    if not linhas:
-        st.info(f"Ainda não há participantes com {C.MIN_DIAS_RISCO} pregões ou mais para calcular o risco.")
-        return
-    st.markdown(DC.lista_ranking(_itens_ranking(linhas, eu, risco=True)), unsafe_allow_html=True)
-    st.caption(f"{periodo}, com {C.MIN_DIAS_RISCO} pregões ou mais. Sharpe sem taxa livre de risco: serve para comparar participantes, não como promessa de retorno.")
 
 
 def _proxima_ordem(ordens: list) -> None:
@@ -214,20 +175,6 @@ def _aba_ranking(perfil: dict, cart: dict, res: dict | None = None):
                "Sharpe sem taxa livre de risco: serve para comparar participantes.")
 
 
-# ------------------------------------------------------------------ minha carteira
-def _tabela_posicoes(est: dict) -> pd.DataFrame:
-    pat = max(C.patrimonio(est), 1.0)
-    linhas = []
-    for tk, p in sorted((est.get("pos") or {}).items()):
-        px = (est.get("ult") or {}).get(tk) or p["pm"]
-        v = p["q"] * px
-        c = A.classe(tk)
-        linhas.append({"Cor": A.CLASSES[c]["cor"] if c else "", "Classe": A.CLASSES[c]["icone"] + " " + A.CLASSES[c]["nome"] if c else "—", "Ativo": A.rotulo(tk), "Qtd": A.texto_qtd(tk, p["q"]),
-                       "Preço médio": p["pm"], "Último preço": px, "Valor": v, "Peso": v / pat * 100,
-                       "Resultado": (px / p["pm"] - 1) * 100 if p["pm"] else 0.0})
-    return pd.DataFrame(linhas)
-
-
 def _aba_carteira(a, perfil: dict, cart: dict, res: dict | None = None):
     est = cart if cart.get("v") == 1 else C.novo_estado(perfil.get("entrada") or _agora().date().isoformat())
     CV.mostrar(est, res)                                     # patrimônio, ativos, Comprar/Vender, desempenho e missão (mesmos dados de antes)
@@ -243,11 +190,6 @@ def _aba_carteira(a, perfil: dict, cart: dict, res: dict | None = None):
                 perfil["pend"] = [x for x in perfil["pend"] if x["id"] != o["id"]]
                 _gravar_perfil(a, perfil)
                 st.rerun()
-
-
-# ------------------------------------------------------------------ negociar
-def _rotulo(tk: str) -> str:
-    return A.rotulo(tk)
 
 
 def _max_compra(est: dict, pend: list, ref: float, tk: str, precos: dict) -> int | float:
@@ -331,41 +273,6 @@ def _chave(tk: str) -> str:
     return re.sub(r"\W", "_", tk)
 
 
-def _entrada_fundo(extras: dict, tem_fundos: bool) -> None:
-    """Fundos são milhares: em vez de uma lista fixa, a pessoa digita o CNPJ e o jogo busca a última cota na CVM."""
-    with st.expander("Adicionar um fundo pelo CNPJ", expanded=not tem_fundos):
-        st.caption("Informe o CNPJ do fundo (está no site do gestor ou na página Fundos do app). O jogo usa a cota divulgada pela CVM, que sai com 1 a 2 dias úteis de atraso.")
-        txt = st.text_input("CNPJ do fundo", key="comp_cnpj", placeholder="00.000.000/0000-00", max_chars=20)
-        if st.button("Buscar cota", key="comp_cnpj_ok", icon=":material/search:"):
-            dig = fd.so_digitos(txt)
-            if not fd.cnpj_valido(dig):
-                st.error("CNPJ inválido. Confira os 14 números.")
-            else:
-                cota = _cota_fundo(dig)
-                if not cota:
-                    st.error("Não encontrei cota recente desse fundo na CVM. Confira o CNPJ ou tente outro fundo.")
-                else:
-                    extras[A.id_fundo(dig)] = {"c": cota["c"], "v": cota["v"]}
-                    st.rerun()
-
-
-def _efeito_na_classe(est: dict, tk: str, delta: float):
-    """Como a ordem muda o peso da classe na carteira (ensino de diversificação): (nome, antes, depois) ou None."""
-    try:
-        f = D.pesos(est)
-        g = D._grupo(A.classe(tk))
-        if not g or f["pat"] <= 0:
-            return None
-        antes = f["grupos"].get(g, 0.0)
-        return D.NOME_GRUPO[g].split(" (")[0], antes, max(0.0, antes + delta / f["pat"])
-    except Exception:
-        return None
-
-
-def _limpar_sel() -> None:
-    st.session_state.pop("cn_sel", None)
-
-
 def _escolher_ativo(tk: str) -> None:
     st.session_state["cn_sel"] = tk
     st.session_state["cn_q_sel"] = st.session_state.get("cn_q", "")        # a lista recolhe até a pessoa digitar outra busca
@@ -400,21 +307,6 @@ def _dados_ativo(tk: str, p: dict) -> dict:
             "preco": float(p.get("c") or 0), "var": float(p.get("v") or 0)}
 
 
-def _html_linha(tk: str, p: dict, est: dict, lado: str) -> str:
-    """Linha da lista de escolha: ícone da classe, código, nome, preço e variação (venda: o que você tem e o resultado)."""
-    d = _dados_ativo(tk, p)
-    pos = (est.get("pos") or {}).get(tk)
-    if lado == "Vender" and pos:
-        res = (d["preco"] / pos["pm"] - 1) * 100 if pos.get("pm") else 0.0
-        sub, v, rot_ = f"{A.texto_qtd(tk, pos['q'])} em carteira", res, "resultado"
-    else:
-        sub, v, rot_ = d["nome"], d["var"], "no dia"
-    seta = "▲" if v >= 0 else "▼"
-    return (f"<div class='cn-l'><div class='cn-ic' style='--c:{html.escape(d['cl']['cor'])}'>{html.escape(d['cl']['icone'])}</div>"
-            f"<div class='cn-tx'><b>{html.escape(d['codigo'])}</b><span>{html.escape(sub)}</span>"
-            f"<em class='{'v' if v >= 0 else 'n'}'><u>{html.escape(moeda(d['preco']))}</u> {seta} {_p2(abs(v))}% <small>{rot_}</small></em></div></div>")
-
-
 def _partes_linha(tk: str, p: dict, est: dict, lado: str) -> tuple:
     """Como na referência: [selo + código + nome] [preço + variação] [Selecionar]."""
     d = _dados_ativo(tk, p)
@@ -432,12 +324,6 @@ def _partes_linha(tk: str, p: dict, est: dict, lado: str) -> tuple:
     return esq, meio
 
 
-def _html_topo(titulo: str, balao: str, pose: str, texto: str = "") -> str:
-    dsc = f"<div class='cn-dsc'>{html.escape(texto)}</div>" if texto else ""
-    return (f"<div class='cn-top'><div class='cn-tc'><div class='cn-tl'>{AT.img('grafico_alta', 34)}<b>{html.escape(titulo)}</b></div></div>"
-            f"<div class='cn-tr'><div class='cn-bal'>{html.escape(balao)}</div><div class='cn-mas'>{AT.img(AT.pose(pose), 92, alt='Caramelo, o mascote')}</div></div>{dsc}</div>")
-
-
 def _html_selecionado(tk: str, p: dict, lado: str, spark: list | None) -> str:
     d = _dados_ativo(tk, p)
     v = d["var"]
@@ -448,10 +334,6 @@ def _html_selecionado(tk: str, p: dict, lado: str, spark: list | None) -> str:
             f"<div class='cn-tx'><b class='gr'>{html.escape(d['codigo'])}</b><span>{html.escape(d['nome'])}</span></div></div>"
             f"<div class='cn-px'>{html.escape(moeda(d['preco']))}</div><div class='cn-pv' style='color:{cor}'>{seta} {_p2(abs(v))}% <small>no dia</small></div>"
             f"<div class='cn-gr'>{graf}</div></div>")
-
-
-def _html_painel(icone: str, titulo: str, corpo: str) -> str:
-    return f"<div class='cn-pn'><div class='cn-pt'>{AT.img(icone, 22)}<b>{html.escape(titulo)}</b></div>{corpo}</div>"
 
 
 def _vitrine(est: dict, precos: dict, por_classe: dict, disp: list, rot: dict, lado: str, extras: dict, sel: str | None = None) -> None:
@@ -881,29 +763,6 @@ CSS_NEG = ("<style>html body .stApp.stApp .ng-sec{font-weight:800;color:#CFC8EE;
            "html body [data-testid=\"stDialog\"] [role=\"dialog\"] .ng-tag.c{background:rgba(61,220,151,.18);color:#3DDC97 !important;-webkit-text-fill-color:#3DDC97 !important;border:1px solid #3DDC97}"
            "html body [data-testid=\"stDialog\"] [role=\"dialog\"] .ng-tag.v{background:rgba(255,107,138,.18);color:#FF6B8A !important;-webkit-text-fill-color:#FF6B8A !important;border:1px solid #FF6B8A}"
            "html body [data-testid=\"stDialog\"] [role=\"dialog\"] .ng-aviso{color:#B7AEE0 !important;-webkit-text-fill-color:#B7AEE0 !important;font-size:.74rem;text-align:center;margin:2px 6px 0}</style>")
-
-
-# ------------------------------------------------------------------ regras
-def _aba_regras():
-    st.markdown(f"""
-**Como funciona**
-- Quem entra agora começa com **{moeda(C.CAPITAL_NOVO, 0)} ** (carteiras criadas antes continuam com o capital que já tinham). Não há retiradas nem aportes em dinheiro: o patrimônio muda por resultado das ordens, proventos, variação de preço e pelos **bônus e recompensas da Wallet Game**, que entram no caixa mas **não contam como retorno** no ranking.
-- **O lucro vira capital.** O caixa inclui lucros de vendas e proventos, e você pode **reinvesti-lo** comprando mais. Há também o reinvestimento automático de proventos.
-- O ranking usa o **retorno em %** ((patrimônio − bônus recebidos) ÷ capital inicial − 1), não valores em reais. Entra já no primeiro fechamento ({C.pregoes(C.MIN_DIAS_RANKING)} ou mais).
-- **Execução imediata.** Ao enviar, a ordem é executada na hora, à cotação atual do ativo (fora do pregão, a última cotação disponível), e aparece na carteira e no extrato.
-- **Universo:** todas as classes do app, as que tiverem cotação no fechamento. **Ações, FIIs e ETFs** da B3; **ETFs dos EUA** (VOO, QQQ, SCHD, VT, convertidos para reais); **criptomoedas** (Binance, em reais); **renda fixa** (Tesouro Selic, Prefixado e IPCA+ sem cupom, e uma renda fixa que rende 100% do CDI);
-  **fundos**, que você adiciona pelo CNPJ (cota da CVM, com 1 a 2 dias úteis de atraso).
-- **Limite de concentração:** no máximo {C.MAX_PESO:.0%} do patrimônio em um único ativo. CDI e Tesouro Selic, onde se guarda a reserva, ficam de fora do limite. B3: cotas inteiras. Cripto, fundos e renda fixa aceitam frações.
-- **Custos:** {C.CUSTO_OPERACAO:.2%} em cada compra e venda na B3 e nos ETFs dos EUA, {A.CLASSES['cripto']['custo']:.2%} em cripto (taxa e diferença entre compra e venda) e zero em fundos e renda fixa. Proventos entram no caixa na data ex; desdobramentos ajustam a quantidade.
-  O jogo simplifica: não desconta imposto de renda, IOF nem taxas de administração além do que já está embutido na cota.
-- **Privacidade:** o ranking mostra só apelido e retorno %. Valores em reais, posições e ordens são só seus. Você pode trocar o apelido a qualquer momento.
-- Contas suspensas e apelidos ofensivos ou repetidos saem do ranking.
-- **Ranking ajustado ao risco:** além do retorno, dá para ordenar pelo **Sharpe** (retorno por unidade de risco), com {C.MIN_DIAS_RISCO} pregões ou mais. Evita premiar só quem apostou tudo num papel.
-- **Avisos:** você pode receber uma notificação quando subir de posição (ou entrar no Top 100, Top 10, Top 3 e 1º lugar).
-
-**Aviso:** competição educacional com dinheiro virtual. Não é recomendação de investimento, não há prêmios em dinheiro e resultados passados não garantem resultados futuros.
-Cotações vêm de fontes gratuitas e podem ter atrasos ou falhas.
-""")
 
 
 # ------------------------------------------------------------------ página

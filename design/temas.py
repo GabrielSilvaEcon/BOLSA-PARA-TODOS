@@ -29,19 +29,6 @@ MARCA = {"cor": "#B6F23E", "sobre": "#10240A", "fundo_logo": "#150F3A"}
 CONCHA = {"fundo": "#0F1020", "borda": "#262A40", "inativo": "#A7ABC4", "texto_ativo": "#FFFFFF"}
 DESTAQUE_NA_CONCHA = {"aprender": "#B6F23E", "analise": "#9C84FF", "wallet": "#D7B25E"}
 
-# Pares (texto, fundo, mínimo) conferidos em test_design.py (WCAG).
-def pares_de_contraste(tema_id: str) -> list:
-    t = TEMAS[tema_id]
-    return [(t["texto"], t["fundo"], 4.5), (t["texto"], t["cartao"], 4.5), (t["apoio"], t["fundo"], 4.5),
-            (t["apoio"], t["cartao"], 4.5), (t["sobre_destaque"], t["destaque"], 4.5),
-            (t["positivo"], t["cartao"], 3.0), (t["negativo"], t["cartao"], 3.0)]
-
-
-def pares_da_marca() -> list:
-    """Marca sobre os fundos escuros e texto escuro sobre a marca."""
-    escuros = [t for t in TEMAS.values() if t["escuro"]]
-    return [(MARCA["cor"], t["cartao"], 4.5) for t in escuros] + [(MARCA["sobre"], MARCA["cor"], 4.5)]
-
 
 def tema_da_area(area_id) -> str:
     """Área (id de areas.py) -> tema. Início, Conta, Planos e Ajuda (sem área) usam o tema da Análise."""

@@ -235,12 +235,6 @@ def meta_atingida(p: dict, agora: datetime | None = None) -> bool:
     return xp_hoje(p, agora) >= _jor(p)["meta_dia"]
 
 
-def definir_meta(p: dict, xp_por_dia: int) -> dict:
-    j = _jor(p)
-    j["meta_dia"] = _int(xp_por_dia, 5, 200, META_DIA_PADRAO)
-    return {**p, "jornada": j}
-
-
 ESCUDO_DIAS = 7            # um Escudo de ofensiva (Loja) vale 7 dias a partir da compra e perdoa UM dia sem estudo nesse período
 
 
@@ -346,10 +340,6 @@ def mapa(p: dict) -> list[dict]:
     return out
 
 
-def erros_para_revisar(p: dict) -> int:
-    return len(_jor(p)["erros"])
-
-
 def resumo(p: dict, agora: datetime | None = None) -> dict:
     j = _jor(p)
     return {"xp": j["xp"], "xp_hoje": xp_hoje(p, agora), "meta_dia": j["meta_dia"], "meta_atingida": meta_atingida(p, agora),
@@ -379,59 +369,3 @@ def estudo_real(unidade_id: str) -> dict | None:
     return ESTUDO_REAL.get(unidade_id)
 
 
-def estudo_real_liberado(p: dict, unidade_id: str) -> bool:
-    """Só aparece no fim da unidade: todas as lições feitas. (Não tranca nada: a tela só oferece o estudo, que é opcional.)"""
-    if unidade_id not in ESTUDO_REAL:
-        return False
-    u = J.UNIDADE_POR_ID.get(unidade_id)
-    j = _jor(p)
-    return bool(u) and all(l in j["licoes"] for l in u["licoes"])
-
-
-# ------------------------------------------------------------------ validação do conteúdo
-def validar_conteudo() -> list[str]:
-    """Lista de problemas encontrados nos dados (vazia = tudo certo). Usada nos testes ao adicionar conteúdo novo."""
-    import edu_conteudo as E
-    erros: list[str] = []
-    for u in J.UNIDADES:
-        for lid in u["licoes"]:
-            if lid not in J.LICAO_POR_ID:
-                erros.append(f"{u['id']}: lição {lid} não existe")
-    import jornada_icones as IC
-    for u in J.UNIDADES:
-        if not IC.existe(u.get("icone_svg", "")):
-            erros.append(f"{u['id']}: icone_svg inexistente")
-    for uid, e in ESTUDO_REAL.items():
-        if uid not in J.UNIDADE_POR_ID:
-            erros.append(f"estudo real: unidade {uid} não existe")
-        for sig in e["indicadores"]:
-            if sig not in E.INDICADORES:
-                erros.append(f"estudo real {uid}: indicador {sig} não existe")
-        if not e["indicadores"] and not e["risco"]:
-            erros.append(f"estudo real {uid}: sem indicador nem risco")
-    for l in J.LICOES:
-        if not IC.existe(l.get("icone_svg", "")):
-            erros.append(f"{l['id']}: icone_svg inexistente")
-        if l["unidade"] not in J.UNIDADE_POR_ID:
-            erros.append(f"{l['id']}: unidade inválida")
-        if l.get("aula") and l["aula"] not in E.POR_ID:
-            erros.append(f"{l['id']}: aula {l['aula']} não existe em edu_conteudo")
-        if not 3 <= len(l["exercicios"]) <= 8:
-            erros.append(f"{l['id']}: use de 3 a 8 exercícios")
-        for e in l["exercicios"]:
-            t = e.get("tipo")
-            if t not in J.TIPOS:
-                erros.append(f"{e['id']}: tipo inválido")
-            elif not e.get("pergunta") or not e.get("explicacao"):
-                erros.append(f"{e['id']}: falta pergunta ou explicação")
-            elif t in ("escolha", "completar") and not (isinstance(e.get("correta"), int) and 0 <= e["correta"] < len(e.get("opcoes", []))):
-                erros.append(f"{e['id']}: índice da resposta correta inválido")
-            elif t == "completar" and "___" not in e["pergunta"]:
-                erros.append(f"{e['id']}: falta '___' na frase")
-            elif t == "vf" and not isinstance(e.get("correta"), bool):
-                erros.append(f"{e['id']}: vf precisa de True/False")
-            elif t == "ordenar" and len(set(e.get("itens", []))) < 3:
-                erros.append(f"{e['id']}: ordenar precisa de 3+ itens distintos")
-            elif t == "pares" and len(e.get("pares", [])) < 3:
-                erros.append(f"{e['id']}: pares precisa de 3+ pares")
-    return erros

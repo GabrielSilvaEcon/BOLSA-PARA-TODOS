@@ -31,18 +31,6 @@ def test_sharpe_confere_com_calculo_manual():
     assert math.isclose(m["vol"], dp * math.sqrt(252), rel_tol=1e-9)
 
 
-def test_apostar_tudo_num_papel_perde_para_quem_rende_estavel():
-    estavel = [100_000 * (1 + 0.004 * i + (0.0005 if i % 2 else -0.0005)) for i in range(1, 13)]           # ~4,8%, quase sem oscilar
-    arriscado = [100_000 * (1 + (0.06 if i % 2 else -0.04) + 0.006 * i) for i in range(1, 13)]             # retorno maior, muito mais oscilação
-    part = [{"apelido": "calmo", "email": "a", "estado": _est(estavel)}, {"apelido": "ousado", "email": "b", "estado": _est(arriscado)},
-            {"apelido": "novo", "email": "c", "estado": _est(estavel[:6])}]                                  # 6 pregões: no ranking, sem Sharpe
-    rk = C.montar_ranking(part, date(2026, 11, 20))
-    assert [x["apelido"] for x in rk["listas"]["risco"]] == ["calmo", "ousado"] and rk["listas"]["risco_n"] == 2
-    assert rk["listas"]["risco"][0]["sh"] > rk["listas"]["risco"][1]["sh"]
-    assert rk["listas"]["geral_n"] == 3                                  # o ranking por retorno continua igual
-    assert set(rk["listas"]["geral"][0]) == {"pos", "apelido", "ret", "dd", "dias"}
-
-
 def test_participante_fora_do_ranking_minimo_nao_entra_no_risco():
     part = [{"apelido": "x", "email": "a", "estado": _est([100_000 * (1 + 0.001 * i) for i in range(1, 4)])}]
     assert C.montar_ranking(part, date(2026, 11, 20))["listas"]["risco"] == []

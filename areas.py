@@ -99,11 +99,6 @@ def visual_cartao(titulo: str) -> dict:
     return {**VISUAL_PADRAO, **VISUAL_CARTOES.get(titulo, {})}
 
 
-def total_analises(area_id: str) -> int:
-    """Quantas páginas aparecem nos cartões da tela-raiz da área."""
-    return sum(len(c["paginas"]) for c in HUBS.get(area_id, {}).get("cartoes", []))
-
-
 def ids() -> list:
     """Ids das áreas, na ordem da barra."""
     return [a["id"] for a in AREAS]
@@ -178,14 +173,6 @@ def ultima_pagina(area_id: str, memoria: dict = None) -> str:
         return entrada
     lembrada = (memoria or {}).get(area_id)
     return lembrada if lembrada in paginas else paginas[0]
-
-
-def grupo_aberto(url_path: str, area_id: str):
-    """Chave do grupo do menu lateral que abre sozinho: o `grupo_menu` da área, quando a página atual é a raiz da área,
-    o Início ou outra página sem área. Em páginas de uma área o próprio menu já abre o grupo da página."""
-    if area_da_pagina(url_path) and url_path != pagina_inicial(area_id):
-        return None
-    return (_area(area_id) or {}).get("grupo_menu")
 
 
 def pagina_inicial(area_id: str) -> str:

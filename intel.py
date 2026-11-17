@@ -23,7 +23,7 @@ import math
 import re
 import unicodedata
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 import numpy as np
@@ -818,22 +818,6 @@ def montar_ranking(itens: list[dict], classe: str, titulo: str | None = None, pr
             "criterios": FILTROS_CLASSE.get(classe, ""), "indicadores": sorted({k for i in itens for k in (i.get("pilares") or {})}),
             "atualizacao": max(datas) if datas else None, "prioridades_aplicadas": pri,
             "aviso": "Ranking dentro da classe. Nota é triagem educacional; não é ordem de compra."}
-
-
-def ranking_por_valor(itens: list[dict], classe: str, chave: str, rotulo: str, crescente: bool, ind_rotulo: str, unidade: str = "") -> dict:
-    """Rankings temáticos (custo, consistência de renda, utilização...) por um único indicador, só com quem tem o dado."""
-    mistura = {i.get("classe") for i in itens if i.get("classe")} - {classe}
-    if mistura:
-        raise ValueError(f"Ranking de {classe} não pode misturar classes: {sorted(mistura)}")
-    com = [(i, (i.get("ind") or {}).get(chave)) for i in itens]
-    ok = sorted([(i, v) for i, v in com if _ok(v)], key=lambda x: x[1], reverse=not crescente)
-    sem = [i for i, v in com if not _ok(v)]
-    linhas = [{"posicao": n + 1, "id": i["id"], "nome": i.get("nome"), "valor": float(v), "unidade": unidade, "data_ref": i.get("data_ref"),
-               "fonte": i.get("fonte"), "riscos": i.get("riscos") or [], "justificativa": f"{ind_rotulo}: {_br(v, 2)}{unidade}."}
-              for n, (i, v) in enumerate(ok)]
-    return {"classe": classe, "titulo": rotulo, "itens": linhas, "sem_dado": [i["id"] for i in sem], "criterios": ind_rotulo,
-            "atualizacao": max([i.get("data_ref") for i in itens if i.get("data_ref")], default=None),
-            "aviso": "Um único indicador não define qualidade: use junto com a nota composta."}
 
 
 # =============================================================================== monitoramento: o que mudou

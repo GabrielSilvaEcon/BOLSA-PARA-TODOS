@@ -72,15 +72,6 @@ def html_moldura(interior: str, ef: dict | None) -> str:
     return f"<div class='mo {estilo}' style='--mc:{_e(cor)};--mg:{mg}'>{interior}</div>"
 
 
-# ------------------------------------------------------------------ fundo do cartão de perfil
-def estilo_fundo(ef: dict | None) -> str:
-    """Valor do atributo style para o cartão do perfil (vazio sem fundo equipado)."""
-    if not ef:
-        return ""
-    luz = f"radial-gradient(circle at 100% 0%,color-mix(in srgb,{_e(ef['luz'])} 38%,transparent),transparent 55%)," if ef.get("luz") else ""
-    return f"background:{luz}linear-gradient(135deg,{_e(ef.get('de', '#3A2C86'))},{_e(ef.get('para', '#1B1545'))}) !important"
-
-
 # ------------------------------------------------------------------ efeitos de celebração (confete)
 CSS_CONFETE = """<style>
 .fx{position:absolute;inset:0;pointer-events:none;overflow:hidden}

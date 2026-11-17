@@ -12,7 +12,6 @@ Princípios
 from __future__ import annotations
 
 import html
-from datetime import datetime, timezone
 
 import arte_tickerhunters as AT
 
@@ -234,25 +233,3 @@ def html_recompensa(titulo: str, itens: list[dict], subtitulo: str = "", raridad
             + (f"<div class='fxa-s'>{_e(subtitulo)}</div>" if subtitulo else "") + "<div class='lin'>" + "".join(chips) + "</div></div>")
 
 
-# ------------------------------------------------------------------ 6. promoção de rank
-def html_rank(novo: str, anterior: str | None = None, animar: bool = True) -> str:
-    """Promoção de rank (bronze, prata, ouro, platina, diamante, mestre). `anterior` mostra o rank antigo saindo."""
-    n = novo if novo in AT.RANKS else "bronze"
-    ant = ""
-    if anterior in AT.RANKS and anterior != n:
-        ant = f"<div class='velho'>{AT.img(AT.rank(anterior), 84)}</div>"
-    r = {"bronze": "comum", "prata": "comum", "ouro": "raro", "platina": "epico", "diamante": "epico", "mestre": "lendario"}[n]
-    return (_raiz("fxa-rank", r, animar, f"Promoção! Você chegou ao rank {AT.RANK_ROTULO[n]}.") + "<div class='fxa-onda'></div>"
-            + f"<div class='fxa-cena'>{ant}<div class='novo'>{AT.img(AT.rank(n), 124, 'Rank ' + AT.RANK_ROTULO[n])}</div></div>"
-            + _brilhos(r, None if r != "comum" else 5, 0.7) + "<div class='fxa-t'>Promoção de rank!</div>"
-            + f"<div class='fxa-s'>Você chegou ao <b>{AT.RANK_ROTULO[n]}</b></div></div>")
-
-
-# ------------------------------------------------------------------ 7. destaque por raridade (para cartões de item)
-def moldura_raridade(conteudo_html: str, raridade: str) -> str:
-    """Envolve um cartão com o brilho da raridade (raro: halo azul; épico: halo roxo + brilho que passa; lendário: halo dourado que pulsa 2 vezes).
-    Comum devolve o conteúdo como está. Só decoração: o cartão continua com o mesmo texto."""
-    r = AT.raridade_ok(raridade)
-    if r == "comum":
-        return conteudo_html
-    return f"<div class='fxa-{r}' style='border-radius:18px'>{conteudo_html}</div>"

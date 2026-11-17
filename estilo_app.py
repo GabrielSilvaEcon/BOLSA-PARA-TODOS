@@ -6,21 +6,6 @@ from __future__ import annotations
 _Q = "html body .stApp.stApp.stApp"
 
 
-def css_selecao(chaves: list[str]) -> str:
-    """Pílulas (st.pills e st.segmented_control) com as chaves dadas: arredondadas, quebram de linha e a escolhida em roxo."""
-    r = []
-    for k in chaves:
-        b = f'{_Q} .st-key-{k} [data-testid^="stBaseButton-pills"],{_Q} .st-key-{k} [data-testid^="stBaseButton-segmented"]'
-        r.append(
-            f'{_Q} .st-key-{k} [data-testid="stButtonGroup"]{{flex-wrap:wrap !important;gap:8px !important}}'
-            f'{b}{{border-radius:999px !important;min-height:38px !important;padding:0 14px !important;background:rgba(255,255,255,.06) !important;'
-            'border:1.5px solid rgba(197,179,255,.4) !important;box-shadow:0 3px 0 rgba(10,8,40,.5) !important}'
-            f'{b} :is(p,span,div){{color:#E8E2FF !important;-webkit-text-fill-color:#E8E2FF !important;font-weight:700 !important;font-size:.88rem !important}}'
-            f'{_Q} .st-key-{k} [data-testid$="Active"]{{background:linear-gradient(180deg,#8B6CFF,#6B47F5) !important;border-color:#C5B3FF !important}}'
-            f'{_Q} .st-key-{k} [data-testid$="Active"] :is(p,span,div){{color:#fff !important;-webkit-text-fill-color:#fff !important}}')
-    return "<style>" + "".join(r) + "</style>"
-
-
 def css_voltar(prefixo: str) -> str:
     """Botão Voltar padrão do app (chaves que começam com `prefixo`): quadrado arredondado só com a seta, borda roxa e brilho, como no topo do Quiz.
     O texto "Voltar" fica escondido (continua para leitores de tela e no balão de ajuda)."""

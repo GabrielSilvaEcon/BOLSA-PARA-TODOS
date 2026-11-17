@@ -6,7 +6,6 @@ blockchain.com (Bitcoin), RPC da Solana e GitHub. Nada é inventado: o que nenhu
 """
 from __future__ import annotations
 
-import html as _html
 import re
 from urllib.parse import quote
 from datetime import date, datetime, timezone

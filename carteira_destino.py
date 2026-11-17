@@ -27,10 +27,6 @@ def normalizar(destino) -> str:
     return VIRTUAL if eh_virtual(destino) else REAL
 
 
-def chave_lotes(destino) -> str:
-    return CHAVE_LOTES[normalizar(destino)]
-
-
 def _definir(chave: str, valor):
     st.session_state[chave] = valor
 

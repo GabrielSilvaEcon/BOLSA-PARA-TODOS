@@ -392,12 +392,6 @@ def de_disparo(d: dict, origem: str = "intel", agora: datetime | None = None, cl
             "dados": dados}
 
 
-def de_sistema(titulo: str, texto: str, dedup: str, importancia: str = "baixa", agora: datetime | None = None) -> dict:
-    agora = agora or seg.agora()
-    return de_disparo({"tipo": "sistema", "regra_id": "sistema", "ativo": "", "prioridade": importancia, "titulo": titulo, "texto": texto,
-                       "assinatura": dedup}, "sistema", agora)
-
-
 # ------------------------------------------------------------------ prioridade e explicação (regras explicáveis)
 def pontuar(n: dict, carteira: dict | None = None) -> tuple[str, str]:
     """(importância final, motivo). Nunca REBAIXA o que a pessoa escolheu; só sobe quando o ativo pesa na carteira ou a fonte é oficial."""

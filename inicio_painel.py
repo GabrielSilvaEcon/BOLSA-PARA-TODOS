@@ -77,16 +77,6 @@ def cotacoes(simbolos: list) -> dict:
     return {s: r for s, r in zip(simbolos, res) if r}
 
 
-def selic_atual():
-    """Meta da Selic (% ao ano) pelo catálogo de indicadores do app, ou None."""
-    try:
-        import macro_rede
-        v = (macro_rede.indicador("selic_meta") or {}).get("valor")
-        return float(v) if v is not None else None
-    except Exception:
-        return None
-
-
 def mercado_hoje() -> list:
     """Itens do bloco 'Mercado hoje': [{rotulo, valor, var}]. Lista vazia se nada respondeu."""
     cot = cotacoes([s for _, s, _, _ in MERCADO])
@@ -159,39 +149,10 @@ def html_aprender(titulo_licao: str, unidade: str, feitas: int, total: int, ofen
             f'<div class="in-ap-s"><span>{feitas} de {total} lições</span><span>{xp} XP</span>{seq}</div></div>')
 
 
-def html_jornada(titulo_licao: str, unidade: str, feitas: int, total: int, iniciou: bool) -> str:
-    """Cartão da jornada: onde o usuário parou (próxima lição) e o progresso real. Sem lição restante, parabeniza."""
-    pct = int(round(100 * feitas / total)) if total else 0
-    humor = "festa" if total and feitas >= total else "normal"
-    k = unidade if iniciou else "Primeira lição"
-    return (f'<div class="in-jr"><div class="in-jr-tico">{ART.mascote(humor=humor, tamanho=64)}</div>'
-            f'<div class="in-jr-h">Sua jornada de aprendizado</div><div class="in-jr-s">Continue evoluindo no mundo dos investimentos.</div>'
-            f'<div class="in-jr-k">{html.escape(k)}</div><div class="in-jr-t">{html.escape(titulo_licao)}</div>'
-            f'<div class="in-ap-bar"><i style="width:{pct}%"></i></div><div class="in-ap-s"><span>{feitas} de {total} lições</span><span>{pct}%</span></div></div>')
-
-
-def html_jornada_vazia() -> str:
-    return ('<div class="in-jr"><div class="in-jr-h">Sua jornada de aprendizado</div>'
-            '<div class="in-jr-s">Continue evoluindo no mundo dos investimentos.</div></div>')
-
-
-def html_wallet() -> str:
-    ic = f'<span class="ch"><img src="{IC.uri("moeda", "#1B1442")}" alt=""></span>'
-    return (f'<div class="in-wg">{ic}<div class="in-wg-h">Coloque seu conhecimento à prova</div>'
-            '<div class="in-wg-s">Pratique seus conhecimentos, simule investimentos e acompanhe o impacto das suas decisões em uma carteira virtual.</div>'
-            '<div class="in-wg-a">Simulação · sem dinheiro de verdade</div></div>')
-
-
 def html_secao(titulo: str, sub: str = "", icone: str = "") -> str:
     s = f"<small>{html.escape(sub)}</small>" if sub else ""
     ic = f'<span class="ch"><img src="{IC.uri(icone, "#FFFFFF")}" alt=""></span>' if icone else ""
     return f'<div class="in-sec">{ic}<b>{html.escape(titulo)}</b>{s}</div>'
-
-
-# ------------------------------------------------------------------ CSS
-def css_home() -> str:
-    ferr = "".join(f'.st-key-in_ferr [class*="st-key-in_fe_{i}"]{{--ac:{cor};--ic:url("{IC.uri(n, _icone_sobre(cor))}");}}' for i, _, _, n, cor in FERRAMENTAS)
-    return "<style>" + _CSS_HOME + ferr + "</style>"
 
 
 _CSS_HOME = """

@@ -245,10 +245,6 @@ def _chave(rod: int, jog: str) -> str:
     return f"{rod}:{jog}"
 
 
-def inicio_replay(p: dict) -> float:
-    return p["t_fase"] + T_ANALISE_S if p["fase"] == "analise" else p["t_fase"]
-
-
 # ---- pausa técnica: intervalos [ini, fim] gravados na partida. É do SERVIDOR (para os dois jogadores ao mesmo tempo); nenhum jogador pausa sozinho.
 def pausada(p: dict) -> bool:
     return any(x.get("fim") is None for x in p.get("pausas") or [])

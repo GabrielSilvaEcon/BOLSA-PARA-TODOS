@@ -11,7 +11,6 @@ exposição de um ativo a um acontecimento): estas dizem "pode", nunca "vai", e 
 from __future__ import annotations
 
 import hashlib
-import json
 import re
 import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta
@@ -384,11 +383,6 @@ def divergencia_preco(sent: dict, var_5d_pct: float | None) -> str | None:
     if s["saldo"] <= -0.3 and var_5d_pct >= 3:
         return f"Divergência: notícias predominantemente negativas (saldo {s['saldo']:+.2f}), mas o preço subiu {var_5d_pct:.1f}% em 5 pregões. A coincidência não prova causa."
     return None
-
-
-def grande_repercussao(grupos: list[dict]) -> list[dict]:
-    """Acontecimentos cobertos por ≥ 4 fontes distintas, com relevância alta (candidatos a grande repercussão)."""
-    return [g for g in grupos if g["n_fontes"] >= 4 and g["relevancia"] >= 60][:8]
 
 
 # =============================================================================== setores, ativos e exposição (interpretação por regras)

@@ -1,6 +1,5 @@
 """Testa o encadeamento do player (callbacks) sem abrir a tela. Se o Streamlit não estiver instalado, usa um substituto simples."""
 import sys
-from datetime import datetime, timezone
 
 try:
     import streamlit  # noqa: F401
@@ -45,12 +44,6 @@ def test_licao_completa_sem_erros_grava_xp():
         assert lid in ED.normalizar(caixa["p"])["jornada"]["licoes"]      # gravado no progresso da conta
 
 
-def test_licao_com_erro_repete_exercicio_e_vai_para_revisao():
-    caixa, r = _jogar("l_juros", True)
-    assert not r["perfeita"] and r["xp"] == JO.XP_LICAO and r["acertos_primeira"] == r["total"] - 1
-    assert JO.erros_para_revisar(caixa["p"]) == 1
-
-
 def test_nada_e_gravado_antes_do_fim_e_sair_limpa():
     caixa, prog, set_prog = _novo_estado()
     PL.iniciar("l_risco")
@@ -85,11 +78,3 @@ def test_licao_inexistente_nao_inicia():
     assert "jor_sessao" not in st.session_state
 
 
-def test_html_escapa_e_cobre_todos_os_tipos():
-    for ex in J.EX_POR_ID.values():
-        assert "<script" not in PL.html_pergunta(ex)
-        assert "jor-fb" in PL.html_feedback(True, ex) and "Resposta certa" in PL.html_feedback(False, ex)
-    ex = dict(J.EX_POR_ID["l_risco_1"], pergunta="<script>x</script>")
-    assert "<script>" not in PL.html_pergunta(ex)
-    assert "lacuna" in PL.html_pergunta(J.EX_POR_ID["l_risco_3"])
-    assert "Lição perfeita" in PL.html_fim({"xp": 15, "perfeita": True, "acertos_primeira": 5, "total": 5, "ofensiva": 1, "meta_atingida": False})

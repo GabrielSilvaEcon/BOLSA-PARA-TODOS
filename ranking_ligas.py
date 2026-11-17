@@ -4,7 +4,6 @@ A classificação mostra SOMENTE participantes reais (o ranking publicado). Perf
 `montar(..., demo=True)` os gera, e nenhuma tela passa esse argumento. Funções puras, sem rede e sem Streamlit; nada daqui é gravado."""
 from __future__ import annotations
 
-import html
 import random
 
 DEMO = False                      # nunca ligar em produção: a competição representa só usuários reais
@@ -127,25 +126,3 @@ html body .stApp.stApp .cl-f{color:#9C94C9;font-size:.72rem;margin:2px 2px 0;}
 </style>"""
 
 
-def html_cartoes(itens: list[dict], ordem: str) -> str:
-    """Cartões da classificação. O valor grande à direita e o campo em dourado seguem a ordem escolhida."""
-    med = {1: "🥇", 2: "🥈", 3: "🥉"}
-    out = []
-    for r in itens:
-        pos = r["pos"]
-        liga = r.get("liga")
-        tags = (f"<span class='cl-tag' style='border-color:{html.escape(liga[1])}99;color:{html.escape(liga[1])}'>{html.escape(liga[0])}</span>" if liga else "")
-        tags += "<span class='cl-tag eu'>você</span>" if r.get("eu") else ""
-        tags += "<span class='cl-tag'>demonstração</span>" if r.get("demo") else ""
-        ret = r.get("ret")
-        grande, cls = {"Retorno": (_pc(ret), "pos" if (ret or 0) > 0 else ("neg" if (ret or 0) < 0 else "")),
-                       "Patrimônio": (_compacto(r.get("pat")), ""),
-                       "Risco": (f"Sharpe {str(round(r['sh'], 2)).replace('.', ',')}" if r.get("sh") is not None else "—", "")}[ordem]
-        dias = r.get("dias")
-        cel = [("Retorno", "Retorno", _pc(ret)), ("Patrimônio", "Patrimônio", _compacto(r.get("pat"))),
-               ("", "Queda máx.", _pc(r.get("dd"), False)), ("Risco", "Pregões", str(dias) if dias is not None else "—")]
-        grade = "".join(f"<div class='{'on' if k == ordem else ''}'><b>{html.escape(v)}</b><i>{html.escape(rot)}</i></div>" for k, rot, v in cel)
-        out.append(f"<div class='cl-c{' eu' if r.get('eu') else ''}'><div class='cl-t'><div class='cl-p'>{med.get(pos, pos)}</div>"
-                   f"<div class='cl-n'><div class='cl-nome'>{html.escape(str(r.get('apelido', '')))}</div><div>{tags}</div></div>"
-                   f"<div class='cl-v {cls}'>{html.escape(grande)}</div></div><div class='cl-g'>{grade}</div></div>")
-    return CSS + "<div class='cl-l'>" + "".join(out) + "</div>"

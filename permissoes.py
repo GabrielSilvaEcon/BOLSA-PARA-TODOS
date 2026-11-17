@@ -28,10 +28,6 @@ def tem(papel: str | None, permissao: str) -> bool:
     return permissao in PERMISSOES[papel_valido(papel)]
 
 
-def pode_acessar_admin(papel: str | None) -> bool:
-    return tem(papel, "admin.resumo")
-
-
 def papel_efetivo(papel_gravado: str | None, email: str, admins_secrets: list[str] | tuple[str, ...]) -> str:
     """Papel usado na sessão: o gravado no banco, elevado a 'admin' se o e-mail estiver na lista dos secrets.
     A lista dos secrets só eleva; nunca rebaixa nem cria outros papéis."""

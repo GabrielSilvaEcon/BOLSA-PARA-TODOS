@@ -107,15 +107,6 @@ def validar_senha(senha: str | None, email: str = "", nome: str = "") -> list[st
     return erros
 
 
-def forca_senha(senha: str | None) -> tuple[int, str]:
-    """(0 a 4, rótulo) só para a barra de força na tela; a regra de aceitação é validar_senha."""
-    s = senha or ""
-    pts = sum([len(s) >= 10, len(s) >= 14, any(c.islower() for c in s) and any(c.isupper() for c in s),
-               any(c.isdigit() for c in s) and any(c.isalpha() for c in s), any(not c.isalnum() for c in s)])
-    pts = min(4, max(0, pts - (1 if len(s) < SENHA_MIN else 0)))
-    return pts, ("muito fraca", "fraca", "razoável", "boa", "forte")[pts]
-
-
 # ------------------------------------------------------------------ hash de senha (scrypt)
 _N, _R, _P, _DK = 2 ** 15, 8, 1, 32
 _MEM = 64 * 1024 * 1024
@@ -273,26 +264,6 @@ def validar_ticker(t) -> str | None:
     """Código de ativo permitido (ações, FIIs, ETFs, cripto, índices) ou None. Nunca contém '/', '?', '#', espaço ou '..'."""
     v = str(t or "").strip().upper()
     return v if _TICKER.match(v) and ".." not in v else None
-
-
-def segmento_url(txt) -> str:
-    """Texto seguro para entrar como UM pedaço de caminho de URL (sem '/', '?', '#', '..' nem caracteres de controle)."""
-    from urllib.parse import quote
-    return quote(str(txt or "").strip().replace("..", ""), safe="")
-
-
-def limitar_texto(txt, maximo: int = 200) -> str:
-    """Texto livre: sem caracteres de controle, espaços aparados e tamanho limitado."""
-    s = "".join(ch for ch in str(txt or "") if ch == "\n" or ch >= " " and ch != "\x7f")
-    return s.strip()[:maximo]
-
-
-def inteiro_entre(v, minimo: int, maximo: int, padrao: int) -> int:
-    try:
-        x = int(v)
-    except (TypeError, ValueError):
-        return padrao
-    return x if minimo <= x <= maximo else padrao
 
 
 _FORMULA = ("=", "+", "-", "@", "\t", "\r")

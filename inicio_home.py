@@ -1,7 +1,6 @@
 """Tela inicial em formato de aplicativo (banner de boas-vindas + 6 atalhos). Só visual: os atalhos usam as páginas que já existem."""
 from __future__ import annotations
 
-import html
 
 import jornada_arte as ART
 import jornada_icones as IC

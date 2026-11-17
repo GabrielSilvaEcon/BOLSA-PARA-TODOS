@@ -46,11 +46,6 @@ def nominal_para_efetiva(nominal_aa: float, capitalizacoes: int = 12) -> float:
     return (1.0 + nominal_aa / capitalizacoes) ** capitalizacoes - 1.0
 
 
-def efetiva_para_nominal(efetiva_aa: float, capitalizacoes: int = 12) -> float:
-    """Efetiva anual → nominal com n capitalizações por ano: n · ((1 + e)^(1/n) − 1)."""
-    return capitalizacoes * ((1.0 + efetiva_aa) ** (1.0 / capitalizacoes) - 1.0)
-
-
 def fisher(nominal: float, inflacao: float) -> float:
     """Rentabilidade real (Fisher): (1 + nominal) / (1 + inflação) − 1."""
     return (1.0 + nominal) / (1.0 + inflacao) - 1.0
@@ -74,17 +69,6 @@ def fatores_inflacao(inflacao, meses: int) -> np.ndarray:
         a = anos[min((t - 1) // 12, len(anos) - 1)]
         f[t] = f[t - 1] * (1.0 + mensal(a))
     return f
-
-
-def poder_de_compra(valor_hoje: float, inflacao, anos: float) -> float:
-    """Quanto R$ valor_hoje compraria daqui a `anos` em termos de hoje (valor / índice de preços)."""
-    f = fatores_inflacao(inflacao, int(round(anos * 12)))
-    return valor_hoje / f[-1]
-
-
-def corrigir_pela_inflacao(valor_hoje: float, inflacao, anos: float) -> float:
-    """Valor nominal futuro necessário para manter o poder de compra de `valor_hoje`."""
-    return valor_hoje * fatores_inflacao(inflacao, int(round(anos * 12)))[-1]
 
 
 def inflacao_media_anual(inflacao, meses: int) -> float:
@@ -547,19 +531,6 @@ def simular_classe(classe: str, cenario: str, macro: dict, base: dict, rf_cfg: d
     return res
 
 
-def comparar_cenarios_classe(classe: str, macro: dict, base: dict, rf_cfg: dict | None = None, ajustes_por_cenario: dict | None = None) -> dict:
-    """Roda os três cenários da classe. Devolve {cenario: resultado} e as diferenças contra o moderado."""
-    out = {}
-    for c in CENARIOS:
-        out[c] = simular_classe(classe, c, macro, base, rf_cfg, (ajustes_por_cenario or {}).get(c))
-    mod = out["moderado"]["resumo"]["total_liquido"]
-    for c in CENARIOS:
-        r = out[c]["resumo"]
-        r["dif_vs_moderado"] = r["total_liquido"] - mod
-        r["dif_vs_moderado_pct"] = (r["total_liquido"] / mod - 1.0) if mod else None
-    return out
-
-
 # =============================================================================== aposentadoria
 def valor_presente_anuidade_real(saque_real: float, meses: int, taxa_real_aa: float, momento: str = "inicio") -> float:
     """Patrimônio (em termos reais) para sustentar `meses` saques reais mensais de `saque_real` com retorno real `taxa_real_aa`:
@@ -925,8 +896,3 @@ def serie_poder_de_compra(valor_nominal: float, inflacao, anos: int) -> pd.DataF
     return pd.DataFrame(linhas)
 
 
-def rentabilidade_real_projecao(res: dict) -> dict:
-    """Resumo nominal × real de uma projeção já calculada."""
-    r = res["resumo"]
-    return {"nominal": r["total_liquido"], "real": r["valor_real"], "perda_inflacao": r["total_liquido"] - r["valor_real"],
-            "rent_nominal_aa": r["rentabilidade_anualizada"], "rent_real_aa": r["rentabilidade_real_anualizada"], "inflacao_media_aa": r["inflacao_media_aa"]}

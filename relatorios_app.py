@@ -8,7 +8,7 @@ Cada pessoa vê apenas a própria carteira (a sessão é dela) e nenhum dado pes
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import date
 
 import numpy as np
 import pandas as pd

@@ -175,11 +175,6 @@ def cagr_periodos(serie, periodos=PERIODOS, tol_dias: int | None = None) -> dict
     return out
 
 
-def anos_ate(serie, anos: int) -> bool:
-    """A série tem história suficiente para o período pedido?"""
-    return cagr_periodos(serie, (anos,))[anos].status != PERIODO_INSUFICIENTE
-
-
 # =============================================================================== variações
 def variacao_anual(serie) -> pd.Series:
     """Variação de um ano para o outro (fração). Só existe quando o ano anterior é positivo e o atual é número."""

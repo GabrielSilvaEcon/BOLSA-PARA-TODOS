@@ -9,13 +9,10 @@ from datetime import date, datetime, timezone
 import streamlit as st
 
 import banco
-import estilo_app as ES
 import arte_tickerhunters as AT
-import jornada_arte as ART
 import moedas_arte as MA
 import wallet_game as W
 from wallet_game import moeda
-from design import componentes as DC
 
 CH = "wg_res"
 CSS = """<style>
@@ -117,11 +114,6 @@ def emblema_rank(cor: str, nome: str, tam: int = 64) -> str:
             f"<text x='32' y='41' text-anchor='middle' font-family='sans-serif' font-weight='900' font-size='26' fill='#fff'>{ini}</text></svg>")
 
 
-def _fala(texto: str, festa: bool = False, pose: str | None = None) -> str:
-    return (f"<div class='wg-fala{' festa' if festa else ''}'><div>{ART.mascote(festa=festa, tamanho=88, humor=pose or ('festa' if festa else None))}</div>"
-            f"<div class='b'>{_e(texto)}</div></div>")
-
-
 def _chips(rec: dict) -> str:
     out = ""
     if rec.get("xp"):
@@ -131,46 +123,6 @@ def _chips(rec: dict) -> str:
     if rec.get("capital"):
         out += f"<span class='wg-chip c'>+{moeda(rec['capital'])}</span>"
     return out
-
-
-def _animar() -> bool:
-    try:
-        import fx_arte as FX
-        return FX.animar_padrao(st.session_state)
-    except Exception:
-        return True
-
-
-def _festa_rank(x: dict) -> str:
-    """Promoção de rank com a animação do fx_arte (some se animações desligadas: fica só o resultado). Cai no balão simples se algo falhar."""
-    try:
-        import fx_arte as FX
-        ids = [r[0] for r in W.RANKS]
-        novo = str(x.get("nome", "")).lower()
-        if novo not in ids:
-            raise ValueError(novo)
-        ant = ids[ids.index(novo) - 1] if ids.index(novo) > 0 else None
-        return FX.CSS + FX.html_rank(novo, ant, animar=_animar())
-    except Exception:
-        return _fala(f"Subiu de rank! Você agora é {x.get('nome', '')}. Muito bem!", True, "conquistas")
-
-
-def _festa_missao(x: dict) -> str:
-    """Prêmios da missão (XP, TC, T$) em fichas animadas. Vazio se a missão não pagou nada ou se o componente falhar."""
-    try:
-        import fx_arte as FX
-        itens = []
-        if x.get("xp"):
-            itens.append({"sprite": "xp", "valor": f"+{int(x['xp'])}", "rotulo": "XP"})
-        if x.get("tc"):
-            itens.append({"sprite": "tc", "valor": f"+{int(x['tc'])}", "rotulo": "TickerCoins"})
-        if x.get("capital"):
-            itens.append({"sprite": "ts", "valor": f"+{moeda(x['capital'])}", "rotulo": "Dinheiro virtual"})
-        if not itens:
-            return ""
-        return FX.CSS + FX.html_recompensa("Missão concluída!", itens, str(x.get("nome", "")), "comum", animar=_animar())
-    except Exception:
-        return ""
 
 
 def _chips_evento(x: dict) -> str:

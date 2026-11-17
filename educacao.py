@@ -182,21 +182,6 @@ def conquistas(p: dict) -> list[dict]:
     return [{"id": i, "titulo": t, "descricao": d, "ok": bool(f(p))} for i, t, d, f in CONQUISTAS]
 
 
-def aulas_na_semana(p: dict, agora: datetime | None = None) -> int:
-    """Aulas lidas pela primeira vez nos últimos 7 dias (meta de aprendizagem)."""
-    p = normalizar(p)
-    ref = (agora or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    n = 0
-    for a in p["aulas"].values():
-        try:
-            d = datetime.fromisoformat(a.get("primeira"))
-        except (TypeError, ValueError):
-            continue
-        if 0 <= (ref - d).total_seconds() <= 7 * 86400:
-            n += 1
-    return n
-
-
 def dificuldades(p: dict) -> list[dict]:
     """Assuntos em que a última resposta de pelo menos 2 perguntas indica acerto abaixo de 60%."""
     p = normalizar(p)
@@ -269,11 +254,6 @@ def explicar_indicador(termo: str) -> dict | None:
 def indicadores_da_classe(classe: str | None) -> list[str]:
     """Indicadores aplicáveis à classe. classes=[] vale para qualquer ativo com histórico de preços (RSI, volatilidade...)."""
     return [k for k, v in E.INDICADORES.items() if (not v["classes"]) or classe in v["classes"]]
-
-
-def aplicavel(sigla: str, classe: str) -> bool:
-    k = chave_indicador(sigla)
-    return bool(k) and ((not E.INDICADORES[k]["classes"]) or classe in E.INDICADORES[k]["classes"])
 
 
 def buscar_glossario(consulta: str = "", glossario_app: dict | None = None) -> list[dict]:
@@ -374,16 +354,6 @@ def metricas_risco(precos, dias_ano: int = 252) -> dict | None:
     if vol is None or not dd.get("ok"):
         return None
     return {"retorno": float(s.iloc[-1] / s.iloc[0] - 1), "volatilidade": vol, "drawdown": dd["maximo"], "pontos": len(s)}
-
-
-def sharpe_simples(precos, taxa_livre_aa: float, dias_ano: int = 252) -> float | None:
-    """Sharpe didático: delega a gestao.sharpe, com a taxa livre de risco anual convertida em taxa diária equivalente."""
-    import gestao
-    s = _serie(precos)
-    if s is None:
-        return None
-    rf_dia = (1 + float(taxa_livre_aa)) ** (1 / dias_ano) - 1
-    return gestao.sharpe(s.pct_change().dropna(), rf=rf_dia, minimo=30)
 
 
 # ------------------------------------------------------------------ simulações educativas (HIPOTÉTICAS)

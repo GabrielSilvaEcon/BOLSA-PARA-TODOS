@@ -248,16 +248,3 @@ def agrupar_por_classe(ativos) -> dict[str, list[str]]:
     return out
 
 
-def peso_por_classe(pos: dict, ult: dict, caixa: float) -> tuple[dict, float]:
-    """({classe: valor em R$}, patrimônio). A chave 'caixa' guarda o dinheiro parado."""
-    vals: dict[str, float] = {}
-    for tk, p in (pos or {}).items():
-        c = classe(tk)
-        if not c:
-            continue
-        px = (ult or {}).get(tk) or p.get("pm") or 0.0
-        vals[c] = vals.get(c, 0.0) + p["q"] * px
-    cx = max(0.0, float(caixa or 0.0))
-    if cx:
-        vals["caixa"] = cx
-    return vals, sum(vals.values())

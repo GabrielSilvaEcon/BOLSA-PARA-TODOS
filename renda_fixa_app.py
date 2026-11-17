@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import replace
 from datetime import date, timedelta
 
 import pandas as pd
@@ -25,7 +24,6 @@ import analise_app as AP
 
 import comparador
 import evolucao
-import fundos as fd
 import renda_fixa as rf
 import tema
 
@@ -479,16 +477,6 @@ def _form_titulo(prefixo: str, base: rf.Titulo | None = None) -> rf.Titulo | Non
 
 def _novo_id() -> str:
     return rf.Titulo.__dataclass_fields__["id"].default_factory()
-
-
-def salvar_na_carteira(t: rf.Titulo):
-    lista = list(st.session_state.get(CHAVE_CARTEIRA, []) or [])
-    lista = [d for d in lista if d.get("id") != t.id] + [t.para_dict()]
-    st.session_state[CHAVE_CARTEIRA] = lista
-
-
-def remover_da_carteira(id_: str):
-    st.session_state[CHAVE_CARTEIRA] = [d for d in st.session_state.get(CHAVE_CARTEIRA, []) or [] if d.get("id") != id_]
 
 
 # =============================================================================== abas

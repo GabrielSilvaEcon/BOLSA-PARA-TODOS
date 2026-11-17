@@ -76,13 +76,6 @@ def html_bau(disponivel: int) -> str:
             f"<span class='lv-disp'>Disponível: {int(disponivel)}</span></div>")
 
 
-def html_item(previa_html: str, nome: str, preco: int | None = None, descricao: str = "") -> str:
-    """Cartão pequeno da grade: miniatura, nome, linha de apoio e (se houver) preço em moedas."""
-    d = f"<div class='d'>{_e(descricao)}</div>" if descricao else ""
-    p = f"<div class='pr'>{img('tc')}<b>{int(preco)}</b></div>" if preco is not None else ""
-    return (f"<div class='lv-it'><div class='top'><div class='pv'>{previa_html}</div><div class='tx'><div class='n'>{_e(nome)}</div>{d}</div></div>{p}</div>")
-
-
 def html_bau_item(img_html: str, nome: str, sub: str = "") -> str:
     """Cartão de baú para abrir: baú grande no centro, nome e raridade; altura fixa mínima para o botão nunca cobrir o texto."""
     d = f"<div class='d'>{_e(sub)}</div>" if sub else ""

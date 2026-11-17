@@ -176,15 +176,6 @@ def _ss():
     return st.session_state
 
 
-# ------------------------------------------------------------------ pedaços de HTML (puros, testáveis sem Streamlit)
-def html_barra(pct: float, nome: str = "", de: float | None = None) -> str:
-    """Barra de progresso da lição. Com `de` (fração anterior) menor que `pct`, a barra enche animada de `de` até `pct`."""
-    pct = max(0.0, min(1.0, float(pct)))
-    anima = de is not None and 0.0 <= float(de) < pct
-    extra = f" class='anima' style='width:{pct * 100:.0f}%;--de:{max(0.0, float(de)) * 100:.0f}%'" if anima else f" style='width:{pct * 100:.0f}%'"
-    return f"<div class='jor-top'><div class='nome'>{_e(nome)}</div><div class='jor-trilho'><i{extra}></i></div></div>"
-
-
 ICONE_TIPO = {"escolha": "alvo", "completar": "livro", "vf": "escudo", "ordenar": "grafico", "pares": "estrela"}
 
 
@@ -203,16 +194,6 @@ def html_chips(escolhidos: list[str], total: int) -> str:
     if not escolhidos:
         return f"<div class='jor-chips'><span class='jor-vazio'>Toque nos itens abaixo, do primeiro ao último ({total}).</span></div>"
     return "<div class='jor-chips'>" + "".join(f"<span class='jor-chip'><b>{i}</b>{_e(x)}</span>" for i, x in enumerate(escolhidos, 1)) + "</div>"
-
-
-def html_feedback(ok: bool, ex: dict) -> str:
-    if ok:
-        return (f"<div class='jor-fb ok'><div class='jor-fbt'>{ART.mascote(humor='festa', tamanho=92)}</div>"
-                f"<div class='jor-fbc'><div class='t'>Correto!</div><div class='c'>{_e(ex['explicacao'])}</div></div></div>")
-    return (f"<div class='jor-fb err'><div class='jor-fbt'>{ART.mascote(humor='triste', tamanho=92)}</div><div class='jor-fbc'><div class='t'>Não foi dessa vez</div>"
-            f"<div class='jor-cert' role='note'><i aria-hidden='true'>✓</i><span><small>Resposta certa</small><b>{_e(JO.resposta_certa_texto(ex))}</b></span></div>"
-            f"<div class='c'>{_e(ex['explicacao'])}</div>"
-            f"<div class='d'>Esta pergunta volta no fim da lição para você tentar de novo.</div></div></div>")
 
 
 CORES_CONFETE = ("#FFC94D", "#2DD4A0", "#8B6CFF", "#FF6B8A", "#6CF0C8", "#FF9B3D")

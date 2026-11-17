@@ -97,10 +97,6 @@ def media_movel(s: pd.Series, dias: int = 7) -> pd.Series:
     return cr.serie_limpa(s).rolling(f"{dias}D").mean().dropna() if len(s) else s
 
 
-def cagr_de_serie(s: pd.Series, periodos=(1, 3, 5, 10), tol: int | None = None) -> dict:
-    return cr.cagr_periodos(s, periodos, tol)
-
-
 def resumo_crescimento(df_anual: pd.DataFrame, preco: pd.Series | None = None, retorno_total: pd.Series | None = None,
                        dividendos_ano: pd.Series | None = None, periodo: int = 3, financeira: bool = False) -> dict:
     """Números de crescimento de um ativo para o motor de comparação: chave → valor em % (ou None)."""

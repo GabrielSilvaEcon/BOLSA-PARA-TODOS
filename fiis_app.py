@@ -22,7 +22,6 @@ import crescimento as cr
 import evolucao
 import fiis
 import fiis_cvm
-import tema
 
 try:
     import requests

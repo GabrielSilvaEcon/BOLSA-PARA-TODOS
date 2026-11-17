@@ -147,23 +147,6 @@ def html_stats(r: dict) -> str:
             + "</div>")
 
 
-def html_pct(r: dict) -> int:
-    """Percentual (0..100) da meta diária já cumprido, para a barrinha abaixo dos indicadores."""
-    return int(max(0, min(100, round(100 * r["xp_hoje"] / r["meta_dia"])))) if r.get("meta_dia") else 0
-
-
-def html_unidade(u: dict) -> str:
-    cor = _cor_ok(u["cor"])
-    txt = _texto_sobre(cor)
-    pct = (u["feitas"] / u["total"]) if u["total"] else 0.0
-    return (f"<div class='jor-un' style='background:linear-gradient(135deg,rgba(255,255,255,.18),rgba(0,0,0,.2)),{cor};color:{txt} !important'>"
-            f"<div class='art2'></div><div class='art'>{IC.svg(u['svg'], txt, 130)}</div>"
-            f"<div class='top'><div class='ic'><img src='{IC.uri(u['svg'], txt)}' alt=''></div>"
-            f"<div class='tx'><div class='t' style='color:{txt} !important'>{_e(u['titulo'])}</div><div class='s' style='color:{txt} !important'>{_e(u['descricao'])}</div></div>"
-            f"<div class='n' style='color:{txt} !important'>{u['feitas']}/{u['total']}</div></div>"
-            f"<div class='bar'><i style='width:{pct * 100:.0f}%;background:#fff'></i></div></div>")
-
-
 def _x(coluna: int) -> float:
     return (coluna * 2 + 1) / (COLUNAS * 2) * 300
 
@@ -193,10 +176,6 @@ HTML_MARCADOR = "<span class='jor-zz'></span>"
 # ------------------------------------------------------------------ ações
 def _ir_pagina(url: str) -> None:
     st.session_state["_nav_pend"] = url
-
-
-def _abrir_mapa() -> None:
-    st.session_state["jor_vista"] = "mapa"
 
 
 def _abrir_liga() -> None:
@@ -241,20 +220,6 @@ OPCOES_META = (10, 20, 30, 50, 100)
 
 def _revisar(prog) -> None:
     PLAYER.iniciar_revisao(prog())
-
-
-def _mudar_meta(prog, set_prog) -> None:
-    set_prog(JO.definir_meta(prog(), int(st.session_state.get("jor_meta", JO.META_DIA_PADRAO))))
-
-
-def texto_meta(r: dict) -> str:
-    """Frase curta sobre a meta de hoje (puro, testável)."""
-    if r["meta_atingida"]:
-        return "Meta de hoje concluída. Amanhã a sequência continua."
-    falta = max(0, r["meta_dia"] - r["xp_hoje"])
-    if r["ofensiva"] and r["xp_hoje"] == 0:
-        return f"Estude hoje para manter {r['ofensiva']} {'dia' if r['ofensiva'] == 1 else 'dias'} seguido(s). Faltam {falta} XP para a meta."
-    return f"Faltam {falta} XP para a meta de hoje."
 
 
 CSS_NOVO = f"""<style>
@@ -309,14 +274,6 @@ _GAMEPAD = ("<svg width='96' height='72' viewBox='0 0 96 72' aria-hidden='true'>
             "<circle cx='66' cy='30' r='4' fill='#3DDC97'/><circle cx='75' cy='37' r='4' fill='#F2B84B'/><circle cx='57' cy='37' r='4' fill='#2BA7C9'/><circle cx='66' cy='44' r='4' fill='#FF6B8A'/></svg>")
 
 
-def html_hero_jornada(mascote_html: str) -> str:
-    return (f"<div class='jh-w'><div class='jh'><div class='jh-m'>{mascote_html}</div><div class='jh-t'><div class='jh-h'>Jornada</div>"
-            "<div class='jh-s'>Aprenda, evolua e se torne um verdadeiro TickerHunter!</div></div>"
-            "<details class='jh-i'><summary aria-label='Sobre esta página'>i</summary><div>Lições curtas, uma de cada vez, no seu ritmo. "
-            "Cada lição concluída rende XP e mantém a sua sequência de estudo.</div></details></div>"
-            "<div class='jh-fala'><span>💡</span><span>Vamos aprender um pouco hoje?</span></div></div>")
-
-
 def html_unidade_card(u: dict) -> str:
     cor = _cor_ok(u["cor"])
     pct = (u["feitas"] / u["total"]) if u["total"] else 0.0
@@ -328,15 +285,6 @@ def html_unidade_card(u: dict) -> str:
 def html_wallet_jornada() -> str:
     return (f"<div class='jw'><div class='jw-a'>{_GAMEPAD}</div><div class='jw-t'><div class='jw-h'>Wallet Game<b>Novo!</b></div>"
             "<div class='jw-s'>Teste seus conhecimentos, ganhe recompensas e divirta-se aprendendo!</div></div></div>")
-
-
-def _proxima_licao(mapa: list[dict]) -> str | None:
-    todas = [l for u in mapa for l in u["licoes"]]
-    for estado in ("proxima", "livre"):
-        for l in todas:
-            if l["estado"] == estado:
-                return l["id"]
-    return todas[0]["id"] if todas else None
 
 
 def _ir_wallet() -> None:
@@ -424,16 +372,6 @@ def _topo_novo(p: dict, mapa: list[dict], prog, set_prog) -> None:
     with st.container(key="jor_wg"):
         st.markdown(html_wallet_jornada(), unsafe_allow_html=True)
         st.button("Jogar", key="jor_jogar", icon=":material/chevron_right:", on_click=_ir_wallet, width="stretch")
-
-
-def _barra_topo(p: dict, prog, set_prog) -> None:
-    r = JO.resumo(p)
-    st.markdown(ART.hero("Vamos aprender um pouco hoje?"), unsafe_allow_html=True)
-    st.markdown(html_stats(r), unsafe_allow_html=True)
-    PLAYER._chave_som(prog, set_prog)
-    if r["erros"] > 0:
-        st.button(f"Revisar erros ({r['erros']})", key="jor_revisar", icon=":material/replay:", width="stretch", on_click=_revisar, args=(prog,),
-                  help="Refaz os exercícios que você errou antes. Vale XP e ajuda a fixar.")
 
 
 _TITULO_VISTA = {"liga": "Liga de estudo", "perfil": "Meu perfil", "passe": "Passe da temporada"}

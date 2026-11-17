@@ -11,7 +11,6 @@ Regras: nada é preenchido com número inventado; o que não pode ser calculado 
 from __future__ import annotations
 
 import io
-import json
 import math
 from datetime import date, datetime
 
@@ -624,7 +623,7 @@ def pdf_bytes(doc: dict, graficos: list[dict] | None = None) -> bytes:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
-    from reportlab.platypus import KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     azul, cinza = colors.HexColor("#0E2A5C"), colors.HexColor("#5B6B82")
     ss = getSampleStyleSheet()
     h1 = ParagraphStyle("h1", parent=ss["Title"], textColor=azul, fontSize=20, alignment=0, spaceAfter=4)

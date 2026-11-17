@@ -1,7 +1,6 @@
 """Tokens compartilhados pelos três ambientes. Valores em px, exceto onde indicado. Sem dependências."""
 from __future__ import annotations
 
-import json
 
 FONTE = "Inter"
 FONTE_PILHA = "'Inter','Segoe UI',system-ui,-apple-system,Roboto,sans-serif"
@@ -28,6 +27,3 @@ def como_dict() -> dict:
             "elevacao": ELEVACAO, "icone": ICONE, "z": Z, "larguras_alvo": list(LARGURAS_ALVO), "celular_max": CELULAR_MAX, "tablet_max": TABLET_MAX}
 
 
-def como_json() -> str:
-    """Para reaproveitar os tokens numa futura camada mobile (React Native ou Flutter)."""
-    return json.dumps(como_dict(), ensure_ascii=False, indent=2)

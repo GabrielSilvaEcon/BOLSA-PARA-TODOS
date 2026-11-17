@@ -365,11 +365,6 @@ def marcar_revisao(res: dict, anterior: dict | None) -> dict:
     return res
 
 
-def resolver_todos(buscadores: dict, agora=None, anteriores: dict | None = None, ids=None) -> dict:
-    anteriores = anteriores or {}
-    return {i: resolver(i, buscadores, agora, anteriores.get(i)) for i in (ids or CATALOGO)}
-
-
 def para_serie(ind: dict) -> pd.Series:
     """Reconstrói a série (índice de datas) de um resultado guardado."""
     if not ind or not ind.get("serie"):

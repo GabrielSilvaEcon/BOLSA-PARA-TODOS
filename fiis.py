@@ -91,20 +91,6 @@ def classificar(segmento_fonte: str | None, nome: str | None = None, origem: str
     return ClasseFii("outros", (segmento_fonte or "Não informado").strip() or "Não informado", "baixa", origem)
 
 
-def comparaveis(a: ClasseFii, b: ClasseFii) -> tuple[bool, str]:
-    """Dois FIIs podem ser comparados indiscriminadamente? Mesma estratégia é o mínimo; tijolo de segmentos diferentes
-    (shopping × logística) só compara critérios gerais."""
-    if "outros" in (a.estrategia, b.estrategia):
-        return False, "Um dos fundos não tem segmento identificado: a comparação direta pode enganar."
-    if a.estrategia != b.estrategia:
-        return False, (f"Estratégias diferentes ({ESTRATEGIAS[a.estrategia]} × {ESTRATEGIAS[b.estrategia]}): risco, renda e "
-                       "valuation seguem lógicas distintas. Compare só liquidez, retorno e volatilidade.")
-    if a.estrategia == "tijolo" and a.segmento != b.segmento:
-        return True, (f"Segmentos de tijolo diferentes ({a.segmento} × {b.segmento}): vacância e P/VP não têm o mesmo patamar "
-                      "normal em cada segmento.")
-    return True, ""
-
-
 # =============================================================================== lista do Fundamentus
 CAMPOS_LISTA = {
     "papel": ("papel",), "segmento": ("segmento",), "cotacao": ("cotacao",), "ffo_yield": ("ffoyield",),

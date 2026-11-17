@@ -300,11 +300,6 @@ def dados(ttl: int = 900, ok=None, nome: str | None = None, persistir: bool = Tr
     return deco
 
 
-def limpar_tudo() -> None:
-    for f in list(_registros):
-        f()
-
-
 def estatisticas() -> list[dict]:
     with _g:
         return [{"nome": n, **v} for n, v in sorted(_stats.items())]

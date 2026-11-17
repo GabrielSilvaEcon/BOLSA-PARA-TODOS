@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 import threading
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
 import planos
 

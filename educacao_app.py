@@ -12,7 +12,6 @@ import html
 from datetime import datetime, timezone
 
 import streamlit as st
-import secoes
 import estilo_app as ES
 import arte_tickerhunters as AT
 
@@ -43,7 +42,6 @@ CSS = f"""<style>
 
 def registrar_paginas(paginas: dict) -> None:
     _PAGINAS.update({k: v for k, v in paginas.items() if v is not None})
-
 
 
 def _br(v: float, casas: int = 1, sinal: bool = False) -> str:
@@ -107,17 +105,6 @@ def _fechar_aula() -> None:
 
 def _iniciar_trilha(tid: str) -> None:
     _set(ED.iniciar_trilha(prog(), tid))
-
-
-def _mudar_modo() -> None:
-    p = prog()
-    p["modo"] = modos.modo_valido(_ss().get("edu_modo_sel"))
-    _set(p)
-    try:                                   # o nível de leitura é o mesmo modo de experiência do app inteiro
-        import experiencia_app
-        experiencia_app.aplicar(p["modo"])
-    except Exception:
-        pass
 
 
 def _responder(qid: str, chave_radio: str) -> None:

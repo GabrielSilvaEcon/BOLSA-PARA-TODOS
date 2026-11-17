@@ -163,12 +163,6 @@ def _param(nome: str) -> str:
         return ""
 
 
-def _barra_forca(senha: str) -> str:
-    n, rot = seg.forca_senha(senha)
-    cor = ("#F87171", "#F59E0B", "#FBBF24", "#34D399", "#10B981")[n]
-    return f"<div class='ct-forca'><i style='width:{(n + 1) * 20}%;background:{cor}'></i></div><div class='ct-sub'>Força: {rot}</div>"
-
-
 def _regras_senha() -> str:
     return (f"<div class='ct-sub'>A senha precisa de {seg.SENHA_MIN}+ caracteres, com letras e números, e não pode ser "
             "comum nem conter seu e-mail ou nome.</div>")

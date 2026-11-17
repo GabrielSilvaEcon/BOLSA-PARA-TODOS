@@ -87,10 +87,6 @@ def dc(d0, d1) -> int:
     return (_d(d1) - _d(d0)).days
 
 
-def eh_dia_util(d) -> bool:
-    return bool(np.is_busday(np.datetime64(_d(d)), holidays=_feriados_np()))
-
-
 def somar_meses(d: date, meses: int) -> date:
     t = pd.Timestamp(d) + pd.DateOffset(months=meses)
     return t.date()
