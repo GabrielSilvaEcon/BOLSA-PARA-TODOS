@@ -698,7 +698,11 @@ def _adversarios_mesa(p: dict, cenario: dict, agora: float, jog: str) -> list[di
             continue
         r = _sim_rodada(p, cenario, agora, j)
         if r is not None:
-            out.append({"rotulo": f"Jogador {n}", "ops": _ops_publicas(r[0], r[1])})
+            st = r[0]
+            pos = st["pos"]
+            aberto = _lado(pos["direcao"]) * (st["preco_atual"] - pos["entrada"]) / pos["entrada"] if pos else 0.0
+            # resultado da rodada (realizado + aberto, em % da aposta), calculado só com o que já é público: entradas e saídas executadas
+            out.append({"rotulo": f"Jogador {n}", "ops": _ops_publicas(st, r[1]), "total_pct": round((sum(t["ret"] for t in st["trades"]) + aberto) * 100, 3)})
     return out
 
 

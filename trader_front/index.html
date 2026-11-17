@@ -133,10 +133,43 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #adv small{color:#BDB5E6;font-size:10.5px;line-height:1.3}
 #sm b.op.up{color:#6BFF8A}#sm b.op.down{color:#FF6B87}
 #app.mesa #sm .pz{color:#F2B84B;font-weight:900}
+
+/* ===== Mesa: placar, posição e botões grandes (celular primeiro) ===== */
+#placar{display:none;gap:4px;flex:none}
+#app.mesa.replay #placar.on{display:flex}
+#app.mesa.replay #ban{display:none}
+#placar .rd{flex:0 0 auto;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:2px 8px;border-radius:12px;border:2px solid #F2B84B;background:linear-gradient(160deg,#3A2A10,#150F55);box-shadow:0 0 10px rgba(242,184,75,.35);font-size:9px;font-weight:800;color:#FFE3A3;line-height:1.15}
+#placar .rd b{font-size:14px;color:#fff}
+#placar .pj{flex:1 1 0;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:4px;align-items:center;padding:3px 6px;border-radius:12px;border:2px solid #5B4BD6;background:linear-gradient(160deg,#241A86,#150F55);box-shadow:0 0 10px rgba(91,75,214,.4)}
+#placar .rk{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;background:#6C5CFF;color:#fff}
+#placar .p1 .rk{background:linear-gradient(160deg,#FFE08A,#E0A21A);color:#3A2400;box-shadow:0 0 8px rgba(255,201,60,.6)}
+#placar .p2 .rk{background:linear-gradient(160deg,#F1F1FF,#9EA3C6);color:#22243A}
+#placar .p3 .rk{background:linear-gradient(160deg,#F2B07A,#B0612A);color:#2E1404}
+#placar .nm{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#EDE9FF}
+#placar .nm small{font-weight:700;color:#BDB5E6}
+#placar .pj b{grid-column:1/3;font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+#placar b.up{color:#6BFF8A}#placar b.down{color:#FF6B87}#placar b.zero{color:#D9D4F7}
+#placar .pj.eu{border-color:#34E85E;background:linear-gradient(160deg,rgba(52,232,94,.25),#150F55 75%);box-shadow:0 0 12px rgba(52,232,94,.45)}
+#pos{display:flex;gap:4px;align-items:stretch}
+#pos #sm{flex:1 1 auto;min-width:0}
+#m-enc{display:none}
+#app.mesa.replay:not(.rs) #m-enc{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex:0 0 74px;border-radius:clamp(12px,2.4vw,22px);border:2px solid #8B7CFF;background:linear-gradient(160deg,#3A2AA8,#170F58);box-shadow:0 0 12px rgba(139,124,255,.55);font-weight:900;font-size:12px}
+#m-enc .ic{font-size:18px;line-height:1}
+#m-enc[disabled]{filter:grayscale(.8);box-shadow:none}
+#app.mesa.replay #sm{border-color:#6C5CFF}
+#mb1{gap:6px}
+#mb1 button{min-height:54px;font-size:16px;letter-spacing:.4px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+#mb1 .ic{width:24px;height:24px;flex:none}
+#mb1 .buy{background:linear-gradient(180deg,#3BF07A,#0FA84F);border:2px solid #8DFF9A;color:#fff;box-shadow:0 0 16px rgba(46,232,107,.5),inset 0 1px 0 rgba(255,255,255,.4)}
+#mb1 .sell{background:linear-gradient(180deg,#FF5A78,#C81B40);border:2px solid #FF9AAE;color:#fff;box-shadow:0 0 16px rgba(255,61,99,.5),inset 0 1px 0 rgba(255,255,255,.35)}
+#mb1 button[disabled]{filter:grayscale(.75) brightness(.7);box-shadow:none}
+#app.xs #mb1 button{min-height:48px;font-size:14px}#app.xs #sm .opc,#app.short #sm .opc{display:none}#app.xs #placar .nm{font-size:10px}#app.xs #m-enc{flex-basis:64px}
+#app.short #mb1 button{min-height:44px}
 </style></head><body>
 <div id="app">
   <div id="ban"><div class="fx"></div><div class="bl" id="fala">Hora de mostrar suas estratégias!</div>
     <div class="cd"><div class="t">Sua Partida</div><div class="md"><img id="m1" alt=""><img id="m2" alt=""><img id="m3" alt=""></div><div class="pl" id="pl">1/3</div><div class="ap" id="ap"></div></div></div>
+  <div id="placar"></div>
   <div id="hd"><button id="vt"><span>←</span> Voltar</button><div id="tk"></div><div id="rod"></div><div id="tm">--:--</div><button id="fs" title="Tela cheia" style="display:none">⛶</button></div>
   <div class="row tbr" id="t2"><button id="b-buy" class="buy" style="flex:1.3"><span class="ar">▲ </span>Compra</button><button id="b-sell" class="sell" style="flex:1.25"><span class="ar">▼ </span>Venda</button>
     <button id="b-entrada" style="flex:1.2">Entrada</button><button id="b-stop">Stop</button><button id="b-alvo">Alvo</button>
@@ -156,8 +189,8 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
     <div id="res"></div>
     <div id="nota"><input id="nota-t" maxlength="40" placeholder="Texto curto"><button id="nota-ok">OK</button></div></div>
   <div id="pgw"><div id="pg"></div></div>
-  <div id="sm"></div>
-  <div id="mesa"><div class="row" id="mb1"><button id="m-buy" class="buy"><span class="ar">▲ </span>COMPRAR</button><button id="m-sell" class="sell"><span class="ar">▼ </span>VENDER</button><button id="m-enc" class="enc">⏹ ENCERRAR</button></div>
+  <div id="pos"><div id="sm"></div><button id="m-enc" class="enc"><span class="ic">🏁</span>Encerrar</button></div>
+  <div id="mesa"><div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>VENDER</span></button></div>
     <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar ordem</button><button id="m-adv">⚙ Ordem</button><button id="m-ind" title="Indicadores">⋯</button></div></div>
   <div id="bt"><button id="conf">Confirmar estratégia</button><button id="rep">Iniciar replay</button><button id="enc">⏹ Encerrar operação</button></div>
 </div>
@@ -268,7 +301,7 @@ function onRender(a){
   $("b-buy").innerHTML=`<span class="ar">▲ </span>${mesaOn()?"Alta":"Compra"}`;$("b-sell").innerHTML=`<span class="ar">▼ </span>${mesaOn()?"Baixa":"Venda"}`;
   $("fala").textContent=FALA[a.modo]||FALA.analise;$("pl").textContent=`${a.rodada}/${a.rodadas}`;$("ap").textContent=a.aposta_txt||"";
   [1,2,3].forEach(i=>{const m=$("m"+i);if(!m.src)m.src=MED[i-1];m.className=i<a.rodada||(i===a.rodada&&a.modo==="resultado")?"":(i===a.rodada?"atual":"fut")});
-  resultado(a);
+  resultado(a);placarUI();
   fit();ui();draw();kick();
 }
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -499,16 +532,23 @@ function desenhaMesa(i0,i1){
   if(o.stop!=null)hline(o.stop,COR.s,[],"STOP",true);
   if(o.alvo!=null)hline(o.alvo,COR.a,[],"ALVO",true);
   if(m.posicao&&m.limite&&m.limite.preco!=null)hline(m.limite.preco,COR.s,[2,4],"LIMITE "+m.limite.pct_pat+"%",false)}   // nível em que a perda acumulada da rodada chega ao limite
+function placarUI(){   // placar da rodada (o servidor já manda ordenado e formatado): você em destaque, medalhas de 1º a 3º
+  const P=A&&A.placar,el=$("placar");if(!P||!mesaOn()){el.classList.remove("on");return}
+  const solo=P.jogadores.length===1,curto=P.jogadores.length>=3,nome=j=>curto&&!j.voce?j.rotulo.replace(/^Jogador /,"J"):j.rotulo;
+  el.innerHTML=`<div class="rd">Rodada<b>${esc(P.rodada)}</b></div>`+P.jogadores.map(j=>`<div class="pj p${j.pos}${j.voce?" eu":""}"><span class="rk">${j.pos}º</span><span class="nm">${esc(nome(j))}${j.voce&&solo&&P.pat_txt?` <small>· ${esc(P.pat_txt)}</small>`:""}</span><b class="${j.cor}">${esc(j.txt)}</b></div>`).join("");
+  el.classList.add("on");
+}
 function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)
   const m=mz(),pz=!!A.pausada,liv=livreEnvio(),at=!!m&&!pz,o=linhasMesa();
   const dt=o.dir==="alta"?"COMPRA ▲":(o.dir==="baixa"?"VENDA ▼":"");
   let l1;
-  if(m&&m.posicao)l1=`<span class="e">${dt} ${fmt(m.posicao.preco_entrada)}</span><span class="s">STOP ${fmt(o.stop)}</span><span class="a">ALVO ${fmt(o.alvo)}</span>`;
+  const sa=(o.stop!=null?`<span class="s">STOP ${fmt(o.stop)}</span>`:"")+(o.alvo!=null?`<span class="a">ALVO ${fmt(o.alvo)}</span>`:"");   // só o que foi definido
+  if(m&&m.posicao)l1=`<span class="e">${dt} ${fmt(m.posicao.preco_entrada)}</span>${sa}`;
   else if(o.pend)l1=`<span class="e">Ordem ${o.pend.tipo==="limite"?"limite":"stop de entrada"} ${dt} em ${fmt(o.pend.preco)}</span><span class="s">STOP ${fmt(o.stop)}</span><span class="a">ALVO ${fmt(o.alvo)}</span>`;
   else l1=`<span class="e">Sem posição</span><span class="pz">pronto para operar</span>`;
   const n=m?m.n_encerradas:0,lm=m&&m.limite;
   if(lm&&lm.bloqueado)l1=`<span class="s">🛑 limite de perda atingido (${lm.pct_pat}% do patrimônio): novas entradas bloqueadas nesta rodada</span>`;
-  let l2=`Aberto <b class="op ${m?m.cor_aberto:"zero"}">${esc(m?m.aberto_txt:"—")}</b> · Rodada <b class="op ${m?m.cor_acum:"zero"}">${esc(m?m.acum_txt:"—")}</b> · ${n} encerrada${n===1?"":"s"} · candle ${A.revelados}/${A.total_replay}`;
+  let l2=`Aberto <b class="op ${m?m.cor_aberto:"zero"}">${esc(m?m.aberto_txt:"—")}</b> · Rodada <b class="op ${m?m.cor_acum:"zero"}">${esc(m?m.acum_txt:"—")}</b><span class="opc"> · ${n} encerrada${n===1?"":"s"} · candle ${A.revelados}/${A.total_replay}</span>`;
   if(lm)l2+=` · Risco ${fmt(lm.usado_pct_pat)}% de ${lm.pct_pat}%`;
   if(pz)l2+=` · <span class="pz">⏸ pausa técnica</span>`;
   if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;

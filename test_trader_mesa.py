@@ -523,13 +523,14 @@ def test_adversario_ve_entrada_e_saida_executadas_sem_ter_operado_e_sem_ver_stop
     op(p, c, "ana", 3, "mercado", "1", direcao="alta", stop=STOP_SECRETO, alvo=ALVO_SECRETO)
     bia = TB.visao(p, c, ag(p, 3), "bia")                                                # bia NUNCA operou
     assert bia["adversarios"] == [{"rotulo": "Jogador 1", "ops": [{"direcao": "alta", "preco_entrada": pytest.approx(10.0 + 0.02 * 2 + 0.02), "indice_entrada": c["n_analise"] + 2,
-                                                                  "aberta": True, "preco_saida": None, "indice_saida": None}]}]
+                                                                  "aberta": True, "preco_saida": None, "indice_saida": None}], "total_pct": 0.0}]
     op(p, c, "ana", 6, "encerrar", "2")
     op(p, c, "ana", 6, "limite", "3", direcao="baixa", preco=LIMITE_SECRETO + 5)         # pendente: invisível
     bia = TB.visao(p, c, ag(p, 6), "bia")
     ops = bia["adversarios"][0]["ops"]
     assert len(ops) == 1 and not ops[0]["aberta"] and ops[0]["preco_saida"] == pytest.approx(10.0 + 0.02 * 5 + 0.02) and ops[0]["indice_saida"] == c["n_analise"] + 5
     assert set(ops[0]) == {"direcao", "preco_entrada", "indice_entrada", "aberta", "preco_saida", "indice_saida"}      # lista fechada de campos
+    assert bia["adversarios"][0]["total_pct"] == pytest.approx((ops[0]["preco_saida"] / ops[0]["preco_entrada"] - 1) * 100, abs=1e-3)   # placar: só do que é público
     txt = json.dumps(bia)
     for segredo in (STOP_SECRETO, ALVO_SECRETO, LIMITE_SECRETO + 5, "motivo", '"aid"'):
         assert str(segredo) not in txt
@@ -1068,6 +1069,20 @@ def test_tela_mostra_o_ativo_e_o_horario_mas_nunca_a_data_do_historico():
         assert dias[0] == 1 and dias == sorted(dias) and dias[-1] > 1          # o dia da partida avança, sem dizer qual é
     assert a["candles"][0]["t"] == "10:00" and a["candles"][-1]["d"] == TB.candles_sem_data(c["candles"])[len(a["candles"]) - 1]["d"]
     assert TB.rotulo_horario(a["candles"][0]) == "D1 10:00"
+
+
+def test_placar_ordena_pelo_resultado_da_rodada_e_destaca_voce_sem_vazar_o_adversario():
+    c = _cenario(fn_replay=_sobe)
+    p = _partida(c)
+    op(p, c, "ana", 3, "mercado", "1", direcao="alta", stop=STOP_SECRETO, alvo=ALVO_SECRETO)
+    agora = ag(p, 8)
+    pb = G.args_mesa(TB.visao(p, c, agora, "bia"), p, {}, agora)["placar"]
+    assert pb["rodada"] == "1/5" and [j["rotulo"] for j in pb["jogadores"]] == ["Jogador 1", "Você"]
+    assert pb["jogadores"][0]["pos"] == 1 and pb["jogadores"][0]["cor"] == "up" and pb["jogadores"][0]["txt"].startswith("+")
+    assert pb["jogadores"][1] == {"rotulo": "Você", "pct": 0.0, "voce": True, "pos": 2, "txt": "0,00%", "cor": "zero"}
+    assert str(STOP_SECRETO) not in json.dumps(pb) and str(ALVO_SECRETO) not in json.dumps(pb)
+    pa = G.args_mesa(TB.visao(p, c, agora, "ana"), p, {}, agora)["placar"]
+    assert pa["jogadores"][0]["voce"] and pa["jogadores"][0]["pct"] == pytest.approx(pb["jogadores"][0]["pct"])   # mesmo número visto pelos dois lados
 
 
 def test_ritmo_de_2_5_segundos_vem_do_servidor_e_para_na_pausa():

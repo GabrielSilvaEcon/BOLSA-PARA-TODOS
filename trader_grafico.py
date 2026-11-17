@@ -64,7 +64,23 @@ def args_mesa(v: dict, p: dict, estado: dict, agora: float | None = None) -> dic
             "candles": TB.candles_sem_data(cand), "ticker": v["ticker"], "tf_nome": TB.TIMEFRAMES[v["tf"]]["nome"], "demo": v["demo"], "rodada": v["rodada"], "rodadas": v["rodadas"],
             "seg": v["segundos"], "ref": cand[-1]["c"], "token": p["id"], "sr": sr, "inicial": inicial, "limites": dict(TB.MAX_MARCAS),
             "erro": estado.get("erro", ""), "erro_seq": estado.get("erro_seq", 0), "ok_seq": estado.get("ok_seq", 0),
-            "motor": v.get("motor", TB.MOTOR_LEGADO), "pausada": bool(v.get("pausada")), "mesa": texto_mesa(v.get("mesa")) if mesa else None}
+            "motor": v.get("motor", TB.MOTOR_LEGADO), "pausada": bool(v.get("pausada")), "mesa": texto_mesa(v.get("mesa")) if mesa else None, "placar": placar(v) if mesa else None}
+
+
+def placar(v: dict) -> dict | None:
+    """Placar da rodada na mesa: você e os adversários ordenados pelo resultado da rodada (realizado + aberto, em % da aposta).
+    O dos adversários vem só de entradas e saídas já públicas; o patrimônio em T$ é só o seu."""
+    m = v.get("mesa")
+    if not m:
+        return None
+    import wallet_game as WG
+    js = [{"rotulo": "Você", "pct": float(m.get("total_pct") or 0.0), "voce": True}] + \
+         [{"rotulo": a["rotulo"], "pct": float(a.get("total_pct") or 0.0), "voce": False} for a in v.get("adversarios") or []]
+    js.sort(key=lambda x: -x["pct"])                                     # estável: no empate, quem já estava na frente continua
+    for i, x in enumerate(js, 1):
+        x.update(pos=i, txt=f"{_sinal(x['pct'])}{_pc(x['pct'])}%", cor="up" if x["pct"] > 0 else ("down" if x["pct"] < 0 else "zero"))
+    pat = None if m.get("pat_ini") is None or m.get("total_val") is None else WG.moeda(m["pat_ini"] + m["total_val"])
+    return {"rodada": f"{v['rodada']}/{v['rodadas']}", "jogadores": js, "pat_txt": pat}
 
 
 def _sinal(x: float) -> str:
