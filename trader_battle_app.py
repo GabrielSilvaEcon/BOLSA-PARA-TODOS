@@ -126,6 +126,79 @@ _CSS = f"""
 """
 CSS = "<style>" + "".join(l.strip() for l in _CSS.splitlines()) + "</style>"
 
+# Tela inicial (referência enviada), celular primeiro. Seletores fortes para vencer o relevo global dos botões do app.
+_Q = f'{_P} [data-testid="stMain"]'
+
+
+def _bt(chave: str) -> str:
+    return f'{_Q} .st-key-{chave} .stButton > button[data-testid]'
+
+
+_CSS_CENTRAL = "<style>" + "".join(l.strip() for l in f"""
+{_P} .tb-hero{{margin:-8px -6px 0}}
+{_P} .tb-demo2{{display:flex;align-items:center;gap:8px;margin:6px 0;padding:10px 6px 10px 14px;border-radius:18px;border:2px solid #F2B84B;
+  background:linear-gradient(160deg,rgba(242,184,75,.16),rgba(18,12,56,.94));box-shadow:0 0 16px rgba(242,184,75,.35)}}
+{_P} .tb-demo2 b{{display:flex;align-items:center;gap:8px;font-size:1rem;font-weight:900;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}
+{_P} .tb-demo2 b span{{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#F2B84B;font-size:.8rem;font-style:italic;color:#1A1030 !important;-webkit-text-fill-color:#1A1030 !important}}
+{_P} .tb-demo2 p{{margin:4px 0 0;font-size:.78rem;line-height:1.35;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .tb-demo2 img{{flex:none;width:78px;height:auto;border-radius:16px;border:2px solid rgba(242,184,75,.6);box-shadow:0 0 12px rgba(242,184,75,.35)}}
+{_P} .tb-sec{{display:flex;align-items:center;gap:8px;margin:10px 0 2px;font-weight:800;font-size:1.02rem;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
+{_P} .tb-sec span{{font-size:1.15rem}}
+{_P} .st-key-tb_fmts{{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem !important}}
+{_P} .st-key-tb_fmts > div{{width:auto !important;min-width:0 !important}}
+{_P} .st-key-tb_fmts > div:only-child{{grid-column:1/-1;display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem !important}}
+{_P} :is(.st-key-tb_fmts,.st-key-tb_modos) [data-testid="stHorizontalBlock"]{{flex-wrap:nowrap !important;gap:.5rem !important;overflow:visible !important}}
+{_P} :is(.st-key-tb_fmts,.st-key-tb_modos) [data-testid="stColumn"]{{flex:1 1 0 !important;width:auto !important;min-width:0 !important;overflow:visible !important}}
+{_bt('tb_fmtb_rapida')},{_bt('tb_fmtb_normal')},{_bt('tb_fmtb_longa')}{{position:relative;min-height:62px !important;padding:6px 6px !important;border-radius:18px !important;
+  border:2px solid #5B4BD6 !important;background:linear-gradient(160deg,#241A86,#150F55) !important;box-shadow:0 0 10px rgba(91,75,214,.4) !important;overflow:visible !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button > div > span{{flex-direction:column !important;gap:2px !important;align-items:center !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa,.st-key-tb_jogar,.st-key-tb_amigos) button [data-testid="stMarkdownContainer"]{{width:100% !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button p{{text-align:center !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button [data-testid="stIconMaterial"]{{font-size:1.6rem !important;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button p{{font-weight:900 !important;font-size:.95rem !important;line-height:1.1 !important;text-align:left !important;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button p::after{{display:block;margin-top:2px;font-weight:600;font-size:.68rem;line-height:1.25;white-space:pre;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
+{_Q} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) .stButton > button[data-testid="stBaseButton-primary"]{{border-color:#34E85E !important;
+  background:linear-gradient(160deg,rgba(52,232,94,.22),#150F55 80%) !important;box-shadow:0 0 16px rgba(52,232,94,.5) !important}}
+{_Q} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) .stButton > button[data-testid="stBaseButton-primary"] p::after{{color:#8DF5C1 !important;-webkit-text-fill-color:#8DF5C1 !important}}
+{_P} .st-key-tb_fmtb_normal button::before{{content:"Recomendado";position:absolute;top:-10px;left:50%;transform:translateX(-50%);padding:1px 8px;border-radius:999px;background:#34E85E;
+  font-size:.62rem;font-weight:900;white-space:nowrap;color:#06240F;-webkit-text-fill-color:#06240F;box-shadow:0 0 8px rgba(52,232,94,.6)}}
+{_P} .st-key-tb_fmts{{padding-top:8px}}
+{_bt('tb_jogar')},{_bt('tb_amigos')}{{position:relative;min-height:150px !important;padding:12px 10px 34px !important;border-radius:22px !important;overflow:visible !important}}
+{_P} :is(.st-key-tb_jogar,.st-key-tb_amigos) button > div > span{{flex-direction:column !important;gap:4px !important;align-items:center !important}}
+{_P} :is(.st-key-tb_jogar,.st-key-tb_amigos) button [data-testid="stIconMaterial"]{{font-size:2.8rem !important}}
+{_P} :is(.st-key-tb_jogar,.st-key-tb_amigos) button p{{font-weight:900 !important;font-size:1.05rem !important;text-align:center !important;white-space:normal !important;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} :is(.st-key-tb_jogar,.st-key-tb_amigos) button p::after{{display:block;margin-top:4px;font-weight:500;font-size:.74rem;line-height:1.3;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
+{_P} .st-key-tb_jogar button p::after{{content:"Desafie-se e melhore seu desempenho!"}}
+{_P} .st-key-tb_amigos button p::after{{content:"Convide seus amigos para uma batalha!"}}
+{_P} :is(.st-key-tb_jogar,.st-key-tb_amigos) button::after{{content:"→";position:absolute;right:10px;bottom:9px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:.95rem;color:#fff;-webkit-text-fill-color:#fff}}
+{_bt('tb_jogar')}{{border:2px solid #34E85E !important;background:linear-gradient(160deg,rgba(20,110,80,.75),rgba(10,26,40,.96)) !important;box-shadow:0 0 18px rgba(52,232,94,.45) !important}}
+{_P} .st-key-tb_jogar button [data-testid="stIconMaterial"]{{color:#34E85E !important;-webkit-text-fill-color:#34E85E !important}}
+{_P} .st-key-tb_jogar button::after{{border:2px solid #34E85E}}
+{_bt('tb_amigos')}{{border:2px solid #8B6CFF !important;background:linear-gradient(160deg,rgba(110,70,230,.7),rgba(20,12,64,.96)) !important;box-shadow:0 0 18px rgba(139,108,255,.5) !important}}
+{_P} .st-key-tb_amigos button [data-testid="stIconMaterial"]{{color:#A99BFF !important;-webkit-text-fill-color:#A99BFF !important}}
+{_P} .st-key-tb_amigos button::after{{border:2px solid #B9A8FF}}
+{_P} .st-key-tb_amigos button::before{{content:"👥 2-4";position:absolute;top:-1px;right:-1px;padding:2px 8px;border-radius:0 20px 0 12px;background:#1E7A3C;border:1.5px solid #34E85E;
+  font-size:.7rem;font-weight:900;color:#fff;-webkit-text-fill-color:#fff}}
+{_bt('tb_sala_row')}{{position:relative;min-height:58px !important;justify-content:flex-start !important;padding:6px 40px 6px 14px !important;border-radius:18px !important;
+  border:2px solid #5B4BD6 !important;background:linear-gradient(160deg,#2A1F8E,#150F55) !important;box-shadow:0 0 12px rgba(91,75,214,.45) !important}}
+{_P} .st-key-tb_sala_row button > div, {_P} .st-key-tb_sala_row button > div > span{{justify-content:flex-start !important;gap:12px !important}}
+{_P} .st-key-tb_sala_row button [data-testid="stIconMaterial"]{{font-size:1.9rem !important;color:#E4DEFF !important}}
+{_P} .st-key-tb_sala_row button p{{text-align:left !important;font-weight:900 !important;font-size:1rem !important;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .st-key-tb_sala_row button p::after{{content:"Digite o código de um amigo";display:block;font-weight:500;font-size:.76rem;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
+{_P} .st-key-tb_sala_row button::after{{content:"›";position:absolute;right:16px;top:50%;transform:translateY(-52%);font-size:1.8rem;font-weight:400;color:#E4DEFF;-webkit-text-fill-color:#E4DEFF}}
+{_P} .st-key-tb_painel{{gap:.5rem !important}}
+{_P} .tb-sobre{{margin:10px 0 6px;padding:10px 8px;border-radius:18px;border:2px solid #5B4BD6;background:linear-gradient(160deg,#1B1470,#0E0840);box-shadow:0 0 12px rgba(91,75,214,.4)}}
+{_P} .tb-sobre .h{{font-weight:900;font-size:.92rem;margin:0 0 6px 4px;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .tb-sobre .g{{display:grid;grid-template-columns:repeat(4,1fr)}}
+{_P} .tb-sobre .g div{{text-align:center;padding:2px 2px;border-left:1px solid rgba(139,108,255,.35)}}
+{_P} .tb-sobre .g div:first-child{{border-left:0}}
+{_P} .tb-sobre i{{display:block;font-style:normal;font-size:1.25rem}}
+{_P} .tb-sobre b{{display:block;font-weight:900;font-size:.95rem;white-space:nowrap;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .tb-sobre small{{display:block;font-size:.66rem;line-height:1.2;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+""".splitlines()) + "</style>"
+
+
 
 # ------------------------------------------------------------------ estado da sessão
 def _ss():
@@ -411,23 +484,26 @@ def _rot_formato(f: str | None) -> str:
     return f"{TB.ROTULO_FORMATO[f]} · {TB.FORMATOS[f]} rodadas" if f in TB.FORMATOS else "regras anteriores · 10 rodadas"
 
 
-def _central_online() -> None:
+def _painel(nome: str) -> None:
+    _ss()["tb_painel"] = None if _ss().get("tb_painel") == nome else nome
+
+
+def _central_online(painel: str | None) -> None:
+    """Painel aberto pelos cards 'Jogar com Amigos' (criar sala) e 'Entrar em uma Sala' (código). Sala exige conta."""
+    if not painel:
+        return
     em = _email_online()
-    st.markdown("<div class='tb-card'><b>Jogar com amigos</b><p>Crie uma sala e passe o código (2 a 4 jogadores). Todos veem o mesmo gráfico, "
-                "o mesmo relógio e a mesma rodada.</p></div>", unsafe_allow_html=True)
-    if not em:
-        st.markdown("<div class='tb-aviso'>Entre na sua conta para criar ou entrar em uma sala.</div>", unsafe_allow_html=True)
-        return
-    try:
-        ativa = TOD.partida_ativa(em)
-    except Exception:
-        ativa = None
-    if ativa:
-        st.button("Voltar para minha sala/partida", key="tb_on_volta", icon=":material/login:", width="stretch", on_click=_on_voltar_partida, args=(ativa,))
-        return
-    st.button("Criar sala", key="tb_on_criar", icon=":material/group_add:", width="stretch", on_click=_on_criar)
-    st.text_input("Código da sala", key="tb_on_cod", max_chars=8, placeholder="Código de 6 letras/números", label_visibility="collapsed")
-    st.button("Entrar com código", key="tb_on_entrar", icon=":material/vpn_key:", width="stretch", on_click=_on_entrar)
+    with st.container(key="tb_painel"):
+        if not em:
+            st.markdown("<div class='tb-aviso'>Entre na sua conta para criar ou entrar em uma sala (2 a 4 jogadores).</div>", unsafe_allow_html=True)
+            return
+        if painel == "amigos":
+            st.markdown("<div class='tb-cap'>Crie a sala e passe o código para 1 a 3 amigos. Todos veem o mesmo gráfico, o mesmo relógio e a mesma rodada.</div>",
+                        unsafe_allow_html=True)
+            st.button("Criar sala", key="tb_on_criar", icon=":material/group_add:", width="stretch", on_click=_on_criar)
+        else:
+            st.text_input("Código da sala", key="tb_on_cod", max_chars=8, placeholder="Código de 6 letras/números", label_visibility="collapsed")
+            st.button("Entrar com código", key="tb_on_entrar", icon=":material/vpn_key:", width="stretch", on_click=_on_entrar)
 
 
 @st.fragment(run_every=2)
@@ -678,19 +754,55 @@ def _preparar_reais(tf: str, b24: bool = False) -> None:
         _ss()["tb_prep"] = {"erro": f"{e.__class__.__name__}"}
 
 
+_ICONE_FMT = {"rapida": ":material/bolt:", "normal": ":material/timer:", "longa": ":material/emoji_events:"}
+
+
+def _min_formato(f: str) -> int:
+    """Duração máxima aproximada da partida (análise + replay de cada rodada), para o card não prometer menos do que o jogo dura."""
+    return round(TB.FORMATOS[f] * (TB.T_ANALISE_S + TB.T_REPLAY_MESA_S) / 60)
+
+
+def _escolher_formato(tf: str, f: str) -> None:
+    _ss()[f"tb_fmt_{tf}"] = f
+
+
 def _central() -> None:
+    st.markdown(_CSS_CENTRAL, unsafe_allow_html=True)
     st.markdown(f"<div class='tb-hero'><img src='{ART.uri('hero')}' alt='Trader Battle'></div>", unsafe_allow_html=True)
     tf = st.segmented_control("Timeframe", list(TB.TIMEFRAMES), default="15m", key="tb_tf",
                               format_func=lambda k: TB.TIMEFRAMES[k]["nome"], label_visibility="collapsed") or "15m"
     if _n_reais(tf) < TB.MIN_CENARIOS_REAIS:
-        st.markdown("<div class='tb-demo'>MODO DEMONSTRAÇÃO: ainda não há cenários históricos reais preparados para este timeframe. "
-                    "Os gráficos desta partida são SIMULADOS e não são cotações reais.</div>", unsafe_allow_html=True)
-    ok_f = _formatos(tf)
-    st.segmented_control("Formato", ok_f, default=TB.FORMATO_PADRAO if TB.FORMATO_PADRAO in ok_f else ok_f[0], key=f"tb_fmt_{tf}",
-                         format_func=lambda k: f"{TB.ROTULO_FORMATO[k]} · {TB.FORMATOS[k]}", label_visibility="collapsed")
-    st.button("Jogar agora", key="tb_jogar", icon=":material/play_arrow:", width="stretch", on_click=_iniciar)
-    _central_online()
-    st.markdown(f"<div class='tb-chips'><div><b>2-4</b>jogadores (sala)</div><div><b>3 · 5 · 10</b>rodadas</div><div><b>{TB.T_ANALISE_S}s/{int(TB.T_REPLAY_MESA_S)}s</b>análise e replay</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tb-demo2'><div><b><span>i</span>Modo Demonstração</b><p>Ainda não há cenários históricos reais preparados para este timeframe. "
+                    f"Os gráficos serão simulados e não são cotações reais.</p></div><img src='{CT.uri('raposa_confiante')}' alt=''></div>", unsafe_allow_html=True)
+    st.markdown("<div class='tb-sec'><span>🕒</span>Escolha a duração da partida</div>", unsafe_allow_html=True)
+    ok_f, atual = _formatos(tf), _formato(tf)
+    with st.container(key="tb_fmts"):                               # grade própria (3 lado a lado no celular): a regra global quebra linhas de 3 colunas
+        for f in TB.FORMATOS:
+            st.button(TB.ROTULO_FORMATO[f], key=f"tb_fmtb_{f}", icon=_ICONE_FMT[f], width="stretch", disabled=f not in ok_f,
+                      type="primary" if f == atual else "secondary", on_click=_escolher_formato, args=(tf, f))
+    st.markdown("<style>" + "".join(f"{_P} .st-key-tb_fmtb_{f} button p::after{{content:'{TB.FORMATOS[f]} rodadas\\A~{_min_formato(f)} min'}}" for f in TB.FORMATOS) + "</style>",
+                unsafe_allow_html=True)
+    em = _email_online()
+    try:
+        ativa = TOD.partida_ativa(em) if em else None
+    except Exception:
+        ativa = None
+    painel = _ss().get("tb_painel")
+    with st.container(key="tb_modos"):
+        c1, c2 = st.columns(2)
+        with c1:
+            st.button("Jogar Solo", key="tb_jogar", icon=":material/trending_up:", width="stretch", on_click=_iniciar)
+        with c2:
+            st.button("Jogar com Amigos", key="tb_amigos", icon=":material/groups:", width="stretch",
+                      on_click=(_on_voltar_partida if ativa else _painel), args=((ativa,) if ativa else ("amigos",)))
+    st.button("Voltar para sua sala/partida" if ativa else "Entrar em uma Sala", key="tb_sala_row", icon=":material/login:", width="stretch",
+              on_click=(_on_voltar_partida if ativa else _painel), args=((ativa,) if ativa else ("entrar",)))
+    _central_online(None if ativa else painel)
+    st.markdown("<div class='tb-sobre'><div class='h'>⭐ Sobre o Trader Battle</div><div class='g'>"
+                "<div><i>👥</i><b>2-4</b><small>jogadores</small></div>"
+                f"<div><i>📅</i><b>{' · '.join(str(n) for n in TB.FORMATOS.values())}</b><small>rodadas</small></div>"
+                f"<div><i>📊</i><b>{TB.T_ANALISE_S}s/{int(TB.T_REPLAY_MESA_S)}s</b><small>análise e replay</small></div>"
+                "<div><i>🏆</i><b>XP</b><small>por colocação</small></div></div></div>", unsafe_allow_html=True)
     if _ss().get("tb_erro"):
         st.markdown(f"<div class='tb-er'>{_e(_ss().pop('tb_erro'))}</div>", unsafe_allow_html=True)
     with st.expander("Como funciona", icon=":material/help:"):
