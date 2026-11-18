@@ -1798,7 +1798,22 @@ def _inicio_app(ativos: list):
             st.button(f"Suas empresas em análise ({len(ativos)})", key="in_ver_empresas", icon=":material/monitoring:", on_click=_sair_modo_busca, width="stretch")
 
 
+_FUNDO_INICIO = "app/static/fundos/inicio.webp"   # velas e touro (arte enviada pelo dono do app), servido com cache do navegador
+
+
+def _css_fundo_inicio() -> str:
+    """Fundo da tela Início: a arte de velas fica fixa atrás dos cartões, escurecida embaixo para o texto continuar legível."""
+    q = "html body .stApp.stApp.stApp"
+    return (f"<style>{q} [data-testid='stAppViewContainer']{{background:"
+            "linear-gradient(180deg,rgba(9,7,34,.35) 0%,rgba(9,7,34,.55) 45%,rgba(9,7,34,.82) 100%),"
+            f"url('{_FUNDO_INICIO}') center top/cover no-repeat,#0B0828 !important;background-attachment:fixed,fixed,scroll !important}}"
+            f"{q} [data-testid='stMain']{{background:transparent !important}}"
+            f"@media (max-width:700px){{{q} [data-testid='stAppViewContainer']{{background-attachment:scroll,scroll,scroll !important;"
+            "background-size:auto,100% auto,auto !important}}}}</style>")
+
+
 def pagina_inicio():
+    st.markdown(_css_fundo_inicio(), unsafe_allow_html=True)
     if experiencia_app.inicio():              # aviso de troca de modo e introdução do primeiro acesso (não para a página)
         return
     ativos = list(st.session_state.get("sel_ativos", []))
@@ -4506,7 +4521,6 @@ BARRA_RODAPE = True
 DESIGN_V2 = True
 # Atalho da conta (ícone de perfil) no canto do cabeçalho. False = a conta só aparece no menu lateral.
 TOPO_PERFIL = True
-HUD_TOPO = True        # faixa fixa abaixo do cabeçalho (celular): sequência de dias, XP do dia e alertas, como a barra de recursos de um jogo
 
 _CSS_AREAS_BASE = (
     '.st-key-barra_areas [data-testid="stHorizontalBlock"]{display:grid !important;'
@@ -4649,7 +4663,7 @@ def _topo_acoes():
         st.markdown(_css_topo_avatar(), unsafe_allow_html=True)
         if st.button("Pesquisar", key="topo_busca", icon=":material/search:", type="tertiary"):
             _dialogo_busca()
-        st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css
+        st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css_topo
         st.button("Meu perfil", key="topo_conta", icon=":material/account_circle:", type="tertiary",      # avatar: abre o Meu Perfil (com as opções da conta)
                   on_click=lambda: st.session_state.update(_nav_pend="perfil"))
 
@@ -4693,51 +4707,26 @@ em_cripto = (pg.url_path in (PG_CRIPTO.url_path, PG_ONCHAIN.url_path, PG_RECEITA
 menu_navegacao()   # marca e menu no topo
 if TOPO_PERFIL:                            # botões do topo no lugar do menu lateral (celular e computador)
     _topo_acoes()
-if DESIGN_V2 and HUD_TOPO:                 # linha 2 do cabeçalho: sequência, XP, Ticker Coins e patrimônio T$ (estilo em cabecalho_global.py)
+if DESIGN_V2:                                # cabeçalho (estilo de referência) e registro dos ganhos para o pop-up "Você ganhou!"
     try:
         import jornada as _jor_hud
-        import moedas_arte as _ma_hud
-        import arte_tickerhunters as _ath_hud
         _h = _jor_hud.resumo(educacao_app.prog())
         _n_alertas = notif_app.contagem_nao_lidas()
-        _nb = cabecalho_global.NBSP
-        import nivel as _nv_m
-        _nv_hud = _nv_m.estado(_h["xp"])
-        _tc_s = None
-        _itens = [("dias", PG_JORNADA, f"{_h['ofensiva']}{_nb}{'dia' if _h['ofensiva'] == 1 else 'dias'}", "Sequência", ":material/local_fire_department:"),
-                  ("xp", PG_JORNADA, f"{_h['xp']}{_nb}XP", f"Nível{_nb}{_nv_hud['nivel']}", ":material/bolt:")]
-        try:                                                     # moedas à direita: TC e T$ em todas as telas
+        try:
             _tc_s = tickercoins_app.saldo_atual()
-            if _tc_s is not None:
-                _itens.append(("tc", PG_ECONOMIA, str(_tc_s if _tc_s < 10000 else "9999+"), "Ticker Coins", ":material/toll:"))
-            if usuarios.ator():
-                import wallet_game as _wg_hud
-                import wallet_game_app as _wga_hud
-                _r = _wga_hud.resultado(usuarios.ator())
-                _itens.append(("ts", PG_COMP, _wg_hud.moeda_curta(_r["rank"]["patrimonio"]).replace("T$ ", "").replace(" ", _nb), "Patrimônio", ":material/toll:"))
         except Exception:
-            pass
-        _itens.append(("battle", PG_BATTLE, "Battle", "Duelo", ":material/sports_esports:"))     # acesso ao Ticker Battle (posição provisória)
-        _itens.append(("trader", PG_TRADER, "Trade", "Candles", ":material/show_chart:"))     # Trader Battle (análise técnica)
-        try:                                                     # aviso de ganho: "+30 XP", "+5 Ticker Coins", sequência e nível novo (uma vez por mudança)
+            _tc_s = None
+        try:                                                     # ganhos: "+30 XP", "+5 Ticker Coins", sequência e nível novo (uma vez por mudança)
             import ganhos as _gn
+            import ganhos_app as _gna
             _quem = getattr(usuarios.ator(), "email", "") or ""
             _agora_g = _gn.foto(_h["xp"], _tc_s, _h["ofensiva"])
             _ult_g = st.session_state.get("_ganhos_ult")
-            import ganhos_app as _gna
             _gna.registrar(_gn.comparar(_ult_g["f"], _agora_g) if _ult_g and _ult_g.get("q") == _quem else [])
             st.session_state["_ganhos_ult"] = {"q": _quem, "f": _agora_g}
         except Exception:
             pass
-        st.markdown(cabecalho_global.css([(i_, v_, r_) for i_, _pg, v_, r_, _ic in _itens], _n_alertas,
-                                         {**{q_: _ma_hud.uri(q_) for q_ in ("tc", "ts")}, "dias": _ath_hud.uri("fogo"), "xp": _ath_hud.uri("raio")},
-                                         xp_pct=(None if _nv_hud.get("maximo") else _nv_hud.get("pct"))), unsafe_allow_html=True)
-        with st.container(key="hud_topo"):
-            _hc = st.columns(len(_itens))
-            for _col, (_nome, _pg, _val, _rot, _ic) in zip(_hc, _itens):
-                with _col:
-                    with st.container(key=f"hud_i_{_nome}"):
-                        st.page_link(_pg, label=_val, icon=_ic)
+        st.markdown(cabecalho_global.css_topo(_n_alertas), unsafe_allow_html=True)
     except Exception:
         pass
 _nav = st.session_state.pop("_nav_pend", None) or ("inicio" if st.session_state.pop("ps_ir_inicio", False) else None)
