@@ -691,11 +691,15 @@ def _ver_avatar(a: str) -> None:
 
 
 def _usar_avatar(a: str) -> None:
-    """Põe o avatar no rascunho (só se estiver liberado; o servidor confere de novo ao salvar)."""
+    """Equipa o avatar e JÁ GRAVA no perfil (só se estiver liberado; o servidor confere de novo em salvar)."""
     import avatares as AV
     if AV.pode_equipar(a, minha_colecao()):
+        ok, msg = salvar({"avatar": a})
+        if not ok:
+            st.session_state["_pe_aviso"] = (False, msg)
+            return
         _escolher_avatar(a)
-        st.session_state["_pe_aviso"] = (True, f"{AV.POR_ID[a]['nome']} escolhido. Toque em Salvar para usar no seu perfil.")
+        st.session_state["_pe_aviso"] = (True, f"Pronto! {AV.POR_ID[a]['nome']} é o seu avatar agora.")
     else:
         st.session_state["_pe_aviso"] = (False, "Esse avatar ainda está bloqueado. " + AV.como_liberar(AV.POR_ID[a]) + ".")
 
@@ -741,15 +745,22 @@ def _escolher_avatar(a: str) -> None:
 
 
 def _usar_foto() -> None:
-    """Processa a foto enviada com o recorte escolhido e guarda no rascunho (ainda não grava)."""
+    """Processa a foto enviada com o recorte escolhido e JÁ GRAVA no perfil (é o que a pessoa espera ao tocar em "Usar esta foto").
+    Os outros campos do rascunho (nome, bio, privacidade...) continuam esperando o Salvar."""
     ss = st.session_state
     arq = ss.get("pe_up")
     try:
         if arq is None:
             raise FT.ErroFoto("Escolha uma imagem da galeria primeiro.")
-        ss["pe_foto"] = FT.processar(arq.getvalue(), ss.get("pe_zoom", 1.0), ss.get("pe_x", 0.0), ss.get("pe_y", 0.0))
+        webp = FT.processar(arq.getvalue(), ss.get("pe_zoom", 1.0), ss.get("pe_x", 0.0), ss.get("pe_y", 0.0))
+        ok, msg = salvar({"avatar": PF.FOTO}, foto_webp=webp)
+        if not ok:
+            ss["_pe_aviso"] = (False, msg)
+            return
+        ss.pop("pe_foto", None)
         ss["pe_avatar"], ss["pe_remover"] = PF.FOTO, False
-        ss["_pe_aviso"] = (True, "Foto pronta! Toque em Salvar para usar no seu perfil.")
+        ss.pop("pe_up", None)
+        ss["_pe_aviso"] = (True, "Foto atualizada no seu perfil!")
     except FT.ErroFoto as e:
         ss["_pe_aviso"] = (False, str(e))
     except Exception as e:
@@ -758,9 +769,15 @@ def _usar_foto() -> None:
 
 
 def _remover_foto() -> None:
+    """Tira a foto enviada e volta ao avatar padrão, já gravando no perfil."""
     ss = st.session_state
+    ok, msg = salvar({"avatar": PF.AVATAR_PADRAO}, remover_foto=True)
+    if not ok:
+        ss["_pe_aviso"] = (False, msg)
+        return
     ss.pop("pe_foto", None)
-    ss["pe_remover"], ss["pe_avatar"] = True, PF.AVATAR_PADRAO
+    ss["pe_remover"], ss["pe_avatar"] = False, PF.AVATAR_PADRAO
+    ss["_pe_aviso"] = (True, "Foto removida. Você voltou ao avatar padrão.")
 
 
 def _salvar_edicao() -> None:
