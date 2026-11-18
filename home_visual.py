@@ -224,8 +224,6 @@ def css_layout() -> str:
             f'background:url("{fundo_card("ranking")}") center bottom/cover no-repeat,radial-gradient(circle at 12% 0%,rgba(139,108,255,.18),transparent 55%),linear-gradient(160deg,#1E2E5C,#12113A 80%);box-shadow:0 8px 22px rgba(2,6,23,.45)}}'
             f"{q} .st-key-hm_perf .hm-cab{{margin:0}}"
             f"{q} .st-key-hm_perf{{position:relative}}"
-            f"{q} .st-key-hm_perf_ver{{position:absolute !important;inset:0 !important;z-index:5;width:100% !important;height:100% !important;margin:0 !important}}"
-            f"{q} .st-key-hm_perf_ver button{{width:100% !important;height:100% !important;min-height:0 !important;opacity:0;cursor:pointer;border-radius:22px}}"
             f"{q} .st-key-hm_perf>[data-testid='stElementContainer']{{min-width:0;width:100% !important}}"
             f"{q} .st-key-hm_perf>[data-testid='stElementContainer']:nth-child(1),{q} .st-key-hm_perf>[data-testid='stElementContainer']:nth-child(n+5){{grid-column:1 / -1}}"
             f"{q} .st-key-hm_perf .hm-card{{height:calc(100% - 10px);padding:9px 9px 10px}}{q} .hm-sec{{padding-bottom:2px;margin-top:10px}}"

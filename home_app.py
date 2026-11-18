@@ -85,7 +85,6 @@ def desempenho(ir) -> None:
             st.caption("Entre na sua conta para acompanhar o desempenho da sua carteira.")
         elif not participa:
             st.caption("Entre na Wallet Game para montar uma carteira e acompanhar o desempenho.")
-        st.button("Abrir minha carteira", key="hm_perf_ver", on_click=ir, args=("carteira", {}), width="stretch")     # invisível: cobre o card inteiro (CSS)
 
 
 def nivel_xp(xp) -> str:
