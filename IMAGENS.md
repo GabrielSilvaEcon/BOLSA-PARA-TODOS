@@ -19,9 +19,9 @@ Todas as artes que o app precisa, tela por tela. Ao chegar uma arte nova, basta 
 | 1.2 | Cabeça do touro roxo (logo) | `static/home/touro.webp` | Banner TICKER HUNTERS e selo do ranking no topo | 512 × 512 px | Transparente | ⏳ Provisória |
 | 1.3 | Troféu dourado no pedestal | `static/home/trofeu.webp` | Cartão Missões diárias (esquerda) | 512 × 512 px | Transparente | ⏳ Provisória |
 | 1.4 | Cofre com pilhas de moedas | `static/home/cofre.webp` | Cartão Missões diárias (recompensa, direita) | 512 × 512 px | Transparente | ⏳ Provisória |
-| 1.7 | Botão JOGAR AGORA com o mascote | `static/home/btn_jogar.webp` | Botão grande, à esquerda, abaixo das missões | 1200 × 1000 px (≈ 1,19:1) | Hoje: cena com fundo roxo (ok). Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
-| 1.8 | Botão CARTEIRA | `static/home/btn_carteira.webp` | À direita, em cima | 1200 × 550 px (≈ 2,2:1) | Fundo escuro removido no recorte. Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
-| 1.9 | Botão MERCADO | `static/home/btn_mercado.webp` | À direita, embaixo | 1200 × 550 px (≈ 2,2:1) | Fundo escuro removido no recorte. Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
+| 1.7 | Botão JOGAR AGORA (com o mascote) | `static/home/btn_jogar.webp` | No meio da fileira de botões, maior | 1300 × 970 px (≈ 1,34:1) | Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
+| 1.8 | Botão CARTEIRA | `static/home/btn_carteira.webp` | À esquerda da fileira | 940 × 750 px (≈ 1,25:1) | Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
+| 1.9 | Botão MERCADO | `static/home/btn_mercado.webp` | À direita da fileira | 940 × 750 px (≈ 1,25:1) | Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
 | 1.5 | Coroa dourada (opcional) | `static/home/coroa.webp` | Em cima do saldo de Ticker Coins | 128 × 96 px | Transparente | Hoje é um desenho em código (SVG); *precisa ligar no código* |
 | 1.6 | Fundo da Home: cidade neon roxa com grade (opcional) | `static/fundos/home.webp` | Atrás de toda a tela inicial | 1080 × 2340 px (retrato) | Escuro, sem elementos no centro | 🎨 Falta · *precisa ligar no código* |
 

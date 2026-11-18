@@ -199,7 +199,7 @@ _ALT = {"carteira": "Carteira", "jogar": "Jogar agora", "mercado": "Mercado"}
 
 
 def html_acesso(chave: str) -> str:
-    """Botão com a arte do TickerHunters (static/home/btn_<chave>.webp; o texto já vem na arte)."""
+    """Botão com a arte do TickerHunters (static/home/btn_<chave>.webp, o texto já vem na arte)."""
     if chave not in _ALT:
         raise KeyError(chave)
     return f"<div class='hg-bt hg-b-{chave}'><img src='{arte('btn_' + chave)}' alt='{_ALT[chave]}' loading='eager'></div>"
@@ -313,19 +313,13 @@ def css() -> str:
             f"{c} .hg-cf img{{width:52px;height:50px;object-fit:cover;-webkit-mask:radial-gradient(ellipse at 50% 50%,#000 58%,transparent 74%);"
             "mask:radial-gradient(ellipse at 50% 50%,#000 58%,transparent 74%)}"
             f"{c} .hg-cf b{{font-size:.8rem;font-weight:900;color:#FFD76A;white-space:nowrap;margin-top:-4px}}{c} .hg-cf b.ok{{color:#7CF0C0}}"
-            # ---- 5. acessos: JOGAR AGORA (com o mascote) à esquerda; Carteira e Mercado empilhados à direita
-            f"{c} .st-key-hg_acessos{{display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;"
-            "gap:4px 6px !important;align-items:stretch}"
+            # ---- 5. acessos: a mesma fileira de três (Carteira · JOGAR AGORA maior, no meio · Mercado); a arte preenche o botão inteiro
+            f"{c} .st-key-hg_acessos{{display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr);gap:5px !important;align-items:center}}"
             f"{c} .st-key-hg_acessos>*{{min-width:0}}"
-            f"{c} .st-key-hg_acessos>:is(.st-key-hg_ac_jogar,:has(.st-key-hg_ac_jogar)){{grid-column:1;grid-row:1 / span 2}}"
-            f"{c} .st-key-hg_acessos>:is(.st-key-hg_ac_carteira,:has(.st-key-hg_ac_carteira)){{grid-column:2;grid-row:1}}"
-            f"{c} .st-key-hg_acessos>:is(.st-key-hg_ac_mercado,:has(.st-key-hg_ac_mercado)){{grid-column:2;grid-row:2}}"
-            f"{c} .st-key-hg_ac_jogar,{c} .st-key-hg_ac_jogar [data-testid='stElementContainer'],{c} .st-key-hg_ac_jogar [data-testid='stMarkdownContainer'],"
-            f"{c} .st-key-hg_ac_jogar .stMarkdown{{height:100% !important}}"
-            f"{c} .hg-bt{{position:relative;line-height:0;height:100%}}"
-            f"{c} .hg-bt img{{display:block;width:100%;height:auto;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45))}}"
-            f"{c} .hg-b-jogar img{{height:100%;object-fit:cover;border-radius:16px;"
-            "box-shadow:0 0 0 1.5px rgba(170,255,60,.55),0 0 18px -4px rgba(170,255,60,.7)}"
+            f"{c} .hg-bt{{position:relative;aspect-ratio:590/466;border-radius:14px;overflow:hidden;line-height:0;box-shadow:0 0 0 1.5px var(--b),0 0 14px -3px var(--b)}}"
+            f"{c} .hg-bt img{{display:block;width:100%;height:100%;object-fit:cover}}"
+            f"{c} .hg-b-carteira{{--b:#3D8BFF}}{c} .hg-b-mercado{{--b:#FF3D7A}}"
+            f"{c} .hg-b-jogar{{--b:#B6FF3D;aspect-ratio:830/592}}"
             f"{c} .st-key-hg_acessos [class*='st-key-hg_ac_']:has(button:active) .hg-bt{{filter:brightness(1.15)}}"
             "@media (max-width:360px){"
             f"{c} .hg-lvt span{{display:none}}{c} .hg-pass{{min-width:80px;padding:5px 6px}}{c} .hg-lg{{width:52px;height:48px}}"
