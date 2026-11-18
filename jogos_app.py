@@ -415,33 +415,161 @@ def _linha_hist(jogo: str, h: dict) -> str:
 
 
 # ------------------------------------------------------------------ TELA · Central de Jogos
+_CSS_CJ = "<style>" + "".join(l.strip() for l in f"""
+{_P} .cj-ban{{position:relative;display:flex;align-items:center;gap:8px;min-height:150px;padding:12px 14px 52px 4px;border-radius:24px;overflow:hidden;
+  border:2px solid rgba(52,232,94,.55);background:radial-gradient(90% 120% at 100% 0,rgba(52,232,94,.28),transparent 60%),
+  linear-gradient(120deg,#3B1C9E,#1A1060 55%,#0F2A3A);box-shadow:0 0 22px rgba(52,232,94,.22)}}
+{_P} .cj-ban img{{flex:0 0 auto;width:132px;height:132px;object-fit:contain;margin:-6px 0 -14px}}
+{_P} .cj-ban .t{{min-width:0}}
+{_P} .cj-ban .a{{font-weight:900;font-style:italic;font-size:1rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .cj-ban .b{{font-weight:900;font-style:italic;font-size:1.45rem;line-height:1.05;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .cj-ban .b span{{color:#B6F23E !important;-webkit-text-fill-color:#B6F23E !important}}
+{_P} .cj-ban p{{margin:6px 0 0;font-size:.8rem;font-style:italic;line-height:1.3;color:#E6E1FF !important;-webkit-text-fill-color:#E6E1FF !important}}
+{_P} .st-key-cj_como{{margin-top:-46px;margin-left:auto;width:max-content;position:relative;z-index:2;padding-right:14px}}
+{_P} .st-key-cj_como button{{min-height:32px !important;padding:2px 14px !important;border-radius:999px !important;font-size:.8rem !important;
+  background:linear-gradient(90deg,#5B3BE0,#3A22B0) !important;border:1px solid #8B6CFF !important}}
+{_P} .cj-h{{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 8px;font-weight:900;font-size:1.15rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .cj-h span{{display:flex;align-items:center;gap:8px}}
+{_P} .cj-jg{{position:relative;border-radius:22px 22px 0 0;overflow:hidden;border:2px solid var(--c);border-bottom:0;background:#0A0630}}
+{_P} .cj-jg img{{display:block;width:100%;aspect-ratio:2/1;object-fit:contain;background:#0A0630}}
+{_P} .cj-jg p{{margin:0;padding:8px 8px 10px;text-align:center;font-size:.76rem;font-weight:700;line-height:1.3;background:linear-gradient(180deg,#160F55,#0B0738);
+  color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .st-key-cj_jogos [data-testid="stHorizontalBlock"]{{flex-wrap:nowrap !important;gap:.6rem !important}}
+{_P} .st-key-cj_jogos [data-testid="stColumn"]{{flex:1 1 0 !important;width:auto !important;min-width:0 !important}}
+{_P} .st-key-cj_jogos [data-testid="stColumn"] > div{{gap:0 !important}}
+{_P} .st-key-cj_jogos :is([data-testid="stMarkdown"],[data-testid="stMarkdownContainer"],[data-testid="stElementContainer"]){{margin-bottom:0 !important}}
+{_P} :is(.st-key-cj_trade,.st-key-cj_ticker) button{{border-radius:0 0 22px 22px !important;min-height:46px !important;border:2px solid var(--c) !important;border-top:0 !important;
+  font-weight:900 !important}}
+{_P} .st-key-cj_trade{{--c:{VERDE}}}{_P} .st-key-cj_ticker{{--c:{ROXO}}}
+{_P} .st-key-cj_trade button{{background:linear-gradient(90deg,#2EE86B,#14C98F) !important}}
+{_P} .st-key-cj_trade button :is(p,span){{color:#06240F !important;-webkit-text-fill-color:#06240F !important}}
+{_P} .st-key-cj_ticker button{{background:linear-gradient(90deg,#8B5CF6,#6D28D9) !important}}
+{_P} .st-key-cj_ticker button :is(p,span){{color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .cj-ev{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}}
+{_P} .cj-ev div{{text-align:center;padding:10px 4px;border-radius:18px;border:1.5px solid rgba(139,108,255,.45);background:linear-gradient(160deg,#1B1460,#100B3E)}}
+{_P} .cj-ev div.fogo{{border-color:rgba(255,140,60,.5);background:linear-gradient(160deg,#3A1A2A,#1A0F30)}}
+{_P} .cj-ev i{{display:block;font-style:normal;font-size:1.35rem}}
+{_P} .cj-ev small{{display:block;margin-top:2px;font-size:.7rem;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
+{_P} .cj-ev b{{display:block;font-size:1.05rem;font-weight:900;color:#fff !important;-webkit-text-fill-color:#fff !important;white-space:nowrap}}
+{_P} .cj-ev em{{display:block;font-style:normal;font-size:.62rem;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .cj-des{{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px;border-radius:20px;border:2px solid {OURO};
+  background:radial-gradient(80% 120% at 100% 50%,rgba(242,184,75,.22),transparent 60%),linear-gradient(160deg,#21184F,#120C3A);box-shadow:0 0 16px rgba(242,184,75,.25)}}
+{_P} .cj-des .ic{{font-size:2rem}}
+{_P} .cj-des .t{{flex:1;min-width:0}}
+{_P} .cj-des b{{display:block;font-size:1rem;font-weight:900;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}
+{_P} .cj-des small{{display:block;margin-top:2px;font-size:.8rem;line-height:1.3;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .cj-des .bar{{display:flex;align-items:center;gap:8px;margin-top:8px}}
+{_P} .cj-des .bar i{{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}}
+{_P} .cj-des .bar i u{{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#34E85E,#B6F23E)}}
+{_P} .cj-des .bar em{{font-style:normal;font-weight:900;font-size:.8rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .cj-des .pr{{flex:0 0 auto;padding:6px 10px;border-radius:999px;border:1.5px solid {OURO};background:rgba(40,24,0,.5);font-weight:900;font-size:.8rem;
+  color:#FFE08A !important;-webkit-text-fill-color:#FFE08A !important;text-align:center}}
+{_P} .cj-des .pr.ok{{border-color:{VERDE};color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}
+{_P} .st-key-cj_atalhos{{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px !important;margin-top:12px}}
+{_P} .st-key-cj_atalhos > div{{width:auto !important;min-width:0}}
+{_P} .cj-at{{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 4px 10px;border-radius:18px;text-align:center;
+  border:1.5px solid rgba(139,108,255,.45);background:linear-gradient(160deg,#1B1460,#100B3E)}}
+{_P} .cj-at i{{font-style:normal;font-size:1.4rem;line-height:1.1}}
+{_P} .cj-at span{{font-size:.76rem;font-weight:800;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .st-key-cj_det button{{min-height:30px !important;padding:0 6px !important;background:transparent !important;border:0 !important;box-shadow:none !important}}
+{_P} .st-key-cj_det button :is(p,span){{color:#B79CFF !important;-webkit-text-fill-color:#B79CFF !important;font-weight:800 !important}}
+{_P} .st-key-cj_evh{{display:flex !important;flex-direction:row !important;align-items:center;justify-content:space-between;margin:18px 2px 8px}}
+{_P} .st-key-cj_evh > div{{width:auto !important}}
+{_P} .st-key-cj_evh .cj-h{{margin:0}}
+@media (max-width:400px){{{_P} .cj-ban img{{width:104px;height:104px}}{_P} .cj-ban .b{{font-size:1.2rem}}{_P} .cj-ev b{{font-size:.92rem}}}}
+""".splitlines()) + "</style>"
+
+
+@st.dialog("Como funciona")
+def _como_funciona() -> None:
+    st.markdown("**Trade Battle** · Analise o gráfico, decida a operação e veja o replay. Os pontos vêm do resultado das suas operações. "
+                "Jogue sozinho ou numa sala com 2 a 4 amigos.\n\n"
+                "**Ticker Battle** · Duelo de cartas de ativos: em cada rodada vence o indicador real melhor. Contra o sistema ou online.\n\n"
+                "**XP** · Você ganha XP pela colocação e pela pontuação, e ele nunca é negativo. O dinheiro do Trade Battle é só o lucro ou "
+                "prejuízo das suas operações, na sua carteira.\n\n"
+                "**Ranking** · Cada jogo tem o seu ranking. Desafie amigos em Meus Amigos e acompanhe eventos e recompensas.")
+
+
+def _ofensiva() -> int:
+    try:
+        import educacao_app as EA
+        import jornada as JO
+        return int(JO.resumo(EA.prog()).get("ofensiva") or 0)
+    except Exception:
+        return 0
+
+
 def pagina_central() -> None:
-    _cabecalho("Central de Jogos", "Aprenda. Compita. Evolua.")
-    navegacao("jogos")
+    """Central de Jogos: boas-vindas, os dois jogos, sua evolução, desafio da semana e atalhos (Ranking, Amigos, Eventos, Ajuda)."""
+    st.markdown(CSS + _CSS_CJ + f"<style>{_P} [data-testid='stMainBlockContainer'],{_P} .block-container{{max-width:720px !important}}</style>",
+                unsafe_allow_html=True)
     sincronizar_ticker()
-    with st.container(key="jg_jogos"):
+    try:
+        import arte_tickerhunters as AT
+        masc = AT.uri("caramelo_animado")
+    except Exception:
+        masc = ""
+    img = f"<img src='{masc}' alt=''>" if masc else ""
+    st.markdown(f"<div class='cj-ban'>{img}<div class='t'><div class='a'>Bem-vindo ao</div>"
+                "<div class='b'>Mundo dos <span>Jogos!</span></div><p>Teste suas habilidades, ganhe recompensas e evolua no TickerHunters.</p>"
+                "</div></div>", unsafe_allow_html=True)
+    if st.button("Ver como funciona", key="cj_como", icon=":material/play_arrow:"):
+        _como_funciona()
+    # ---- os dois jogos
+    st.markdown("<div class='cj-h'><span>🎮 Nossos Jogos</span></div>", unsafe_allow_html=True)
+    with st.container(key="cj_jogos"):
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown(f"<div class='jg-jogo' style='--c:{VERDE}'><img src='{ART.uri('hero')}' alt='{_e(J.NOME[J.TRADE])}'>"
-                        "<span>Análise e replay</span></div>", unsafe_allow_html=True)
-            st.button("Jogar agora", key="jg_ir_trade", icon=":material/play_arrow:", width="stretch", on_click=_ir, args=("trader",))
+            st.markdown(f"<div class='cj-jg' style='--c:{VERDE}'><img src='{ART.uri('hero')}' alt='{_e(J.NOME[J.TRADE])}'>"
+                        "<p>Desafie outros jogadores em batalhas de trade!</p></div>", unsafe_allow_html=True)
+            with st.container(key="cj_trade"):
+                st.button("Jogar agora", key="jg_ir_trade", icon=":material/play_arrow:", width="stretch", on_click=_ir, args=("trader",))
         with c2:
-            st.markdown(f"<div class='jg-jogo' style='--c:{ROXO}'><img src='{ARTB.uri('modo_hero')}' alt='{_e(J.NOME[J.TICKER])}'>"
-                        "<span>Duelo de cartas</span></div>", unsafe_allow_html=True)
-            st.button("Jogar agora", key="jg_ir_ticker", icon=":material/play_arrow:", width="stretch", on_click=_ir, args=("battle",),
-                      kwargs={"bt_tela": "central"})
+            st.markdown(f"<div class='cj-jg' style='--c:{ROXO}'><img src='{ARTB.uri('modo_hero')}' alt='{_e(J.NOME[J.TICKER])}'>"
+                        "<p>Mostre seu conhecimento e suba no ranking!</p></div>", unsafe_allow_html=True)
+            with st.container(key="cj_ticker"):
+                st.button("Jogar agora", key="jg_ir_ticker", icon=":material/play_arrow:", width="stretch", on_click=_ir, args=("battle",),
+                          kwargs={"bt_tela": "central"})
+    # ---- sua evolução
     rt, rk = ranking(J.TRADE), ranking(J.TICKER)
-    meu = J.resumo(_meu_doc())
-    pos = lambda r: f"#{r['eu']['pos']}" if r and r["eu"] else "—"
-    st.markdown("<div class='jg-sec'>🏅 Seus destaques</div>"
-                f"<div class='jg-dest'><div><small>{_e(J.NOME[J.TRADE])}</small><b>{pos(rt)}</b><i>{_e(_fmt_valor(J.TRADE, meu['trade_pts']))}</i></div>"
-                f"<div><small>{_e(J.NOME[J.TICKER])}</small><b>{pos(rk)}</b><i>{meu['ticker_v']}V · {meu['ticker_e']}E · {meu['ticker_d']}D</i></div>"
-                f"<div><small>Vitórias</small><b>{meu['vitorias']}</b><i>nos dois jogos</i></div></div>", unsafe_allow_html=True)
-    _card_desafio()
-    with st.container(key="jg_atalhos"):
-        st.button("Ranking", key="jg_at_rk", icon=":material/emoji_events:", width="stretch", on_click=_ir, args=("jogos-ranking",))
-        st.button("Amigos", key="jg_at_am", icon=":material/group:", width="stretch", on_click=_ir, args=("jogos-amigos",))
-        st.button("Eventos", key="jg_at_ev", icon=":material/redeem:", width="stretch", on_click=_ir, args=("jogos-eventos",))
+    doc = _meu_doc()
+    es = J.estatisticas(doc)
+    pos = [(r["eu"]["pos"], J.NOME[j].split()[0]) for j, r in ((J.TRADE, rt), (J.TICKER, rk)) if r and r.get("eu")]
+    melhor = min(pos) if pos else None
+    with st.container(key="cj_evh"):
+        st.markdown("<div class='cj-h'><span>📈 Sua Evolução</span></div>", unsafe_allow_html=True)
+        aberto = bool(st.session_state.get("cj_hist"))
+        st.button("Ver menos" if aberto else "Ver detalhes ›", key="cj_det", on_click=lambda: st.session_state.update(cj_hist=not aberto))
+    ofs = _ofensiva()
+    st.markdown("<div class='cj-ev'>"
+                f"<div><i>🏆</i><small>Vitórias</small><b>{es['vitorias']}</b><em>nos dois jogos</em></div>"
+                f"<div><i>⭐</i><small>Ranking</small><b>{('#' + str(melhor[0])) if melhor else '—'}</b><em>{_e(melhor[1]) if melhor else 'jogue para entrar'}</em></div>"
+                f"<div class='fogo'><i>🔥</i><small>Sequência</small><b>{ofs} {'dia' if ofs == 1 else 'dias'}</b><em>de estudo</em></div>"
+                f"<div><i>🎮</i><small>Partidas</small><b>{es['partidas']}</b><em>terminadas</em></div></div>", unsafe_allow_html=True)
+    if st.session_state.get("cj_hist"):
+        hist = [("trade", h) for h in doc[J.TRADE]["hist"]] + [("ticker", h) for h in doc[J.TICKER]["hist"]]
+        hist.sort(key=lambda x: str(x[1].get("em") or ""), reverse=True)
+        if hist:
+            st.markdown("<div class='jg-sec'>Suas últimas partidas</div>" + "".join(_linha_hist(j, h).replace("<span>", f"<span>{_e(J.NOME[j])} · ", 1) for j, h in hist[:12]), unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='jg-vazio'>Suas partidas terminadas aparecem aqui.</div>", unsafe_allow_html=True)
+    # ---- desafio da semana
+    d = _desafio()
+    if d:
+        pct = 0 if not d["alvo"] else min(100.0, d["atual"] / d["alvo"] * 100)
+        premio = "✓ Concluído" if d.get("ok") else f"+{d.get('pontos', 0)} pts"
+        st.markdown(f"<div class='cj-des'><span class='ic'>📅</span><div class='t'><b>Desafio da Semana</b><small>{_e(d['texto'])}</small>"
+                    f"<div class='bar'><i><u style='width:{pct:.0f}%'></u></i><em>{d['atual']}/{d['alvo']}</em></div></div>"
+                    f"<span class='pr{' ok' if d.get('ok') else ''}'>{_e(premio)}</span></div>", unsafe_allow_html=True)
+    # ---- atalhos
+    import amigos_app as AMA
+    st.markdown(AMA.CSS_LINK, unsafe_allow_html=True)
+    with st.container(key="cj_atalhos"):
+        for k, rot, ic, url in (("rk", "Ranking", "👑", "jogos-ranking"), ("am", "Amigos", "👥", "jogos-amigos"), ("ev", "Eventos", "🎁", "jogos-eventos"),
+                                ("aj", "Ajuda", "📖", "ajuda")):
+            with st.container(key=f"lk_cja_{k}"):
+                st.markdown(f"<div class='cj-at'><i>{ic}</i><span>{rot}</span></div>", unsafe_allow_html=True)
+                st.button(f"Abrir {rot}", key=f"jg_at_{k}", on_click=_ir, args=(url,))
 
 
 def _desafio() -> dict | None:
