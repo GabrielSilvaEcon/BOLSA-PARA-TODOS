@@ -313,15 +313,13 @@ def css() -> str:
             f"{c} .hg-cf img{{width:52px;height:50px;object-fit:cover;-webkit-mask:radial-gradient(ellipse at 50% 50%,#000 58%,transparent 74%);"
             "mask:radial-gradient(ellipse at 50% 50%,#000 58%,transparent 74%)}"
             f"{c} .hg-cf b{{font-size:.8rem;font-weight:900;color:#FFD76A;white-space:nowrap;margin-top:-4px}}{c} .hg-cf b.ok{{color:#7CF0C0}}"
-            # ---- 5. acessos: a mesma fileira de três (Carteira · JOGAR AGORA maior, no meio · Mercado), cada botão é a arte inteira
-            f"{c} .st-key-hg_acessos{{display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1.38fr) minmax(0,1fr);gap:0 !important;align-items:end}}"
+            # ---- 5. acessos: a mesma fileira de três (Carteira · JOGAR AGORA maior, no meio · Mercado); a arte preenche o botão inteiro
+            f"{c} .st-key-hg_acessos{{display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr);gap:5px !important;align-items:center}}"
             f"{c} .st-key-hg_acessos>*{{min-width:0}}"
-            f"{c} .hg-bt{{position:relative;line-height:0}}"
-            f"{c} .hg-bt img{{display:block;width:100%;height:auto}}"
-            # bordas das artes dissolvidas no fundo da tela (o fundo da arte não é exatamente o da tela)
-            f"{c} .hg-bt img{{-webkit-mask:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent),linear-gradient(180deg,transparent,#000 9%,#000 92%,transparent);"
-            "-webkit-mask-composite:source-in;mask:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent),linear-gradient(180deg,transparent,#000 9%,#000 92%,transparent);"
-            "mask-composite:intersect}"
+            f"{c} .hg-bt{{position:relative;aspect-ratio:590/466;border-radius:14px;overflow:hidden;line-height:0;box-shadow:0 0 0 1.5px var(--b),0 0 14px -3px var(--b)}}"
+            f"{c} .hg-bt img{{display:block;width:100%;height:100%;object-fit:cover}}"
+            f"{c} .hg-b-carteira{{--b:#3D8BFF}}{c} .hg-b-mercado{{--b:#FF3D7A}}"
+            f"{c} .hg-b-jogar{{--b:#B6FF3D;aspect-ratio:830/592}}"
             f"{c} .st-key-hg_acessos [class*='st-key-hg_ac_']:has(button:active) .hg-bt{{filter:brightness(1.15)}}"
             "@media (max-width:360px){"
             f"{c} .hg-lvt span{{display:none}}{c} .hg-pass{{min-width:80px;padding:5px 6px}}{c} .hg-lg{{width:52px;height:48px}}"
