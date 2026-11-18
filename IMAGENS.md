@@ -79,6 +79,24 @@ Artes recortadas do mockup do Ranking (provisórias). O texto de cada aba e das 
 
 ---
 
+## 4. Carteira
+
+Artes recortadas do mockup da Carteira (provisórias). O topo com o mascote é o mesmo do Ranking (`static/ranking/mascote.webp`).
+FIIs e Renda fixa ainda usam emoji (🏢 🏦) porque o mockup não tem ícone para eles.
+
+| # | Arte | Arquivo | Onde aparece | Tamanho ideal | Fundo | Status |
+|---|------|---------|--------------|---------------|-------|--------|
+| 4.1 | Carteira verde (ícone do título) | `static/carteira/carteira.webp` | Cartão "Carteira", à esquerda | 256 × 256 px | Transparente | ⏳ Recortado do mockup |
+| 4.2 | Gráfico subindo (aba Todos) | `static/carteira/valor.webp` | Aba Todos | 128 × 128 px | Transparente | ⏳ Recortado do mockup |
+| 4.3 | Ícone Ações | `static/carteira/acoes.webp` | Aba Ações | 128 × 128 px | Transparente | ⏳ Recortado do mockup |
+| 4.4 | Ícone Cripto | `static/carteira/cripto.webp` | Aba Cripto | 128 × 128 px | Transparente | ⏳ Recortado do mockup |
+| 4.5 | Ícone ETFs | `static/carteira/etf.webp` | Aba ETFs | 128 × 128 px | Transparente | ⏳ Recortado do mockup |
+| 4.6 | Ícone Fundos | `static/carteira/fundo.webp` | Aba Fundos | 128 × 128 px | Transparente | ⏳ Recortado do mockup |
+| 4.7 | Ícone FIIs | `static/carteira/fii.webp` | Aba FIIs | 128 × 128 px | Transparente | 🎨 Falta (emoji 🏢) · *precisa ligar no código* |
+| 4.8 | Ícone Renda fixa | `static/carteira/rf.webp` | Aba Renda fixa | 128 × 128 px | Transparente | 🎨 Falta (emoji 🏦) · *precisa ligar no código* |
+
+---
+
 ## Próximas telas
 
 _As telas seguintes entram aqui à medida que os mockups chegarem (Jogos, Aprender, Ranking, Loja, Carteira, Mercado...)._

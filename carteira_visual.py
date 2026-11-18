@@ -187,6 +187,25 @@ def html_ativo(r: dict, sp: list[float] | None, i: int) -> str:
             f"<div class='cv-av'><b>{_e(moeda(r['valor']))}</b><span style='color:{cor}'>{_pct(r['res'])}</span></div></div>")
 
 
+def html_topo_jogo(cart: dict | None) -> str:
+    """Topo com o mascote e a sua ficha (o mesmo do Ranking): avatar, nome, posição no ranking da Carteira e Ticker Coins."""
+    import ranking_app as RA
+    import ranking_visual as RV
+    try:
+        import perfis_app as PA
+        p = PA.meu_perfil() or {}
+        nome = p.get("nome") or p.get("usuario") or "Jogador"
+    except Exception:
+        nome = "Jogador"
+    try:
+        import tickercoins_app as TCA
+        tc = TCA.saldo_atual()
+    except Exception:
+        tc = None
+    pos = ((cart or {}).get("rank") or {}).get("geral")
+    return RV.css() + RV.html_topo(nome, RA._meu_src(), pos if isinstance(pos, int) else None, tc)
+
+
 def html_hero() -> str:
     """Cabeçalho da Minha Carteira (topo padrão do kit visual, com a ilustração da carteira)."""
     from design import kit as _kit
@@ -364,7 +383,8 @@ def _sparks(pos: list[dict], limite: int = 8) -> dict:
 
 
 def mostrar(est: dict, res: dict | None) -> None:
-    """Desenha: patrimônio com o Caramelo, meus ativos, Comprar/Vender, desempenho e missão."""
+    """Desenha, no formato mobile game (carteira_game): cartão Carteira com o valor total, resumo, Comprar/Vender, abas por categoria,
+    grade de cartões dos ativos; depois ranking, missão, desempenho e atalhos (mesmos dados de antes)."""
     import fx_arte as FX
     st.markdown(CSS + ("" if FX.animar_padrao(st.session_state) else CSS_PARADO), unsafe_allow_html=True)
     pat = C.patrimonio(est)
@@ -373,30 +393,40 @@ def mostrar(est: dict, res: dict | None) -> None:
     pos = posicoes(est)
     inv = sum(r["valor"] for r in pos)
     pts = serie_patrimonio(est, pat - apt)
-    with st.container(key="cv_per_w"):                       # período do gráfico do patrimônio
-        per = st.segmented_control("Período do gráfico", list(PERIODOS), default="30D", key="cv_per", label_visibility="collapsed") or "30D"
-    dias = PERIODOS.get(per, 30)
-    var, rot = variacao(pts, dias=dias)
-    serie = [v for _, v in recorte(pts, dias)]
-    st.markdown(html_patrimonio(pat, float(est.get("caixa", 0)), inv, var, rot, serie, len(pos), ret), unsafe_allow_html=True)
-
-    # ---- Meus ativos
-    ver_todos = st.session_state.get("cv_todos", False)
-    mostra = pos if ver_todos else pos[:3]
-    sp = _sparks(mostra)
-    linhas = "".join(html_ativo(r, sp.get(r["tk"]), i) for i, r in enumerate(mostra))
-    if not pos:
-        linhas = "<div class='cv-vz'>Nenhuma posição ainda. Todo o seu capital está disponível: toque em Comprar para começar.</div>"
-    st.markdown(f"<div class='cv-card cv-ativos'><div class='cv-ch'>{AT.img('bau_aberto', 26)}<b style='font-size:1.08rem'>Meus Ativos</b></div>{linhas}</div>", unsafe_allow_html=True)
-    if len(pos) > 3:
-        st.button(f"Ver menos ↑" if ver_todos else f"Ver todos ({len(pos)}) →", key="cv_vt", on_click=_alternar, args=("cv_todos",))
-
-    # ---- Comprar / Vender (abrem o fluxo de negociação que já existe)
-    with st.container(key="cv_trade"):
-        c1, c2 = st.columns(2)
-        c1.button("Comprar", key="cv_comprar", icon=":material/shopping_cart:", on_click=_ir, args=("Negociar", "Comprar"), width="stretch")
-        c2.button("Vender", key="cv_vender", icon=":material/north_east:", on_click=_ir, args=("Negociar", "Vender"), width="stretch",
-                  disabled=not pos, help=None if pos else "Você ainda não tem ativos para vender.")
+    import carteira_game as CG
+    import game_ui as G
+    import setores as SE
+    var_dia, _rd = variacao(pts, dias=1)
+    aba = st.session_state.get("cg_aba") if st.session_state.get("cg_aba") in {a[0] for a in CG.ABAS} else "todos"
+    cont = CG.contar(pos)
+    st.markdown(G.css_base() + CG.css() + "".join(G.css_cartao_botao(f"cg_aba_{a[0]}") for a in CG.ABAS), unsafe_allow_html=True)
+    with st.container(key="cg_tela"):
+        # ---- cartão Carteira (valor total) e resumo
+        st.markdown(CG.html_cab(pat, var_dia, len(pos)), unsafe_allow_html=True)
+        st.markdown(CG.html_resumo(float(est.get("caixa", 0)), inv, ret), unsafe_allow_html=True)
+        # ---- Comprar / Vender (abrem o fluxo de negociação que já existe)
+        with st.container(key="cv_trade"):
+            c1, c2 = st.columns(2)
+            c1.button("Comprar", key="cv_comprar", icon=":material/shopping_cart:", on_click=_ir, args=("Negociar", "Comprar"), width="stretch")
+            c2.button("Vender", key="cv_vender", icon=":material/north_east:", on_click=_ir, args=("Negociar", "Vender"), width="stretch",
+                      disabled=not pos, help=None if pos else "Você ainda não tem ativos para vender.")
+        # ---- abas por categoria (com quantos ativos você tem em cada uma)
+        with st.container(key="cg_abas"):
+            for k, rot_, _cl, _ic in CG.ABAS:
+                with st.container(key=f"cg_aba_{k}"):
+                    st.markdown(CG.html_aba(k, cont[k], k == aba), unsafe_allow_html=True)
+                    st.button(rot_, key=f"cg_aba_{k}_b", on_click=lambda k=k: st.session_state.update(cg_aba=k))
+        # ---- Meus Ativos + Ordenar
+        with st.container(key="cg_barra"):
+            st.markdown("<div class='cg-ma'>☰ Meus Ativos</div>", unsafe_allow_html=True)
+            ordem = st.selectbox("Ordenar", CG.ORDENS, key="cg_ord", label_visibility="collapsed")
+        # ---- grade de cartões dos ativos
+        mostra = CG.ordenar(CG.filtrar(pos, aba), ordem)
+        with st.container(key="cg_grade"):
+            if not mostra:
+                st.markdown(CG.html_vazio(aba), unsafe_allow_html=True)
+            for r in mostra:
+                st.markdown(CG.html_cartao(r, SE.icone_ativo(r["tk"])), unsafe_allow_html=True)
 
     # ---- Ranking + Missões (cada botão fica DENTRO do seu cartão)
     semana, _r = variacao(pts, dias=7)
