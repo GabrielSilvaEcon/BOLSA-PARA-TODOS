@@ -35,7 +35,11 @@ def css_topo(n_alertas: int = 0) -> str:
         "background:linear-gradient(90deg,rgba(52,232,94,.10),rgba(52,232,94,0));pointer-events:none}"
         # blocos que só carregam <style> não ocupam espaço
         f'{Q} [data-testid="stMain"] [data-testid="stElementContainer"]:has(>[data-testid="stMarkdown"] style):not(:has(>[data-testid="stMarkdown"] :is(p,div,h1,h2,h3,h4,ul,ol,table,img,svg,a,span))){{display:none !important}}'
-        f'{Q} [data-testid="stMain"] .block-container{{padding-top:calc(var(--dz-cab-h,48px) + 14px) !important}}'
+        f'{Q} [data-testid="stMain"] .block-container{{padding-top:calc(var(--dz-cab-h,48px) + 8px) !important}}'
+        # sem vão no topo: blocos que só levam <style> e os invólucros do cabeçalho e da barra (que são fixos) não ocupam lugar na coluna
+        f'{Q} [data-testid="stMain"] [data-testid="stElementContainer"]:has([data-testid="stMarkdownContainer"] > style)'
+        ':not(:has([data-testid="stMarkdownContainer"] > :not(style))){display:none !important}'
+        f'{Q} [data-testid="stLayoutWrapper"]:has(> :is(.st-key-topo_perfil,.st-key-barra_areas)){{display:contents !important}}'
         # iframes auxiliares de 1 px (scripts): continuam rodando, mas não aparecem nem ocupam espaço (antes era uma linha branca no topo)
         f'{Q} [data-testid="stElementContainer"][height="1px"]:has(iframe){{position:absolute !important;width:1px !important;height:1px !important;'
         "opacity:0 !important;pointer-events:none !important;overflow:hidden !important;margin:0 !important}"
