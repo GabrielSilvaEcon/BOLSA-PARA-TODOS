@@ -97,6 +97,14 @@ FIIs e Renda fixa ainda usam emoji (🏢 🏦) porque o mockup não tem ícone p
 
 ---
 
+## 5. Analisar
+
+| # | Arte | Arquivo | Onde aparece | Tamanho ideal | Fundo | Status |
+|---|------|---------|--------------|---------------|-------|--------|
+| 5.1 | Mascote apontando com o celular TickerHunters | `static/ilustracoes/analisar_touro.webp` | Cartão do topo "Escolha o que Analisar" (à direita) | 1200 × 920 px | Cena | ✅ Arte do dono |
+
+---
+
 ## Próximas telas
 
 _As telas seguintes entram aqui à medida que os mockups chegarem (Jogos, Aprender, Ranking, Loja, Carteira, Mercado...)._

@@ -17,6 +17,7 @@ URL = "app/static/ilustracoes/"
 # assunto → (imagem, cor de destaque, segunda cor)
 ASSUNTOS = {
     "analisar": ("analisar", "#9C84FF", "#22D3EE"),
+    "analisar_touro": ("analisar_touro", "#B06BFF", "#3DDC6A"),     # tela Analisar: o mascote novo apontando com o celular
     "carteira": ("carteira", "#34E85E", "#14C98F"),
     "aprender": ("aprender", "#22D3EE", "#B6F23E"),
     "jogos": ("jogos", "#34E85E", "#FF6B87"),
