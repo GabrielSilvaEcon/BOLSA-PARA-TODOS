@@ -717,7 +717,12 @@ def _cancelar() -> None:
 
 
 def _ver_avatar(a: str) -> None:
+    """Tocar num avatar: mostra a prévia e, se ele estiver liberado, já o escolhe no rascunho (o Salvar grava).
+    Antes só a prévia mudava: quem tocava no avatar e depois em Salvar continuava com o avatar antigo."""
+    import avatares as AV
     st.session_state["pe_ver"] = a
+    if AV.pode_equipar(a, minha_colecao()):
+        _escolher_avatar(a)
 
 
 def _usar_avatar(a: str) -> None:
@@ -750,10 +755,12 @@ def _colecao_avatares() -> None:
     if ver:
         a = AV.POR_ID[ver]
         livre = ver in lib
-        estado = "Equipado no rascunho" if ver == ss.get("pe_avatar") else ("Liberado" if livre else "🔒 " + AV.como_liberar(a))
+        salvo = (meu_perfil() or {}).get("avatar")
+        estado = ("Seu avatar agora" if ver == salvo else "Escolhido: toque em Usar este avatar ou em Salvar" if ver == ss.get("pe_avatar")
+                  else ("Liberado" if livre else "🔒 " + AV.como_liberar(a)))
         st.markdown(f"<div class='pe-prevc'>{AV.html(ver, 84)}<div class='t'><b>{_e(a['nome'])}</b>{AV.chip(a['raridade'])}"
                     f"<small>{_e(AV.RARIDADES[a['raridade']]['dica'])} · {_e(estado)}</small></div></div>", unsafe_allow_html=True)
-        if ver != ss.get("pe_avatar"):
+        if ver != salvo:
             st.button("Usar este avatar" if livre else "Bloqueado", key="pe_usar_av", icon=":material/check:" if livre else ":material/lock:",
                       width="stretch", disabled=not livre, on_click=_usar_avatar, args=(ver,))
     with st.container(key="pe_col"):

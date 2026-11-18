@@ -244,3 +244,27 @@ def test_foto_enviada_mas_avatar_escolhido_depois_nao_vira_foto(servico):
     PA._salvar_edicao()
     s.trocar(s.A)
     assert PA.meu_perfil()["avatar"] != PF.FOTO
+
+
+def test_avatar_tocado_na_colecao_e_salvo_pelo_botao_salvar(servico):
+    """Tocar num avatar liberado da Coleção e depois em Salvar troca o avatar (antes só "Usar este avatar" gravava)."""
+    PA, s = servico.PA, servico
+    assert PA.salvar(_form())[0]
+    PA._iniciar_rascunho()
+    s.ss["pe_aba"] = "Coleção de avatares"
+    PA._ver_avatar("panda")
+    PA._salvar_edicao()
+    s.trocar(s.A)
+    assert PA.meu_perfil()["avatar"] == "panda"
+
+
+def test_avatar_bloqueado_tocado_nao_e_salvo(servico):
+    import avatares as AV
+    PA, s = servico.PA, servico
+    assert PA.salvar(_form())[0]
+    bloq = next(a["id"] for a in AV.CATALOGO if a["id"] not in PA.minha_colecao())
+    PA._iniciar_rascunho()
+    PA._ver_avatar(bloq)
+    PA._salvar_edicao()
+    s.trocar(s.A)
+    assert PA.meu_perfil()["avatar"] == "raposa"
