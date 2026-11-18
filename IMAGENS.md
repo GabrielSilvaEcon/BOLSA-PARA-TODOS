@@ -63,6 +63,22 @@ decidir se o novo **substitui** o Caramelo em tudo. Se sim, são estas poses:
 
 ---
 
+## 3. Ranking
+
+Artes recortadas do mockup do Ranking (provisórias). O texto de cada aba e das linhas é escrito pelo código.
+
+| # | Arte | Arquivo | Onde aparece | Tamanho ideal | Fundo | Status |
+|---|------|---------|--------------|---------------|-------|--------|
+| 3.1 | Mascote no topo (faixa larga) | `static/ranking/mascote.webp` | Topo da tela, atrás da sua ficha | 1500 × 670 px | Cena (sem texto) | ⏳ Recorte da arte do mascote |
+| 3.2 | Ícone Ticker Battle (ingresso com coroa) | `static/ranking/ticker.webp` | Aba Ticker Battle | 256 × 170 px | Transparente | ⏳ Recortado do mockup |
+| 3.3 | Ícone Trade Battle (setas) | `static/ranking/trade.webp` | Aba Trade Battle | 256 × 200 px | Transparente | ⏳ Recortado do mockup |
+| 3.4 | Ícone Carteira (carteira verde) | `static/ranking/carteira.webp` | Aba Carteira | 256 × 210 px | Transparente | ⏳ Recortado do mockup |
+| 3.5 | Faixa MODO RANQUEADO | `static/ranking/faixa.webp` | Abaixo de Global/Amigos | 1800 × 370 px | Cena | ⏳ Recortado do mockup (texto na arte) |
+| 3.6 | Ícone da pontuação (ingresso com coroa) | `static/ranking/pts.webp` | À direita de cada linha | 128 × 128 px | Transparente | ⏳ Recortado do mockup |
+| 3.7 | Coroa do título | `static/ranking/coroa.webp` | Acima de RANKING | 128 × 80 px | Transparente | ⏳ Recortado do mockup |
+
+---
+
 ## Próximas telas
 
 _As telas seguintes entram aqui à medida que os mockups chegarem (Jogos, Aprender, Ranking, Loja, Carteira, Mercado...)._

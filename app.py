@@ -92,6 +92,7 @@ import noticias_app
 import battle_app
 import trader_battle_app
 import jogos_app
+import ranking_app
 import perfis_app
 import competicao_app
 import jogar_app
@@ -4228,7 +4229,7 @@ PG_COMP = st.Page(competicao_app.pagina_competicao, title="Minha carteira", icon
 PG_BATTLE = st.Page(battle_app.pagina_battle, title="Ticker Battle", icon=":material/sports_esports:", url_path="battle")
 PG_TRADER = st.Page(trader_battle_app.pagina_trader, title="Trade Battle", icon=":material/show_chart:", url_path="trader")
 PG_JOGOS = st.Page(jogos_app.pagina_central, title="Central de Jogos", icon=":material/sports_esports:", url_path="jogos")
-PG_JG_RANK = st.Page(jogos_app.pagina_ranking, title="Ranking dos jogos", icon=":material/emoji_events:", url_path="jogos-ranking")
+PG_JG_RANK = st.Page(ranking_app.pagina, title="Ranking", icon=":material/emoji_events:", url_path="jogos-ranking")
 PG_JG_AMIGOS = st.Page(jogos_app.pagina_amigos, title="Meus amigos", icon=":material/group:", url_path="jogos-amigos")
 PG_JOGADOR = st.Page(perfis_app.pagina_publica, title="Perfil de jogador", icon=":material/badge:", url_path="jogador")
 PG_PERFIL = st.Page(perfis_app.pagina_meu_perfil, title="Meu Perfil", icon=":material/person:", url_path="perfil")
