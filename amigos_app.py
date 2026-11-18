@@ -173,14 +173,19 @@ def linha_clicavel(chave: str, html_linha: str, usuario: str | None, rotulo: str
 def _indice() -> dict:
     """Índices para levar de qualquer nome público (NickName da Competição, da liga de estudo, das salas) ao perfil. Só no servidor."""
     def montar():
-        por_email, por_k = {}, {}
+        por_email, por_k, nome_email, alias, nomes_vistos = {}, {}, {}, {}, {}
         for r in banco.sis_comp_todos("perfil_jogador"):
             p = PF.sanear(r["dados"])
             if p["usuario"]:
                 vis = p["privacidade"]["visivel"] != "ninguem"
                 por_email[r["email"]] = p["usuario"] if vis else ""
+                alias[p["usuario_k"]] = r["email"]
                 if vis:
                     por_k[p["usuario_k"]] = p["usuario"]
+                    nome_email[r["email"]] = p["nome"] or p["usuario"]
+                n = str(p["nome"] or "").strip().lower()
+                if n:
+                    nomes_vistos.setdefault(n, set()).add(r["email"])
         comp = {}
         try:
             for r in banco.sis_comp_todos("comp_ordens"):
@@ -189,8 +194,58 @@ def _indice() -> dict:
                     comp[k] = r["email"]
         except Exception:
             pass
-        return {"por_email": por_email, "por_k": por_k, "comp": comp}
+        try:                         # NickName gravado no placar dos jogos (Trade Battle, Ticker Battle, salas)
+            for r in banco.sis_comp_todos(J.CH_PLACAR):
+                k = J.sanear(r["dados"])["apelido"].strip().lower()
+                if k and k != "jogador":
+                    alias.setdefault(k, r["email"])
+        except Exception:
+            pass
+        for n, emails in nomes_vistos.items():      # nome de exibição só serve de chave quando é de uma conta só
+            if len(emails) == 1:
+                alias.setdefault(n, next(iter(emails)))
+        return {"por_email": por_email, "por_k": por_k, "comp": comp, "nome_email": nome_email, "alias": alias}
     return _cache("_am_idx", _TTL, montar)
+
+
+def email_de_apelido(apelido: str) -> str | None:
+    """Conta (e-mail, só no servidor) de quem aparece num ranking por qualquer nome público: apelido da Competição, NickName do placar dos
+    jogos, nome de usuário ou nome de exibição do perfil. None se não achar."""
+    k = str(apelido or "").strip().lower()
+    if not k or k == "jogador":
+        return None
+    try:
+        idx = _indice()
+        email = idx["comp"].get(k) or idx["alias"].get(k)
+        a = _ator()
+        if not email and a:
+            import perfis_app as PA
+            meu = PA.meu_perfil() or {}
+            if k in (str(meu.get("usuario_k") or ""), str(meu.get("nome") or "").strip().lower()):
+                email = a.email
+        return email
+    except Exception:
+        return None
+
+
+def nome_de_email(email: str | None, padrao: str = "") -> str:
+    """Nome do perfil (nome de exibição; sem ele, o @usuário). Quem esconde o perfil de todos continua com o nome do ranking (`padrao`)."""
+    if not email:
+        return padrao
+    try:
+        a = _ator()
+        if a and a.email == email:
+            import perfis_app as PA
+            meu = PA.meu_perfil() or {}
+            return meu.get("nome") or meu.get("usuario") or padrao
+        return _indice()["nome_email"].get(email) or padrao
+    except Exception:
+        return padrao
+
+
+def nome_exibicao(apelido: str) -> str:
+    """O nome que os rankings mostram: o nome do perfil da pessoa. Sem perfil achado (ou perfil oculto), o próprio apelido."""
+    return nome_de_email(email_de_apelido(apelido), str(apelido or ""))
 
 
 def usuario_de_email(email: str, apelido: str = "") -> str | None:
@@ -221,7 +276,10 @@ def usuario_de_apelido(apelido: str) -> str | None:
         email = idx["comp"].get(k)
         if email:
             return usuario_de_email(email, apelido)
-        return idx["por_k"].get(k)
+        if k in idx["por_k"]:
+            return idx["por_k"][k]
+        email = idx["alias"].get(k)
+        return (idx["por_email"].get(email) or None) if email else None
     except Exception as e:
         banco.registrar_erro("amigos_app.usuario_de_apelido", e)
         return None
@@ -234,14 +292,7 @@ def avatar_por_apelido(apelido: str, tamanho: int = 42) -> str | None:
     if not k:
         return None
     try:
-        idx = _indice()
-        email = idx["comp"].get(k)
-        if not email:
-            u = idx["por_k"].get(k)
-            email = next((e for e, us in idx["por_email"].items() if us and us.lower() == k), None) if u else None
-        a = _ator()
-        if not email and a and k == str((PA.meu_perfil() or {}).get("usuario_k") or ""):
-            email = a.email
+        email = email_de_apelido(k)
         return PA.avatar_html_email(email, tamanho) if email else None
     except Exception:
         return None

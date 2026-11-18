@@ -146,7 +146,7 @@ def meu_avatar() -> dict:
 
 
 def avatar_de_email(email: str) -> tuple[str, str]:
-    """(avatar equipado, foto) de outra conta, lidos no servidor com cache de 5 min na sessão. O e-mail nunca vai para a tela."""
+    """(avatar equipado, foto) de outra conta, lidos no servidor com cache de 1 min na sessão. O e-mail nunca vai para a tela."""
     if not email:
         return PF.AVATAR_PADRAO, ""
     a = _ator()
@@ -154,7 +154,7 @@ def avatar_de_email(email: str) -> tuple[str, str]:
         m = meu_avatar()
         return m["id"], m["foto"]
     cache = st.session_state.setdefault("_pj_avs", {})
-    if email in cache and time.time() - cache[email][0] < 300:
+    if email in cache and time.time() - cache[email][0] < 60:
         return cache[email][1]
     av, foto = PF.AVATAR_PADRAO, ""
     try:
@@ -301,7 +301,7 @@ def salvar(form: dict, foto_webp: bytes | None = None, remover_foto: bool = Fals
         banco.registrar_erro("perfis_app.salvar", e)
         return False, "Não consegui salvar agora. Tente de novo em instantes."
     st.session_state["_pj_doc"] = novo
-    for k in ("_pj_pub", "_pj_foto", "_pj_avs"):
+    for k in ("_pj_pub", "_pj_foto", "_pj_avs", "_am_idx"):
         st.session_state.pop(k, None)
     return True, "Perfil atualizado!"
 
