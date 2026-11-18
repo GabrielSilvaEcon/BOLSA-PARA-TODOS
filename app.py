@@ -1767,7 +1767,7 @@ def _ir_home(destino: str, estado: dict | None = None):
 def _inicio_app(ativos: list):
     """Tela inicial no formato de mobile game: jogador (nível, XP, Ticker Coins, ranking), marca, pregão, missões do dia e os acessos
     Carteira, Jogar agora e Mercado. O desenho está em home_game.py e a leitura dos dados em home_game_app.py; aqui só se chama a tela
-    e se mantêm, abaixo dela, as manchetes e o botão das empresas em análise."""
+    e se mantém, abaixo dela, o botão das empresas em análise. (As manchetes saíram da Home e vão para outra tela.)"""
     st.markdown(IP.css(), unsafe_allow_html=True)
     import home_game_app
     try:
@@ -1776,10 +1776,6 @@ def _inicio_app(ativos: list):
         if type(_e_home).__name__ in ("StopException", "RerunException"):
             raise
         banco.registrar_erro("home_game_app", _e_home)
-    try:                                                   # manchetes reais no fim da tela (a Home já aparece enquanto elas carregam)
-        inicio_noticias.secao(acesso_liberado(PG_NOTICIAS.url_path), _ir_home)
-    except Exception:
-        pass
     if ativos:
         with st.container(key="in_empresas"):
             st.button(f"Suas empresas em análise ({len(ativos)})", key="in_ver_empresas", icon=":material/monitoring:", on_click=_sair_modo_busca, width="stretch")
@@ -4644,8 +4640,9 @@ def _topo_acoes():
         if st.button("Pesquisar", key="topo_busca", icon=":material/search:", type="tertiary"):
             _dialogo_busca()
         st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css_topo
-        st.button("Meu perfil", key="topo_conta", icon=":material/account_circle:", type="tertiary",      # avatar: abre o Meu Perfil (com as opções da conta)
-                  on_click=lambda: st.session_state.update(_nav_pend="perfil"))
+        if pg.url_path != PG_INICIO.url_path:     # na Home o avatar fica no cartão de nível (que também abre o perfil)
+            st.button("Meu perfil", key="topo_conta", icon=":material/account_circle:", type="tertiary",      # avatar: abre o Meu Perfil (com as opções da conta)
+                      on_click=lambda: st.session_state.update(_nav_pend="perfil"))
 
 
 conta_app.registrar_paginas(gestao=PG_GESTAO, inteligencia=PG_INTEL, relatorios=PG_REL, noticias=PG_NOTICIAS, admin=PG_ADMIN)
