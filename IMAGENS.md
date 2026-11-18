@@ -19,9 +19,9 @@ Todas as artes que o app precisa, tela por tela. Ao chegar uma arte nova, basta 
 | 1.2 | Cabeça do touro roxo (logo) | `static/home/touro.webp` | Banner TICKER HUNTERS e selo do ranking no topo | 512 × 512 px | Transparente | ⏳ Provisória |
 | 1.3 | Troféu dourado no pedestal | `static/home/trofeu.webp` | Cartão Missões diárias (esquerda) | 512 × 512 px | Transparente | ⏳ Provisória |
 | 1.4 | Cofre com pilhas de moedas | `static/home/cofre.webp` | Cartão Missões diárias (recompensa, direita) | 512 × 512 px | Transparente | ⏳ Provisória |
-| 1.7 | Ícone do JOGAR AGORA: mascote apontando | `static/home/ic_jogar.webp` | Dentro do botão dourado, à esquerda do texto | 512 × 512 px | Transparente | ⏳ Recortado da arte do botão |
-| 1.8 | Ícone da CARTEIRA: carteira com moedas | `static/home/ic_carteira.webp` | Dentro do botão azul, acima do texto | 512 × 512 px | Transparente | ⏳ Recortado da arte do botão |
-| 1.9 | Ícone do MERCADO: touro contra urso | `static/home/ic_mercado.webp` | Dentro do botão vermelho, acima do texto | 512 × 384 px | Transparente | ⏳ Recortado da arte do botão |
+| 1.7 | Botão JOGAR AGORA (com o mascote) | `static/home/btn_jogar.webp` | No meio da fileira de botões, maior | 1300 × 970 px (≈ 1,34:1) | Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
+| 1.8 | Botão CARTEIRA | `static/home/btn_carteira.webp` | À esquerda da fileira | 940 × 750 px (≈ 1,25:1) | Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
+| 1.9 | Botão MERCADO | `static/home/btn_mercado.webp` | À direita da fileira | 940 × 750 px (≈ 1,25:1) | Ideal: PNG transparente | ✅ Arte do dono (texto na arte) |
 | 1.5 | Coroa dourada (opcional) | `static/home/coroa.webp` | Em cima do saldo de Ticker Coins | 128 × 96 px | Transparente | Hoje é um desenho em código (SVG); *precisa ligar no código* |
 | 1.6 | Fundo da Home: cidade neon roxa com grade (opcional) | `static/fundos/home.webp` | Atrás de toda a tela inicial | 1080 × 2340 px (retrato) | Escuro, sem elementos no centro | 🎨 Falta · *precisa ligar no código* |
 
