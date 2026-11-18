@@ -72,8 +72,13 @@ def ranking(ir) -> None:
             st.markdown(corpo.replace(chips, "", 1), unsafe_allow_html=True)
 
 
-def desempenho(ir) -> None:
-    logado, participa, est, _ap, _rk = _jogo()
+def desempenho(ir=None, est_carteira: dict | None = None) -> None:
+    """Maiores altas, maiores quedas e mais rentável da carteira do jogo (resultado desde a compra, pelo preço médio).
+    Mostrado na carteira (Wallet Game › Meu patrimônio), que passa a carteira já carregada em `est_carteira`."""
+    if est_carteira is not None:
+        logado, participa, est = True, True, est_carteira
+    else:
+        logado, participa, est, _ap, _rk = _jogo()
     d = {"altas": [], "quedas": [], "mais_rentavel": None, "vazio": True, "criterio": HD.CRITERIO}
     if est:
         try:

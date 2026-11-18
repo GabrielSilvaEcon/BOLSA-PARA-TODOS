@@ -337,3 +337,13 @@ def mostrar(est: dict, res: dict | None) -> None:
                 st.markdown(html_missao(missao_ativa(res)), unsafe_allow_html=True)
                 if res:
                     st.button("Ver todas as missões →", key="cv_vm", on_click=_ir, args=("Missões do jogo",))
+
+    # ---- Meu Desempenho por ativo (maiores altas, maiores quedas e mais rentável), que antes ficava na tela Início
+    if pos:
+        try:
+            import home_app
+            import home_visual as HV
+            st.markdown(HV.css() + HV.css_layout(), unsafe_allow_html=True)
+            home_app.desempenho(est_carteira=est)
+        except Exception:
+            pass

@@ -1785,9 +1785,8 @@ def _inicio_app(ativos: list):
             st.button("Missões", key="hm_b_missoes", icon=":material/target:", on_click=_ir_home, args=("missoes",))
             st.button("Aprender", key="hm_b_aprender", icon=":material/school:", on_click=_ir_home, args=("jornada",))
             st.button("Jogar", key="hm_b_jogar", icon=":material/sports_esports:", on_click=_ir_home, args=("competicao",))
-    try:                                                         # Ranking Geral (o mesmo da Wallet Game) e Meu Desempenho (carteira do jogo)
+    try:                                                         # Ranking Geral (o mesmo da Wallet Game). Meu Desempenho fica na carteira (Wallet › Meu patrimônio)
         home_app.ranking(_ir_home)
-        home_app.desempenho(_ir_home)
     except Exception as _e_home:
         banco.registrar_erro("home_app", _e_home)
     try:                                                   # manchetes reais no fim da tela (a Home já aparece enquanto elas carregam)
