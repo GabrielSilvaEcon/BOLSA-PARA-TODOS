@@ -4015,36 +4015,35 @@ def _pagina_hub(area_id: str):
     if area_id == "analisar":                                  # cartão de abertura com o mascote (visual em analisar_visual.py)
         st.markdown("<style>" + analisar_visual.CSS + "</style>", unsafe_allow_html=True)
         from design import kit as _kit
-        md(_kit.topo("Escolha o que Analisar", "Ações, FIIs, cripto e ETFs com dados reais. Tudo educativo, sem recomendação de compra ou venda.", "analisar"))
+        md(_kit.topo("Escolha o que Analisar", "Ações, FIIs, cripto e ETFs com dados reais. Tudo educativo, sem recomendação de compra ou venda.", "analisar_touro"))
     if area_id != "analisar":
         md(f'<div class="an-hero"><div class="an-hero-top"><span class="an-hero-ico">{tema.icone("grafico", 28)}</span>'
            f'<h1>{html.escape(hub["titulo"])}</h1></div><p>{html.escape(hub["subtitulo"])}</p></div>')
     else:
         st.markdown("<style>html body .stApp.stApp .st-key-an_busca{margin:4px 0 0 !important}</style>", unsafe_allow_html=True)
-    if area_id == "analisar":
-        with st.container(key="an_busca"):
-            if st.button("Pesquisar ativo, página ou termo", key="an_busca_btn", icon=":material/search:", width="stretch"):
-                _dialogo_busca()
+    # (a barra "Pesquisar ativo, página ou termo" saiu desta tela: a busca continua na lupa do cabeçalho)
     ultima = (st.session_state.get("areas_mem") or {}).get(area_id)          # última página visitada nesta área, na sessão
     if False and ultima and ultima in _todas_pg and ultima != areas.pagina_inicial(area_id):      # desligado
         with st.container(key="an_continuar"):
             st.page_link(_todas_pg[ultima], label=f"Continuar de onde parou: {_todas_pg[ultima].title}", icon=":material/history:")
     md(analisar_visual.html_secao("Escolha o que analisar") if area_id == "analisar" else '<div class="an-sec">Escolha o que analisar</div>')
+    grade = st.container(key="an_grade") if area_id == "analisar" else st.container()      # Analisar: grade compacta de 2 colunas também no celular
     for i in range(0, len(cartoes), 2):
-        cols = st.columns(2)
+        cols = grade.columns(2)
         for col, c in zip(cols, cartoes[i:i + 2]):
             v = areas.visual_cartao(c["titulo"])
             with col, st.container(key=f"an_card_{v['id']}"):
                 md(analisar_visual.html_cartao(v["id"], c["titulo"], c["descricao"], len(c["paginas"]), v["icone"]))
                 if c.get("destino") and _todas_pg.get(c["destino"]) is not None:          # tela única do tipo: abre direto, sem menu expansivo
-                    st.button(f"Abrir {c['titulo']}", key=f"an_tg_{v['id']}", width="stretch", on_click=_ir_home, args=(c["destino"],),
-                              icon=":material/lock:" if not acesso_liberado(c["destino"]) else ":material/arrow_forward:")     # mesmo botão dos outros cartões
+                    st.button("Abrir" if area_id == "analisar" else f"Abrir {c['titulo']}", key=f"an_tg_{v['id']}", width="stretch", on_click=_ir_home,
+                              args=(c["destino"],), help=f"Abrir {c['titulo']}",
+                              icon=":material/lock:" if not acesso_liberado(c["destino"]) else ":material/play_arrow:")     # mesmo botão dos outros cartões
                     continue
                 if all(em_manutencao(u_) for u_, _ in c["paginas"]):                          # Central de inteligência: só administradores
                     st.button("Em manutenção", key=f"an_tg_{v['id']}", icon=":material/construction:", width="stretch", disabled=True)
                     continue
-                st.button(f"Abrir {c['titulo']}", key=f"an_tg_{v['id']}", icon=":material/arrow_forward:", width="stretch",
-                          on_click=_abrir_tipo, args=(v["id"],))
+                st.button("Abrir" if area_id == "analisar" else f"Abrir {c['titulo']}", key=f"an_tg_{v['id']}", icon=":material/play_arrow:",
+                          width="stretch", help=f"Abrir {c['titulo']}", on_click=_abrir_tipo, args=(v["id"],))
 
 
 def resumo_simples(d: dict, P: dict):

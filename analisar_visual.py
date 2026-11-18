@@ -121,4 +121,20 @@ CSS = f"""
 {Q} [class*="st-key-an_card_"] .an-chev{{display:none !important}}
 {Q} [class*="st-key-an_card_"] .an-ct b{{grid-column:1/-1;grid-row:2;line-height:1.15}}
 {Q} [class*="st-key-an_card_"] .an-ct span{{grid-column:1/-1;grid-row:3;font-size:clamp(.74rem,3vw,.9rem) !important;line-height:1.3}}
+/* grade compacta (referência mobile game): 2 colunas também no celular, pouco espaço interno, sem a descrição */
+{Q} .st-key-an_grade{{max-width:520px;margin:0 auto !important;gap:8px !important}}
+{Q} .st-key-an_grade [data-testid="stHorizontalBlock"]{{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px !important;flex-wrap:nowrap !important}}
+{Q} .st-key-an_grade [data-testid="stColumn"]{{width:auto !important;min-width:0 !important;flex:none !important}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"]{{padding:8px 9px 9px !important;border-radius:16px !important;gap:6px !important;height:100%;box-sizing:border-box}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ch{{padding:0 !important;row-gap:2px}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ct span{{display:none !important}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ct b{{font-size:clamp(.86rem,3.9vw,1.05rem) !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ci.an-3d{{width:44px !important;height:44px !important}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ci.an-3d img{{width:42px;max-height:42px}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ci:not(.an-3d){{width:40px !important;height:40px !important;border-radius:12px !important}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-art{{right:40px;top:6px;height:42px;max-width:38%}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-n{{min-width:26px !important;height:26px !important;font-size:.8rem}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] button{{min-height:32px !important;height:32px !important;padding:0 8px !important;border-radius:11px !important}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] button :is(p,span){{font-size:.82rem !important}}
+{Q} .st-key-an_grade [data-testid="stElementContainer"]{{margin-bottom:0 !important}}
 """
