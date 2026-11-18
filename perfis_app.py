@@ -817,7 +817,22 @@ def _salvar_edicao() -> None:
                                                         "mostrar_bio": bool(ss.get("pe_mbio")), "mostrar_nivel": bool(ss.get("pe_mnivel")),
                                                         "mostrar_conquistas": bool(ss.get("pe_mconq")), "mostrar_jogos": bool(ss.get("pe_mjogos")),
                                                         "mostrar_historico": bool(ss.get("pe_mhist"))}}
-    ok, msg = salvar(form, ss.get("pe_foto"), bool(ss.get("pe_remover")))
+    foto = ss.get("pe_foto")
+    arq = ss.get("pe_up")
+    if foto is None and arq is not None and ss.get("pe_aba") == "Enviar da galeria":
+        # escolheu a foto na galeria e tocou em Salvar sem passar por "Usar esta foto": grava a foto com o recorte escolhido
+        # (antes ela era descartada em silêncio e o perfil continuava com o avatar antigo)
+        try:
+            foto = FT.processar(arq.getvalue(), ss.get("pe_zoom", 1.0), ss.get("pe_x", 0.0), ss.get("pe_y", 0.0))
+        except FT.ErroFoto as e:
+            ss["_pe_aviso"] = (False, str(e))
+            return
+        except Exception as e:
+            banco.registrar_erro("perfis_app.salvar_edicao_foto", e)
+            ss["_pe_aviso"] = (False, "Não consegui processar essa imagem. Tente outra foto.")
+            return
+        form["avatar"] = PF.FOTO
+    ok, msg = salvar(form, foto, bool(ss.get("pe_remover")) and foto is None)
     if not ok:
         ss["_pe_aviso"] = (False, msg)
         return

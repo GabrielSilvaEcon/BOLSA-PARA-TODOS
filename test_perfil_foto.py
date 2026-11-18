@@ -213,3 +213,34 @@ def test_estatisticas_nao_editaveis_vem_do_placar():
     e = J.estatisticas(d)
     assert (e["partidas"], e["vitorias"], e["derrotas"], e["empates"], e["disputadas"]) == (5, 2, 1, 1, 4)
     assert e["taxa"] == 50.0 and J.estatisticas({})["taxa"] is None
+
+
+class _Arquivo:
+    def __init__(self, dados: bytes):
+        self._d = dados
+
+    def getvalue(self) -> bytes:
+        return self._d
+
+
+def test_foto_escolhida_e_salva_pelo_botao_salvar(servico):
+    """Escolher a foto na galeria e tocar em Salvar (sem "Usar esta foto") grava a foto: antes ela era descartada em silêncio."""
+    PA, s = servico.PA, servico
+    assert PA.salvar(_form())[0]
+    PA._iniciar_rascunho()
+    original = _img(cor=(0, 0, 255))
+    s.ss.update(pe_aba="Enviar da galeria", pe_up=_Arquivo(original))
+    PA._salvar_edicao()
+    s.trocar(s.A)                                                                      # sessão nova: lê do banco
+    assert PA.meu_perfil()["avatar"] == PF.FOTO
+    assert PA.minha_foto_uri().startswith("data:image/webp;base64,")
+
+
+def test_foto_enviada_mas_avatar_escolhido_depois_nao_vira_foto(servico):
+    PA, s = servico.PA, servico
+    assert PA.salvar(_form())[0]
+    PA._iniciar_rascunho()
+    s.ss.update(pe_aba="Coleção de avatares", pe_up=_Arquivo(_img()))                  # mandou foto, mas voltou para a coleção
+    PA._salvar_edicao()
+    s.trocar(s.A)
+    assert PA.meu_perfil()["avatar"] != PF.FOTO
