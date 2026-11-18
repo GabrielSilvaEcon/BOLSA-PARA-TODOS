@@ -79,6 +79,7 @@ _CSS = f"""
 {_P} [data-testid="stStatusWidget"]{{display:none !important}}
 {_P} .on-av.sil img{{filter:brightness(0) invert(.38) !important}}
 {_P} .on-vs .on-av{{margin:0 auto}}
+{_P} .on-av.thv{{border:0 !important;box-shadow:none !important;background:none !important;overflow:visible !important}}
 {_P} .on-vs>div:not(.p){{text-align:center}}
 {_P} .on-car{{max-width:250px;margin:0 auto}}
 {_P} :is(.st-key-bt_setas,.st-key-bt_atrs)[data-testid="stVerticalBlock"],{_P} :is(.st-key-bt_setas,.st-key-bt_atrs)>[data-testid="stVerticalBlock"]{{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px !important}}
@@ -130,7 +131,37 @@ def _agir(fn, *a, destino: str | None = None, **kw):
     return r
 
 
+def _email_op() -> str | None:
+    """E-mail do adversário da partida aberta (lido no servidor, cache na sessão; nunca vai para a tela)."""
+    pid, em = _ss().get("on_pid"), BA._email()
+    if not pid or not em:
+        return None
+    c = _ss().get("on_op_email")
+    if c and c[0] == pid and c[1]:
+        return c[1]
+    try:
+        r = banco._selecionar("bt_partidas", {"id": pid}, ["a_email", "b_email"], limite=1)
+        op = next((x for x in ((r[0]["a_email"], r[0]["b_email"]) if r else ()) if x and x != em), None)
+    except Exception:
+        op = None
+    _ss()["on_op_email"] = (pid, op)
+    return op
+
+
 def _avatar(op: bool = False, sil: bool = False, pose: str = "rosto") -> str:
+    """Avatar equipado de cada jogador (Coleção de Avatares, com a moldura da raridade). Silhueta enquanto o adversário não chegou."""
+    if not sil:
+        try:
+            import perfis_app as PA
+            if op:
+                em = _email_op()
+                if em:
+                    return f"<div class='on-av thv'>{PA.avatar_html_email(em, 58)}</div>"
+            else:
+                m = PA.meu_avatar()
+                return f"<div class='on-av thv'>{PA.avatar_html(m['id'], m['foto'], 58)}</div>"
+        except Exception:
+            pass
     cls = ("op" if op else "") + (" sil" if sil else "")
     fx = {"rosto": "confiante", "celebrando": "vitoriosa", "triste": "derrotada", "pensativo": "pensativa", "animado": "animada", "surpreso": "surpresa"}.get(pose, "confiante")
     nome = {"confiante": "raposa_confiante", "vitoriosa": "raposa_vitoriosa", "derrotada": "raposa_derrotada", "pensativa": "raposa_pensativa", "animada": "raposa_animada", "surpresa": "raposa_surpresa"}[fx]

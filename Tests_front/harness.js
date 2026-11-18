@@ -159,4 +159,19 @@ t("fim da rodada: lugar, pontos e retorno, placar por pontos, Raio-X em cartões
   h.render(args({ motor: 2, modo: "resultado", fase_key: "2-resultado", mesa: mesaSem(), resultado: res, placar: { ...pl, jogadores: [pl.jogadores[1]] }, multi: false, seg: 0, candles: candles(144), revelados: 24 }));
   yes(h.els.res.innerHTML.includes("Acertou a direção") && h.els.res.innerHTML.includes('id="prox"'), "solo: sem placar, com botão");
 });
+t("placar da mesa: avatar equipado de cada assento com a cor da raridade; sem mapa, a raposa por assento", () => {
+  const h = carregar();
+  const pl = { rodada: "1/3", fechada: true, pat_txt: null, jogadores: [
+    { rotulo: "Jogador 2", pct: 3.1, voce: false, pos: 1, txt: "+3,10%", cor: "up", pts: 40.2, pts_txt: "+40,2" },
+    { rotulo: "Você", pct: 1.5, voce: true, pos: 2, txt: "+1,50%", cor: "up", pts: 12.0, pts_txt: "+12,0" }] };
+  const res = { pontos: 12.0, total: 30.5, faixa: "faixa_vitoria", acertou: true, executada: true, r: null, n_ops: 1, limite_atingido: false, fin: null, img: null, selo: null,
+    linhas: [], ultima: false, rodada_txt: "1/3", ret_txt: "+1,50%", ret_cor: "up", ret_val: "+T$ 15,00" };
+  const avs = { "Você": { src: "/app/static/avatares/panda_p.webp", cor: "#D5DAE6" }, "Jogador 2": { src: "/app/static/avatares/dragao_p.webp", cor: "#FF4D5E" } };
+  h.render(args({ motor: 2, modo: "resultado", fase_key: "1-resultado", mesa: mesaSem(), resultado: res, placar: pl, multi: true, seg: 3, candles: candles(144), revelados: 24, avatares: avs }));
+  const r = h.els.res.innerHTML;
+  yes(r.includes("dragao_p.webp") && r.includes("--aro:#FF4D5E") && r.includes("panda_p.webp"), "avatares e cores no placar");
+  const h2 = carregar();
+  h2.render(args({ motor: 2, modo: "resultado", fase_key: "1-resultado", mesa: mesaSem(), resultado: res, placar: pl, multi: true, seg: 3, candles: candles(144), revelados: 24 }));
+  yes(!h2.els.res.innerHTML.includes("dragao_p.webp") && h2.els.res.innerHTML.includes("hue-rotate"), "sem mapa: raposa por assento");
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

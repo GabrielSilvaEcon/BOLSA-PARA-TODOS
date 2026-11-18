@@ -4645,9 +4645,9 @@ def _cabecalho_conta():
         except Exception:
             est = None
     if est:
-        corpo = conta_menu.cabecalho_html(nome, est["nivel"], est["xp_no_nivel"], est["xp_faixa"], est["pct"], est["maximo"])
+        corpo = conta_menu.cabecalho_html(nome, est["nivel"], est["xp_no_nivel"], est["xp_faixa"], est["pct"], est["maximo"], _av_menu())
     else:
-        corpo = conta_menu.cabecalho_html(nome)
+        corpo = conta_menu.cabecalho_html(nome, avatar_html=_av_menu())
     st.markdown(conta_menu.css() + corpo, unsafe_allow_html=True)
 
 
@@ -4676,16 +4676,32 @@ def _dialogo_conta():
     _menu_conta_itens()
 
 
+def _av_menu() -> str:
+    """Avatar equipado (com a moldura da raridade) para o cartão da janela da conta."""
+    try:
+        import perfis_app as _pa
+        _m = _pa.meu_avatar()
+        return _pa.avatar_html(_m["id"], _m["foto"], 58)
+    except Exception:
+        return ""
+
+
 def _css_topo_avatar() -> str:
     """Botão da conta no cabeçalho: avatar redondo com anel neon e seta (igual à referência). O ícone padrão do Streamlit fica escondido."""
-    import arte_conta as _ac
+    import avatares as _avs
+    import perfis_app as _pa
+    try:                                       # o avatar equipado na Coleção de Avatares (ou a foto), com o anel da raridade
+        _m = _pa.meu_avatar()
+    except Exception:
+        _m = {"src_p": _avs.url(_avs.PADRAO, True), "rar": "comum"}
+    _r = _avs.RARIDADES.get(_m["rar"], {"cor": "#34E85E", "cor2": "#14C9B5"})
     q = "html body .stApp.stApp.stApp .st-key-topo_perfil .st-key-topo_conta"
     return ("<style>"
             f"{q}{{width:auto !important;flex:0 0 auto}}"
             f'{q} button{{width:62px !important;min-width:62px !important;gap:6px !important;flex-direction:row !important}}'
             f'{q} button [data-testid="stIconMaterial"]{{display:none !important}}'
-            f"{q} button::before{{content:'';flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:#1B1545 url('{_ac.uri('avatar')}') center/cover no-repeat;"
-            "box-shadow:0 0 0 2px #8B6CFF,0 0 0 3px rgba(34,211,238,.55),0 0 12px rgba(139,108,255,.7)}"
+            f"{q} button::before{{content:'';flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:#1B1545 url('{_m['src_p']}') center/cover no-repeat;"
+            f"box-shadow:0 0 0 2px {_r['cor']},0 0 0 3px {_r['cor2']},0 0 12px {_r['cor']}}}"
             f"{q} button::after{{content:'';flex:0 0 auto;width:7px;height:7px;margin-top:-4px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg)}}"
             "</style>")
 
@@ -4798,7 +4814,8 @@ if LAYOUT_COMPACTO:
     st.markdown(layout_mobile.css(), unsafe_allow_html=True)    # por último entre os CSS globais: vale para todas as páginas
 try:                                        # nomes clicáveis em rankings e listas (abrem o perfil público do jogador)
     import amigos_app as _ama
-    st.markdown(_ama.CSS_LINK, unsafe_allow_html=True)
+    import avatares as _avs
+    st.markdown(_ama.CSS_LINK + _avs.css(), unsafe_allow_html=True)        # + molduras de raridade dos avatares (qualquer tela)
 except Exception:
     pass
 if DESIGN_V2:

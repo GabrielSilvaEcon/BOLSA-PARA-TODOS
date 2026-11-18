@@ -34,6 +34,25 @@ CSS = "<style>" + "".join(l.strip() for l in f"""
 {_P} .pj-hero{{position:relative;text-align:center;padding:16px 12px 14px;border-radius:24px;border:2px solid {ROXO};
   background:radial-gradient(120% 70% at 50% 0,rgba(139,108,255,.38),transparent 65%),linear-gradient(170deg,#241A86,#0E0840);box-shadow:0 0 22px rgba(139,108,255,.45)}}
 {_P} .pj-hero .mo,{_P} .pj-hero .pj-av{{margin:0 auto}}
+{_P} .pj-rar{{margin-top:6px;display:flex;gap:6px;justify-content:center;align-items:center;font-size:.76rem;font-weight:700;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
+{_P} .pj-col-h{{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:4px 0 8px;font-size:.78rem;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .pj-col-h b{{color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .st-key-pe_col{{display:grid !important;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px !important}}
+{_P} .st-key-pe_col > div{{width:auto !important;min-width:0}}
+{_P} .pe-t{{position:relative;text-align:center;padding:9px 4px 8px;border-radius:16px;background:rgba(20,14,70,.75);border:1.5px solid rgba(139,108,255,.3);min-height:126px}}
+{_P} .pe-t.eq{{border-color:#34E85E;box-shadow:0 0 14px rgba(52,232,94,.45)}}
+{_P} .pe-t.ver{{border-color:#FFC93C}}
+{_P} .pe-t .n{{display:block;margin-top:6px;font-size:.7rem;font-weight:800;line-height:1.15;color:#fff !important;-webkit-text-fill-color:#fff !important;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+{_P} .pe-t .thrar{{margin-top:3px;font-size:.56rem}}
+{_P} .pe-t.bloq .thav{{filter:grayscale(.85) brightness(.45)}}
+{_P} .pe-t .cad{{position:absolute;top:30px;left:50%;transform:translateX(-50%);font-size:1.25rem}}
+{_P} .pe-t .lv{{display:block;margin-top:2px;font-size:.6rem;font-weight:700;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .pe-t .eqk{{position:absolute;top:5px;right:6px;font-size:.62rem;font-weight:900;color:#34E85E !important;-webkit-text-fill-color:#34E85E !important}}
+{_P} .pe-prevc{{display:flex;gap:14px;align-items:center;padding:12px;border-radius:18px;border:1.5px solid rgba(139,108,255,.5);background:linear-gradient(160deg,#241A86,#120C4A);margin:6px 0 8px}}
+{_P} .pe-prevc .t{{min-width:0}}
+{_P} .pe-prevc b{{display:block;font-size:1.02rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .pe-prevc small{{display:block;margin-top:3px;font-size:.78rem;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
 {_P} .pj-av{{display:inline-block;width:104px;height:104px;border-radius:50%;overflow:hidden;background:#1B1545;box-shadow:0 0 0 3px {VERDE},0 0 18px rgba(52,232,94,.5)}}
 {_P} .mo .pj-av{{box-shadow:none}}
 {_P} .pj-av img{{width:100%;height:100%;object-fit:cover;display:block}}
@@ -106,14 +125,101 @@ def _nick_cadastro() -> str:
         return ""
 
 
-def uri_avatar(avatar: str, foto_uri: str = "") -> str:
+def uri_avatar(avatar: str, foto_uri: str = "", pequeno: bool = False) -> str:
+    """Imagem do avatar (catálogo da Coleção de Avatares) ou a foto enviada."""
+    import avatares as AV
     if avatar == PF.FOTO and foto_uri:
         return foto_uri
-    mod, chave = PF.AVATARES.get(avatar, PF.AVATARES[PF.AVATAR_PADRAO])
+    return AV.url(avatar if AV.existe(avatar) else PF.AVATAR_PADRAO, pequeno)
+
+
+def avatar_html(avatar: str, foto: str = "", tamanho: int = 48) -> str:
+    """Avatar com a moldura da raridade (ou da foto). Use em qualquer lugar: listas, rankings, salas, perfis."""
+    import avatares as AV
+    return AV.html(None if avatar == PF.FOTO and foto else avatar, tamanho, foto if avatar == PF.FOTO else "")
+
+
+def meu_avatar() -> dict:
+    """Avatar equipado da conta logada: {id, foto, src, src_p, rar}. Usado no cabeçalho e nas telas de jogo."""
+    import avatares as AV
     try:
-        return importlib.import_module(mod).uri(chave)
+        p = meu_perfil()
+        av, foto = p.get("avatar") or PF.AVATAR_PADRAO, minha_foto_uri() if p.get("avatar") == PF.FOTO else ""
     except Exception:
-        return ""
+        av, foto = PF.AVATAR_PADRAO, ""
+    if av == PF.FOTO and foto:
+        return {"id": av, "foto": foto, "src": foto, "src_p": foto, "rar": "foto"}
+    av = av if AV.existe(av) else PF.AVATAR_PADRAO
+    return {"id": av, "foto": "", "src": AV.url(av), "src_p": AV.url(av, True), "rar": AV.raridade_de(av)}
+
+
+def avatar_de_email(email: str) -> tuple[str, str]:
+    """(avatar equipado, foto) de outra conta, lidos no servidor com cache de 5 min na sessão. O e-mail nunca vai para a tela."""
+    if not email:
+        return PF.AVATAR_PADRAO, ""
+    a = _ator()
+    if a and a.email == email:
+        m = meu_avatar()
+        return m["id"], m["foto"]
+    cache = st.session_state.setdefault("_pj_avs", {})
+    if email in cache and time.time() - cache[email][0] < 300:
+        return cache[email][1]
+    av, foto = PF.AVATAR_PADRAO, ""
+    try:
+        p = PF.sanear(banco.sis_estado_ler(email, "perfil_jogador"))
+        av = p["avatar"]
+        if av == PF.FOTO:
+            foto = FT.uri(banco.sis_estado_ler(email, "perfil_foto"))
+            av = PF.FOTO if foto else PF.AVATAR_PADRAO
+    except Exception:
+        pass
+    cache[email] = (time.time(), (av, foto))
+    return av, foto
+
+
+def avatar_html_email(email: str, tamanho: int = 40) -> str:
+    av, foto = avatar_de_email(email)
+    return avatar_html(av, foto, tamanho)
+
+
+def _ctx_colecao() -> dict:
+    """Nível real (Jornada) e conquistas reais da conta, para a regra de desbloqueio. Nada vem da tela."""
+    ctx = {"nivel": 1, "emblemas": set()}
+    try:
+        import educacao_app as EA
+        ctx["nivel"] = PF.progresso(EA.prog())["nivel"]
+    except Exception:
+        pass
+    try:
+        import emblemas as EM
+        import emblemas_app as EMA
+        import perfil_app as PA
+        ctx["emblemas"] = {i["id"] for c in EM.colecao(EMA.contexto_da_tela(*PA._wallet())) for i in c["itens"] if i["ok"]}
+    except Exception:
+        pass
+    return ctx
+
+
+def minha_colecao() -> set[str]:
+    """Avatares liberados para a conta logada. Guarda na coleção (banco) o que acabou de liberar. Cache de 60 s na sessão."""
+    import avatares as AV
+    ss = st.session_state
+    c = ss.get("_pj_col")
+    if c and time.time() - c[0] < 60:
+        return c[1]
+    a = _ator()
+    lib = AV.liberados({"nivel": 1})
+    if a:
+        try:
+            ctx = _ctx_colecao()
+            doc, novos = AV.sincronizar(banco.avatares_colecao_ler(a), ctx, datetime.now(timezone.utc).date().isoformat())
+            if novos:
+                banco.avatares_colecao_gravar(a, doc)
+            lib = AV.liberados({**ctx, "concedidos": doc["concedidos"]}, doc["ids"])
+        except Exception as e:
+            banco.registrar_erro("perfis_app.minha_colecao", e)
+    ss["_pj_col"] = (time.time(), lib)
+    return lib
 
 
 def meu_perfil() -> dict:
@@ -170,6 +276,10 @@ def salvar(form: dict, foto_webp: bytes | None = None, remover_foto: bool = Fals
     form = dict(form)
     if form.get("avatar") == PF.FOTO and not foto_webp and (remover_foto or not minha_foto_uri()):
         form["avatar"] = PF.AVATAR_PADRAO                              # escolheu foto mas não há foto: volta ao avatar padrão
+    if form.get("avatar") not in (None, PF.FOTO, atual["avatar"]):
+        import avatares as AV
+        if not AV.pode_equipar(form["avatar"], minha_colecao()):       # conferido no servidor: avatar bloqueado não é equipado
+            return False, "Esse avatar ainda está bloqueado. " + AV.como_liberar(AV.POR_ID.get(form["avatar"]) or {"desbloqueio": {}}) + "."
     try:
         novo, mud = PF.editar(atual, form, temas=PR.TEMAS)
         foto_doc = FT.documento(foto_webp, datetime.now(timezone.utc).isoformat(timespec="seconds")) if foto_webp else None
@@ -199,7 +309,7 @@ def salvar(form: dict, foto_webp: bytes | None = None, remover_foto: bool = Fals
         banco.registrar_erro("perfis_app.salvar", e)
         return False, "Não consegui salvar agora. Tente de novo em instantes."
     st.session_state["_pj_doc"] = novo
-    for k in ("_pj_pub", "_pj_foto"):
+    for k in ("_pj_pub", "_pj_foto", "_pj_avs"):
         st.session_state.pop(k, None)
     return True, "Perfil atualizado!"
 
@@ -315,10 +425,19 @@ def _moldura() -> dict | None:
         return None
 
 
-def _avatar_html(avatar: str, foto: str, moldura: dict | None = None) -> str:
+def _avatar_html(avatar: str, foto: str, moldura: dict | None = None, tamanho: int = 104) -> str:
+    """Avatar grande (perfil) com a moldura da raridade; a moldura comprada na Loja, se houver, fica por fora."""
     import visual_loja as VL
-    av = f"<div class='pj-av'><img src='{uri_avatar(avatar, foto)}' alt='Foto de perfil'></div>"
+    av = avatar_html(avatar, foto, tamanho)
     return VL.CSS_MOLDURA + VL.html_moldura(av, moldura) if moldura else av
+
+
+def _rar_chip(avatar: str) -> str:
+    import avatares as AV
+    if avatar == PF.FOTO or not AV.existe(avatar):
+        return ""
+    a = AV.POR_ID[avatar]
+    return f"<div class='pj-rar'>{AV.chip(a['raridade'])} <span>{_e(a['nome'])}</span></div>"
 
 
 def _fmt_pts(v: float) -> str:
@@ -352,7 +471,7 @@ def pagina_meu_perfil() -> None:
     desde = d.get("desde") or ""
     desde = f"No TickerHunters desde {desde[8:10]}/{desde[5:7]}/{desde[:4]}" if len(desde) >= 10 else ""
     st.markdown(
-        f"<div class='pj-hero'><span class='pj-nv'>Nível {d['nivel']}</span>{_avatar_html(d['avatar'], minha_foto_uri(), _moldura())}"
+        f"<div class='pj-hero'><span class='pj-nv'>Nível {d['nivel']}</span>{_avatar_html(d['avatar'], minha_foto_uri(), _moldura())}{_rar_chip(d['avatar'])}"
         f"<div class='pj-nome'>{_e(d.get('nome') or d.get('usuario') or 'Jogador')}</div>"
         f"<div class='pj-user'>{'@' + _e(d['usuario']) if d.get('usuario') else 'Escolha seu nome de usuário em Editar Perfil'} · {_e(d['titulo'])}</div>"
         + (f"<div class='pj-bio'>{_e(d['bio'])}</div>" if d.get("bio") else "")
@@ -391,7 +510,7 @@ def pagina_meu_perfil() -> None:
 
 # ------------------------------------------------------------------ TELA · Editar Perfil (rascunho até salvar)
 _CAMPOS = ("pe_nome", "pe_usuario", "pe_bio", "pe_avatar", "pe_tema", "pe_moldura", "pe_tema_loja", "pe_vis", "pe_ped", "pe_mbio", "pe_mnivel", "pe_mconq", "pe_mjogos", "pe_mhist",
-           "pe_foto", "pe_remover", "pe_zoom", "pe_x", "pe_y", "pe_up", "pe_foco")
+           "pe_foto", "pe_remover", "pe_zoom", "pe_x", "pe_y", "pe_up", "pe_foco", "pe_ver")
 
 
 def _iniciar_rascunho() -> None:
@@ -414,6 +533,53 @@ def _cancelar() -> None:
         st.session_state.pop(k, None)
     st.session_state["_pj_msg"] = (True, "Edição cancelada. Nada foi alterado.")
     st.session_state["_nav_pend"] = "perfil"
+
+
+def _ver_avatar(a: str) -> None:
+    st.session_state["pe_ver"] = a
+
+
+def _usar_avatar(a: str) -> None:
+    """Põe o avatar no rascunho (só se estiver liberado; o servidor confere de novo ao salvar)."""
+    import avatares as AV
+    if AV.pode_equipar(a, minha_colecao()):
+        _escolher_avatar(a)
+        st.session_state["_pe_aviso"] = (True, f"{AV.POR_ID[a]['nome']} escolhido. Toque em Salvar para usar no seu perfil.")
+    else:
+        st.session_state["_pe_aviso"] = (False, "Esse avatar ainda está bloqueado. " + AV.como_liberar(AV.POR_ID[a]) + ".")
+
+
+def _colecao_avatares() -> None:
+    """Coleção de Avatares: filtros por raridade, grade com liberados e bloqueados, prévia e "Usar este avatar"."""
+    import avatares as AV
+    ss = st.session_state
+    lib = minha_colecao()
+    tot = AV.totais(lib)
+    ops = ["todos"] + list(AV.RARIDADES)
+    fil = st.segmented_control("Raridade", ops, default="todos", key="pe_fil", label_visibility="collapsed",
+                               format_func=lambda r: "Todos" if r == "todos" else AV.RARIDADES[r]["plural"]) or "todos"
+    n_ok, n = sum(v["ok"] for v in tot.values()), sum(v["total"] for v in tot.values())
+    st.markdown("<div class='pj-col-h'><span><b>" + str(n_ok) + "</b> de " + str(n) + " liberados</span>"
+                + "".join(f"<span>{AV.chip(r)} {tot[r]['ok']}/{tot[r]['total']}</span>" for r in AV.RARIDADES) + "</div>", unsafe_allow_html=True)
+    ver = ss.get("pe_ver") if AV.existe(ss.get("pe_ver")) else (ss.get("pe_avatar") if AV.existe(ss.get("pe_avatar")) else None)
+    if ver:
+        a = AV.POR_ID[ver]
+        livre = ver in lib
+        estado = "Equipado no rascunho" if ver == ss.get("pe_avatar") else ("Liberado" if livre else "🔒 " + AV.como_liberar(a))
+        st.markdown(f"<div class='pe-prevc'>{AV.html(ver, 84)}<div class='t'><b>{_e(a['nome'])}</b>{AV.chip(a['raridade'])}"
+                    f"<small>{_e(AV.RARIDADES[a['raridade']]['dica'])} · {_e(estado)}</small></div></div>", unsafe_allow_html=True)
+        if ver != ss.get("pe_avatar"):
+            st.button("Usar este avatar" if livre else "Bloqueado", key="pe_usar_av", icon=":material/check:" if livre else ":material/lock:",
+                      width="stretch", disabled=not livre, on_click=_usar_avatar, args=(ver,))
+    with st.container(key="pe_col"):
+        for it in AV.colecao(lib, ss.get("pe_avatar"), None if fil == "todos" else fil):
+            cls = ("eq " if it["equipado"] else "") + ("ver " if it["id"] == ver and not it["equipado"] else "") + ("" if it["liberado"] else "bloq")
+            extra = ("<span class='eqk'>✓</span>" if it["equipado"] else "") + ("" if it["liberado"] else "<span class='cad'>🔒</span>")
+            lv = "" if it["liberado"] else f"<span class='lv'>{_e(it['como'])}</span>"
+            with st.container(key=f"lk_pec_{it['id']}"):
+                st.markdown(f"<div class='pe-t {cls}'>{extra}{AV.html(it['id'], 58, pequeno=True)}<span class='n'>{_e(it['nome'])}</span>"
+                            f"{AV.chip(it['raridade'])}{lv}</div>", unsafe_allow_html=True)
+                st.button(f"Ver {it['nome']}", key=f"pec_b_{it['id']}", on_click=_ver_avatar, args=(it["id"],))
 
 
 def _escolher_avatar(a: str) -> None:
@@ -497,10 +663,10 @@ def pagina_editar() -> None:
         foto_prev = "data:image/webp;base64," + base64.b64encode(ss["pe_foto"]).decode()
     else:
         foto_prev = foto_atual
-    st.markdown("<div class='pj-sec'>📷 Foto de perfil</div><div class='pj-prev'>" + _avatar_html(ss.get("pe_avatar", PF.AVATAR_PADRAO), foto_prev)
+    st.markdown("<div class='pj-sec'>📷 Foto de perfil</div><div class='pj-prev'>" + _avatar_html(ss.get("pe_avatar", PF.AVATAR_PADRAO), foto_prev) + _rar_chip(ss.get("pe_avatar", PF.AVATAR_PADRAO))
                 + f"<small>{'Prévia: ainda não foi salvo.' if ss.get('pe_foto') or ss.get('pe_remover') else 'Como está agora.'}</small></div>",
                 unsafe_allow_html=True)
-    aba = st.segmented_control("Origem da foto", ["Avatares do app", "Enviar da galeria"], default="Avatares do app", key="pe_aba", label_visibility="collapsed")
+    aba = st.segmented_control("Origem da foto", ["Coleção de avatares", "Enviar da galeria"], default="Coleção de avatares", key="pe_aba", label_visibility="collapsed")
     if aba == "Enviar da galeria":
         st.file_uploader(f"Foto (JPG, PNG ou WebP, até {FT.TAM_MAX_MB} MB)", type=["jpg", "jpeg", "png", "webp"], key="pe_up")
         if ss.get("pe_up") is not None:
@@ -516,12 +682,7 @@ def pagina_editar() -> None:
             except FT.ErroFoto as e:
                 st.error(str(e), icon=":material/error:")
     else:
-        with st.container(key="pe_av"):
-            for a in PF.AVATARES:
-                with st.container(key=f"pe_avc_{a}"):
-                    st.markdown(f"<div class='pj-prev'><div class='pj-av' style='width:52px;height:52px{';box-shadow:0 0 0 3px ' + OURO + ',0 0 14px ' + OURO if ss.get('pe_avatar') == a else ''}'>"
-                                f"<img src='{uri_avatar(a)}' alt=''></div></div>", unsafe_allow_html=True)
-                    st.button("✓" if ss.get("pe_avatar") == a else "Usar", key=f"pe_av_{a}", width="stretch", on_click=_escolher_avatar, args=(a,))
+        _colecao_avatares()
     if foto_atual or ss.get("pe_foto"):
         st.button("Remover foto", key="pe_rem", icon=":material/delete:", on_click=_remover_foto)
     # ---- dados
@@ -650,7 +811,7 @@ def pagina_publica() -> None:
         return
     desde = p.get("desde") or ""
     nivel = f"<span class='pj-nv'>Nível {p['nivel']}</span>" if p.get("nivel") else ""
-    st.markdown(f"<div class='pj-hero'>{nivel}{_avatar_html(p['avatar'], p.get('foto', ''))}<div class='pj-nome'>{_e(p['nome'])}</div>"
+    st.markdown(f"<div class='pj-hero'>{nivel}{_avatar_html(p['avatar'], p.get('foto', ''))}{_rar_chip(p['avatar'])}<div class='pj-nome'>{_e(p['nome'])}</div>"
                 f"<div class='pj-user'>@{_e(p['usuario'])}{' · ' + _e(p['titulo']) if p.get('titulo') else ''}</div>"
                 + (f"<div class='pj-bio'>{_e(p['bio'])}</div>" if p.get("bio") else "")
                 + (f"<div class='pj-desde'>No TickerHunters desde {desde[5:7]}/{desde[:4]}</div>" if len(desde) >= 7 else "") + "</div>", unsafe_allow_html=True)

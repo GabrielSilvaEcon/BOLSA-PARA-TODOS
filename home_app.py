@@ -56,12 +56,17 @@ def ranking(ir) -> None:
         q = "html body .stApp.stApp.stApp"
         st.markdown(f"<style>{q} .st-key-hm_rk > :is(.st-key-hm_rk_c,div:has(> .st-key-hm_rk_c)){{grid-column:1 / -1;grid-row:2;min-width:0}}"
                     f"{q} .st-key-hm_rk_c{{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px !important}}"
-                    f"{q} .st-key-hm_rk_c > :last-child{{grid-column:1 / -1}}{q} .st-key-hm_rk_c .hm-rk-grid{{display:block}}</style>", unsafe_allow_html=True)
+                    f"{q} .st-key-hm_rk_c > :last-child{{grid-column:1 / -1}}{q} .st-key-hm_rk_c .hm-rk-grid{{display:block}}"
+                    f"{q} .hm-av2{{flex:0 0 auto;display:inline-flex}}</style>", unsafe_allow_html=True)
         with st.container(key="hm_rk_c"):
             chips = ""
             for x in r["top"]:
                 ch = HV._chip_top(x)
                 chips += ch
+                av = AMA.avatar_por_apelido(x.get("apelido", ""), 30)            # avatar equipado no lugar da inicial
+                if av:
+                    import re as _re
+                    ch = _re.sub(r"<span class='hm-av'>.*?</span>", f"<span class='hm-av2'>{av}</span>", ch, count=1)
                 AMA.linha_clicavel(f"hm_{x['pos']}", f"<div class='hm-rk-grid'>{ch}</div>",
                                    None if participa and x.get("apelido") == apelido else AMA.usuario_de_apelido(x.get("apelido", "")))
             st.markdown(corpo.replace(chips, "", 1), unsafe_allow_html=True)

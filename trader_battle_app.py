@@ -52,6 +52,7 @@ _CSS = f"""
 {_P} .tb-pts .n{{font-size:2.3rem;font-weight:900;line-height:1;color:{VERDE} !important;-webkit-text-fill-color:{VERDE} !important}}
 {_P} .tb-pts small{{display:block;margin-top:2px;font-size:.76rem;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
 {_P} .tb-troph{{text-align:center}}{_P} .tb-troph img{{width:60%;max-width:240px}}
+{_P} .tb-lin-n{{display:inline-flex;align-items:center;gap:8px}}
 {_P} .tb-lin{{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid rgba(255,255,255,.1);font-size:.85rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
 {_P} .tb-lin span{{font-weight:900;color:{VERDE} !important;-webkit-text-fill-color:{VERDE} !important}}
 {_P} .tb-lin span.down{{color:#FF6B87 !important;-webkit-text-fill-color:#FF6B87 !important}}
@@ -515,7 +516,19 @@ def _frag_sala(pid: str) -> None:
     if b["estado"] != "sala":
         return st.rerun()                                        # a partida começou (ou a sala foi cancelada): tela inteira muda
     sa = b["sala"]
-    cards = "".join(f"<div class='tb-lin'>{_e(j['nick'])}{' (você)' if j['voce'] else ''}<span>{'criador' if j['criador'] else 'jogador'}</span></div>" for j in sa["jogadores"])
+    import amigos_app as AMA
+    import perfis_app as PA
+
+    def _av_sala(j):                                              # avatar equipado de quem está na sala (com a moldura da raridade)
+        try:
+            if j["voce"]:
+                m = PA.meu_avatar()
+                return PA.avatar_html(m["id"], m["foto"], 30)
+            return AMA.avatar_por_apelido(j["nick"], 30) or PA.avatar_html("raposa", "", 30)
+        except Exception:
+            return ""
+    cards = "".join(f"<div class='tb-lin'><span class='tb-lin-n'>{_av_sala(j)}{_e(j['nick'])}{' (você)' if j['voce'] else ''}</span>"
+                    f"<span>{'criador' if j['criador'] else 'jogador'}</span></div>" for j in sa["jogadores"])
     st.markdown(f"<div class='tb-pts'><div class='n'>{_e(sa['codigo'])}</div><small>código da sala · {_e(TB.TIMEFRAMES[sa['tf']]['nome'])} · {_e(_rot_formato(sa.get('formato')))}</small></div>"
                 f"<div class='tb-card'><b>Jogadores {sa['n']}/{sa['max']}</b>{cards}</div>", unsafe_allow_html=True)
     import amigos_app as AMA
@@ -643,16 +656,46 @@ def _args(v: dict, p: dict, est: dict, agora: float) -> dict:
     a = TG.args_mesa(v, p, est, agora)
     if a.get("motor") == TB.MOTOR_MESA:
         a["moldura"] = _moldura()
+        a["avatares"] = _avatares_assentos(p)
     return a
+
+
+def _avatares_assentos(p: dict) -> dict:
+    """{rótulo do placar ("Você", "Jogador N"): {src, cor}}: o avatar equipado de cada assento, com a cor da raridade. Montado no servidor
+    a partir dos jogadores da partida; só imagem e cor vão para a tela (nunca o e-mail). Falha: {} (a mesa volta às raposas por assento)."""
+    try:
+        import avatares as AV
+        import perfis_app as PA
+        em = _email_online()
+        jogs = list(p.get("jogadores") or [])
+        out = {}
+        for n, j in enumerate(jogs, 1):
+            eu = j == em or len(jogs) == 1
+            if eu:
+                m = PA.meu_avatar()
+                av, foto = m["id"], m["foto"]
+            elif "@" in str(j):
+                av, foto = PA.avatar_de_email(j)
+            else:
+                continue
+            src = foto or AV.url(av, True)
+            src = src if src.startswith("data:") else "/" + src           # a mesa roda num iframe: endereço absoluto
+            out["Você" if eu else f"Jogador {n}"] = {"src": src, "cor": "#34E85E" if foto else AV.RARIDADES[AV.raridade_de(av)]["cor"]}
+        return out
+    except Exception:
+        return {}
 
 
 _AV_COR = {1: "hue-rotate(185deg) saturate(1.2)", 2: "hue-rotate(95deg)", 3: "hue-rotate(260deg)", 4: "hue-rotate(320deg) saturate(1.3)"}   # igual ao placar da mesa
 
 
 def _avatar_placar(x: dict) -> str:
-    """Avatar do app no placar: o seu com a moldura equipada na Loja; adversários com a raposa em cores diferentes por assento."""
+    """Avatar no placar final: o equipado de cada assento (Coleção de Avatares); sem ele, a raposa por assento."""
     import re
     import arte_conta as AC
+    m = (_ss().get("tb_av_assentos") or {}).get(x["rotulo"])
+    if m:
+        return f"<span class='tb-av' style='box-shadow:0 0 0 2px {m['cor']},0 0 8px {m['cor']}'><img src='{m['src'].lstrip('/') if not m['src'].startswith('data:') else m['src']}' alt=''></span>"
     if x["voce"]:
         aro = _moldura() or "#34E85E"
         return f"<span class='tb-av' style='box-shadow:0 0 0 2px {aro},0 0 8px {aro}'><img src='{AC.uri('avatar')}' alt=''></span>"
@@ -713,6 +756,7 @@ def _registrar_ranking(pid: str, fz: dict, p: dict) -> None:
 
 def _fim_online(b: dict) -> None:
     v = b["v"]
+    _ss()["tb_av_assentos"] = _avatares_assentos(b["p"])
     _registrar_ranking(b["p"]["id"], v["final"], b["p"])
     _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]))
     st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
@@ -1208,6 +1252,7 @@ def _fim(p: dict) -> None:
     j = _jogador()
     _liquidar(p, forcar=True)
     fz = TB.resumo_final(p, j)
+    _ss()["tb_av_assentos"] = _avatares_assentos(p)
     _registrar_ranking(p["id"], fz, p)
     _tela_final(fz, TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]], _pagar_xp(p["id"], fz["xp"]))
     st.button("Jogar novamente", key="tb_de_novo", icon=":material/replay:", width="stretch", on_click=_de_novo)

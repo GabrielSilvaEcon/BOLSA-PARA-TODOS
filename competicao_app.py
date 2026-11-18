@@ -116,6 +116,8 @@ def _aba_ranking(perfil: dict, cart: dict, res: dict | None = None):
     import ranking_ligas as RL
     import ranking_parcial as RP
     import classificacao_visual as CV2
+    import amigos_app as _AMA
+    CV2.AVATAR = _AMA.avatar_por_apelido                # avatar equipado de cada jogador (Coleção de Avatares)
     rk = _publico("comp_ranking")
     listas, rotulo_parcial = RP.escolher(rk)
     base = [(n, m, c) for _i, n, m, c in WG.RANKS]

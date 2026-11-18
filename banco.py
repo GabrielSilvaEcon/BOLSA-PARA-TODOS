@@ -1350,6 +1350,33 @@ def perfil_jogador_gravar(ator: Ator | None, dados: dict) -> None:
     sis_estado_gravar(ator.email, "perfil_jogador", dados)
 
 
+def avatares_colecao_ler(ator: Ator | None) -> dict:
+    """Coleção de avatares da conta logada (ids liberados e concedidos). Só a própria conta lê."""
+    if not ator:
+        raise SemPermissao("Faça login.")
+    return sis_estado_ler(ator.email, "avatares_colecao")
+
+
+def avatares_colecao_gravar(ator: Ator | None, doc: dict) -> None:
+    """Grava a coleção da conta logada já saneada (só ids do catálogo). Concessões (loja, evento, temporada) NÃO entram por aqui:
+    o que a tela manda só pode guardar o que a regra já libera; `concedidos` vem sempre do que estava gravado."""
+    import avatares as AV
+    if not ator:
+        raise SemPermissao("Faça login.")
+    atual = AV.sanear_colecao(sis_estado_ler(ator.email, "avatares_colecao"))
+    novo = AV.sanear_colecao(doc)
+    novo["concedidos"] = atual["concedidos"]
+    sis_estado_gravar(ator.email, "avatares_colecao", novo)
+
+
+def sis_avatar_conceder(email: str, avatar_id: str, hoje: str) -> dict:
+    """Concessão do sistema (compra na Loja, evento, temporada). Só código do servidor chama."""
+    import avatares as AV
+    doc = AV.conceder(sis_estado_ler(email, "avatares_colecao"), avatar_id, hoje)
+    sis_estado_gravar(email, "avatares_colecao", doc)
+    return doc
+
+
 def perfil_foto_ler(ator: Ator | None) -> dict:
     if not ator:
         raise SemPermissao("Faça login.")

@@ -102,8 +102,9 @@ def validar_bio(bio) -> str:
 
 
 def validar_avatar(avatar) -> str:
+    import avatares as AV
     a = str(avatar or "")
-    if a not in AVATARES and a != FOTO:
+    if not AV.existe(a) and a != FOTO:
         raise ErroPerfil("Escolha um dos avatares disponíveis.")
     return a
 

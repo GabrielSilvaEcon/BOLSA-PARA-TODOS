@@ -105,10 +105,11 @@ def _pct(v: float) -> str:
     return f"{v:+.1f}%".replace(".", ",")
 
 
-def html_hero(nome: str, est: dict) -> str:
+def html_hero(nome: str, est: dict, avatar_src: str = "") -> str:
+    """`avatar_src`: imagem do avatar equipado (Coleção de Avatares); sem ela, a arte padrão."""
     barra = f"{est['pct'] * 100:.0f}"
     xp = "Nível máximo" if est["maximo"] else f"{est['xp_no_nivel']:,} / {est['xp_faixa']:,} XP".replace(",", ".")
-    return (f"<div class='pt-c pt-hero'><div class='pt-av'><div style=\"background-image:url('{AC.uri('avatar')}')\"></div></div>"
+    return (f"<div class='pt-c pt-hero'><div class='pt-av'><div style=\"background-image:url('{avatar_src or AC.uri('avatar')}')\"></div></div>"
             f"<div class='tx'><div class='pt-nome'>{_e(nome)}</div><span class='pt-niv'>⭐ Nível {est['nivel']}</span>"
             f"<div class='pt-tag'>{_e(est['titulo'])}</div>"
             f"<div class='pt-xp'><div class='pt-bar'><i style='width:{barra}%'></i></div><b>{_e(xp)}</b></div></div></div>")
@@ -264,7 +265,12 @@ def tela(prog) -> None:
         var = D.variacao(cart, agora.date())
         pontos = D.evolucao(cart)
     n_conq = sum(1 for c in conqs if c.get("desbloqueada_em"))
-    corpo = (html_hero(nome, est) + html_patrimonio(valor, var) + html_stats(r["licoes_feitas"], total, D.trades(cart), n_conq)
+    try:
+        import perfis_app as _PA
+        _src = _PA.meu_avatar()["src"]
+    except Exception:
+        _src = ""
+    corpo = (html_hero(nome, est, _src) + html_patrimonio(valor, var) + html_stats(r["licoes_feitas"], total, D.trades(cart), n_conq)
              + html_investidor(aloc, perfil, interesses) + html_atividades(D.atividades(cart, conqs, agora))
              + html_evolucao(pontos, var) + html_emblemas(col)
              + "<div class='pt-nota'>Só mostra o que você já fez no app. Carteira virtual em T$ (fictício): simulação educacional, sem recomendação de investimento.</div>")

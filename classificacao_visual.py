@@ -65,7 +65,17 @@ def valor_principal(r: dict, ordem: str) -> tuple[str, str, str]:
     return ret_txt(r.get("ret")), _cls(r.get("ret")), _seta(r.get("ret"))
 
 
+AVATAR = None   # gancho opcional: função (apelido, px) -> HTML do avatar equipado (Coleção de Avatares) ou None. Sem ele, a inicial colorida.
+
+
 def avatar(nome: str, px: int, anel: str | None = None) -> str:
+    if AVATAR:
+        try:
+            h = AVATAR(nome, px)
+            if h:
+                return h
+        except Exception:
+            pass
     ring = f"box-shadow:0 0 0 3px {anel},0 0 14px {anel}88;" if anel else ""
     return (f"<span class='ck-av' style='width:{px}px;height:{px}px;font-size:{px * 0.46:.0f}px;background:{cor_de(nome)};{ring}'>"
             f"{_E(inicial(nome))}</span>")

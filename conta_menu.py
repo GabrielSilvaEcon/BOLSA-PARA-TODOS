@@ -20,11 +20,12 @@ def _milhar(n) -> str:
         return "0"
 
 
-def cabecalho_html(nome: str, nivel: int | None = None, xp_no_nivel: int = 0, faixa: int = 0, pct: float = 0.0, maximo: bool = False) -> str:
-    """Título, subtítulo e cartão do usuário. Sem `nivel`, mostra só o nome."""
+def cabecalho_html(nome: str, nivel: int | None = None, xp_no_nivel: int = 0, faixa: int = 0, pct: float = 0.0, maximo: bool = False,
+                   avatar_html: str = "") -> str:
+    """Título, subtítulo e cartão do usuário. Sem `nivel`, mostra só o nome. `avatar_html`: avatar equipado (Coleção de Avatares)."""
     av = ART.uri("avatar")
     arte = ART.uri("cabecalho")
-    avatar = f"<div class='cta-av'><img src='{av}' alt=''></div>" if av else ""
+    avatar = avatar_html or (f"<div class='cta-av'><img src='{av}' alt=''></div>" if av else "")
     if nivel is None:
         info = ""
     else:

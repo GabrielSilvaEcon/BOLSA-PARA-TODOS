@@ -114,6 +114,8 @@ CSS = "<style>" + "".join(l.strip() for l in f"""
 {_P} .jg-faixa{{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:16px;border:2px solid #5B4BD6;background:linear-gradient(160deg,#241A86,#150F55);box-shadow:0 0 10px rgba(91,75,214,.4)}}
 {_P} .jg-faixa .av{{flex:none;width:34px;height:34px;border-radius:50%;overflow:hidden;box-shadow:0 0 0 2px {VERDE}}}
 {_P} .jg-faixa .av img{{width:100%;height:100%;object-fit:cover}}
+{_P} :is(.jg-podio,.jg-lin,.jg-faixa) .av:has(.thav){{overflow:visible;box-shadow:none;background:none}}
+
 {_P} .jg-faixa .ps{{font-weight:900;font-size:1rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
 {_P} .jg-faixa .nm{{flex:1;min-width:0;font-weight:700;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
 {_P} .jg-faixa b{{font-weight:900;color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}
@@ -178,10 +180,25 @@ def _hoje() -> str:
     return _agora().strftime("%Y-%m-%d")
 
 
-def _avatar(h: str = "", eu: bool = False) -> str:
-    """Avatar do app (a mesma arte do topo); os outros jogadores ganham uma cor fixa a partir do identificador (sem dado pessoal)."""
-    f = "" if eu or not h else _AV_COR[1 + int(h[:2], 16) % (len(_AV_COR) - 1)]
-    return f"<img src='{AC.uri('avatar')}' alt='' style='{('filter:' + f) if f else ''}'>"
+def _avatar(h: str = "", eu: bool = False, tamanho: int = 52) -> str:
+    """Avatar equipado do jogador (Coleção de Avatares, com a moldura da raridade). O e-mail só é usado aqui no servidor."""
+    try:
+        import perfis_app as PA
+        if eu:
+            m = PA.meu_avatar()
+            return PA.avatar_html(m["id"], m["foto"], tamanho)
+        email = _emails_por_hash().get(h)
+        if email:
+            return PA.avatar_html_email(email, tamanho)
+        return PA.avatar_html("raposa", "", tamanho)
+    except Exception:
+        return f"<img src='{AC.uri('avatar')}' alt=''>"
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _emails_por_hash() -> dict[str, str]:
+    """{hash do placar: e-mail} (só no servidor; nunca vai para a tela)."""
+    return {J.hash_conta(r["email"]): r["email"] for r in _placares()}
 
 
 def _fmt_valor(jogo: str, v) -> str:
@@ -261,6 +278,7 @@ def placares() -> list[dict]:
 
 def _limpar_cache() -> None:
     _placares.clear()
+    _emails_por_hash.clear()
     _ligas_todas.clear()
     _usuarios_por_hash.clear()
 
@@ -374,7 +392,7 @@ def faixa_jogo(jogo: str) -> None:
         return
     eu = rk["eu"]
     if eu:
-        st.markdown(f"<div class='jg-faixa'><div class='av'>{_avatar(eu=True)}</div><span class='ps'>#{eu['pos']}</span>"
+        st.markdown(f"<div class='jg-faixa'><div class='av'>{_avatar(eu=True, tamanho=34)}</div><span class='ps'>#{eu['pos']}</span>"
                     f"<span class='nm'>{_e(eu['apelido'])} · de {rk['total']}</span><b>{_e(_fmt_valor(jogo, eu['valor']))}</b></div>", unsafe_allow_html=True)
     else:
         st.markdown(f"<div class='jg-vazio'>Termine uma partida para entrar no ranking do {_e(J.NOME[jogo])}.</div>", unsafe_allow_html=True)
@@ -453,7 +471,7 @@ def _podio(rk: dict, jogo: str) -> str:
         if not x:
             out.append("<div></div>")
             continue
-        out.append(f"<div class='{cls}'><div class='av'>{_avatar(x['h'], x['eu'])}</div><div class='nm'>{_e(x['apelido'])}</div>"
+        out.append(f"<div class='{cls}'><div class='av'>{_avatar(x['h'], x['eu'], 64 if cls == 'p1' else 52)}</div><div class='nm'>{_e(x['apelido'])}</div>"
                    f"<div class='vl'>{_e(_fmt_valor(jogo, x['valor']))}</div><div class='base'>{x['pos']}</div></div>")
     return "<div class='jg-podio'>" + "".join(out) + "</div>"
 
@@ -497,7 +515,7 @@ def _var(v) -> str:
 def _linha_rank(x: dict, jogo: str) -> str:
     v = x["valor"]
     sub = f"{x['partidas']} partida{'s' if x['partidas'] != 1 else ''}"
-    return (f"<div class='jg-lin{' eu' if x['eu'] else ''}'><span class='ps'>{x['pos']}</span><span class='av'>{_avatar(x['h'], x['eu'])}</span>"
+    return (f"<div class='jg-lin{' eu' if x['eu'] else ''}'><span class='ps'>{x['pos']}</span><span class='av'>{_avatar(x['h'], x['eu'], 30)}</span>"
             f"<span class='nm'>{_e(x['apelido'])}{' (você)' if x['eu'] else ''}<small>{_e(sub)}</small></span>"
             f"<b class='{'neg' if v < 0 else ''}'>{_e(_fmt_valor(jogo, v))}</b>{_var(x['var'])}</div>")
 

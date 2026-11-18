@@ -227,6 +227,26 @@ def usuario_de_apelido(apelido: str) -> str | None:
         return None
 
 
+def avatar_por_apelido(apelido: str, tamanho: int = 42) -> str | None:
+    """Avatar equipado (com moldura da raridade) de quem aparece num ranking pelo NickName público. None se não achar a conta."""
+    import perfis_app as PA
+    k = str(apelido or "").strip().lower()
+    if not k:
+        return None
+    try:
+        idx = _indice()
+        email = idx["comp"].get(k)
+        if not email:
+            u = idx["por_k"].get(k)
+            email = next((e for e, us in idx["por_email"].items() if us and us.lower() == k), None) if u else None
+        a = _ator()
+        if not email and a and k == str((PA.meu_perfil() or {}).get("usuario_k") or ""):
+            email = a.email
+        return PA.avatar_html_email(email, tamanho) if email else None
+    except Exception:
+        return None
+
+
 def lista_clicavel(chave: str, linhas: list[tuple[str, str | None]], abre: str = "", fecha: str = "") -> None:
     """Várias linhas HTML, cada uma clicável (abre o perfil de quem está nela). `abre`/`fecha` envolvem cada linha com a classe da lista
     original, para manter o visual."""
@@ -263,7 +283,7 @@ def botao_perfil(chave: str, nick: str, rotulo: str | None = None) -> None:
 
 def _av(x: dict) -> str:
     import perfis_app as PA
-    return f"<span class='av'><img src='{PA.uri_avatar(x['avatar'], x.get('foto', ''))}' alt=''></span>"
+    return PA.avatar_html(x["avatar"], x.get("foto", ""), 42)
 
 
 def html_linha(x: dict, extra: str = "", atividade: str | None = None) -> str:
