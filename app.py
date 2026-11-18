@@ -6,7 +6,7 @@ TickerHunters - Preço justo, DCF, múltiplos, dividendos, técnica, ranking por
 
 Rodar com: streamlit run app.py
 Requer streamlit >= 1.46 e os módulos tecnica.py, recursos.py, dados.py, glossario.py,
-leitura_macro.py, carteira.py, cripto.py e assistente.py ao lado.
+carteira.py, cripto.py e assistente.py ao lado.
 
 Estrutura do menu (pensada como uma jornada para quem está começando):
   Início     -> escolher uma ação (B3) ou uma criptomoeda (Binance) e ver o resumo
@@ -53,7 +53,6 @@ except ImportError as e:
 import tecnica as tec
 
 import assistente
-import carteira
 import carteira_destino
 import marca
 import tema
@@ -2341,32 +2340,6 @@ def pagina_cripto_av_app():
 def pagina_carteira_app():
     """O endereço /carteira abre a Minha Carteira (a carteira única do app, em T$). A tela antiga de carteira virtual saiu."""
     st.switch_page(PG_COMP)
-
-
-def _pagina_carteira_antiga():
-    """Tela antiga (carteira virtual). Não é mais aberta; fica só como referência do código que ainda é reaproveitado."""
-    carteira.pagina_carteira()
-    tks = []
-    for chave in ("cart_ficticia", "cart_real"):
-        tks += [l.get("ticker") for l in st.session_state.get(chave, []) if isinstance(l, dict)]
-    st.divider()
-    atalho_comparar(list(dict.fromkeys(t for t in tks if t)), "carteira", "Comparar os ativos da minha carteira")
-    lotes_fii = [l for chave in ("cart_ficticia", "cart_real") for l in st.session_state.get(chave, []) if isinstance(l, dict)]
-    if lotes_fii:
-        with st.expander("Análise dos FIIs da carteira", icon=":material/apartment:"):
-            fiis_app.painel_carteira(lotes_fii)
-    if any(cripto_app.simbolo_cripto(l.get("ticker")) for l in lotes_fii):
-        with st.expander("Análise das criptomoedas da carteira", icon=":material/currency_bitcoin:"):
-            cripto_app.painel_carteira(lotes_fii)
-    with st.expander("Análise dos ETFs e fundos da carteira", icon=":material/stacked_line_chart:"):
-        fundos_app.painel_carteira(lotes_fii)
-    with st.expander("Renda fixa da carteira", icon=":material/savings:"):
-        renda_fixa_app.painel_carteira_rf()
-    uniq = list(dict.fromkeys(t for t in tks if t))
-    if ATALHOS_ANALISE and uniq:
-        esc = st.selectbox("Ver evolução e crescimento de um ativo da carteira", uniq, key="cart_ev_sel")
-        evolucao.atalho_evolucao(PG_EVOLUCAO, esc, "carteira", "Evolução")
-        st.page_link(PG_INTEL, label="Central de inteligência (oportunidades, riscos, notícias e alertas)", icon=":material/psychology:")
 
 
 def _coletar_para_intel(codigos: list, criptos: list, perfil: str) -> list:

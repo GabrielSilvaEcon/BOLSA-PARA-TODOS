@@ -125,14 +125,6 @@ def _nick_cadastro() -> str:
         return ""
 
 
-def uri_avatar(avatar: str, foto_uri: str = "", pequeno: bool = False) -> str:
-    """Imagem do avatar (catálogo da Coleção de Avatares) ou a foto enviada."""
-    import avatares as AV
-    if avatar == PF.FOTO and foto_uri:
-        return foto_uri
-    return AV.url(avatar if AV.existe(avatar) else PF.AVATAR_PADRAO, pequeno)
-
-
 def avatar_html(avatar: str, foto: str = "", tamanho: int = 48) -> str:
     """Avatar com a moldura da raridade (ou da foto). Use em qualquer lugar: listas, rankings, salas, perfis."""
     import avatares as AV

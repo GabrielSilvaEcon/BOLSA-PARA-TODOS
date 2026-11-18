@@ -184,17 +184,6 @@ def html_ativo(r: dict, sp: list[float] | None, i: int) -> str:
             f"<div class='cv-av'><b>{_e(moeda(r['valor']))}</b><span style='color:{cor}'>{_pct(r['res'])}</span></div></div>")
 
 
-def html_desempenho(ret: float, lucro: float, serie_ret: list[float]) -> str:
-    cor = _cor(ret)
-    seta = "↗" if ret >= 0 else "↘"
-    return (f"<div class='cv-card cv-des'><div class='cv-ch'>{AT.img('barras_verdes', 24)}<b>Meu Desempenho</b>"
-            f"<span class='cv-info' title='Inclui ganhos e perdas ainda não realizados (posições abertas). Bônus não contam.'>i</span></div>"
-            f"<div class='cv-rent' style='color:{cor}'><span>{seta}</span>{_pct(ret * 100)}</div>"
-            f"<div class='cv-rl'>Rentabilidade total</div>"
-            f"<div class='cv-spd'>{spark(serie_ret, cor, 'des', 160, 46)}</div>"
-            f"<div class='cv-rl2'>Lucro/prejuízo: <b style='color:{cor}'>{_e(moeda(lucro))}</b></div></div>")
-
-
 def html_hero() -> str:
     """Cabeçalho da Minha Carteira (no padrão dos cabeçalhos do app)."""
     return (f"<div class='cv-hero'><div class='cv-hero-ic'>{AT.img('saco_dinheiro', 50)}</div><div class='cv-hero-t'><div class='cv-hero-h'>Minha <span>Carteira</span></div>"
