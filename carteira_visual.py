@@ -189,9 +189,9 @@ def html_ativo(r: dict, sp: list[float] | None, i: int) -> str:
 
 
 def html_hero() -> str:
-    """Cabeçalho da Minha Carteira (no padrão dos cabeçalhos do app)."""
-    return (f"<div class='cv-hero'><div class='cv-hero-ic'>{AT.img('saco_dinheiro', 50)}</div><div class='cv-hero-t'><div class='cv-hero-h'>Minha <span>Carteira</span></div>"
-            "<p>Seu patrimônio, seus ativos, ranking e missões em um só lugar.</p></div></div>")
+    """Cabeçalho da Minha Carteira (topo padrão do kit visual, com a ilustração da carteira)."""
+    from design import kit as _kit
+    return _kit.topo("Minha Carteira", "Seu patrimônio, seus ativos, ranking e missões em um só lugar.", "carteira")
 
 
 def html_ranking(rank: dict | None, semana: float | None) -> str:
@@ -294,12 +294,6 @@ CSS = f"""<style>
 {Q} .st-key-cv_mis .st-key-cv_vm{{margin-top:8px;justify-content:flex-start}}
 {Q} .st-key-cv_mis .st-key-cv_vm button{{margin-left:0 !important;padding:0 !important}}
 {Q} .cv-duo{{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 10px}}
-{Q} .cv-hero{{display:flex;align-items:center;gap:14px;padding:6px 2px 10px}}
-{Q} .cv-hero-ic{{flex:0 0 auto;width:72px;height:72px;border-radius:22px;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,rgba(139,108,255,.45),rgba(14,8,64,.9));box-shadow:0 0 18px rgba(139,108,255,.45)}}
-{Q} .cv-hero-t{{min-width:0}}
-{Q} .cv-hero .cv-hero-h{{margin:0;padding:0;font-size:1.7rem;font-weight:900;line-height:1.1;color:#fff !important;-webkit-text-fill-color:#fff !important}}
-{Q} .cv-hero .cv-hero-h span{{color:#B6F23E !important;-webkit-text-fill-color:#B6F23E !important}}
-{Q} .cv-hero p{{margin:4px 0 0;font-size:.86rem;line-height:1.35;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
 {Q} .st-key-cv_per_w{{margin:0 0 -4px}}
 {Q} .st-key-cv_per_w [data-testid="stElementContainer"]{{display:flex !important;justify-content:flex-end !important}}
 {Q} .st-key-cv_per_w [data-testid="stButtonGroup"]{{width:auto !important}}

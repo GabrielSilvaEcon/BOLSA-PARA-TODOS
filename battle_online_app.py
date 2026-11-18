@@ -226,7 +226,6 @@ def cartoes_modo(ok_deck: bool) -> None:
     outro = "on" if sel == "sis" else "sis"
     s = f"{_P} .st-key-bt_modo_"
     st.markdown(f"<style>{s}sis button{{background-image:url({ART.uri('modo_sis')}) !important}}{s}on button{{background-image:url({ART.uri('modo_on')}) !important}}"
-                f"{_P} .st-key-bt_jogar button{{background-image:url({ART.uri('modo_jogar')}) !important}}"
                 f"{s}{sel} button{{box-shadow:0 0 0 3px #FFC93C,0 0 24px 2px {cor} !important}}"
                 f"{s}{sel} button:after{{content:\"✓\";position:absolute;top:6px;left:8px;width:24px;height:24px;border-radius:50%;"
                 "background:#FFC93C;color:#1A1030;font-weight:900;font-size:.95rem;line-height:24px;text-align:center;opacity:1;-webkit-text-fill-color:#1A1030}"
@@ -234,9 +233,14 @@ def cartoes_modo(ok_deck: bool) -> None:
     with st.container(key="on_modos"):
         st.button("Duelo contra Sistema", key="bt_modo_sis", width="stretch", on_click=_escolher_modo, args=("sis",))
         st.button("Duelo Online", key="bt_modo_on", width="stretch", on_click=_escolher_modo, args=("on",))
-    st.button("Jogar", key="bt_jogar", width="stretch", disabled=not ok_deck, on_click=_jogar_modo)
+    st.markdown(f"<style>{_P} .st-key-bt_jogar_kt button{{min-height:52px !important;border:0 !important;border-radius:16px !important;font-weight:900 !important;"
+                "background:linear-gradient(90deg,#2EE86B,#14C98F) !important;box-shadow:0 0 16px rgba(46,232,107,.42) !important}"
+                f"{_P} .st-key-bt_jogar_kt button :is(p,span){{color:#06240F !important;-webkit-text-fill-color:#06240F !important;font-size:1rem !important}}"
+                f"{_P} .st-key-bt_jogar_kt button:disabled{{opacity:.45 !important;filter:grayscale(.6);box-shadow:none !important}}</style>", unsafe_allow_html=True)
+    with st.container(key="bt_jogar_kt"):                       # botão principal do kit visual (verde), igual ao Jogar agora da Central
+        st.button("Jogar agora", key="bt_jogar", icon=":material/play_arrow:", width="stretch", disabled=not ok_deck, on_click=_jogar_modo)
     if not ok_deck:
-        st.caption("Monte um baralho válido abaixo para liberar o JOGAR.")
+        st.caption("Monte um baralho válido abaixo para liberar o Jogar agora.")
     _msg_erro()
 
 

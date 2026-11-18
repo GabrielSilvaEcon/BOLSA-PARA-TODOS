@@ -151,16 +151,14 @@ _CSS = f"""
 {_P} .bt-hero2{{margin:-64px -6px 0;text-align:center}}
 {_P} .bt-hero2 img{{display:block;width:100%;max-width:560px;margin:0 auto;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14%);mask-image:linear-gradient(to bottom,transparent 0,#000 14%)}}
 {_P} .st-key-on_jogar{{margin:2px -4px 4px !important}}
-{_P} :is(.st-key-bt_modo_sis,.st-key-bt_modo_on,.st-key-bt_jogar) .stButton{{width:100% !important;display:block}}
-{_P} :is(.st-key-bt_modo_sis,.st-key-bt_modo_on,.st-key-bt_jogar) button{{display:block !important;width:100% !important;height:0 !important;min-height:0 !important;padding:0 !important;border:0 !important;
+{_P} :is(.st-key-bt_modo_sis,.st-key-bt_modo_on) .stButton{{width:100% !important;display:block}}
+{_P} :is(.st-key-bt_modo_sis,.st-key-bt_modo_on) button{{display:block !important;width:100% !important;height:0 !important;min-height:0 !important;padding:0 !important;border:0 !important;
   background-color:transparent !important;background-repeat:no-repeat !important;background-position:center !important;background-size:100% 100% !important;box-shadow:none !important;
   color:transparent !important;font-size:0 !important;position:relative;transform:none !important;transition:opacity .15s,box-shadow .15s}}
-{_P} :is(.st-key-bt_modo_sis,.st-key-bt_modo_on,.st-key-bt_jogar) button *{{display:none !important;font-size:0 !important;color:transparent !important;-webkit-text-fill-color:transparent !important;opacity:0}}
+{_P} :is(.st-key-bt_modo_sis,.st-key-bt_modo_on) button *{{display:none !important;font-size:0 !important;color:transparent !important;-webkit-text-fill-color:transparent !important;opacity:0}}
 {_P} :is(.st-key-bt_modo_sis,.st-key-bt_modo_on) button{{border-radius:22px !important}}
 {_P} .st-key-bt_modo_sis button{{padding-bottom:66.45% !important}}
 {_P} .st-key-bt_modo_on button{{padding-bottom:70.48% !important}}
-{_P} .st-key-bt_jogar button{{padding-bottom:13.13% !important;filter:drop-shadow(0 0 12px rgba(242,184,75,.45))}}
-{_P} .st-key-bt_jogar button:disabled{{filter:grayscale(.85) brightness(.6);opacity:1}}
 {_P} .bt-alerta{{display:flex;align-items:center;gap:10px;margin:8px 0;padding:10px 12px;border-radius:16px;border:1.5px solid #FF4D6D;
   background:linear-gradient(160deg,rgba(255,77,109,.2),rgba(60,10,40,.55));box-shadow:0 0 12px rgba(255,77,109,.35)}}
 {_P} .bt-alerta .ic{{font-size:1.5rem}}
@@ -180,9 +178,7 @@ _CSS = f"""
 {_P} .bt-baralho .ch span{{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;font-size:.74rem;font-weight:900;border:1.5px solid var(--k);background:color-mix(in srgb,var(--k) 16%,transparent);color:#fff !important;-webkit-text-fill-color:#fff !important}}
 {_P} .bt-baralho .ch svg{{width:15px;height:15px}}
 {_P} .st-key-btc_baralho{{position:relative;margin:8px 0 !important}}
-{_P} .st-key-bt_gerenciar button{{height:50px !important;border-radius:16px !important;border:2px solid #8B6CFF !important;font-weight:900 !important;letter-spacing:.02em;
   background:linear-gradient(90deg,#1C1457,#2A1A7A 50%,#1C1457) !important;box-shadow:0 0 14px rgba(139,108,255,.55)}}
-{_P} .st-key-bt_gerenciar button:after{{content:"»";position:absolute;right:16px;font-size:1.4rem;color:#7C9BFF}}
 /* cartões de modo (Central) */
 {_P} .st-key-on_modos[data-testid="stVerticalBlock"],{_P} .st-key-on_modos>[data-testid="stVerticalBlock"]{{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px !important;margin:0 0 6px;align-items:end !important}}
 /* animações (só transform/opacity; "reduzir" e prefers-reduced-motion as desligam; o estado final é o mesmo) */
@@ -362,7 +358,6 @@ def _central() -> None:
         st.markdown(f"<div class='bt-baralho'><img src='{ART.uri('pilha')}' alt=''><div><div class='tp'><b>🃏 Meu Baralho</b><span class='ed'>✎ Editar</span></div>"
                     f"<p><b>{len(deck)}</b> carta(s) no baralho · <b>{len(jog)}</b> disponível(is) no total</p><div class='ch'>{chips}</div></div></div>", unsafe_allow_html=True)
         st.button("Editar baralho", key="bt_editar_card", on_click=_ir, args=("baralho",), width="stretch")
-    st.button("GERENCIAR BARALHO", key="bt_gerenciar", icon=":material/style:", width="stretch", on_click=_ir, args=("baralho",))
     if ON:
         ON.secao_online()
     try:

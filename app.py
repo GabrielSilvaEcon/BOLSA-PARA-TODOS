@@ -4029,7 +4029,8 @@ def _pagina_hub(area_id: str):
 
     if area_id == "analisar":                                  # cartão de abertura com o mascote (visual em analisar_visual.py)
         st.markdown("<style>" + analisar_visual.CSS + "</style>", unsafe_allow_html=True)
-        md(analisar_visual.html_hero(hub["titulo"], "Explore as melhores ferramentas para analisar ativos e tomar decisões mais inteligentes!"))
+        from design import kit as _kit
+        md(_kit.topo("Escolha o que Analisar", "Ações, FIIs, cripto e ETFs com dados reais. Tudo educativo, sem recomendação de compra ou venda.", "analisar"))
     if area_id != "analisar":
         md(f'<div class="an-hero"><div class="an-hero-top"><span class="an-hero-ico">{tema.icone("grafico", 28)}</span>'
            f'<h1>{html.escape(hub["titulo"])}</h1></div><p>{html.escape(hub["subtitulo"])}</p></div>')

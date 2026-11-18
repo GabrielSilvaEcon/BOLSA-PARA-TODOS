@@ -425,7 +425,7 @@ _CSS_CJ = "<style>" + "".join(l.strip() for l in f"""
 {_P} .cj-ban .b{{font-weight:900;font-style:italic;font-size:1.45rem;line-height:1.05;color:#fff !important;-webkit-text-fill-color:#fff !important}}
 {_P} .cj-ban .b span{{color:#B6F23E !important;-webkit-text-fill-color:#B6F23E !important}}
 {_P} .cj-ban p{{margin:6px 0 0;font-size:.8rem;font-style:italic;line-height:1.3;color:#E6E1FF !important;-webkit-text-fill-color:#E6E1FF !important}}
-{_P} .st-key-cj_como{{margin-top:-46px;margin-left:auto;width:max-content;position:relative;z-index:2;padding-right:14px}}
+{_P} .st-key-cj_como{{margin-top:-54px;margin-left:14px;width:max-content;position:relative;z-index:3}}
 {_P} .st-key-cj_como button{{min-height:32px !important;padding:2px 14px !important;border-radius:999px !important;font-size:.8rem !important;
   background:linear-gradient(90deg,#5B3BE0,#3A22B0) !important;border:1px solid #8B6CFF !important}}
 {_P} .cj-h{{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 8px;font-weight:900;font-size:1.15rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
@@ -504,15 +504,8 @@ def pagina_central() -> None:
     st.markdown(CSS + _CSS_CJ + f"<style>{_P} [data-testid='stMainBlockContainer'],{_P} .block-container{{max-width:720px !important}}</style>",
                 unsafe_allow_html=True)
     sincronizar_ticker()
-    try:
-        import arte_tickerhunters as AT
-        masc = AT.uri("caramelo_animado")
-    except Exception:
-        masc = ""
-    img = f"<img src='{masc}' alt=''>" if masc else ""
-    st.markdown(f"<div class='cj-ban'>{img}<div class='t'><div class='a'>Bem-vindo ao</div>"
-                "<div class='b'>Mundo dos <span>Jogos!</span></div><p>Teste suas habilidades, ganhe recompensas e evolua no TickerHunters.</p>"
-                "</div></div>", unsafe_allow_html=True)
+    from design import kit as _kit                                 # topo padrão do kit, com a arte do Trade Battle (urso x touro)
+    st.markdown(_kit.topo("Mundo dos Jogos!", "Teste suas habilidades e evolua.", "jogos"), unsafe_allow_html=True)
     if st.button("Ver como funciona", key="cj_como", icon=":material/play_arrow:"):
         _como_funciona()
     # ---- os dois jogos
