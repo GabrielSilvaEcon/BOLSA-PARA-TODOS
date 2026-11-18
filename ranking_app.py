@@ -13,8 +13,7 @@ import jogos as J
 import ranking_visual as RV
 import usuarios
 
-VISIVEIS = 10          # linhas antes do "ver mais"
-LIMITE = 50            # linhas com "ver mais"
+LIMITE = 200           # linhas carregadas na caixa com rolagem própria (no mínimo os 50 primeiros; a sua posição aparece sempre)
 
 
 def _ss():
@@ -155,7 +154,6 @@ def _botao(chave: str, html_bloco: str, rotulo: str, on_click, args=()) -> None:
 
 def _escolher(chave: str, valor: str) -> None:
     _ss()[chave] = valor
-    _ss().pop("rk_mais", None)
 
 
 def pagina() -> None:
@@ -199,15 +197,6 @@ def pagina() -> None:
             st.button(rot, key="rk_jogar", icon=":material/play_arrow:", width="stretch", on_click=_ir, args=(dest,))
             if not linhas:
                 return
-        mais = bool(ss.get("rk_mais"))
-        mostrar = linhas if mais else linhas[:VISIVEIS]
-        if meu and meu not in mostrar:                       # sua posição aparece sempre, mesmo abaixo das mostradas
-            mostrar = mostrar + [meu]
         import amigos_app as AMA
-        with st.container(key="rk_lista"):
-            AMA.lista_clicavel("rk_l", [(RV.html_linha(r), r.get("usuario")) for r in mostrar])
-        if len(linhas) > VISIVEIS:
-            with st.container(key="rk_mais"):
-                st.button("Ver menos ▲" if mais else f"Ver mais ▼ ({len(linhas)})", key="rk_mais_b", width="stretch",
-                          on_click=lambda: ss.update(rk_mais=not ss.get("rk_mais")))
-        st.caption("Toque em um jogador para ver o perfil. O ranking atualiza sozinho a cada minuto.")
+        with st.container(key="rk_lista"):                   # caixa com rolagem própria: a tela fica parada e só a lista rola
+            AMA.lista_clicavel("rk_l", [(RV.html_linha(r), r.get("usuario")) for r in linhas])

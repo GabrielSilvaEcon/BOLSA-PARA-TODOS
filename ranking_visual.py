@@ -105,10 +105,16 @@ def css() -> str:
     branco = "color:#F4F6FF !important;-webkit-text-fill-color:#F4F6FF !important"
     lila = "color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important"
     return ("<style>"
-            f"{t}{{max-width:500px !important;margin:0 auto !important;gap:8px !important}}"
+            # a tela tem a altura do celular (menos o cabeçalho do app e a barra de baixo): nada rola além da lista
+            f"{t}{{max-width:500px !important;margin:0 auto !important;gap:8px !important;box-sizing:border-box;"
+            "height:calc(100dvh - 3.85rem - var(--dz-barra-h,64px) - env(safe-area-inset-bottom,0px) - 76px) !important;min-height:520px;flex-wrap:nowrap !important;overflow:hidden}"
+            f"{c} :has(>.st-key-rk_tela){{flex-shrink:0 !important;height:auto !important;max-height:none !important}}{t}{{flex:0 0 auto !important}}"
+            f"{t}>*{{flex:0 0 auto !important}}"
+            # a caixa da lista (o Streamlit a embrulha num stLayoutWrapper) ocupa o que sobra da altura e rola por dentro
+            f"{t}>:has(.st-key-rk_lista){{flex:1 1 0 !important;min-height:180px !important;display:flex !important;flex-direction:column}}"
             f"{t} [data-testid='stElementContainer'],{t} [data-testid='stMarkdownContainer']{{margin-bottom:0 !important}}"
             # 1. topo
-            f"{c} .rk-topo{{position:relative;height:118px;border-radius:16px;overflow:hidden;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;padding:8px}}"
+            f"{c} .rk-topo{{position:relative;height:96px;border-radius:16px;overflow:hidden;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;padding:8px}}"
             f"{c} .rk-masc{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%;"
             "-webkit-mask:linear-gradient(180deg,#000 55%,transparent);mask:linear-gradient(180deg,#000 55%,transparent)}"
             f"{c} .rk-ficha{{position:relative;display:flex;align-items:center;gap:6px;padding:4px 12px 4px 4px;border-radius:12px;"
@@ -139,10 +145,12 @@ def css() -> str:
             "background:#1C2366}"
             f"{c} .rk-esc-b.on{{background:linear-gradient(180deg,#9A5CFF,#6A2FE0);box-shadow:0 0 12px -2px #9A5CFF}}"
             # 5. faixa
-            f"{c} .rk-faixa{{line-height:0;border-radius:12px;overflow:hidden;border:1.5px solid #4A2FA8}}{c} .rk-faixa img{{width:100%;height:auto;display:block}}"
+            f"{c} .rk-faixa{{line-height:0;border-radius:12px;overflow:hidden;border:1.5px solid #4A2FA8}}{c} .rk-faixa img{{width:100%;height:auto;max-height:64px;object-fit:cover;display:block}}"
             f"{c} .rk-regra{{text-align:center;font-size:.68rem;font-weight:700;{lila};margin-top:-2px}}"
             # 6. linhas
-            f"{c} .st-key-rk_lista{{gap:5px !important}}"
+            f"{t} .st-key-rk_lista{{gap:5px !important;flex:1 1 0 !important;min-height:0 !important;height:100% !important;overflow-y:auto !important;overscroll-behavior:contain;"
+            "-webkit-overflow-scrolling:touch;padding:2px 2px 6px;border-radius:12px;scrollbar-width:thin;scrollbar-color:#4A62D0 transparent}"
+            f"{c} .st-key-rk_lista>*{{flex:0 0 auto}}"
             f"{c} .rk-lin{{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:5px 8px;border-radius:12px;"
             "background:linear-gradient(180deg,#22307A,#18205C);border:1.5px solid #3A4FB0}"
             f"{c} .rk-lin.top{{background:linear-gradient(180deg,#5A4314,#2A2140);border-color:#FFC23D;box-shadow:0 0 14px -4px #FFC23D}}"
@@ -162,9 +170,9 @@ def css() -> str:
             f"{c} .rk-pts img{{width:24px;height:24px;object-fit:contain}}"
             f"{c} .rk-pts b{{font-size:.84rem;font-weight:900;white-space:nowrap;{branco}}}"
             f"{c} .rk-vazio{{text-align:center;padding:16px 10px;border-radius:12px;border:1.5px dashed #3A4FB0;font-size:.82rem;font-weight:700;{lila}}}"
-            f"{c} .st-key-rk_mais button{{min-height:30px !important;height:30px !important;border-radius:0 0 14px 14px !important;"
-            "background:linear-gradient(180deg,#2A3C9A,#1A2466) !important;border:1.5px solid #4A62D0 !important}"
-            f"{c} .st-key-rk_mais button :is(p,span){{font-weight:900 !important;font-size:.76rem !important;{branco}}}"
+            # telas baixas: topo e título menores para sobrar espaço para a lista
+            "@media (max-height:760px){"
+            f"{c} .rk-topo{{height:74px}}{c} .rk-tit b{{font-size:1.5rem}}{c} .rk-tit img{{width:22px}}{c} .rk-aba{{height:52px}}{c} .rk-aba img{{height:22px}}}}"
             "@media (max-width:360px){"
             f"{c} .rk-aba b{{font-size:.62rem}}{c} .rk-nm b{{font-size:.8rem}}{c} .rk-pts b{{font-size:.76rem}}{c} .rk-lin{{gap:6px;padding:5px 6px}}}}"
             "</style>")
