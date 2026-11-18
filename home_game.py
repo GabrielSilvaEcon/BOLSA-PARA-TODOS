@@ -72,17 +72,6 @@ def _spark(sobe: bool | None) -> str:
             f"stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>{seta}</svg>")
 
 
-_ICONE_CARTEIRA = ("<svg viewBox='0 0 64 64' width='38' height='38' aria-hidden='true'><defs><linearGradient id='hgwa' x1='0' y1='0' x2='0' y2='1'>"
-                   "<stop offset='0' stop-color='#9FD0FF'/><stop offset='1' stop-color='#3E7BF0'/></linearGradient></defs>"
-                   "<rect x='14' y='8' width='30' height='20' rx='3' fill='#E9F3FF' transform='rotate(-12 29 18)'/>"
-                   "<rect x='6' y='18' width='52' height='38' rx='8' fill='#1E4FB8'/><rect x='6' y='14' width='52' height='38' rx='8' fill='url(#hgwa)'/>"
-                   "<rect x='38' y='26' width='22' height='14' rx='5' fill='#1E4FB8'/><circle cx='46' cy='33' r='3.2' fill='#E9F3FF'/></svg>")
-_GRAFICO_MERCADO = ("<svg class='hg-mg' viewBox='0 0 120 60' preserveAspectRatio='none' aria-hidden='true'>"
-                    "<path d='M0 52 L18 40 L30 46 L46 26 L58 34 L72 18 L86 28 L100 10 L120 4 L120 60 L0 60 Z' fill='rgba(255,70,90,.18)'/>"
-                    "<polyline points='0,52 18,40 30,46 46,26 58,34 72,18 86,28 100,10 120,4' fill='none' stroke='#FF4D63' stroke-width='3' "
-                    "stroke-linejoin='round' stroke-linecap='round'/></svg>")
-
-
 # ------------------------------------------------------------------ 1. HUD
 def html_hud_nivel(nivel: dict | None, avatar_src: str = "", cor_anel: str = "#34E85E", nome: str = "") -> str:
     if nivel:
@@ -206,14 +195,14 @@ ACESSOS = (
 )
 
 
+_ALT = {"carteira": "Carteira", "jogar": "Jogar agora", "mercado": "Mercado"}
+
+
 def html_acesso(chave: str) -> str:
-    if chave == "carteira":
-        return f"<div class='hg-bt hg-bc'><span class='hg-bi'>{_ICONE_CARTEIRA}</span><b>CARTEIRA</b></div>"
-    if chave == "jogar":
-        return "<div class='hg-bt hg-bj'><b>JOGAR<br>AGORA</b><span class='hg-chev'>›</span></div>"
-    if chave == "mercado":
-        return f"<div class='hg-bt hg-bm'>{_GRAFICO_MERCADO}<b>MERCADO</b></div>"
-    raise KeyError(chave)
+    """Botão com a arte do TickerHunters (static/home/btn_<chave>.webp; o texto já vem na arte)."""
+    if chave not in _ALT:
+        raise KeyError(chave)
+    return f"<div class='hg-bt hg-b-{chave}'><img src='{arte('btn_' + chave)}' alt='{_ALT[chave]}' loading='eager'></div>"
 
 
 # ------------------------------------------------------------------ CSS da tela
@@ -298,11 +287,10 @@ def css() -> str:
             # cores forçadas: o CSS global do app pinta alguns <span>/<b> de escuro
             f"{c} :is(.hg-lvt b){{color:#DDEBFF !important;-webkit-text-fill-color:#DDEBFF !important}}"
             f"{c} :is(.hg-lvt span,.hg-tk small,.hg-mc small){{color:{lila} !important;-webkit-text-fill-color:{lila} !important}}"
-            f"{c} :is(.hg-tkh span,.hg-mt,.hg-mr span,.hg-nome span,.hg-logo .t,.hg-bc b,.hg-bm b,.hg-av span,.hg-ovz){{color:#F4F6FF !important;-webkit-text-fill-color:#F4F6FF !important}}"
+            f"{c} :is(.hg-tkh span,.hg-mt,.hg-mr span,.hg-nome span,.hg-logo .t,.hg-av span,.hg-ovz){{color:#F4F6FF !important;-webkit-text-fill-color:#F4F6FF !important}}"
             f"{c} :is(.hg-tc b,.hg-rk b,.hg-cf b){{color:#FFD76A !important;-webkit-text-fill-color:#FFD76A !important}}"
             f"{c} .hg-tc small{{color:#FFE8A8 !important;-webkit-text-fill-color:#FFE8A8 !important}}"
             f"{c} :is(.hg-pass b,.hg-pass span){{color:#3B2400 !important;-webkit-text-fill-color:#3B2400 !important}}"
-            f"{c} :is(.hg-bj b,.hg-chev){{color:#2A1800 !important;-webkit-text-fill-color:#2A1800 !important}}"
             f"{c} .hg-tk em.u{{color:{G.VERDE} !important;-webkit-text-fill-color:{G.VERDE} !important}}"
             f"{c} .hg-tk em.d{{color:{G.VERMELHO} !important;-webkit-text-fill-color:{G.VERMELHO} !important}}"
             f"{c} .hg-tk em.n{{color:#FFD76A !important;-webkit-text-fill-color:#FFD76A !important}}"
@@ -325,28 +313,20 @@ def css() -> str:
             f"{c} .hg-cf img{{width:52px;height:50px;object-fit:cover;-webkit-mask:radial-gradient(ellipse at 50% 50%,#000 58%,transparent 74%);"
             "mask:radial-gradient(ellipse at 50% 50%,#000 58%,transparent 74%)}"
             f"{c} .hg-cf b{{font-size:.8rem;font-weight:900;color:#FFD76A;white-space:nowrap;margin-top:-4px}}{c} .hg-cf b.ok{{color:#7CF0C0}}"
-            # ---- 5. acessos
-            f"{c} .st-key-hg_acessos{{display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr) minmax(0,1fr);gap:0 !important;align-items:stretch}}"
+            # ---- 5. acessos: JOGAR AGORA (com o mascote) à esquerda; Carteira e Mercado empilhados à direita
+            f"{c} .st-key-hg_acessos{{display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;"
+            "gap:4px 6px !important;align-items:stretch}"
             f"{c} .st-key-hg_acessos>*{{min-width:0}}"
-            f"{c} .hg-bt{{position:relative;box-sizing:border-box;height:88px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;"
-            "gap:4px;padding:8px 6px 12px;color:#fff;text-align:center;overflow:hidden}"
-            f"{c} .hg-bt b{{font-size:clamp(.8rem,3.8vw,1rem);font-weight:900;letter-spacing:.02em;text-shadow:0 2px 0 rgba(0,0,0,.45)}}"
-            f"{c} .hg-bc{{margin-right:-10px;border-radius:16px 0 0 16px;background:linear-gradient(180deg,#2C5FD8,#13286E);"
-            "clip-path:polygon(0 0,86% 0,100% 50%,86% 100%,0 100%);box-shadow:inset 0 0 0 2px #5C8CFF}"
-            f"{c} .hg-bc::before{{content:'';position:absolute;inset:0;border:2px solid #6E9BFF;border-radius:16px 0 0 16px;"
-            "clip-path:polygon(0 0,86% 0,100% 50%,86% 100%,0 100%);pointer-events:none}"
-            f"{c} .hg-bi{{line-height:0;filter:drop-shadow(0 4px 4px rgba(0,0,0,.45));margin-bottom:auto;margin-top:6px}}"
-            f"{c} .hg-bj{{z-index:2;height:94px;margin-top:-4px;justify-content:center;flex-direction:row;gap:8px;"
-            "background:linear-gradient(180deg,#FFE58A,#FFC233 45%,#E8930C);"
-            "clip-path:polygon(9% 0,91% 0,100% 50%,91% 100%,9% 100%,0 50%);"
-            "box-shadow:inset 0 3px 0 rgba(255,255,255,.65),inset 0 -6px 0 rgba(150,80,0,.45)}"
-            f"{c} .hg-bj b{{font-size:clamp(1.2rem,6.4vw,1.75rem);line-height:.98;font-style:italic;color:#2A1800;text-shadow:0 1px 0 rgba(255,255,255,.5);text-align:center}}"
-            f"{c} .hg-chev{{font-size:2.2rem;font-weight:900;color:#2A1800;line-height:1;margin-top:-4px}}"
-            f"{c} .hg-bm{{margin-left:-10px;border-radius:0 16px 16px 0;background:linear-gradient(180deg,#4A1838,#1E0C22);"
-            "clip-path:polygon(14% 0,100% 0,100% 100%,14% 100%,0 50%);box-shadow:inset 0 0 0 2px #FF4D63}"
-            f"{c} .hg-mg{{position:absolute;left:14%;right:6px;top:14px;height:52px;width:auto}}"
-            # cartão-botão: afunda ao tocar
-            f"{c} .st-key-hg_acessos [class*='st-key-hg_ac_']:has(button:active) .hg-bt{{filter:brightness(1.12)}}"
+            f"{c} .st-key-hg_acessos>:is(.st-key-hg_ac_jogar,:has(.st-key-hg_ac_jogar)){{grid-column:1;grid-row:1 / span 2}}"
+            f"{c} .st-key-hg_acessos>:is(.st-key-hg_ac_carteira,:has(.st-key-hg_ac_carteira)){{grid-column:2;grid-row:1}}"
+            f"{c} .st-key-hg_acessos>:is(.st-key-hg_ac_mercado,:has(.st-key-hg_ac_mercado)){{grid-column:2;grid-row:2}}"
+            f"{c} .st-key-hg_ac_jogar,{c} .st-key-hg_ac_jogar [data-testid='stElementContainer'],{c} .st-key-hg_ac_jogar [data-testid='stMarkdownContainer'],"
+            f"{c} .st-key-hg_ac_jogar .stMarkdown{{height:100% !important}}"
+            f"{c} .hg-bt{{position:relative;line-height:0;height:100%}}"
+            f"{c} .hg-bt img{{display:block;width:100%;height:auto;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45))}}"
+            f"{c} .hg-b-jogar img{{height:100%;object-fit:cover;border-radius:16px;"
+            "box-shadow:0 0 0 1.5px rgba(170,255,60,.55),0 0 18px -4px rgba(170,255,60,.7)}"
+            f"{c} .st-key-hg_acessos [class*='st-key-hg_ac_']:has(button:active) .hg-bt{{filter:brightness(1.15)}}"
             "@media (max-width:360px){"
             f"{c} .hg-lvt span{{display:none}}{c} .hg-pass{{min-width:80px;padding:5px 6px}}{c} .hg-lg{{width:52px;height:48px}}"
             f"{c} .hg-tk{{width:31%;padding:3px 5px}}{c} .hg-tk small{{display:none}}{c} .hg-tk.tl,{c} .hg-tk.tr{{top:-8px}}"
