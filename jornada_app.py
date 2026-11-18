@@ -283,7 +283,7 @@ def html_unidade_card(u: dict) -> str:
 
 
 def html_wallet_jornada() -> str:
-    return (f"<div class='jw'><div class='jw-a'>{_GAMEPAD}</div><div class='jw-t'><div class='jw-h'>Wallet Game<b>Novo!</b></div>"
+    return (f"<div class='jw'><div class='jw-a'>{_GAMEPAD}</div><div class='jw-t'><div class='jw-h'>Minha carteira<b>Novo!</b></div>"
             "<div class='jw-s'>Teste seus conhecimentos, ganhe recompensas e divirta-se aprendendo!</div></div></div>")
 
 

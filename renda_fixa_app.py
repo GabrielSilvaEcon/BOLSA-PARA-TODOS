@@ -944,12 +944,12 @@ def mostrar(a: dict, m: dict, cen_todos: dict, chave: str, atalho_comparar=None,
         if comp and comp.get("id") and comp.get("pu"):
             botao_carteira(comp["id"], comp["pu"], "_td")           # compra na carteira do Wallet Game (mesmo painel das ações)
         elif comp and not comp.get("id"):
-            st.caption("Este título paga juros ao longo do prazo e ainda não está no Wallet Game, então não dá para comprá-lo na carteira.")
+            st.caption("Este título paga juros ao longo do prazo e ainda não pode ser comprado na carteira.")
         comp = st.session_state.get("_rf_compra") if botao_carteira is not None else None
         if comp and comp.get("id") and comp.get("pu"):
             botao_carteira(comp["id"], comp["pu"], "_td")           # compra na carteira do Wallet Game (mesmo painel das ações)
         elif comp and not comp.get("id"):
-            st.caption("Este título paga juros ao longo do prazo e ainda não está no Wallet Game, então não dá para comprá-lo na carteira.")
+            st.caption("Este título paga juros ao longo do prazo e ainda não pode ser comprado na carteira.")
         if cards:
             st.markdown(_AN.html_grade(cards), unsafe_allow_html=True)
     try:                                  # resultado de cada análise na própria barra
@@ -1041,7 +1041,7 @@ def _pagina_rf_corpo(atalho_comparar=None, botao_carteira=None):
     elif modo == "Novo título":
         st.session_state.pop("_rf_compra", None)
         t = _form_titulo("rf_novo")
-        st.caption("Só análise: títulos de bancos e empresas ainda não entram na carteira do Wallet Game.")
+        st.caption("Só análise: títulos de bancos e empresas ainda não entram na carteira.")
     if t is None:
         return
     delta = 0.0

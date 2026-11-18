@@ -1344,7 +1344,7 @@ def botao_carteira(tk: str, preco, sufixo: str = ""):
                f"<div>{AT.img('saco_dinheiro', 30)}<span>Saldo Após a Compra<b>{html.escape(_tc(sim['depois']))}</b></span></div></div>")
         if not sim["ok"]:
             st.warning(f"Saldo insuficiente para {_txt_q}. O máximo agora é {AJ.texto_qtd(ativo, sim['max_qtd'])}.")
-        st.caption("O preço é o da cotação de agora e não pode ser alterado. A compra usa o mesmo caixa e as mesmas regras do Wallet Game.")
+        st.caption("O preço é o da cotação de agora e não pode ser alterado. A compra usa o caixa e as regras da sua carteira.")
         with st.container(key=f"cn_conf_C_{tk}{sufixo}"):
             if st.button("Confirmar Compra", icon=":material/check_circle:", width="stretch", disabled=not sim["ok"], key=f"cw_ok_b_{tk}{sufixo}"):
                 erro = _adicionar_carteira(tk, destino, _q(qtd), float(preco), date.today())
@@ -1784,7 +1784,7 @@ def _inicio_app(ativos: list):
         with st.container(key="hm_hero_b"):
             st.button("Missões", key="hm_b_missoes", icon=":material/target:", on_click=_ir_home, args=("missoes",))
             st.button("Aprender", key="hm_b_aprender", icon=":material/school:", on_click=_ir_home, args=("jornada",))
-            st.button("Jogar", key="hm_b_jogar", icon=":material/sports_esports:", on_click=_ir_home, args=("competicao",))
+            st.button("Carteira", key="hm_b_jogar", icon=":material/account_balance_wallet:", on_click=_ir_home, args=("competicao",))
     try:                                                         # Ranking Geral (o mesmo da Wallet Game). Meu Desempenho fica na carteira (Wallet › Meu patrimônio)
         home_app.ranking(_ir_home)
     except Exception as _e_home:
@@ -2324,7 +2324,12 @@ def pagina_cripto_av_app():
 
 
 def pagina_carteira_app():
-    """Carteira (carteira.py, sem alteração) + atalho para comparar os ativos que estão nela."""
+    """O endereço /carteira abre a Minha Carteira (a carteira única do app, em T$). A tela antiga de carteira virtual saiu."""
+    st.switch_page(PG_COMP)
+
+
+def _pagina_carteira_antiga():
+    """Tela antiga (carteira virtual). Não é mais aberta; fica só como referência do código que ainda é reaproveitado."""
     carteira.pagina_carteira()
     tks = []
     for chave in ("cart_ficticia", "cart_real"):
@@ -2446,7 +2451,7 @@ def pagina_tecnica_avancada_app():
             return "acao"
     analise_tecnica_app.pagina_tecnica_avancada({
         "classe_de": _classe_de,
-        "carteira": lambda: gestao_app.posicoes_para_tecnica("cart_real"),
+        "carteira": lambda: gestao_app.posicoes_para_tecnica("cart_ficticia"),     # a carteira única do app
         "binance_ohlcv": binance_ohlcv,
         "favoritos": lambda: list(st.session_state.get("sel_ativos", []) or [])[:10]})
 
@@ -4239,7 +4244,7 @@ PG_CART = st.Page(pagina_carteira_app, title="Carteira", icon=":material/account
 PG_NOTICIAS = st.Page(pagina_noticias_app, title="Central de notícias e eventos", icon=":material/newspaper:", url_path="noticias")
 PG_INTEL = st.Page(pagina_intel_app, title="Radar da carteira", icon=":material/psychology:", url_path="inteligencia")
 PG_NOTIF = st.Page(notif_app.pagina_notificacoes, title="Alertas", icon=":material/notifications:", url_path="notificacoes")
-PG_COMP = st.Page(competicao_app.pagina_competicao, title="Wallet Game", icon=":material/emoji_events:", url_path="competicao")
+PG_COMP = st.Page(competicao_app.pagina_competicao, title="Minha carteira", icon=":material/account_balance_wallet:", url_path="competicao")
 PG_BATTLE = st.Page(battle_app.pagina_battle, title="Ticker Battle", icon=":material/sports_esports:", url_path="battle")
 PG_TRADER = st.Page(trader_battle_app.pagina_trader, title="Trade Battle", icon=":material/show_chart:", url_path="trader")
 PG_JOGOS = st.Page(jogos_app.pagina_central, title="Central de Jogos", icon=":material/sports_esports:", url_path="jogos")
@@ -4336,9 +4341,8 @@ paginas = {
     ":material/currency_bitcoin: Criptoativos": [PG_CRIPTO, PG_ONCHAIN, PG_RECEITAS, PG_FUND_CRIPTO, PG_CRIPTO_AV, PG_TEC],
     ":material/savings: Renda fixa": [PG_RF, PG_TESOURO, PG_CALC],
     ":material/public: Economia": [PG_MACRO],
-    ":material/account_balance_wallet: Carteira": [PG_CART, PG_GESTAO, PG_RISCO, PG_REL, PG_SIM],
+    ":material/account_balance_wallet: Minha carteira": [PG_COMP, PG_GESTAO, PG_RISCO, PG_REL, PG_SIM],
     ":material/psychology: Inteligência": [PG_INTEL, PG_NOTICIAS, PG_NOTIF],
-    ":material/account_balance_wallet: Wallet Game": [PG_COMP],
     ":material/sports_esports: Central de Jogos": [PG_JOGOS, PG_TRADER, PG_BATTLE, PG_JG_RANK, PG_JG_AMIGOS, PG_JG_EVENTOS, PG_JOGADOR],
     ":material/school: Aprender": [PG_JORNADA, PG_JOGAR, PG_EDU, PG_GLOSSARIO],
     ":material/compare_arrows: Comparar": [PG_COMPARAR, PG_EVOLUCAO],
@@ -4348,10 +4352,10 @@ paginas = {
 
 # A navegação nativa do Streamlit fica escondida: o menu próprio fica na barra lateral (botão ☰).
 try:
-    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN]}, position="hidden")
+    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN, PG_CART]}, position="hidden")
 except TypeError:
     st.warning("Esta versão do Streamlit é antiga (`pip install -U streamlit`). Usando o menu lateral.")
-    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN]})
+    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN, PG_CART]})
 
 
 def _marca_html(tam: int = 34) -> str:

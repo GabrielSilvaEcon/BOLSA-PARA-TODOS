@@ -116,7 +116,7 @@ def _bloco_semana(r: dict) -> None:
 
 def _bloco_decisao(ok: bool, texto: str) -> None:
     st.markdown(MV.html_secao("Boa decisão da semana"), unsafe_allow_html=True)
-    corpo = (f"No Wallet Game, monte uma carteira com {JG.MIN_ATIVOS} ou mais ativos, de pelo menos {JG.MIN_CLASSES} classes "
+    corpo = (f"Na sua carteira, tenha {JG.MIN_ATIVOS} ou mais ativos, de pelo menos {JG.MIN_CLASSES} classes "
              f"(ações, FIIs, ETFs, fundos, renda fixa, cripto) e nenhum acima de {JG.PESO_MAXIMO * 100:.0f}% do patrimônio. "
              "Vale pela forma como a carteira foi montada, não pelo resultado.")
     card = MV.html_missao("Carteira virtual diversificada", corpo, None, None, ok, JG.PTS_DECISAO, MV.icone_circulo(IC.uri("escudo", "#3DDC97"), "#3DDC97"),
@@ -185,18 +185,18 @@ def _card_wallet(m: dict, res: dict) -> str:
     prog = "Concluída" if m["feita"] else (f"{m['progresso']:.0f} de {m['meta']}" if m["id"] != "e_rent5" else f"{res['resultado']:+.1f}% de +{m['meta']}%")
     pct = 100 if m["feita"] else min(100.0, (m["progresso"] / m["meta"] * 100) if m["meta"] else 0)
     rod = f"<div class='ms-bar'><i style='width:{pct:.0f}%'></i></div><div class='ms-n'>Objetivo: {_e(m['objetivo'])} · {_e(prog)}</div>" + _chips_recompensa(m["recompensa"])
-    return MV.html_missao(m["nome"], m["descricao"], None, None, bool(m["feita"]), None, MV.icone_circulo(IC.uri("moeda", "#F2B84B"), "#F2B84B"), selo="Wallet Game",
+    return MV.html_missao(m["nome"], m["descricao"], None, None, bool(m["feita"]), None, MV.icone_circulo(IC.uri("moeda", "#F2B84B"), "#F2B84B"), selo="Carteira",
                           rodape=rod, seta=not m["feita"])
 
 
 def _missoes_wallet(res, periodo: str) -> None:
     if res is None:
-        st.markdown(MV.html_missao("Missões do Wallet Game", "Participe do Wallet Game para ver aqui as missões do jogo.", None, None, False, None,
+        st.markdown(MV.html_missao("Missões da carteira", "Comece a sua carteira para ver aqui as missões dela.", None, None, False, None,
                                    MV.icone_circulo(IC.uri("moeda", "#F2B84B"), "#F2B84B"), seta=False, estado="trancado"), unsafe_allow_html=True)
-        st.button("Ir para o Wallet Game", key=f"cm_wg_{periodo}", icon=":material/account_balance_wallet:", on_click=_ir, args=("competicao",))
+        st.button("Ir para Minha carteira", key=f"cm_wg_{periodo}", icon=":material/account_balance_wallet:", on_click=_ir, args=("competicao",))
         return
     lista = [m for m in res["missoes"] if m["periodo"] == periodo]
-    st.markdown(MV.html_secao("Do Wallet Game"), unsafe_allow_html=True)
+    st.markdown(MV.html_secao("Da sua carteira"), unsafe_allow_html=True)
     for m in lista:
         _cartao(f"w_{m['id']}", _card_wallet(m, res), None if m["feita"] else "competicao")
     if not lista:

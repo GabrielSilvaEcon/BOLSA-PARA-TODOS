@@ -74,7 +74,7 @@ def _gravar_perfil(a, perfil: dict):
 
 # ------------------------------------------------------------------ participar
 def _participar(a, perfil: dict):
-    st.markdown("#### Entrar na Wallet Game")
+    st.markdown("#### Comece sua carteira")
     st.write(f"Você recebe **{moeda(C.CAPITAL_NOVO, 0)} ** e monta sua carteira com ativos da bolsa. O lucro aumenta o seu capital e pode ser "
              "reinvestido. O ranking compara apenas o **retorno em %**, então todos competem em pé de igualdade.")
     with st.form("comp_entrar"):
@@ -778,7 +778,7 @@ CSS_NEG = ("<style>html body .stApp.stApp .ng-sec{font-weight:800;color:#CFC8EE;
 
 # ------------------------------------------------------------------ página
 _GRUPOS_WG = [  # (grupo, ícone, seções); o grupo só aparece se a seção existir (Wallet Game nova exige resultado)
-    ("Carteira", ":material/account_balance_wallet:", ["Meu patrimônio"]),
+    ("Carteira", ":material/account_balance_wallet:", ["Meu patrimônio", "Histórico"]),
     ("Progresso", ":material/redeem:", ["Bônus e sequência", "Missões do jogo", "Conquistas"]),
     ("Negociar", ":material/swap_horiz:", ["Negociar"]),
     ("Ranking", ":material/leaderboard:", ["Classificação"]),
@@ -842,6 +842,43 @@ def _menu_wallet(nomes: list[str], so_sub: bool = False) -> str:
     return atual
 
 
+_TIPOS_EXT = {"compra": ("Compra", "carrinho"), "venda": ("Venda", "dinheiro_alta"), "bonus": ("Bônus", "presente"), "trader": ("Trade Battle", "controle"),
+              "provento": ("Provento", "moedas_pilha"), "dividendo": ("Provento", "moedas_pilha"), "aporte": ("Bônus", "presente")}
+
+
+def _aba_historico(cart: dict) -> None:
+    """Histórico da carteira: compras, vendas, bônus e créditos, do mais recente para o mais antigo (o extrato que o fechamento grava)."""
+    import arte_tickerhunters as AT
+    ext = [x for x in (cart.get("ext") or []) if isinstance(x, dict)]
+    st.markdown("<div class='cv-sec'>Histórico da carteira</div>", unsafe_allow_html=True)
+    if not ext:
+        st.markdown("<div class='cv-vz'>Ainda não há movimentações. Suas compras, vendas e bônus aparecem aqui.</div>", unsafe_allow_html=True)
+        return
+    lin = []
+    for x in sorted(ext, key=lambda x: str(x.get("d") or ""), reverse=True)[:120]:
+        rot, ic = _TIPOS_EXT.get(str(x.get("tipo")), (str(x.get("tipo") or "Movimento").capitalize(), "jornal"))
+        tk = x.get("t")
+        nome = A.rotulo(tk) if tk else str(x.get("m") or rot)
+        q = f"{A.texto_qtd(tk, x['q'])} × T$ {_n(float(x.get('p') or 0), 2)}" if tk and x.get("q") else ""
+        v = float(x.get("v") or 0)
+        sinal = "−" if x.get("tipo") == "compra" else "+"
+        extra = ""
+        if x.get("tipo") == "venda" and x.get("r") is not None:
+            r = float(x["r"])
+            extra = f"<small class='{'up' if r >= 0 else 'dn'}'>{'lucro' if r >= 0 else 'prejuízo'} T$ {_n(abs(r), 2)}</small>"
+        lin.append(f"<div class='cv-hl'>{AT.img(ic, 30)}<div class='t'><b>{html.escape(rot)} · {html.escape(nome)}</b><small>{_data_br(x.get('d'))}"
+                   f"{(' · ' + html.escape(q)) if q else ''}</small></div><div class='v'><b>{sinal}T$ {_n(abs(v), 2)}</b>{extra}</div></div>")
+    st.markdown("<style>html body .stApp .cv-hl{display:flex;align-items:center;gap:10px;padding:9px 10px;margin-bottom:6px;border-radius:16px;"
+                "background:linear-gradient(160deg,#10204A,#0A1433 78%);border:1px solid #2B4A8C}"
+                "html body .stApp .cv-hl .t{flex:1;min-width:0}html body .stApp .cv-hl .t b{display:block;font-size:.88rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+                "html body .stApp .cv-hl small{display:block;font-size:.74rem;color:#BDB5E6}"
+                "html body .stApp .cv-hl .v{text-align:right;flex:0 0 auto}html body .stApp .cv-hl .v b{font-size:.9rem;color:#fff;white-space:nowrap}"
+                "html body .stApp .cv-hl .up{color:#3DDC97}html body .stApp .cv-hl .dn{color:#FF6B87}</style>"
+                + "".join(lin), unsafe_allow_html=True)
+    if len(ext) > 120:
+        st.caption("Mostrando as 120 movimentações mais recentes.")
+
+
 def _cab() -> None:
     st.markdown(tema.cabecalho("💼", "Carteira",
                                "Monte uma carteira virtual com ações, FIIs, ETFs, cripto, fundos e renda fixa, aprenda a diversificar e dispute o ranking. Dinheiro de mentira, aprendizado de verdade."),
@@ -857,7 +894,7 @@ def pagina_competicao():
         return
     if not banco.cfg_disponivel():
         _cab()
-        st.warning("A Wallet Game precisa do banco de configuração do sistema, que ainda não está disponível. Fale com a administração.")
+        st.warning("A carteira precisa do banco de configuração do sistema, que ainda não está disponível. Fale com a administração.")
         return
     c = _pessoa(a)
     perfil, cart = c["perfil"], c["cart"]
@@ -876,7 +913,7 @@ def pagina_competicao():
         banco.registrar_erro("competicao_app.wallet_game", e)
         res = None
     nomes = (["Meu patrimônio", "Bônus e sequência", "Missões do jogo", "Conquistas"] if res else []) + \
-            ["Classificação", "Negociar"]
+            ["Classificação", "Negociar", "Histórico"]
     if st.session_state.get("wg_sec") not in nomes:
         st.session_state["wg_sec"] = nomes[0]
     sec = st.session_state["wg_sec"]
@@ -892,6 +929,8 @@ def pagina_competicao():
     if res and ordem and ordem.get("ok"):              # comprovante da ordem vai para o pop-up, junto com as comemorações
         st.session_state.pop("comp_res", None)
         extra = [_html_comprovante(ordem)]
+    if res and sec == "Meu patrimônio":                # cabeçalho da Minha Carteira (tela principal)
+        st.markdown(CV.CSS + CV.html_hero(), unsafe_allow_html=True)
     if res:                                            # cada seção mostra só o que é dela
         WGA.resumo(a, res, perfil.get("apelido") or "", hero=False,
                    bonus_bloco=sec in ("Meu patrimônio", "Bônus e sequência"), extra=extra)
@@ -908,6 +947,8 @@ def pagina_competicao():
             _aba_ranking(perfil, cart, res)
         elif sec == "Negociar":
             _aba_negociar(a, perfil, cart)
+        elif sec == "Histórico":
+            _aba_historico(cart)
         elif sec == "Diversificar":
             DV.aba_diversificar(cart, C.novo_estado(perfil.get("entrada") or _agora().date().isoformat()))
     WGA.aviso()

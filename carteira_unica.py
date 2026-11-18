@@ -17,8 +17,8 @@ from datetime import date
 import ativos_jogo as A
 
 # ---------------------------------------------------------------- tradução legado ↔ jogo
-SEM_CONTA = "Entre na sua conta e participe do Wallet Game: a carteira dele é a única carteira do TickerHunters."
-FORA_DO_JOGO = ("Esse ativo ainda não está no universo do Wallet Game (ações, FIIs, ETFs e BDRs da B3, ETFs VOO, QQQ, SCHD e VT, "
+SEM_CONTA = "Entre na sua conta e comece a sua carteira do TickerHunters."
+FORA_DO_JOGO = ("Esse ativo ainda não pode ser comprado na carteira (ações, FIIs, ETFs e BDRs da B3, ETFs VOO, QQQ, SCHD e VT, "
                 "criptomoedas, fundos por CNPJ e renda fixa). Por isso ele não entra na carteira.")
 
 
@@ -234,10 +234,10 @@ def _ordem(lado: str, ativo: str, qtd, ref_brl: float | None) -> tuple[bool, str
         import competicao_app as CA
         c = CA._pessoa(a, True)
     except Exception:
-        return False, "Não consegui abrir a carteira do Wallet Game agora. Tente de novo em instantes."
+        return False, "Não consegui abrir a sua carteira agora. Tente de novo em instantes."
     perfil = c["perfil"]
     if not perfil.get("aceite"):
-        return False, "Participe do Wallet Game primeiro: a carteira dele é a única carteira do TickerHunters."
+        return False, "Comece a sua carteira primeiro (Minha carteira)."
     q = A.norm_qtd(ativo, qtd)
     if not A.qtd_valida(ativo, q):
         return False, f"Quantidade inválida para {A.rotulo(ativo)}. Esse tipo de ativo aceita múltiplos de {A.texto_qtd(ativo, A.passo(ativo))}."

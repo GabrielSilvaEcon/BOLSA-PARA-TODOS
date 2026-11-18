@@ -82,7 +82,7 @@ def selo_texto() -> str:
 def _pesos_carteira() -> dict:
     """Peso de cada ativo pelo CUSTO registrado (sem consultar preços): serve só para explicar o aviso e priorizar."""
     tot, por = 0.0, {}
-    for l in _ss().get("cart_real") or []:
+    for l in (_ss().get("cart_ficticia") or []) + (_ss().get("cart_real") or []):      # a carteira única (e contas antigas)
         try:
             v = float(l["qtd"]) * float(l["preco_medio"])
             por[str(l["ticker"]).upper()] = por.get(str(l["ticker"]).upper(), 0.0) + v
@@ -493,7 +493,7 @@ def _aba_monitor(a) -> None:
     if st.button("Verificar agora", key="nt_vagora", icon=":material/refresh:", type="primary"):
         with st.spinner("Consultando as fontes (até 25 ativos)..."):
             try:
-                dados = {k: _ss().get(k) for k in ("mon_regras", "notif_prefs", "cart_real", "risco_limites", "intel_regras", "tec_av_regras")}
+                dados = {k: _ss().get(k) for k in ("mon_regras", "notif_prefs", "cart_real", "cart_ficticia", "risco_limites", "intel_regras", "tec_av_regras")}
                 r = monitor.verificar_agora(a, {k: v for k, v in dados.items() if v is not None})
                 contagem_nao_lidas(True)
                 if r.get("aviso"):

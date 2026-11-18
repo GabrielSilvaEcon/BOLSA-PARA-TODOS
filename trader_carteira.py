@@ -42,7 +42,7 @@ def aposta_de(email: str, conta: str | None = None, mesa: bool = False) -> dict:
     s = situacao(email)
     stake = round(s["pat"] * TB.PCT_APOSTA, 2)
     if s["pat"] <= 0 or stake <= 0:
-        raise SemSaldo("Você ainda não tem patrimônio na Wallet Game para apostar.")
+        raise SemSaldo("Você ainda não tem patrimônio na sua carteira para apostar.")
     if mesa:
         minimo = round(s["pat"] * TB.LIMITE_PERDA_PCT_PAT, 2)
         if s["caixa"] < minimo:

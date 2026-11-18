@@ -48,7 +48,7 @@ html body .stApp.stApp .wg-sec{font-weight:800;color:#F6F3FF;margin:14px 2px 4px
 html body .stApp.stApp .wg-aviso{color:#B7AEE0;font-size:.78rem;line-height:1.45;margin:10px 0 8px;padding:10px 12px;background:#1B1545;border:1px solid #3B3170;border-left:3px solid #F2B84B;border-radius:12px;box-sizing:border-box;max-width:100%;}
 html body .stApp.stApp .wg-leg span{color:#CFC8EE !important;-webkit-text-fill-color:#CFC8EE;}
 </style>"""
-AVISO = ("Dinheiro virtual, TickerCoins e XP são coisas separadas. O dinheiro virtual vale só dentro da Wallet Game, sem conversão em dinheiro real. "
+AVISO = ("Dinheiro virtual, TickerCoins e XP são coisas separadas. O dinheiro virtual vale só dentro do app, sem conversão em dinheiro real. "
          "Simulação educacional, sem recomendação de investimento.")
 
 

@@ -98,9 +98,9 @@ def classe_do_ticker(tk: str) -> str:
 
 
 def _lotes(dados: dict) -> list[dict]:
-    """Posições da carteira real: soma as compras por ativo."""
+    """Posições da carteira (a carteira única do app, gravada em cart_ficticia; cart_real só em contas antigas): soma as compras por ativo."""
     soma: dict = {}
-    for l in dados.get("cart_real") or []:
+    for l in (dados.get("cart_ficticia") or []) + (dados.get("cart_real") or []):
         try:
             tk, q = str(l["ticker"]).upper(), float(l["qtd"])
         except (KeyError, TypeError, ValueError):

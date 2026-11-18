@@ -579,7 +579,7 @@ def _cartao_fin(fin: dict | None) -> str:
     return (f"<div class='tb-card tb-fin {cor}'><div class='t'>Quanto seus trades renderam</div>"
             f"<div class='v'>{sg}{_e(WG.moeda(abs(pnl)))}</div>"
             f"<div class='s'>{sg}{TG._pc(fin['pct_aposta'])}% sobre a aposta de {_e(WG.moeda(fin['aposta']))} · {sg}{TG._pc(fin['pct_pat'], 3)}% do patrimônio</div>"
-            f"{por_rod}<small>Já somado ao seu patrimônio na Wallet Game.</small></div>")
+            f"{por_rod}<small>Já somado ao seu patrimônio na carteira.</small></div>")
 
 
 _RX_ICONE = (("Sua leitura", "🧭"), ("Estratégia", "🧭"), ("O mercado", "📈"), ("Opera", "💱"), ("Limite", "🛑"), ("Resultado", "🧮"), ("Qualidade", "⭐"), ("Pontos", "🏆"))

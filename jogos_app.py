@@ -769,7 +769,7 @@ def pagina_eventos() -> None:
                     rec = m.get("recompensa") or {}
                     premio = " · ".join(x for x in (f"+{int(rec['xp'])} XP" if rec.get("xp") else "", f"+{int(rec['tc'])} TC" if rec.get("tc") else "") if x)
                     linhas.append(_rec("✅" if m["feita"] else "🪙", m["nome"], m["objetivo"], premio))
-                st.markdown("<div class='jg-sec'>🪙 Missões da semana · Wallet Game</div><div class='jg-card'>" + "".join(linhas) + "</div>", unsafe_allow_html=True)
+                st.markdown("<div class='jg-sec'>🪙 Missões da semana · Carteira</div><div class='jg-card'>" + "".join(linhas) + "</div>", unsafe_allow_html=True)
     except Exception:
         pass
     eventos = []

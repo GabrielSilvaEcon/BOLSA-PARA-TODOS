@@ -51,19 +51,39 @@ def serie_patrimonio(est: dict, pat_liq: float) -> list[tuple[str, float]]:
     return pts
 
 
-def variacao(pts: list[tuple[str, float]], hoje: date | None = None) -> tuple[float | None, str]:
-    """Variação % nos últimos 30 dias; se a carteira é mais nova, desde o início. (None, '') sem dados."""
+PERIODOS = {"7D": 7, "30D": 30, "90D": 90, "1A": 365}
+_ROT_PER = {7: "últimos 7 dias", 30: "últimos 30 dias", 90: "últimos 90 dias", 365: "último ano"}
+
+
+def recorte(pts: list[tuple[str, float]], dias: int, hoje: date | None = None) -> list[tuple[str, float]]:
+    """Pontos do período (o fechamento logo antes do início entra como base, para a linha começar no lugar certo)."""
+    hoje = hoje or date.today()
+    dentro, base = [], None
+    for d, v in pts:
+        try:
+            idade = (hoje - datetime.fromisoformat(d[:10]).date()).days
+        except ValueError:
+            continue
+        if idade > dias:
+            base = (d, v)
+        else:
+            dentro.append((d, v))
+    return ([base] if base else []) + dentro
+
+
+def variacao(pts: list[tuple[str, float]], hoje: date | None = None, dias: int = 30) -> tuple[float | None, str]:
+    """Variação % no período (`dias`); se a carteira é mais nova, desde o início. (None, '') sem dados."""
     if len(pts) < 2:
         return None, ""
     hoje = hoje or date.today()
     base, rot = pts[0], "desde o início"
     for d, v in pts[:-1]:
         try:
-            dias = (hoje - datetime.fromisoformat(d[:10]).date()).days
+            idade = (hoje - datetime.fromisoformat(d[:10]).date()).days
         except ValueError:
             continue
-        if dias >= 30:
-            base, rot = (d, v), "últimos 30 dias"
+        if idade >= dias:
+            base, rot = (d, v), _ROT_PER.get(dias, f"últimos {dias} dias")
     if base[1] <= 0:
         return None, ""
     return (pts[-1][1] / base[1] - 1) * 100, rot
@@ -175,6 +195,48 @@ def html_desempenho(ret: float, lucro: float, serie_ret: list[float]) -> str:
             f"<div class='cv-rl2'>Lucro/prejuízo: <b style='color:{cor}'>{_e(moeda(lucro))}</b></div></div>")
 
 
+def html_hero() -> str:
+    """Cabeçalho da Minha Carteira (no padrão dos cabeçalhos do app)."""
+    return (f"<div class='cv-hero'><div class='cv-hero-ic'>{AT.img('saco_dinheiro', 50)}</div><div class='cv-hero-t'><div class='cv-hero-h'>Minha <span>Carteira</span></div>"
+            "<p>Seu patrimônio, seus ativos, ranking e missões em um só lugar.</p></div></div>")
+
+
+def html_ranking(rank: dict | None, semana: float | None) -> str:
+    """Cartão do ranking: sua posição e o resultado da semana (o retorno do ranking, sem bônus)."""
+    r = rank or {}
+    pos = r.get("geral")
+    n = r.get("n")
+    n = n.get("geral") if isinstance(n, dict) else n
+    if pos:
+        topo = f"<div class='cv-rk-pos'><b>{int(pos)}º</b><small>{('de ' + str(int(n))) if n else 'lugar'}</small></div>"
+    else:
+        topo = "<div class='cv-rl'>Você entra no ranking no próximo fechamento.</div>"
+    sem = (f"<div class='cv-rl'>Resultado da semana</div><div class='cv-rent' style='color:{_cor(semana)}'>{_pct(semana)}</div>"
+           if semana is not None else "")
+    return f"<div class='cv-card cv-rk'><div class='cv-ch'>{AT.img('podio', 24)}<b>Ranking</b></div>{topo}{sem}</div>"
+
+
+# Atalhos do fim da tela: (chave, rótulo, ícone, seção da carteira ou página do app)
+ATALHOS = (
+    ("bonus", "Bônus", "presente", ("sec", "Bônus e sequência")),
+    ("conq", "Conquistas", "medalha_estrela", ("sec", "Conquistas")),
+    ("hist", "Histórico", "jornal", ("sec", "Histórico")),
+    ("gestao", "Gestão", "escudo_grafico", ("pag", "gestao-carteira")),
+    ("risco", "Risco", "escudo_ok", ("pag", "risco")),
+    ("rel", "Relatórios", "grafico_alta", ("pag", "relatorios")),
+    ("sim", "Simulador", "foguete", ("pag", "simulador")),
+    ("radar", "Radar", "bussola", ("pag", "inteligencia")),
+)
+
+
+def _atalho(destino: tuple) -> None:
+    tipo, alvo = destino
+    if tipo == "sec":
+        _ir(alvo)
+    else:
+        st.session_state["_nav_pend"] = alvo
+
+
 def html_missao(m: dict | None, todas: bool = False) -> str:
     cab = f"<div class='cv-ch'>{AT.img('trofeu', 24)}<b>Minhas Missões</b></div>"
     if not m:
@@ -237,6 +299,27 @@ CSS = f"""<style>
 {Q} .st-key-cv_mis .st-key-cv_vm{{margin-top:8px;justify-content:flex-start}}
 {Q} .st-key-cv_mis .st-key-cv_vm button{{margin-left:0 !important;padding:0 !important}}
 {Q} .cv-duo{{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 10px}}
+{Q} .cv-hero{{display:flex;align-items:center;gap:14px;padding:6px 2px 10px}}
+{Q} .cv-hero-ic{{flex:0 0 auto;width:72px;height:72px;border-radius:22px;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,rgba(139,108,255,.45),rgba(14,8,64,.9));box-shadow:0 0 18px rgba(139,108,255,.45)}}
+{Q} .cv-hero-t{{min-width:0}}
+{Q} .cv-hero .cv-hero-h{{margin:0;padding:0;font-size:1.7rem;font-weight:900;line-height:1.1;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{Q} .cv-hero .cv-hero-h span{{color:#B6F23E !important;-webkit-text-fill-color:#B6F23E !important}}
+{Q} .cv-hero p{{margin:4px 0 0;font-size:.86rem;line-height:1.35;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
+{Q} .st-key-cv_per_w{{margin:0 0 -4px}}
+{Q} .st-key-cv_per_w [data-testid="stElementContainer"]{{display:flex !important;justify-content:flex-end !important}}
+{Q} .st-key-cv_per_w [data-testid="stButtonGroup"]{{width:auto !important}}
+{Q} .st-key-cv_per_w button{{min-height:30px !important;padding:2px 12px !important;font-size:.78rem !important}}
+{Q} .cv-rk-pos{{display:flex;align-items:baseline;gap:6px;margin:6px 0 2px}}
+{Q} .cv-rk-pos b{{font-size:2rem;font-weight:900;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important;text-shadow:0 0 12px rgba(255,201,60,.45)}}
+{Q} .cv-rk-pos small{{font-size:.84rem;font-weight:700;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
+{Q} .st-key-cv_des .st-key-cv_vc{{margin-top:8px;justify-content:flex-start}}
+{Q} .st-key-cv_des .st-key-cv_vc button{{margin-left:0 !important;padding:0 !important}}
+{Q} .cv-sec{{margin:16px 2px 8px;font-weight:900;font-size:1.05rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{Q} .st-key-cv_mais{{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px !important}}
+{Q} .st-key-cv_mais > div{{width:auto !important;min-width:0}}
+{Q} .cv-at{{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px 10px;border-radius:18px;text-align:center;
+  background:linear-gradient(160deg,#10204A,#0A1433 78%);border:1px solid #2B4A8C;box-shadow:inset 0 1px 0 rgba(120,160,255,.14)}}
+{Q} .cv-at span{{font-size:.74rem;font-weight:800;line-height:1.15;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
 {Q} .st-key-cv_trade{{margin:12px 0 6px}}
 {Q} .st-key-cv_trade [data-testid="stHorizontalBlock"]{{gap:12px !important;flex-wrap:nowrap !important}}
 {Q} .st-key-cv_trade [data-testid="stColumn"]{{min-width:0 !important;flex:1 1 0 !important}}
@@ -302,8 +385,11 @@ def mostrar(est: dict, res: dict | None) -> None:
     pos = posicoes(est)
     inv = sum(r["valor"] for r in pos)
     pts = serie_patrimonio(est, pat - apt)
-    var, rot = variacao(pts)
-    serie = [v for _, v in pts]
+    with st.container(key="cv_per_w"):                       # período do gráfico do patrimônio
+        per = st.segmented_control("Período do gráfico", list(PERIODOS), default="30D", key="cv_per", label_visibility="collapsed") or "30D"
+    dias = PERIODOS.get(per, 30)
+    var, rot = variacao(pts, dias=dias)
+    serie = [v for _, v in recorte(pts, dias)]
     st.markdown(html_patrimonio(pat, float(est.get("caixa", 0)), inv, var, rot, serie, len(pos), ret), unsafe_allow_html=True)
 
     # ---- Meus ativos
@@ -324,14 +410,14 @@ def mostrar(est: dict, res: dict | None) -> None:
         c2.button("Vender", key="cv_vender", icon=":material/north_east:", on_click=_ir, args=("Negociar", "Vender"), width="stretch",
                   disabled=not pos, help=None if pos else "Você ainda não tem ativos para vender.")
 
-    # ---- Desempenho + Missões
-    sr = [(v / cap - 1) * 100 for _, v in pts] if pts else []
-    lucro = pat - apt - cap
-    with st.container(key="cv_duo"):                         # dois cartões lado a lado; o botão das missões fica DENTRO do cartão de missões
+    # ---- Ranking + Missões (cada botão fica DENTRO do seu cartão)
+    semana, _r = variacao(pts, dias=7)
+    with st.container(key="cv_duo"):
         c1, c2 = st.columns(2)
         with c1:
             with st.container(key="cv_des"):
-                st.markdown(html_desempenho(ret, lucro, sr), unsafe_allow_html=True)
+                st.markdown(html_ranking(est.get("rank"), semana if _r == "últimos 7 dias" else None), unsafe_allow_html=True)
+                st.button("Ver classificação →", key="cv_vc", on_click=_ir, args=("Classificação",))
         with c2:
             with st.container(key="cv_mis"):
                 st.markdown(html_missao(missao_ativa(res)), unsafe_allow_html=True)
@@ -347,3 +433,11 @@ def mostrar(est: dict, res: dict | None) -> None:
             home_app.desempenho(est_carteira=est)
         except Exception:
             pass
+
+    # ---- Atalhos: progresso do jogo, histórico e ferramentas de análise da carteira
+    st.markdown("<div class='cv-sec'>Mais da sua carteira</div>", unsafe_allow_html=True)
+    with st.container(key="cv_mais"):
+        for k, rot_, ic, dest in ATALHOS:
+            with st.container(key=f"lk_cvm_{k}"):
+                st.markdown(f"<div class='cv-at'>{AT.img(ic, 30)}<span>{_e(rot_)}</span></div>", unsafe_allow_html=True)
+                st.button(f"Abrir {rot_}", key=f"cvm_b_{k}", on_click=_atalho, args=(dest,))

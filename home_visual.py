@@ -65,7 +65,7 @@ def html_ranking_corpo(r: dict, logado: bool, participa: bool) -> str:
     """Fichas dos líderes e a sua, ou o estado vazio. r = home_dados.ranking_resumo(...)."""
     if r.get("vazio"):
         msg = ("O ranking aparece no primeiro fechamento de mercado com participantes. Ele é atualizado nos dias úteis, depois do fechamento."
-               if participa else "O ranking compara o retorno em % de quem joga a Wallet Game. Entre no jogo para disputar uma posição.")
+               if participa else "O ranking compara o retorno em % de quem tem carteira no app. Comece a sua para disputar uma posição.")
         return f"<div class='hm-vazio'>{_E(msg)}</div>"
     chips = "".join(_chip_top(x) for x in r["top"])
     eu = r.get("eu")
@@ -200,7 +200,7 @@ def css_layout() -> str:
             f"{q} .st-key-hm_hero_b button [data-testid='stIconMaterial']{{color:var(--ac) !important;font-size:1.7rem !important;flex:0 0 auto}}"
             f"{q} .st-key-hm_hero_b button p{{margin:0 !important;color:#fff !important;-webkit-text-fill-color:#fff !important;font-weight:900 !important;font-size:clamp(.85rem,2.6vw,1.05rem) !important;line-height:1.1 !important;text-align:left !important}}"
             f"{q} .st-key-hm_hero_b button p:after{{content:var(--sub);display:block;font-weight:600;font-size:clamp(.6rem,1.9vw,.76rem);color:#CFCBFF;-webkit-text-fill-color:#CFCBFF;margin-top:1px}}"
-            f"{q} .st-key-hm_b_missoes{{--ac:#F2B84B;--sub:'Desafios diários'}}{q} .st-key-hm_b_aprender{{--ac:#2BA7C9;--sub:'Conteúdos e trilhas'}}{q} .st-key-hm_b_jogar{{--ac:#3DDC97;--sub:'Wallet Game'}}"
+            f"{q} .st-key-hm_b_missoes{{--ac:#F2B84B;--sub:'Desafios diários'}}{q} .st-key-hm_b_aprender{{--ac:#2BA7C9;--sub:'Conteúdos e trilhas'}}{q} .st-key-hm_b_jogar{{--ac:#3DDC97;--sub:'Seu patrimônio'}}"
             # ranking: título e botão na mesma linha, fichas em uma linha só
             f"{q} .st-key-hm_rk{{display:grid !important;grid-template-columns:minmax(0,1fr) auto;column-gap:10px !important;row-gap:6px !important;align-items:center;padding:12px 14px !important;"
             f'border-radius:22px;border:1.5px solid rgba(242,184,75,.55);margin:0 0 12px;background:url("{fundo_card("ranking")}") center bottom/cover no-repeat,radial-gradient(circle at 12% 0%,rgba(242,184,75,.16),transparent 55%),linear-gradient(160deg,#1E2E5C,#12113A 80%);box-shadow:0 8px 22px rgba(2,6,23,.45)}}'

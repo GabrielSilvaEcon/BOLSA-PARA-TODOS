@@ -84,7 +84,7 @@ def definir_ligado(doc, ligado: bool, p: dict | None = None, apelido: str = "", 
 
 def pode_participar(apelido: str) -> tuple[bool, str]:
     if not _apelido(apelido):
-        return False, "Para aparecer na liga de estudo você precisa de um apelido da Wallet Game (é o mesmo que já aparece nos rankings)."
+        return False, "Para aparecer na liga de estudo você precisa de um apelido da sua carteira (é o mesmo que já aparece nos rankings)."
     return True, ""
 
 

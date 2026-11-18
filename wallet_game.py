@@ -217,7 +217,7 @@ def resgatar_bonus(email: str, conta_id: str, agora: datetime | None = None) -> 
     if not email or not conta_id:
         return {"ok": False, "erro": "Faça login para resgatar."}
     if not _participa(email):
-        return {"ok": False, "erro": "Entre na Wallet Game (escolha um apelido) para resgatar o bônus."}
+        return {"ok": False, "erro": "Comece sua carteira (escolha um apelido) para resgatar o bônus."}
     chave = f"bonus:{conta_id}:{hoje.isoformat()}"
     if _por_chave(chave):
         return {"ok": False, "erro": "Você já resgatou o bônus de hoje.", "duplicado": True}
@@ -243,7 +243,7 @@ def resgatar_bonus(email: str, conta_id: str, agora: datetime | None = None) -> 
     if tc > 0:
         try:
             import tickercoins as TC
-            TC.creditar(conta_id, tc, "wallet_game", f"Wallet Game: ciclo de {seq} dias", f"wg:ciclo:{conta_id}:{hoje.isoformat()}", str(seq))
+            TC.creditar(conta_id, tc, "wallet_game", f"Carteira: ciclo de {seq} dias", f"wg:ciclo:{conta_id}:{hoje.isoformat()}", str(seq))
         except Exception as e:
             banco.registrar_erro("wallet_game.tc_ciclo", e)
             tc = 0
@@ -253,7 +253,7 @@ def resgatar_bonus(email: str, conta_id: str, agora: datetime | None = None) -> 
 # ------------------------------------------------------------------ missões e conquistas (definições)
 # periodo: dia | semana | especial. meta é o número a atingir; a recompensa pode ter xp, tc (TickerCoins) e capital (T$).
 MISSOES = [
-    {"id": "d_bonus", "periodo": "dia", "nome": "Resgatar o bônus do dia", "descricao": "Abra a Wallet Game e resgate o bônus de hoje.",
+    {"id": "d_bonus", "periodo": "dia", "nome": "Resgatar o bônus do dia", "descricao": "Abra a sua carteira e resgate o bônus de hoje.",
      "objetivo": "1 resgate", "meta": 1, "recompensa": {"xp": 5}},
     {"id": "d_conferir", "periodo": "dia", "nome": "Conferir sua carteira", "descricao": "Veja como está seu patrimônio hoje.",
      "objetivo": "1 visita", "meta": 1, "recompensa": {"xp": 3}},

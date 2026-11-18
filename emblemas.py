@@ -19,14 +19,14 @@ _CAT = [
     ("k_3", "Consistência", "3 dias seguidos", "Estudou 3 dias seguidos.", "🔥", "#FF9B3D", ("min", "ofensiva", 3)),
     ("k_7", "Consistência", "7 dias seguidos", "Estudou 7 dias seguidos.", "🔥", "#FF9B3D", ("min", "ofensiva", 7)),
     ("k_30", "Consistência", "30 dias seguidos", "Estudou 30 dias seguidos.", "🏅", "#FF9B3D", ("min", "ofensiva", 30)),
-    ("k_bonus7", "Consistência", "Bônus 7 dias", "Resgatou o bônus do Wallet Game 7 dias seguidos.", "📅", "#FF9B3D", ("wg", "c_seq7")),
+    ("k_bonus7", "Consistência", "Bônus 7 dias", "Resgatou o bônus da carteira 7 dias seguidos.", "📅", "#FF9B3D", ("wg", "c_seq7")),
     ("f_primeiro", "Evolução financeira simulada", "Primeiro investimento", "Fez a primeira compra na carteira virtual.", "🌱", "#3DDC97", ("wg", "c_primeiro")),
     ("f_positiva", "Evolução financeira simulada", "Resultado positivo", "A carteira virtual fechou no positivo.", "📈", "#3DDC97", ("wg", "c_positiva")),
     ("f_val10", "Evolução financeira simulada", "10% de valorização", "Chegou a +10% de resultado simulado.", "🚀", "#3DDC97", ("wg", "c_val10")),
     ("f_prata", "Evolução financeira simulada", "Rank Prata", "Chegou ao rank Prata.", "🥈", "#3DDC97", ("wg", "c_prata")),
     ("f_ouro", "Evolução financeira simulada", "Rank Ouro", "Chegou ao rank Ouro.", "🥇", "#3DDC97", ("wg", "c_ouro")),
-    ("p_wallet", "Participação", "Entrou no Wallet Game", "Aceitou participar da competição de carteiras.", "🎮", "#2BA7C9", ("aceite",)),
-    ("d_missoes5", "Desafios", "5 missões", "Completou 5 missões do Wallet Game.", "🎯", "#F2B84B", ("wg", "c_missoes5")),
+    ("p_wallet", "Participação", "Começou a carteira", "Começou a sua carteira e entrou no ranking.", "🎮", "#2BA7C9", ("aceite",)),
+    ("d_missoes5", "Desafios", "5 missões", "Completou 5 missões da carteira.", "🎯", "#F2B84B", ("wg", "c_missoes5")),
     ("x_diversa", "Exploração de classes", "Carteira diversificada", "Montou uma carteira com 4 ativos em 3 classes.", "🧺", "#D23FC8", ("wg", "c_diversa")),
 ]
 EMBLEMAS = [dict(zip(("id", "categoria", "nome", "descricao", "emblema", "cor", "regra"), x)) for x in _CAT]

@@ -94,7 +94,7 @@ def desempenho(ir=None, est_carteira: dict | None = None) -> None:
         if not logado:
             st.caption("Entre na sua conta para acompanhar o desempenho da sua carteira.")
         elif not participa:
-            st.caption("Entre na Wallet Game para montar uma carteira e acompanhar o desempenho.")
+            st.caption("Comece a sua carteira para acompanhar o desempenho.")
 
 
 def nivel_xp(xp) -> str:

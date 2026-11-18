@@ -301,7 +301,7 @@ def tela_acesso(logo_uri: str = "", nome: str = "TickerHunters") -> None:
             '<div class="lg-s s2"><h2>Aprenda no seu ritmo</h2>'
             '<p>Lições curtas, quizzes e uma Jornada que dá XP e TickerCoins.</p></div>'
             '<div class="lg-s s3"><h2>Evolua jogando</h2>'
-            '<p>Treine com dinheiro virtual (T$) na Wallet Game, suba de rank e acompanhe sua carteira em qualquer aparelho.</p></div></div>'
+            '<p>Treine com dinheiro virtual (T$) na sua carteira, suba de rank e acompanhe sua carteira em qualquer aparelho.</p></div></div>'
 '<div class="lg-dots"><i></i><i></i><i></i></div>', unsafe_allow_html=True)
         tok_ver, tok_red = _param("verificar"), _param("redefinir")
         if tok_ver or tok_red:

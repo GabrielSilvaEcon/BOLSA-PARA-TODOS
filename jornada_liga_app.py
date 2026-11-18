@@ -101,7 +101,7 @@ def _conteudo(prog) -> None:
         st.info("A liga de estudo está indisponível agora. A Jornada continua normal.")
         return
     if not ctx["ligas"]:
-        st.markdown(AT.html_vazio("Você ainda não está em nenhuma liga", "Crie ou entre em uma na Wallet Game, com o código de convite, e volte aqui.", "animado"), unsafe_allow_html=True)
+        st.markdown(AT.html_vazio("Você ainda não está em nenhuma liga", "Crie ou entre em uma em Meus Amigos › Ligas, com o código de convite, e volte aqui.", "animado"), unsafe_allow_html=True)
         return
     aviso = st.session_state.pop("jor_liga_aviso", None)
     if aviso:

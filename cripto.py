@@ -964,7 +964,7 @@ def botao_carteira_cripto(gid: str, m: dict, modo: str = "cripto"):
         pm = st.number_input("Preço pago por unidade (US$)", min_value=0.00000001, step=10.0 ** -_casas, format=f"%.{_casas}f",
                              value=max(round(_p, _casas), 0.00000001), key=f"cwc_pm_{gid}_{modo}")
         dt = st.date_input("Data da compra", value=date.today(), max_value=date.today(), format="DD/MM/YYYY", key=f"cwc_dt_{gid}_{modo}")
-        st.caption(f"Entra na sua carteira do Wallet Game como {tk}, pelo preço de agora, em T$.")
+        st.caption(f"Entra na sua carteira como {tk}, pelo preço de agora, em T$.")
         if not st.button("Confirmar", type="primary", key=f"cwc_ok_{gid}_{modo}"):
             return False
         import carteira_unica as _cu

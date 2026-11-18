@@ -486,7 +486,7 @@ def _vendas(C, chave_cart):
     ss = st.session_state
     kv = K_VENDAS[chave_cart]
     ss.setdefault(kv, [])
-    with st.expander("Vender uma posição (sai da sua carteira do Wallet Game)"):
+    with st.expander("Vender uma posição (sai da sua carteira)"):
         st.caption("A venda é executada pelo preço de agora e o dinheiro volta para o capital disponível. O desempenho passa a considerar a saída.")
         tks = [p["id"] for p in C["posicoes"] if p["classe"] not in ("renda_fixa", "fundo", "caixa")]
         if not tks:

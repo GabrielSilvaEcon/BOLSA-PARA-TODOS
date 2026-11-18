@@ -218,7 +218,7 @@ def _form(chave: str, caixa):
                     unsafe_allow_html=True)
             else:
                 st.warning(f"Não consegui o preço atual de {tk} agora. Informe o preço pago ou tente de novo.")
-        st.caption("A compra entra na sua carteira do Wallet Game, ao preço de agora e com o mesmo caixa.")
+        st.caption("A compra entra na sua carteira, ao preço de agora e com o mesmo caixa.")
         st.button("Comprar", icon=":material/add:", type="primary", key=f"add_{chave}",
                   on_click=_registrar, args=(chave, caixa), width="stretch")
 
@@ -230,7 +230,7 @@ def _form(chave: str, caixa):
 def _arquivo(chave: str):
     lotes = st.session_state[chave]
     with st.expander("💾 Exportar (CSV)"):
-        st.caption("A carteira mora no Wallet Game e fica salva na sua conta. Aqui você só baixa uma cópia.")
+        st.caption("A carteira fica salva na sua conta. Aqui você só baixa uma cópia.")
         if lotes:
             st.download_button("⬇️ Exportar CSV", seg.neutralizar_tabela(pd.DataFrame(lotes)).to_csv(index=False).encode("utf-8"),
                                file_name=f"{chave}.csv", mime="text/csv", key=f"dl_{chave}")
@@ -342,7 +342,7 @@ def _render(chave: str, ficticia: bool):
         est = None
     resu = CU.resumo(est)
     caixa = resu["disponivel"]
-    st.markdown("<div class='ct-sec'>Sua carteira do Wallet Game</div>", unsafe_allow_html=True)
+    st.markdown("<div class='ct-sec'>Sua carteira</div>", unsafe_allow_html=True)
     st.markdown(CU.html_resumo(resu), unsafe_allow_html=True)
     if CU.ss_get("cu_sem_dolar"):
         st.warning("Sem a cotação do dólar agora: " + ", ".join(CU.ss_get("cu_sem_dolar")) + " ficaram de fora desta tela. Tente de novo em instantes.")
@@ -435,6 +435,6 @@ def _render(chave: str, ficticia: bool):
 def pagina_carteira():
     st.markdown(tema.cabecalho("💼", "Minha carteira", "Monte uma carteira de teste e acompanhe o desempenho, sem risco."), unsafe_allow_html=True)
     st.markdown(_CSS, unsafe_allow_html=True)
-    st.caption("Nada aqui usa dinheiro de verdade. É uma simulação livre e só sua: para competir no ranking, use o Wallet Game.")
+    st.caption("Nada aqui usa dinheiro de verdade.")
     _render("cart_ficticia", ficticia=True)
     st.caption("Ferramenta educacional. Preços do Yahoo Finance, podem ter atraso.")

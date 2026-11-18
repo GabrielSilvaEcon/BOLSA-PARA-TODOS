@@ -9,7 +9,7 @@ import tema
 # (id, título, subtítulo, ícone, cor, página de destino, estado a gravar antes de abrir)
 CARTOES = [
     ("analise", "Analisar", "Explore o mercado", "grafico", "#3DDC97", "analisar", {}),
-    ("wallet", "Wallet Game", "Jogue e ganhe recompensas", "moeda", "#F2B84B", "competicao", {}),
+    ("wallet", "Minha carteira", "Seu patrimônio e seus ativos", "moeda", "#F2B84B", "competicao", {}),
     ("carteira", "Carteira", "Gerencie seus ativos", "cofre", "#7A8CFF", "carteira", {}),
     ("conquistas", "Conquistas", "Veja seus troféus", "estrela", "#FF8A3D", "conta", {"conta_secao": "Perfil"}),
     ("aprender", "Aprender", "Estude e evolua", "livro", "#8B6CFF", "jornada", {}),

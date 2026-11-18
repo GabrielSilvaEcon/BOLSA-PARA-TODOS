@@ -130,7 +130,7 @@ def fundo_card(tema: str) -> str:
 
 
 def html_titulo() -> str:
-    return (f"<div class='ck-tit'>{AT.img('trofeu', 86)}<div><div class='a'>Classificação</div><div class='b'>Wallet Game</div>"
+    return (f"<div class='ck-tit'>{AT.img('trofeu', 86)}<div><div class='a'>Classificação</div><div class='b'>Minha carteira</div>"
             "<div class='c'>Mostre que você é o melhor investidor do TickerHunters!</div></div></div>")
 
 
