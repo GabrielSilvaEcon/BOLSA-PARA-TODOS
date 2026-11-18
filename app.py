@@ -4548,38 +4548,47 @@ def _abrir_conta():
 
 
 def _abrir_jogar():
-    """Callback do botão Jogar (centro da barra): abre a Central de Jogos (Trade Battle, Ticker Battle, ranking, amigos e eventos)."""
+    """Callback do botão Jogos da barra: abre a Central de Jogos (Trade Battle, Ticker Battle, amigos e eventos)."""
     st.session_state["_nav_pend"] = "jogos"
 
 
+def _abrir_ranking():
+    """Callback do botão Ranking da barra: abre o ranking geral dos jogos."""
+    st.session_state["_nav_pend"] = "jogos-ranking"
+
+
+def _abrir_loja():
+    """Callback do botão Loja da barra: abre a Loja Ticker (Ticker Coins, baús e itens)."""
+    st.session_state["_nav_pend"] = "economia"
+
+
 def _seletor_de_areas():
-    """Barra fixa de baixo: Início, Aprender, Jogar (elevado, no centro), Analisar e Perfil. Fica no topo da tela no computador e fixa no rodapé do celular.
-    Jogar abre a Central de Jogos; Perfil abre Meu Perfil (Carteira fica dentro de Analisar/Perfil)."""
+    """Barra fixa de baixo, no padrão mobile game: Início, Jogos, Aprender, Ranking e Loja. Fica no topo da tela no computador e fixa
+    no rodapé do celular. Analisar e Carteira abrem pelos botões Mercado e Carteira da Home; Perfil pelo avatar do cabeçalho."""
     if not DESIGN_V2:    # com a v2 ligada, a barra é estilizada por design/css.py
         st.markdown("<style>" + _CSS_AREAS_BASE + (_CSS_AREAS_RODAPE if BARRA_RODAPE else "") + "</style>", unsafe_allow_html=True)
     ativa = None if pg.url_path == "notificacoes" else areas.area_da_pagina(pg.url_path)
     no_inicio = pg.url_path == PG_INICIO.url_path
     por_id = {a["id"]: a for a in areas.AREAS}
+    em_jogos = pg.url_path in ("battle", "trader") + tuple(p for p in jogos_app.PAGINAS_DA_CENTRAL if p != "jogos-ranking")
     with st.container(key="barra_areas"):
-        cols = st.columns(len(areas.AREAS) + 2)       # Início, Aprender, Jogar, Analisar, Perfil
+        cols = st.columns(5)
         with cols[0]:
             st.button("Início", key="area_btn_inicio", icon=":material/home:", width="stretch",
                       type="primary" if no_inicio else "secondary", on_click=_abrir_inicio)
         with cols[1]:
-            a = por_id["aprender"]
-            st.button(a["nome"], key="area_btn_aprender", icon=a["icone"], width="stretch",
-                      type="primary" if ativa == "aprender" else "secondary", on_click=_abrir_area, args=("aprender",))
+            st.button("Jogos", key="area_btn_jogos", icon=":material/sports_esports:", width="stretch",
+                      type="primary" if em_jogos else "secondary", on_click=_abrir_jogar)
         with cols[2]:
-            st.button("Jogar", key="area_btn_jogar", icon=":material/sports_esports:", width="stretch",
-                      type="primary" if pg.url_path in ("battle", "trader") + jogos_app.PAGINAS_DA_CENTRAL else "secondary", on_click=_abrir_jogar)
+            a = por_id["aprender"]
+            st.button(a["nome"], key="area_btn_aprender", icon=":material/menu_book:", width="stretch",
+                      type="primary" if ativa == "aprender" else "secondary", on_click=_abrir_area, args=("aprender",))
         with cols[3]:
-            a = por_id["analisar"]
-            st.button(a["nome"], key="area_btn_analisar", icon=a["icone"], width="stretch",
-                      type="primary" if ativa in ("analisar", "wallet") else "secondary", on_click=_abrir_area, args=("analisar",))
+            st.button("Ranking", key="area_btn_ranking", icon=":material/emoji_events:", width="stretch",
+                      type="primary" if pg.url_path == "jogos-ranking" else "secondary", on_click=_abrir_ranking)
         with cols[4]:
-            st.button("Perfil", key="area_btn_conta", icon=":material/account_circle:", width="stretch",
-                      type="primary" if pg.url_path in ("perfil", "perfil-editar", "conta", "planos", "administracao") else "secondary",
-                      on_click=_abrir_conta)
+            st.button("Loja", key="area_btn_loja", icon=":material/shopping_cart:", width="stretch",
+                      type="primary" if pg.url_path == "economia" else "secondary", on_click=_abrir_loja)
 
 
 def menu_navegacao():

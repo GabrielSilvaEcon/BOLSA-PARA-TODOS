@@ -1,4 +1,4 @@
-"""Adaptador do Streamlit para a Home "mobile game": lê os dados que o app já tem e desenha os cartões de home_game.py.
+"""Adaptador do Streamlit para a Home "mobile game": lê os dados que o app já tem e desenha os blocos de home_game.py.
 
 Nada aqui grava dados nem muda regra de XP, Ticker Coins, ranking, missões ou jogos. Cada bloco lê o seu dado dentro de try/except:
 se um falhar, aparece o estado vazio dele e o resto da tela continua.
@@ -33,18 +33,6 @@ def _nome() -> str:
         return usuarios.primeiro_nome() or "Jogador"
     except Exception:
         return "Jogador"
-
-
-def _avatar() -> tuple[str, str, str]:
-    """(imagem, cor do anel, segunda cor do anel) do avatar equipado ou da foto."""
-    try:
-        import avatares
-        import perfis_app
-        m = perfis_app.meu_avatar()
-        r = avatares.RARIDADES.get(m["rar"], {"cor": "#34E85E", "cor2": "#14C9B5"})
-        return m["src_p"], r["cor"], r["cor2"]
-    except Exception:
-        return "", "#34E85E", "#14C9B5"
 
 
 def _moedas():
@@ -82,12 +70,16 @@ def _missoes(educacao_app) -> dict:
         return HG.resumo_missoes([])
 
 
-def _mascote() -> str:
+def _passe(educacao_app) -> dict | None:
+    """Situação do passe da temporada (o "Hunter Pass" da Home): marcos feitos, total e progresso até o próximo."""
     try:
-        import jornada_arte as ART
-        return ART.mascote(humor="inicio", tamanho=78)
+        from datetime import datetime, timedelta, timezone
+        import jornada as JO
+        import passe as PA
+        hoje = (datetime.now(timezone.utc) - timedelta(hours=3)).date()          # horário de Brasília
+        return PA.estado(JO._jor(educacao_app.prog())["xp_dia"], hoje)
     except Exception:
-        return ""
+        return None
 
 
 def _moeda_html() -> str:
@@ -107,11 +99,11 @@ def _cartao_botao(chave: str, html_cartao: str, rotulo: str, ir, destino: str, e
 
 
 def renderizar(ir, mercado_fn, educacao_app) -> None:
-    """Desenha a Home: jogador, marca, pregão, missões e os três acessos.
+    """Desenha a Home: HUD (nível, Ticker Coins, ranking), banner com o Hunter Pass, Pregão Orbit, missões e os três acessos.
     `ir(destino, estado=None)`: navega (a _ir_home do app). `mercado_fn()`: cotações já em cache (a mesma do bloco 'Mercado hoje').
-    `educacao_app`: o módulo que guarda o progresso de estudo (XP e missões)."""
-    st.markdown(G.css_base() + HG.css() + "".join(G.css_cartao_botao(k) for k in ("hg_miss", "hg_ac_carteira", "hg_ac_jogar", "hg_ac_mercado")),
-                unsafe_allow_html=True)
+    `educacao_app`: o módulo que guarda o progresso de estudo (XP, passe e missões)."""
+    botoes = ("hg_hud_nivel", "hg_hud_tc", "hg_hud_rk", "hg_ban", "hg_miss", "hg_ac_carteira", "hg_ac_jogar", "hg_ac_mercado")
+    st.markdown(G.css_base() + HG.css() + "".join(G.css_cartao_botao(k) for k in botoes), unsafe_allow_html=True)
     nivel = None
     xp = _xp(educacao_app)
     if xp is not None:
@@ -120,17 +112,19 @@ def renderizar(ir, mercado_fn, educacao_app) -> None:
             nivel = NV.estado(xp)
         except Exception:
             nivel = None
-    avatar, r1, r2 = _avatar()
     pos, total = _posicao()
     try:
         itens = mercado_fn() or []
     except Exception:
         itens = []
     with st.container(key="hg_tela"):
-        st.markdown(HG.html_jogador(_nome(), avatar, r1, r2, nivel, _moedas(), pos, total, _moeda_html()), unsafe_allow_html=True)
-        st.markdown(HG.html_marca(_mascote()), unsafe_allow_html=True)
-        st.markdown(HG.html_pregao(itens), unsafe_allow_html=True)
+        with st.container(key="hg_hud"):
+            _cartao_botao("hg_hud_nivel", HG.html_hud_nivel(nivel), "Meu nível e perfil", ir, "perfil")
+            _cartao_botao("hg_hud_tc", HG.html_hud_moedas(_moedas(), _moeda_html()), "Ticker Coins e loja", ir, "economia")
+            _cartao_botao("hg_hud_rk", HG.html_hud_rank(pos, total), "Ranking", ir, "jogos-ranking")
+        _cartao_botao("hg_ban", HG.html_banner(_nome(), _passe(educacao_app)), "Abrir o Hunter Pass", ir, "jornada", {"jor_vista": "passe"})
+        st.markdown(HG.html_orbit(itens), unsafe_allow_html=True)
         _cartao_botao("hg_miss", HG.html_missoes(_missoes(educacao_app)), "Ver todas as missões", ir, "missoes")
         with st.container(key="hg_acessos"):
-            for chave, rot, _sub, _ic, _cor, _f, destino in HG.ACESSOS:
+            for chave, rot, destino in HG.ACESSOS:
                 _cartao_botao(f"hg_ac_{chave}", HG.html_acesso(chave), rot, ir, destino)
