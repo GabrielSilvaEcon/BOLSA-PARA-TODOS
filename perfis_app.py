@@ -457,13 +457,117 @@ def _msg() -> None:
 
 
 # ------------------------------------------------------------------ TELA · Meu Perfil
+_CSS_MP = "<style>" + "".join(l.strip() for l in f"""
+{_P} .mp-hero{{position:relative;display:flex;align-items:center;gap:16px;padding:16px 14px;border-radius:24px;border:2px solid rgba(52,232,94,.45);
+  background:radial-gradient(120% 90% at 0 0,rgba(52,232,94,.18),transparent 55%),linear-gradient(160deg,#1C1570,#0B0738);box-shadow:0 0 22px rgba(52,232,94,.18)}}
+{_P} .mp-hero .t{{min-width:0;flex:1}}
+{_P} .mp-nome{{font-size:1.45rem;font-weight:900;line-height:1.1;color:#fff !important;-webkit-text-fill-color:#fff !important;overflow:hidden;text-overflow:ellipsis}}
+{_P} .mp-user{{margin-top:2px;font-size:.92rem;font-weight:700;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
+{_P} .mp-desde{{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:.78rem;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
+{_P} .mp-desde i{{font-style:normal;font-size:1.1rem}}
+{_P} .mp-nv{{position:absolute;top:12px;right:12px;padding:5px 12px;border-radius:999px;border:2px solid #FFC93C;background:rgba(40,24,0,.55);
+  font-weight:900;font-size:.82rem;color:#FFE08A !important;-webkit-text-fill-color:#FFE08A !important;box-shadow:0 0 14px rgba(255,201,60,.45)}}
+{_P} .mp-slogan{{margin-top:6px;font-size:.74rem;font-style:italic;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .mp-stats{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}}
+{_P} .mp-stats div{{text-align:center;padding:10px 4px;border-radius:18px;border:1.5px solid rgba(43,74,140,.9);background:linear-gradient(160deg,#10204A,#0A1433 78%)}}
+{_P} .mp-stats div:last-child{{border-color:rgba(139,108,255,.7);background:linear-gradient(160deg,#241A86,#120C4A)}}
+{_P} .mp-stats i{{display:block;font-style:normal;font-size:1.5rem;line-height:1.2}}
+{_P} .mp-stats b{{display:block;font-size:1rem;font-weight:900;color:#fff !important;-webkit-text-fill-color:#fff !important;white-space:nowrap}}
+{_P} .mp-stats small{{display:block;font-size:.68rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
+{_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_sobre,.st-key-mp_cfg){{height:100%;box-sizing:border-box;padding:12px;border-radius:22px;gap:6px !important;
+  background:linear-gradient(160deg,#10204A,#0A1433 78%);border:1.5px solid #2B4A8C;box-shadow:inset 0 1px 0 rgba(120,160,255,.14)}}
+{_P} .st-key-mp_des{{border-color:rgba(52,232,94,.55) !important}}
+{_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_sobre,.st-key-mp_cfg) :is([data-testid="stMarkdownContainer"],[data-testid="stMarkdown"],.stMarkdown){{margin-bottom:0 !important}}
+{_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_sobre,.st-key-mp_cfg) [data-testid="stElementContainer"]{{margin-bottom:0 !important}}
+{_P} .st-key-mp_cfg .mp-ct{{margin-bottom:6px}}{_P} .mp-med{{margin-bottom:10px !important}}{_P} .mp-des{{margin-bottom:8px}}
+{_P} .st-key-mp_duo [data-testid="stHorizontalBlock"],{_P} .st-key-mp_duo2 [data-testid="stHorizontalBlock"]{{gap:10px !important;align-items:stretch !important}}
+{_P} .mp-ct{{display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:900;font-size:1rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .mp-ct small{{font-weight:700;font-size:.76rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
+{_P} .mp-des{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:center;gap:4px;margin-top:8px}}
+{_P} .mp-des div{{text-align:center}}
+{_P} .mp-des i{{display:block;font-style:normal;font-size:1.2rem}}
+{_P} .mp-des small{{display:block;font-size:.68rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
+{_P} .mp-des b{{display:block;font-size:1.3rem;font-weight:900;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .mp-anel{{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#34E85E var(--p),rgba(255,255,255,.12) 0)}}
+{_P} .mp-anel span{{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#0B1736;font-weight:900;font-size:1rem;color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}
+{_P} .mp-anel-r{{text-align:center;font-size:.62rem;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important;margin-top:3px}}
+{_P} .mp-med{{display:flex;gap:6px;justify-content:space-between;margin:10px 0 4px}}
+{_P} .mp-med span{{flex:1;aspect-ratio:1;max-width:58px;display:grid;place-items:center;font-size:1.45rem;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  background:linear-gradient(160deg,var(--c),#120C4A)}}
+{_P} .mp-med span.no{{--c:#3A3F5C;filter:grayscale(1);opacity:.7}}
+{_P} .mp-bio{{margin-top:8px;font-size:.88rem;line-height:1.4;white-space:pre-line;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .mp-foco{{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);font-size:.76rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
+{_P} .mp-tags{{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}}
+{_P} .mp-tags span{{padding:3px 9px;border-radius:999px;border:1px solid rgba(139,108,255,.6);background:rgba(139,108,255,.18);font-size:.72rem;font-weight:700;
+  color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .mp-jg{{display:flex;gap:8px;margin:10px 0}}
+{_P} .mp-jg div{{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:16px;border:1.5px solid var(--c);
+  background:linear-gradient(160deg,var(--f),#0A1433 80%);font-weight:800;font-size:.84rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .mp-jg em{{font-style:normal;font-weight:900;color:var(--c) !important;-webkit-text-fill-color:var(--c) !important}}
+{_P} :is(.st-key-mp_cfg_ed) button{{border:0 !important;background:linear-gradient(90deg,#8B5CF6,#6D28D9) !important;box-shadow:0 0 14px rgba(139,92,246,.55) !important}}
+{_P} :is(.st-key-mp_cfg_ed) button :is(p,span){{color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} :is(.st-key-mp_des_ver,.st-key-mp_conq_ver) button{{min-height:34px !important}}
+{_P} .mp-sec{{margin:14px 2px 8px;font-weight:900;font-size:1rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .st-key-mp_ops{{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:6px !important;margin-bottom:12px}}
+{_P} .st-key-mp_ops > div{{width:auto !important;min-width:0}}
+{_P} .mp-op{{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px 9px;border-radius:18px;text-align:center;
+  background:linear-gradient(160deg,#10204A,#0A1433 78%);border:1px solid #2B4A8C}}
+{_P} .mp-op i{{font-style:normal;font-size:1.35rem;line-height:1.1}}
+{_P} .mp-op span{{font-size:.66rem;font-weight:800;line-height:1.15;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .mp-op.sair{{border-color:rgba(255,107,135,.55)}}
+@media (max-width:430px){{{_P} .mp-hero{{flex-direction:column;text-align:center;padding-top:44px}}{_P} .mp-desde{{justify-content:center}}
+  {_P} .mp-stats b{{font-size:.9rem}}}}
+""".splitlines()) + "</style>"
+
+
+def _extras_meus() -> dict:
+    """Sequência, Ticker Coins, patrimônio (T$) e interesses do cadastro: só leitura, das fontes que o app já usa."""
+    out = {"ofensiva": 0, "tc": None, "pat": None, "foco": []}
+    try:
+        import educacao_app as EA
+        import jornada as JO
+        out["ofensiva"] = int(JO.resumo(EA.prog()).get("ofensiva") or 0)
+    except Exception:
+        pass
+    try:
+        import tickercoins_app as TCA
+        out["tc"] = TCA.saldo_atual()
+    except Exception:
+        pass
+    try:
+        import wallet_game as WG
+        import wallet_game_app as WGA
+        out["pat"] = WG.moeda_curta(WGA.resultado(_ator())["rank"]["patrimonio"])
+    except Exception:
+        pass
+    try:
+        import onboarding as O
+        o = O.normalizar(st.session_state.get("onb"))
+        nomes = {i["id"]: i["titulo"] for i in O.INTERESSES}
+        out["foco"] = [nomes[i] for i in (o.get("interesses") or []) if i in nomes][:4]
+    except Exception:
+        pass
+    return out
+
+
+def _sair() -> None:
+    usuarios.sair()
+
+
+_OPCOES = (   # (chave, rótulo, ícone, destino) — o que antes ficava na janela "Minha Conta" do avatar
+    ("conta", "Minha conta", "🏠", "conta"), ("loja", "Loja Ticker", "🛍️", "economia"), ("planos", "Planos", "💎", "planos"),
+    ("ajuda", "Ajuda", "❔", "ajuda"), ("admin", "Administração", "🛡️", "administracao"),
+)
+
+
 def pagina_meu_perfil() -> None:
-    st.markdown(CSS, unsafe_allow_html=True)
+    st.markdown(CSS + _CSS_MP, unsafe_allow_html=True)
     if not _ator():
         return
     _msg()
     try:
         d = _dados_meus()
+        x = _extras_meus()
     except Exception as e:
         banco.registrar_erro("perfis_app.meu_perfil", e)
         st.markdown("<div class='pj-vazio'>Seu perfil não carregou agora. Tente de novo em instantes.</div>", unsafe_allow_html=True)
@@ -471,40 +575,87 @@ def pagina_meu_perfil() -> None:
     desde = d.get("desde") or ""
     desde = f"No TickerHunters desde {desde[8:10]}/{desde[5:7]}/{desde[:4]}" if len(desde) >= 10 else ""
     st.markdown(
-        f"<div class='pj-hero'><span class='pj-nv'>Nível {d['nivel']}</span>{_avatar_html(d['avatar'], minha_foto_uri(), _moldura())}{_rar_chip(d['avatar'])}"
-        f"<div class='pj-nome'>{_e(d.get('nome') or d.get('usuario') or 'Jogador')}</div>"
-        f"<div class='pj-user'>{'@' + _e(d['usuario']) if d.get('usuario') else 'Escolha seu nome de usuário em Editar Perfil'} · {_e(d['titulo'])}</div>"
-        + (f"<div class='pj-bio'>{_e(d['bio'])}</div>" if d.get("bio") else "")
-        + f"<div class='pj-desde'>{_e(desde)}</div></div>", unsafe_allow_html=True)
+        f"<div class='mp-hero'><span class='mp-nv'>⭐ Nível {d['nivel']}</span>{_avatar_html(d['avatar'], minha_foto_uri(), _moldura(), 118)}"
+        f"<div class='t'><div class='mp-nome'>{_e(d.get('nome') or d.get('usuario') or 'Jogador')}</div>"
+        f"<div class='mp-user'>{'@' + _e(d['usuario']) if d.get('usuario') else 'Escolha seu nome de usuário em Editar perfil'}</div>"
+        f"{_rar_chip(d['avatar'])}"
+        + (f"<div class='mp-desde'><i>🏆</i>{_e(desde)}</div>" if desde else "")
+        + f"<div class='mp-slogan'>{_e(d['titulo'])} · Aprender. Jogar. Evoluir.</div></div></div>", unsafe_allow_html=True)
     ne = d["nivel_est"]
     falta = "Nível máximo!" if ne["maximo"] else f"faltam {ne['falta']} XP para o nível {ne['nivel'] + 1}"
     st.markdown(f"<div class='pj-xp'><div class='l'>⭐ {d['xp']} XP<span>{_e(falta)}</span></div><div class='pj-bar'><i style='width:{ne['pct'] * 100:.0f}%'></i></div></div>",
                 unsafe_allow_html=True)
-    c1, c2 = st.columns([1.4, 1])
-    c1.button("Editar perfil", key="pj_editar", icon=":material/edit:", width="stretch", on_click=_ir, args=("perfil-editar",), kwargs={"pe_novo": True, "pe_foco": None})
-    c2.button("Privacidade", key="pj_priv", icon=":material/lock:", width="stretch", on_click=_ir, args=("perfil-editar",), kwargs={"pe_novo": True, "pe_foco": "privacidade"})
+    tc = f"{x['tc']:,}".replace(",", ".") if x["tc"] is not None else "—"
+    st.markdown("<div class='mp-stats'>"
+                f"<div><i>🔥</i><b>{x['ofensiva']} {'dia' if x['ofensiva'] == 1 else 'dias'}</b><small>Sequência</small></div>"
+                f"<div><i>⚡</i><b>{d['xp']} XP</b><small>Total</small></div>"
+                f"<div><i>🪙</i><b>{tc}</b><small>Ticker Coins</small></div>"
+                f"<div><i>💰</i><b>{_e(x['pat'] or '—')}</b><small>Patrimônio</small></div></div>", unsafe_allow_html=True)
+    # ---- Desempenho + Conquistas
     es = d["est"]
-    taxa = f"{es['taxa']:.0f}%".replace(".", ",") if es["taxa"] is not None else "—"
-    st.markdown("<div class='pj-sec'>📊 Desempenho<small>só partidas terminadas</small></div><div class='pj-g'>"
-                f"<div><small>Partidas</small><b>{es['partidas']}</b></div><div class='ok'><small>Vitórias</small><b>{es['vitorias']}</b></div>"
-                f"<div class='no'><small>Derrotas</small><b>{es['derrotas']}</b></div><div class='ou'><small>Taxa de vitórias</small><b>{taxa}</b></div></div>",
-                unsafe_allow_html=True)
-    t, k = d["jogos"]["trade"], d["jogos"]["ticker"]
-    pos = lambda x: f"#{x}" if x else "—"
-    st.markdown("<div class='pj-sec'>🎮 Jogos e rankings</div><div class='pj-jg'>"
-                f"<div style='--c:{VERDE};--f:rgba(20,110,80,.6)'><div class='t'>Trade Battle<em>{pos(t['posicao'])}</em></div>"
-                f"<p>Pontos<b>{_fmt_pts(t['pontos'])}</b></p><p>Partidas<b>{t['partidas']}</b></p><p>1º lugar em sala<b>{t['vitorias']}</b></p>"
-                f"<p>Melhor partida<b>{_fmt_pts(d['placar']['trade']['melhor']) if d['placar']['trade']['melhor'] is not None else '—'}</b></p></div>"
-                f"<div style='--c:{ROXO};--f:rgba(110,70,230,.55)'><div class='t'>Ticker Battle<em>{pos(k['posicao'])}</em></div>"
-                f"<p>Vitórias<b>{k['vitorias']}</b></p><p>Empates<b>{k['empates']}</b></p><p>Derrotas<b>{k['derrotas']}</b></p>"
-                f"<p>Duelos<b>{k['vitorias'] + k['empates'] + k['derrotas']}</b></p></div></div>", unsafe_allow_html=True)
+    taxa = es["taxa"] if es["taxa"] is not None else 0
     md = sorted(d["medalhas"], key=lambda m: not m.get("ok"))
     ok = sum(1 for m in md if m.get("ok"))
-    if md:
-        st.markdown(f"<div class='pj-sec'>🏅 Conquistas e medalhas<small>{ok} de {len(md)}</small></div><div class='pj-md'>"
-                    + "".join(f"<div class='{'ok' if m.get('ok') else ''}' title='{_e(m.get('descricao', ''))}'><i>{_e(m.get('emblema', '🏅'))}</i><span>{_e(m.get('nome', ''))}</span></div>"
-                              for m in md[:12]) + "</div>", unsafe_allow_html=True)
-    st.button("Configurações da conta", key="pj_conta", icon=":material/settings:", width="stretch", on_click=_ir, args=("conta",))
+    cores = ("#F2B84B", "#34E85E", "#FF5A6B", "#8B6CFF")
+    with st.container(key="mp_duo"):
+        c1, c2 = st.columns(2)
+        with c1:
+            with st.container(key="mp_des"):
+                st.markdown("<div class='mp-ct'>📊 Desempenho</div><div class='mp-des'>"
+                            f"<div><i>▶️</i><small>Partidas</small><b>{es['partidas']}</b></div><div><i>🏆</i><small>Vitórias</small><b>{es['vitorias']}</b></div>"
+                            f"<div><i>💀</i><small>Derrotas</small><b>{es['derrotas']}</b></div>"
+                            f"<div><div class='mp-anel' style='--p:{taxa:.0f}%'><span>{(str(round(taxa)) + '%') if es['taxa'] is not None else '—'}</span></div>"
+                            "<div class='mp-anel-r'>Taxa de vitórias</div></div></div>", unsafe_allow_html=True)
+                st.button("Ver detalhes →", key="mp_des_ver", width="stretch", on_click=_ir, args=("jogos-ranking",))
+        with c2:
+            with st.container(key="mp_conq"):
+                med = [m for m in md if m.get("ok")][:3]
+                fig = "".join(f"<span style='--c:{cores[i % 4]}'>{_e(m.get('emblema', '🏅'))}</span>" for i, m in enumerate(med))
+                fig += "<span class='no'>🔒</span>" * max(1, 4 - len(med)) if ok < len(md) else ""
+                st.markdown(f"<div class='mp-ct'>🏅 Conquistas<small>{ok} de {len(md)}</small></div><div class='mp-med'>{fig}</div>", unsafe_allow_html=True)
+                st.button("Ver menos ↑" if st.session_state.get("mp_conq_todas") else "Ver todas →", key="mp_conq_ver", width="stretch",
+                          on_click=lambda: st.session_state.update(mp_conq_todas=not st.session_state.get("mp_conq_todas")))
+    if st.session_state.get("mp_conq_todas") and md:
+        st.markdown("<div class='pj-md'>" + "".join(
+            f"<div class='{'ok' if m.get('ok') else ''}' title='{_e(m.get('descricao', ''))}'><i>{_e(m.get('emblema', '🏅'))}</i><span>{_e(m.get('nome', ''))}</span></div>"
+            for m in md) + "</div>", unsafe_allow_html=True)
+    # ---- Sobre mim + Configurações rápidas
+    with st.container(key="mp_duo2"):
+        c1, c2 = st.columns(2)
+        with c1:
+            with st.container(key="mp_sobre"):
+                foco = "".join(f"<span>{_e(t)}</span>" for t in x["foco"])
+                st.markdown("<div class='mp-ct'>👤 Sobre mim</div>"
+                            + f"<div class='mp-bio'>{_e(d['bio']) if d.get('bio') else 'Conte um pouco sobre você em Editar perfil.'}</div>"
+                            + (f"<div class='mp-foco'>Meu foco:<div class='mp-tags'>{foco}</div></div>" if foco else ""), unsafe_allow_html=True)
+        with c2:
+            with st.container(key="mp_cfg"):
+                st.markdown("<div class='mp-ct'>⚙️ Configurações rápidas</div>", unsafe_allow_html=True)
+                with st.container(key="mp_cfg_ed"):
+                    st.button("Editar perfil", key="pj_editar", icon=":material/edit:", width="stretch", on_click=_ir, args=("perfil-editar",),
+                              kwargs={"pe_novo": True, "pe_foco": None})
+                st.button("Privacidade", key="pj_priv", icon=":material/lock:", width="stretch", on_click=_ir, args=("perfil-editar",),
+                          kwargs={"pe_novo": True, "pe_foco": "privacidade"})
+                st.button("Tema do app", key="pj_tema", icon=":material/palette:", width="stretch", on_click=_ir, args=("perfil-editar",),
+                          kwargs={"pe_novo": True, "pe_foco": None})
+    # ---- Jogos (posição em cada ranking)
+    t, k = d["jogos"]["trade"], d["jogos"]["ticker"]
+    pos = lambda v: f"#{v}" if v else "—"
+    st.markdown("<div class='mp-jg'>"
+                f"<div style='--c:{VERDE};--f:rgba(20,110,80,.55)'>Trade Battle<em>{pos(t['posicao'])} · {_fmt_pts(t['pontos'])} pts</em></div>"
+                f"<div style='--c:{ROXO};--f:rgba(110,70,230,.5)'>Ticker Battle<em>{pos(k['posicao'])} · {k['vitorias']} vit.</em></div></div>", unsafe_allow_html=True)
+    # ---- Opções da conta (o que ficava na janela do avatar)
+    st.markdown("<div class='mp-sec'>Conta</div>", unsafe_allow_html=True)
+    with st.container(key="mp_ops"):
+        for ch, rot, ic, dest in _OPCOES:
+            if ch == "admin" and not usuarios.pode("admin.resumo"):
+                continue
+            with st.container(key=f"lk_mpo_{ch}"):
+                st.markdown(f"<div class='mp-op'><i>{ic}</i><span>{_e(rot)}</span></div>", unsafe_allow_html=True)
+                st.button(f"Abrir {rot}", key=f"mpo_b_{ch}", on_click=_ir, args=(dest,))
+        with st.container(key="lk_mpo_sair"):
+            st.markdown("<div class='mp-op sair'><i>🚪</i><span>Sair</span></div>", unsafe_allow_html=True)
+            st.button("Sair da conta", key="mpo_b_sair", on_click=_sair)
     st.caption("Pontos, vitórias, XP e conquistas vêm dos jogos e da Jornada e não podem ser editados.")
 
 

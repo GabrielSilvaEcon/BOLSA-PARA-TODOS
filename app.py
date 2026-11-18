@@ -4622,73 +4622,6 @@ def _dialogo_busca():
     pesquisa_global_ui()
 
 
-def _abrir_meu_perfil():
-    """Abre o Meu perfil (nível, emblemas, passe) dentro da Jornada."""
-    st.session_state["jor_vista"] = "perfil"
-    st.session_state["_nav_pend"] = "jornada"
-
-
-def _cabecalho_conta():
-    """Cartão do topo da janela da conta: avatar, apelido (do onboarding), nível e XP reais (os mesmos do cabeçalho do app)."""
-    import conta_menu
-    u = usuarios.usuario()
-    nome = "Jogador"
-    if u:
-        try:
-            import onboarding as _onb_m
-            nome = _onb_m.normalizar(st.session_state.get("onb"))["nick"] or usuarios.primeiro_nome() or "Jogador"
-        except Exception:
-            nome = usuarios.primeiro_nome() or "Jogador"
-    est = None
-    if u:
-        try:
-            import jornada as _jor_c
-            import nivel as _nv_c
-            est = _nv_c.estado(_jor_c.resumo(educacao_app.prog())["xp"])
-        except Exception:
-            est = None
-    if est:
-        corpo = conta_menu.cabecalho_html(nome, est["nivel"], est["xp_no_nivel"], est["xp_faixa"], est["pct"], est["maximo"], _av_menu())
-    else:
-        corpo = conta_menu.cabecalho_html(nome, avatar_html=_av_menu())
-    st.markdown(conta_menu.css() + corpo, unsafe_allow_html=True)
-
-
-def _menu_conta_itens():
-    """Opções da conta: perfil, conta, loja, modo de uso, planos, ajuda, administração e sair/entrar."""
-    def link(p, rotulo, icone=None):
-        if _visivel(p.url_path):
-            st.page_link(p, label=rotulo, icon=":material/lock:" if not acesso_liberado(p.url_path) else (icone or p.icon))
-
-    _cabecalho_conta()
-    st.button("Meu perfil", key="conta_perfil", icon=":material/person:", on_click=_abrir_meu_perfil, width="stretch")
-    link(PG_CONTA, "Minha conta", ":material/home:")
-    link(PG_ECONOMIA, "Loja Ticker", ":material/storefront:")
-    with st.container(key="cta_modo"):
-        st.page_link(PG_CONTA, label=f"Modo de uso: {EXP.ROTULOS[experiencia_app.modo()]}", icon=":material/tune:")
-    link(PG_PLANOS, "Planos e assinaturas", ":material/workspace_premium:")
-    link(PG_AJUDA, "Ajuda e diagnóstico", ":material/help:")
-    if usuarios.pode("admin.resumo"):
-        link(PG_ADMIN, "Administração", ":material/admin_panel_settings:")
-    if usuarios.usuario():
-        st.button("Sair", icon=":material/logout:", on_click=usuarios.sair, key="sair_s", width="stretch")
-
-
-@st.dialog("Minha Conta")
-def _dialogo_conta():
-    _menu_conta_itens()
-
-
-def _av_menu() -> str:
-    """Avatar equipado (com a moldura da raridade) para o cartão da janela da conta."""
-    try:
-        import perfis_app as _pa
-        _m = _pa.meu_avatar()
-        return _pa.avatar_html(_m["id"], _m["foto"], 58)
-    except Exception:
-        return ""
-
-
 def _css_topo_avatar() -> str:
     """Botão da conta no cabeçalho: avatar redondo com anel neon e seta (igual à referência). O ícone padrão do Streamlit fica escondido."""
     import avatares as _avs
@@ -4717,8 +4650,8 @@ def _topo_acoes():
         if st.button("Pesquisar", key="topo_busca", icon=":material/search:", type="tertiary"):
             _dialogo_busca()
         st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css
-        if st.button("Conta", key="topo_conta", icon=":material/account_circle:", type="tertiary"):
-            _dialogo_conta()
+        st.button("Meu perfil", key="topo_conta", icon=":material/account_circle:", type="tertiary",      # avatar: abre o Meu Perfil (com as opções da conta)
+                  on_click=lambda: st.session_state.update(_nav_pend="perfil"))
 
 
 conta_app.registrar_paginas(gestao=PG_GESTAO, inteligencia=PG_INTEL, relatorios=PG_REL, noticias=PG_NOTICIAS, admin=PG_ADMIN)
