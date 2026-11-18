@@ -4962,10 +4962,11 @@ if hasattr(assistente, "flutuante"):  # Assistente de Investimentos: botão flut
     except Exception as e:
         st.caption(f"Assistente indisponível no momento ({e.__class__.__name__}).")
 
-if not (em_cripto or _url_real() in (PG_CRIPTO.url_path, PG_ONCHAIN.url_path, PG_RECEITAS.url_path, PG_FUND_CRIPTO.url_path, PG_CRIPTO_AV.url_path)):
+_SEM_RODAPE = (PG_JG_RANK.url_path,)     # telas de altura fixa (o Ranking rola só a lista): sem o rodapé, que faria a página inteira rolar
+if _url_real() not in _SEM_RODAPE and not (em_cripto or _url_real() in (PG_CRIPTO.url_path, PG_ONCHAIN.url_path, PG_RECEITAS.url_path, PG_FUND_CRIPTO.url_path, PG_CRIPTO_AV.url_path)):
     st.caption("Ferramenta educacional. Graham, Bazin, DCF e a nota do Ranking são modelos simplificados "
                "e dependem da qualidade das fontes; não constituem recomendação de investimento.")
-if _AVISOS_LEGAIS:                   # com a v2: cartão de rodapé discreto, com o aviso legal sempre visível (sem menu expansivo)
+if _AVISOS_LEGAIS and _url_real() not in _SEM_RODAPE:                   # com a v2: cartão de rodapé discreto, com o aviso legal sempre visível (sem menu expansivo)
     import html as _h
     import jornada_icones as _IC
     st.markdown("<style>html body .stApp.stApp .rp-box{margin:18px 0 6px;padding:12px 14px;border-radius:16px;background:linear-gradient(135deg,#2A2060,#1B1442);"
