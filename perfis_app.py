@@ -450,71 +450,93 @@ def _msg() -> None:
 
 # ------------------------------------------------------------------ TELA · Meu Perfil
 _CSS_MP = "<style>" + "".join(l.strip() for l in f"""
-{_P} .mp-hero{{position:relative;display:flex;align-items:center;gap:16px;padding:16px 14px;border-radius:24px;border:2px solid rgba(52,232,94,.45);
-  background:radial-gradient(120% 90% at 0 0,rgba(52,232,94,.18),transparent 55%),linear-gradient(160deg,#1C1570,#0B0738);box-shadow:0 0 22px rgba(52,232,94,.18)}}
-{_P} .mp-hero .t{{min-width:0;flex:1}}
-{_P} .mp-nome{{font-size:1.45rem;font-weight:900;line-height:1.1;color:#fff !important;-webkit-text-fill-color:#fff !important;overflow:hidden;text-overflow:ellipsis}}
-{_P} .mp-user{{margin-top:2px;font-size:.92rem;font-weight:700;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
-{_P} .mp-desde{{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:.78rem;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
-{_P} .mp-desde i{{font-style:normal;font-size:1.1rem}}
-{_P} .mp-nv{{position:absolute;top:12px;right:12px;padding:5px 12px;border-radius:999px;border:2px solid #FFC93C;background:rgba(40,24,0,.55);
-  font-weight:900;font-size:.82rem;color:#FFE08A !important;-webkit-text-fill-color:#FFE08A !important;box-shadow:0 0 14px rgba(255,201,60,.45)}}
-{_P} .mp-slogan{{margin-top:6px;font-size:.74rem;font-style:italic;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
-{_P} .mp-stats{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}}
-{_P} .mp-stats div{{text-align:center;padding:10px 4px;border-radius:18px;border:1.5px solid rgba(43,74,140,.9);background:linear-gradient(160deg,#10204A,#0A1433 78%)}}
+{_P} .st-key-mp_tela{{max-width:500px !important;margin:0 auto !important;gap:8px !important}}
+{_P} .st-key-mp_tela [data-testid="stElementContainer"]{{margin-bottom:0 !important}}
+{_P} .st-key-mp_tela [data-testid="stMarkdownContainer"]{{margin-bottom:0 !important}}
+{_P} .mp-hero{{position:relative;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:18px;border:1.5px solid rgba(52,232,94,.5);
+  background:radial-gradient(120% 90% at 0 0,rgba(52,232,94,.16),transparent 55%),linear-gradient(160deg,#1C1570,#0B0738);box-shadow:0 0 16px rgba(52,232,94,.16)}}
+{_P} .mp-hero>:first-child:not(.mp-nv),{_P} .mp-hero .mp-nv+*{{flex:0 0 auto}}
+{_P} .mp-hero .t{{min-width:0;flex:1;padding-right:64px}}
+{_P} .mp-nome{{font-size:1.12rem;font-weight:900;line-height:1.1;color:#fff !important;-webkit-text-fill-color:#fff !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+{_P} .mp-user{{font-size:.74rem;font-weight:700;line-height:1.2;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+{_P} .mp-hero .pj-rar{{margin-top:3px;justify-content:flex-start;font-size:.68rem;flex-wrap:wrap}}
+{_P} .mp-desde{{display:flex;align-items:center;gap:4px;margin-top:3px;font-size:.66rem;line-height:1.2;color:#D9D4F7 !important;-webkit-text-fill-color:#D9D4F7 !important}}
+{_P} .mp-desde i{{font-style:normal;font-size:.85rem}}
+{_P} .mp-nv{{position:absolute;top:8px;right:8px;padding:2px 9px;border-radius:999px;border:1.5px solid #FFC93C;background:rgba(40,24,0,.55);
+  font-weight:900;font-size:.72rem;line-height:1.4;color:#FFE08A !important;-webkit-text-fill-color:#FFE08A !important;box-shadow:0 0 10px rgba(255,201,60,.45)}}
+{_P} .mp-slogan{{margin-top:2px;font-size:.64rem;line-height:1.2;font-style:italic;color:#BDB5E6 !important;-webkit-text-fill-color:#BDB5E6 !important}}
+{_P} .mp-xpc{{margin:0 !important;padding:5px 10px 6px !important;border-radius:14px !important;border-width:1.5px !important}}
+{_P} .mp-xpc .l{{font-size:.72rem !important;line-height:1.2}}
+{_P} .mp-xpc .pj-bar{{height:7px;margin-top:4px}}
+{_P} .mp-stats{{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0}}
+{_P} .mp-stats div{{text-align:center;padding:5px 2px 4px;border-radius:12px;border:1.5px solid rgba(43,74,140,.9);background:linear-gradient(160deg,#10204A,#0A1433 78%)}}
 {_P} .mp-stats div:last-child{{border-color:rgba(139,108,255,.7);background:linear-gradient(160deg,#241A86,#120C4A)}}
-{_P} .mp-stats i{{display:block;font-style:normal;font-size:1.5rem;line-height:1.2}}
-{_P} .mp-stats b{{display:block;font-size:1rem;font-weight:900;color:#fff !important;-webkit-text-fill-color:#fff !important;white-space:nowrap}}
-{_P} .mp-stats small{{display:block;font-size:.68rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
-{_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_sobre,.st-key-mp_cfg){{height:100%;box-sizing:border-box;padding:12px;border-radius:22px;gap:6px !important;
+{_P} .mp-stats i{{display:block;font-style:normal;font-size:1.05rem;line-height:1.15}}
+{_P} .mp-stats b{{display:block;font-size:.82rem;line-height:1.2;font-weight:900;color:#fff !important;-webkit-text-fill-color:#fff !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+{_P} .mp-stats small{{display:block;font-size:.58rem;line-height:1.2;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+{_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_sobre,.st-key-mp_cfg){{height:100%;box-sizing:border-box;padding:7px 8px;border-radius:14px;gap:5px !important;
   background:linear-gradient(160deg,#10204A,#0A1433 78%);border:1.5px solid #2B4A8C;box-shadow:inset 0 1px 0 rgba(120,160,255,.14)}}
 {_P} .st-key-mp_des{{border-color:rgba(52,232,94,.55) !important}}
 {_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_sobre,.st-key-mp_cfg) :is([data-testid="stMarkdownContainer"],[data-testid="stMarkdown"],.stMarkdown){{margin-bottom:0 !important}}
 {_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_sobre,.st-key-mp_cfg) [data-testid="stElementContainer"]{{margin-bottom:0 !important}}
-{_P} .st-key-mp_cfg .mp-ct{{margin-bottom:6px}}{_P} .mp-med{{margin-bottom:10px !important}}{_P} .mp-des{{margin-bottom:8px}}
-{_P} .st-key-mp_duo [data-testid="stHorizontalBlock"],{_P} .st-key-mp_duo2 [data-testid="stHorizontalBlock"]{{gap:10px !important;align-items:stretch !important}}
-{_P} .mp-ct{{display:flex;align-items:center;justify-content:space-between;gap:6px;font-weight:900;font-size:1rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
-{_P} .mp-ct small{{font-weight:700;font-size:.76rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
-{_P} .mp-des{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:center;gap:4px;margin-top:8px}}
-{_P} .mp-des div{{text-align:center}}
-{_P} .mp-des i{{display:block;font-style:normal;font-size:1.2rem}}
-{_P} .mp-des small{{display:block;font-size:.68rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
-{_P} .mp-des b{{display:block;font-size:1.3rem;font-weight:900;color:#fff !important;-webkit-text-fill-color:#fff !important}}
-{_P} .mp-anel{{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#34E85E var(--p),rgba(255,255,255,.12) 0)}}
-{_P} .mp-anel span{{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#0B1736;font-weight:900;font-size:1rem;color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}
-{_P} .mp-anel-r{{text-align:center;font-size:.62rem;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important;margin-top:3px}}
-{_P} .mp-med{{display:flex;gap:6px;justify-content:space-between;margin:10px 0 4px}}
-{_P} .mp-med span{{flex:1;aspect-ratio:1;max-width:58px;display:grid;place-items:center;font-size:1.45rem;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+/* as duas colunas continuam lado a lado no celular (o Streamlit empilha abaixo de 640 px) */
+{_P} :is(.st-key-mp_duo,.st-key-mp_duo2) [data-testid="stHorizontalBlock"]{{display:flex !important;flex-direction:row !important;flex-wrap:nowrap !important;gap:6px !important;align-items:stretch !important}}
+{_P} :is(.st-key-mp_duo,.st-key-mp_duo2) [data-testid="stColumn"]{{flex:1 1 0 !important;width:auto !important;min-width:0 !important}}
+{_P} .mp-ct{{display:flex;align-items:center;justify-content:space-between;gap:4px;font-weight:900;font-size:.84rem;line-height:1.2;color:#fff !important;-webkit-text-fill-color:#fff !important;white-space:nowrap}}
+{_P} .mp-ct small{{font-weight:700;font-size:.64rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
+{_P} .mp-des{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:center;gap:2px}}
+{_P} .mp-des div{{text-align:center;min-width:0}}
+{_P} .mp-des i{{display:block;font-style:normal;font-size:.9rem;line-height:1.2}}
+{_P} .mp-des small{{display:block;font-size:.54rem;line-height:1.2;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important;overflow:hidden;text-overflow:ellipsis}}
+{_P} .mp-des b{{display:block;font-size:.98rem;line-height:1.15;font-weight:900;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .mp-anel{{width:46px;height:46px;margin:0 auto;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#34E85E var(--p),rgba(255,255,255,.12) 0)}}
+{_P} .mp-anel span{{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#0B1736;font-weight:900;font-size:.72rem;color:#6BFF8A !important;-webkit-text-fill-color:#6BFF8A !important}}
+{_P} .mp-anel-r{{text-align:center;font-size:.5rem;line-height:1.1;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important;margin-top:2px}}
+{_P} .mp-med{{display:flex;gap:4px;justify-content:space-between;margin:2px 0}}
+{_P} .mp-med span{{flex:1;aspect-ratio:1;max-width:40px;display:grid;place-items:center;font-size:1rem;clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
   background:linear-gradient(160deg,var(--c),#120C4A)}}
 {_P} .mp-med span.no{{--c:#3A3F5C;filter:grayscale(1);opacity:.7}}
-{_P} .mp-bio{{margin-top:8px;font-size:.88rem;line-height:1.4;white-space:pre-line;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
-{_P} .mp-foco{{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1);font-size:.76rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
-{_P} .mp-tags{{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}}
-{_P} .mp-tags span{{padding:3px 9px;border-radius:999px;border:1px solid rgba(139,108,255,.6);background:rgba(139,108,255,.18);font-size:.72rem;font-weight:700;
+{_P} .mp-bio{{font-size:.7rem;line-height:1.3;white-space:pre-line;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .mp-foco{{margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.1);font-size:.64rem;color:#C9C2F2 !important;-webkit-text-fill-color:#C9C2F2 !important}}
+{_P} .mp-tags{{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}}
+{_P} .mp-tags span{{padding:1px 8px;border-radius:999px;border:1px solid rgba(139,108,255,.6);background:rgba(139,108,255,.18);font-size:.64rem;font-weight:700;
   color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
-{_P} .mp-jg{{display:flex;gap:8px;margin:10px 0}}
-{_P} .mp-jg div{{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:16px;border:1.5px solid var(--c);
-  background:linear-gradient(160deg,var(--f),#0A1433 80%);font-weight:800;font-size:.84rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
-{_P} .mp-jg em{{font-style:normal;font-weight:900;color:var(--c) !important;-webkit-text-fill-color:var(--c) !important}}
-{_P} :is(.st-key-mp_cfg_ed) button{{border:0 !important;background:linear-gradient(90deg,#8B5CF6,#6D28D9) !important;box-shadow:0 0 14px rgba(139,92,246,.55) !important}}
+{_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_cfg) button{{min-height:28px !important;height:28px !important;padding:0 6px !important;border-radius:10px !important}}
+{_P} :is(.st-key-mp_des,.st-key-mp_conq,.st-key-mp_cfg) button :is(p,span){{font-size:.7rem !important;line-height:1 !important}}
+{_P} .st-key-mp_cfg [data-testid="stIconMaterial"]{{font-size:.95rem !important}}
+{_P} .st-key-mp_cfg{{gap:4px !important}}
+{_P} :is(.st-key-mp_cfg_ed) button{{border:0 !important;background:linear-gradient(90deg,#8B5CF6,#6D28D9) !important;box-shadow:0 0 12px rgba(139,92,246,.55) !important}}
 {_P} :is(.st-key-mp_cfg_ed) button :is(p,span){{color:#fff !important;-webkit-text-fill-color:#fff !important}}
-{_P} :is(.st-key-mp_des_ver,.st-key-mp_conq_ver) button{{min-height:34px !important}}
-{_P} .mp-sec{{margin:14px 2px 8px;font-weight:900;font-size:1rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
-{_P} .st-key-mp_ops{{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:6px !important;margin-bottom:12px}}
+{_P} .mp-jg{{display:flex;gap:6px;margin:0}}
+{_P} .mp-jg div{{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:4px;padding:5px 9px;border-radius:12px;border:1.5px solid var(--c);
+  background:linear-gradient(160deg,var(--f),#0A1433 80%);font-weight:800;font-size:.72rem;line-height:1.2;white-space:nowrap;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .mp-jg em{{font-style:normal;font-weight:900;overflow:hidden;text-overflow:ellipsis;color:var(--c) !important;-webkit-text-fill-color:var(--c) !important}}
+{_P} .mp-sec{{margin:2px 2px 0;font-weight:900;font-size:.86rem;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} .st-key-mp_ops{{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:5px !important}}
 {_P} .st-key-mp_ops > div{{width:auto !important;min-width:0}}
-{_P} .mp-op{{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 4px 9px;border-radius:18px;text-align:center;
+{_P} .mp-op{{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px 4px;border-radius:12px;text-align:center;
   background:linear-gradient(160deg,#10204A,#0A1433 78%);border:1px solid #2B4A8C}}
-{_P} .mp-op i{{font-style:normal;font-size:1.35rem;line-height:1.1}}
-{_P} .mp-op span{{font-size:.66rem;font-weight:800;line-height:1.15;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important}}
+{_P} .mp-op i{{font-style:normal;font-size:1.05rem;line-height:1.1}}
+{_P} .mp-op span{{font-size:.54rem;font-weight:800;line-height:1.1;color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}}
 {_P} .mp-op.sair{{border-color:rgba(255,107,135,.55)}}
-@media (max-width:430px){{{_P} .mp-hero{{flex-direction:column;text-align:center;padding-top:44px}}{_P} .mp-desde{{justify-content:center}}
-  {_P} .mp-stats b{{font-size:.9rem}}}}
+{_P} .st-key-mp_sair_conf{{padding:8px;border-radius:14px;border:1.5px solid rgba(255,107,135,.6);background:#1A0F2E;gap:6px !important}}
+{_P} .mp-sair-t{{font-size:.8rem;font-weight:800;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+@media (max-width:370px){{{_P} .mp-des{{grid-template-columns:repeat(3,minmax(0,1fr))}}{_P} .mp-des>div:last-child{{grid-column:1 / -1;display:flex;align-items:center;justify-content:center;gap:6px}}
+  {_P} .mp-anel{{margin:0}}{_P} .mp-anel-r{{margin:0;text-align:left}}
+  {_P} .mp-ct{{font-size:.74rem;white-space:normal}}
+  {_P} .mp-stats b{{font-size:.72rem}}{_P} .mp-jg div{{font-size:.64rem;padding:5px 7px}}}}
 """.splitlines()) + "</style>"
 
 
 def _extras_meus() -> dict:
     """Sequência, Ticker Coins, patrimônio (T$) e interesses do cadastro: só leitura, das fontes que o app já usa."""
-    out = {"ofensiva": 0, "tc": None, "pat": None, "foco": []}
+    out = {"ofensiva": 0, "tc": None, "pat": None, "foco": [], "rank": "—"}
+    try:                       # a mesma posição no ranking geral que a Home mostra
+        import home_game_app as HGA
+        pos = HGA._posicao()[0]
+        out["rank"] = f"#{int(pos)}" if pos else "—"
+    except Exception:
+        pass
     try:
         import educacao_app as EA
         import jornada as JO
@@ -546,6 +568,11 @@ def _sair() -> None:
     usuarios.sair()
 
 
+def _sair_confirmado() -> None:
+    st.session_state.pop("mp_sair_conf", None)
+    _sair()
+
+
 _OPCOES = (   # (chave, rótulo, ícone, destino) — o que antes ficava na janela "Minha Conta" do avatar
     ("conta", "Minha conta", "🏠", "conta"), ("loja", "Loja Ticker", "🛍️", "economia"), ("planos", "Planos", "💎", "planos"),
     ("ajuda", "Ajuda", "❔", "ajuda"), ("admin", "Administração", "🛡️", "administracao"),
@@ -557,6 +584,11 @@ def pagina_meu_perfil() -> None:
     if not _ator():
         return
     _msg()
+    with st.container(key="mp_tela"):
+        _meu_perfil_corpo()
+
+
+def _meu_perfil_corpo() -> None:
     try:
         d = _dados_meus()
         x = _extras_meus()
@@ -567,7 +599,7 @@ def pagina_meu_perfil() -> None:
     desde = d.get("desde") or ""
     desde = f"No TickerHunters desde {desde[8:10]}/{desde[5:7]}/{desde[:4]}" if len(desde) >= 10 else ""
     st.markdown(
-        f"<div class='mp-hero'><span class='mp-nv'>⭐ Nível {d['nivel']}</span>{_avatar_html(d['avatar'], minha_foto_uri(), _moldura(), 118)}"
+        f"<div class='mp-hero'><span class='mp-nv'>⭐ Nível {d['nivel']}</span>{_avatar_html(d['avatar'], minha_foto_uri(), _moldura(), 74)}"
         f"<div class='t'><div class='mp-nome'>{_e(d.get('nome') or d.get('usuario') or 'Jogador')}</div>"
         f"<div class='mp-user'>{'@' + _e(d['usuario']) if d.get('usuario') else 'Escolha seu nome de usuário em Editar perfil'}</div>"
         f"{_rar_chip(d['avatar'])}"
@@ -575,12 +607,12 @@ def pagina_meu_perfil() -> None:
         + f"<div class='mp-slogan'>{_e(d['titulo'])} · Aprender. Jogar. Evoluir.</div></div></div>", unsafe_allow_html=True)
     ne = d["nivel_est"]
     falta = "Nível máximo!" if ne["maximo"] else f"faltam {ne['falta']} XP para o nível {ne['nivel'] + 1}"
-    st.markdown(f"<div class='pj-xp'><div class='l'>⭐ {d['xp']} XP<span>{_e(falta)}</span></div><div class='pj-bar'><i style='width:{ne['pct'] * 100:.0f}%'></i></div></div>",
+    st.markdown(f"<div class='pj-xp mp-xpc'><div class='l'>⭐ {d['xp']} XP<span>{_e(falta)}</span></div><div class='pj-bar'><i style='width:{ne['pct'] * 100:.0f}%'></i></div></div>",
                 unsafe_allow_html=True)
     tc = f"{x['tc']:,}".replace(",", ".") if x["tc"] is not None else "—"
     st.markdown("<div class='mp-stats'>"
                 f"<div><i>🔥</i><b>{x['ofensiva']} {'dia' if x['ofensiva'] == 1 else 'dias'}</b><small>Sequência</small></div>"
-                f"<div><i>⚡</i><b>{d['xp']} XP</b><small>Total</small></div>"
+                f"<div><i>🏆</i><b>{_e(x['rank'])}</b><small>Ranking</small></div>"
                 f"<div><i>🪙</i><b>{tc}</b><small>Ticker Coins</small></div>"
                 f"<div><i>💰</i><b>{_e(x['pat'] or '—')}</b><small>Patrimônio</small></div></div>", unsafe_allow_html=True)
     # ---- Desempenho + Conquistas
@@ -647,7 +679,13 @@ def pagina_meu_perfil() -> None:
                 st.button(f"Abrir {rot}", key=f"mpo_b_{ch}", on_click=_ir, args=(dest,))
         with st.container(key="lk_mpo_sair"):
             st.markdown("<div class='mp-op sair'><i>🚪</i><span>Sair</span></div>", unsafe_allow_html=True)
-            st.button("Sair da conta", key="mpo_b_sair", on_click=_sair)
+            st.button("Sair da conta", key="mpo_b_sair", on_click=lambda: st.session_state.update(mp_sair_conf=True))
+    if st.session_state.get("mp_sair_conf"):          # sair pede confirmação: um toque sem querer não desloga
+        with st.container(key="mp_sair_conf"):
+            st.markdown("<div class='mp-sair-t'>Sair da sua conta neste aparelho?</div>", unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            c1.button("Cancelar", key="mp_sair_nao", width="stretch", on_click=lambda: st.session_state.pop("mp_sair_conf", None))
+            c2.button("Sim, sair", key="mp_sair_sim", type="primary", width="stretch", on_click=_sair_confirmado)
     st.caption("Pontos, vitórias, XP e conquistas vêm dos jogos e da Jornada e não podem ser editados.")
 
 

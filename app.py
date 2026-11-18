@@ -4640,7 +4640,7 @@ def _topo_acoes():
         if st.button("Pesquisar", key="topo_busca", icon=":material/search:", type="tertiary"):
             _dialogo_busca()
         st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css_topo
-        if pg.url_path != PG_INICIO.url_path:     # na Home o avatar fica no cartão de nível (que também abre o perfil)
+        if pg.url_path not in (PG_INICIO.url_path, PG_PERFIL.url_path):     # Home: avatar no cartão de nível; Perfil: já é a tela do avatar
             st.button("Meu perfil", key="topo_conta", icon=":material/account_circle:", type="tertiary",      # avatar: abre o Meu Perfil (com as opções da conta)
                       on_click=lambda: st.session_state.update(_nav_pend="perfil"))
 
