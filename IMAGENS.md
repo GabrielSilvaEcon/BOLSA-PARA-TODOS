@@ -24,6 +24,23 @@ Todas as artes que o app precisa, tela por tela. Ao chegar uma arte nova, basta 
 
 ---
 
+## 2. Meu Perfil
+
+Hoje os ícones desta tela são emojis (provisórios). As artes abaixo deixam a tela igual ao mockup; *precisam ligar no código* quando chegarem.
+
+| # | Arte | Arquivo | Onde aparece | Tamanho ideal | Fundo | Status |
+|---|------|---------|--------------|---------------|-------|--------|
+| 2.1 | Fundo: cidade ao entardecer com o touro e gráficos | `static/fundos/perfil.webp` | Atrás de toda a tela (hoje usa `mesa.webp`) | 1080 × 2340 px (retrato) | Escuro nas áreas dos cartões | 🎨 Falta |
+| 2.2 | Fogo (sequência de dias) | `static/perfil/fogo.webp` | Cartão Sequência | 128 × 128 px | Transparente | 🎨 Falta (emoji 🔥) |
+| 2.3 | Troféu pequeno (ranking) | `static/perfil/ranking.webp` | Cartão Ranking | 128 × 128 px | Transparente | 🎨 Falta (emoji 🏆) |
+| 2.4 | Moeda Ticker Coin | `static/perfil/tc.webp` | Cartão Ticker Coins | 128 × 128 px | Transparente | 🎨 Falta (emoji 🪙) |
+| 2.5 | Saco de dinheiro (patrimônio) | `static/perfil/patrimonio.webp` | Cartão Patrimônio | 128 × 128 px | Transparente | 🎨 Falta (emoji 💰) |
+| 2.6 | Ícones do Desempenho: partidas, vitórias, derrotas | `static/perfil/partidas.webp`, `vitorias.webp`, `derrotas.webp` | Cartão Desempenho | 96 × 96 px cada | Transparente | 🎨 Falta (emojis ▶️ 🏆 💀) |
+| 2.7 | Hexágonos das conquistas (um por emblema + o bloqueado) | `static/perfil/conquistas/<emblema>.webp` | Cartão Conquistas | 160 × 180 px cada | Transparente | 🎨 Falta (emojis) |
+| 2.8 | Ícones da fileira Conta: Minha conta, Loja Ticker, Planos, Ajuda, Administração, Sair | `static/perfil/conta_<nome>.webp` | Fileira "Conta" no fim da tela | 128 × 128 px cada | Transparente | 🎨 Falta (emojis) |
+
+---
+
 ## Próximas telas
 
 _As telas seguintes entram aqui à medida que os mockups chegarem (Jogos, Aprender, Ranking, Loja, Carteira, Mercado...)._

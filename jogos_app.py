@@ -195,6 +195,17 @@ def _avatar(h: str = "", eu: bool = False, tamanho: int = 52) -> str:
         return f"<img src='{AC.uri('avatar')}' alt=''>"
 
 
+def _nome(x: dict) -> str:
+    """Nome que o ranking mostra: o nome do perfil da pessoa (o apelido do placar é o de quando ela jogou e pode estar desatualizado)."""
+    try:
+        import amigos_app as AMA
+        if x.get("eu"):
+            return AMA.nome_de_email((usuarios.usuario() or {}).get("email"), x.get("apelido", ""))
+        return AMA.nome_de_email(_emails_por_hash().get(x.get("h", "")), x.get("apelido", ""))
+    except Exception:
+        return str(x.get("apelido", ""))
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def _emails_por_hash() -> dict[str, str]:
     """{hash do placar: e-mail} (só no servidor; nunca vai para a tela)."""
@@ -268,7 +279,7 @@ def _lista_clicavel(chave: str, linhas: list[dict], jogo: str) -> None:
     with st.container(key=f"{chave}_lista"):
         for x in linhas:
             u = None if x["eu"] else nomes.get(x["h"])
-            AMA.linha_clicavel(f"{chave}_{x['pos']}", "<div class='jg-lista'>" + _linha_rank(x, jogo) + "</div>", u, f"Ver perfil de {x['apelido']}")
+            AMA.linha_clicavel(f"{chave}_{x['pos']}", "<div class='jg-lista'>" + _linha_rank(x, jogo) + "</div>", u, f"Ver perfil de {_nome(x)}")
 
 
 def placares() -> list[dict]:
@@ -393,7 +404,7 @@ def faixa_jogo(jogo: str) -> None:
     eu = rk["eu"]
     if eu:
         st.markdown(f"<div class='jg-faixa'><div class='av'>{_avatar(eu=True, tamanho=34)}</div><span class='ps'>#{eu['pos']}</span>"
-                    f"<span class='nm'>{_e(eu['apelido'])} · de {rk['total']}</span><b>{_e(_fmt_valor(jogo, eu['valor']))}</b></div>", unsafe_allow_html=True)
+                    f"<span class='nm'>{_e(_nome({**eu, 'eu': True}))} · de {rk['total']}</span><b>{_e(_fmt_valor(jogo, eu['valor']))}</b></div>", unsafe_allow_html=True)
     else:
         st.markdown(f"<div class='jg-vazio'>Termine uma partida para entrar no ranking do {_e(J.NOME[jogo])}.</div>", unsafe_allow_html=True)
     st.button("Ver ranking completo", key=f"jg_fx_{jogo}", icon=":material/emoji_events:", width="stretch", on_click=_ir, args=("jogos-ranking",),
@@ -592,7 +603,7 @@ def _podio(rk: dict, jogo: str) -> str:
         if not x:
             out.append("<div></div>")
             continue
-        out.append(f"<div class='{cls}'><div class='av'>{_avatar(x['h'], x['eu'], 64 if cls == 'p1' else 52)}</div><div class='nm'>{_e(x['apelido'])}</div>"
+        out.append(f"<div class='{cls}'><div class='av'>{_avatar(x['h'], x['eu'], 64 if cls == 'p1' else 52)}</div><div class='nm'>{_e(_nome(x))}</div>"
                    f"<div class='vl'>{_e(_fmt_valor(jogo, x['valor']))}</div><div class='base'>{x['pos']}</div></div>")
     return "<div class='jg-podio'>" + "".join(out) + "</div>"
 
@@ -618,7 +629,7 @@ def _podio_clicavel(rk: dict, jogo: str) -> None:
             for i, x in enumerate(ordem):
                 u = nomes.get(x["h"]) if x and not x["eu"] else None
                 if u:
-                    st.button(f"Ver perfil de {x['apelido']}", key=f"jg_pod_{i}", on_click=AMA.ir_jogador, args=(u,))
+                    st.button(f"Ver perfil de {_nome(x)}", key=f"jg_pod_{i}", on_click=AMA.ir_jogador, args=(u,))
                 else:
                     st.markdown("&nbsp;")
 
@@ -637,7 +648,7 @@ def _linha_rank(x: dict, jogo: str) -> str:
     v = x["valor"]
     sub = f"{x['partidas']} partida{'s' if x['partidas'] != 1 else ''}"
     return (f"<div class='jg-lin{' eu' if x['eu'] else ''}'><span class='ps'>{x['pos']}</span><span class='av'>{_avatar(x['h'], x['eu'], 30)}</span>"
-            f"<span class='nm'>{_e(x['apelido'])}{' (você)' if x['eu'] else ''}<small>{_e(sub)}</small></span>"
+            f"<span class='nm'>{_e(_nome(x))}{' (você)' if x['eu'] else ''}<small>{_e(sub)}</small></span>"
             f"<b class='{'neg' if v < 0 else ''}'>{_e(_fmt_valor(jogo, v))}</b>{_var(x['var'])}</div>")
 
 

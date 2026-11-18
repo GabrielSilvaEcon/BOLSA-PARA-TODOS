@@ -527,7 +527,7 @@ def _frag_sala(pid: str) -> None:
             return AMA.avatar_por_apelido(j["nick"], 30) or PA.avatar_html("raposa", "", 30)
         except Exception:
             return ""
-    cards = "".join(f"<div class='tb-lin'><span class='tb-lin-n'>{_av_sala(j)}{_e(j['nick'])}{' (você)' if j['voce'] else ''}</span>"
+    cards = "".join(f"<div class='tb-lin'><span class='tb-lin-n'>{_av_sala(j)}{_e(AMA.nome_exibicao(j['nick']) if not j['voce'] else (PA.meu_perfil() or {}).get('nome') or j['nick'])}{' (você)' if j['voce'] else ''}</span>"
                     f"<span>{'criador' if j['criador'] else 'jogador'}</span></div>" for j in sa["jogadores"])
     st.markdown(f"<div class='tb-pts'><div class='n'>{_e(sa['codigo'])}</div><small>código da sala · {_e(TB.TIMEFRAMES[sa['tf']]['nome'])} · {_e(_rot_formato(sa.get('formato')))}</small></div>"
                 f"<div class='tb-card'><b>Jogadores {sa['n']}/{sa['max']}</b>{cards}</div>", unsafe_allow_html=True)

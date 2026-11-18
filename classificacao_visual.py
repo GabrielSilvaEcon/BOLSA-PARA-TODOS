@@ -65,7 +65,17 @@ def valor_principal(r: dict, ordem: str) -> tuple[str, str, str]:
     return ret_txt(r.get("ret")), _cls(r.get("ret")), _seta(r.get("ret"))
 
 
+NOME = None     # gancho opcional: função (apelido) -> nome do perfil para exibir. Sem ele, o próprio apelido.
 AVATAR = None   # gancho opcional: função (apelido, px) -> HTML do avatar equipado (Coleção de Avatares) ou None. Sem ele, a inicial colorida.
+
+
+def nome_exib(apelido: str) -> str:
+    if NOME:
+        try:
+            return str(NOME(apelido) or apelido)
+        except Exception:
+            pass
+    return str(apelido or "")
 
 
 def avatar(nome: str, px: int, anel: str | None = None) -> str:
@@ -152,7 +162,7 @@ def html_podio(itens: list[dict], ordem: str) -> str:
             f"<div class='ck-p p{p}' style='--m:{c1};--m2:{c2}'>"
             f"<div class='ck-lw'>{_louros(c1)}<b>{p}</b></div>"
             f"<div class='ck-pil'>{avatar(r.get('apelido', ''), px, c1)}<i class='ck-base'></i></div>"
-            f"<div class='ck-cx'><div class='n'>{_E(str(r.get('apelido', '')))}</div><div class='v {cls}'>{_E(txt)} {seta}</div>"
+            f"<div class='ck-cx'><div class='n'>{_E(nome_exib(r.get('apelido', '')))}</div><div class='v {cls}'>{_E(txt)} {seta}</div>"
             f"<div class='s'>{_E(moeda(r.get('pat')))}</div></div></div>")
     return "<div class='ck-pod'>" + "".join(cols) + "</div>"
 
@@ -161,7 +171,7 @@ def html_minha_posicao(r: dict, total: int | None, ordem: str) -> str:
     txt, cls, seta = valor_principal(r, ordem)
     de = f"<small>de {int(total)}</small>" if total else ""
     return (f"<div class='ck-eu'><div class='e'><span>Sua posição</span><b>{ordinal(r['pos'])}</b>{de}</div>"
-            f"<div class='d'>{avatar(r.get('apelido', ''), 58, '#3DDC97')}<div class='t'><div class='n'>{_E(str(r.get('apelido', '')))}</div>"
+            f"<div class='d'>{avatar(r.get('apelido', ''), 58, '#3DDC97')}<div class='t'><div class='n'>{_E(nome_exib(r.get('apelido', '')))}</div>"
             f"<div class='v {cls}'>{_E(txt)} {seta}</div><div class='s'>{_E(moeda(r.get('pat')))}</div></div></div>"
             "</div>")
 
@@ -176,7 +186,7 @@ def html_linhas(itens: list[dict], ordem: str, rolar: bool = False) -> str:
     for r in itens:
         txt, cls, seta = valor_principal(r, ordem)
         out.append(f"<div class='ck-r{' eu' if r.get('eu') else ''}'><b class='p'>{int(r['pos'])}</b>{avatar(r.get('apelido', ''), 42)}"
-                   f"<span class='n'>{_E(str(r.get('apelido', '')))}</span><span class='v {cls}'>{_E(txt)} {seta}</span>"
+                   f"<span class='n'>{_E(nome_exib(r.get('apelido', '')))}</span><span class='v {cls}'>{_E(txt)} {seta}</span>"
                    f"<span class='s'>{_E(moeda(r.get('pat')))}</span></div>")
     return f"<div class='ck-rs{' rol' if rolar else ''}'>" + "".join(out) + "</div>"
 

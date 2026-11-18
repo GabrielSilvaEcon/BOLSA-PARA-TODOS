@@ -48,6 +48,8 @@ def ranking(ir) -> None:
         st.markdown(HV.html_ranking_cab(), unsafe_allow_html=True)
         st.button("Ver ranking completo", key="hm_rk_ver", icon=":material/chevron_right:", on_click=ir,
                   args=("competicao", {"wg_sec": "Classificação"}))
+        import amigos_app as AMA
+        HV.NOME = AMA.nome_exibicao                  # nome do perfil no lugar do apelido (antes de montar o HTML)
         corpo = HV.html_ranking_corpo(r, logado, participa)
         if r.get("vazio") or not r.get("top"):
             st.markdown(corpo, unsafe_allow_html=True)

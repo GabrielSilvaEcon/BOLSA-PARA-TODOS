@@ -47,11 +47,22 @@ def html_nivel(est: dict | None) -> str:
 
 
 # ------------------------------------------------------------------ ranking geral
+NOME = None   # gancho opcional: função (apelido) -> nome do perfil para exibir
+
+
+def _nome(apelido: str) -> str:
+    try:
+        return str(NOME(apelido) or apelido) if NOME else str(apelido or "")
+    except Exception:
+        return str(apelido or "")
+
+
 def _chip_top(x: dict) -> str:
     cor = _COR_POS.get(x["pos"], "#8B6CFF")
-    ini = _E((x["apelido"][:1] or "?").upper())
+    nm = _nome(x["apelido"])
+    ini = _E((nm[:1] or "?").upper())
     return (f"<div class='hm-rk' style='--c:{cor}'><span class='hm-med'>{x['pos']}</span><span class='hm-av'>{ini}</span>"
-            f"<span class='hm-rk-t'><b>{_E(x['apelido'][:14])}</b><em>{_ret_ranking(x.get('ret'))}</em></span></div>")
+            f"<span class='hm-rk-t'><b>{_E(nm[:14])}</b><em>{_ret_ranking(x.get('ret'))}</em></span></div>")
 
 
 _CAB = ("<div class='hm-cab'><span class='hm-ico'>🏆</span><span><b>Ranking Geral</b><small>Veja sua posição e os líderes</small></span></div>")
