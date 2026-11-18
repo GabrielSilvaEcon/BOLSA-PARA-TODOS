@@ -178,7 +178,10 @@ def html_ativo(r: dict, sp: list[float] | None, i: int) -> str:
     nome = rot.split(" · ")[0] if " · " in rot else ""
     cor = _cor(r["res"])
     graf = spark(sp, cor, f"a{i}", 120, 38) if sp else "<span class='cv-nsp'>sem histórico</span>"
-    return (f"<div class='cv-a'><div class='cv-ai' style='--c:{_e(cl['cor'])}'>{_e(cl['icone'])}</div>"
+    import setores as SE
+    ic_set = SE.icone(A.setor(r["tk"])) if c == "acao" else ""          # ação: ícone do setor (banco, energia, varejo...)
+    ic = f"<img src='{ic_set}' alt=''>" if ic_set else _e(cl["icone"])
+    return (f"<div class='cv-a'><div class='cv-ai{' set' if ic_set else ''}' style='--c:{_e(cl['cor'])}'>{ic}</div>"
             f"<div class='cv-an'><b>{_e(codigo)}</b><span>{_e(A.texto_qtd(r['tk'], r['q']))} {_UNID.get(c, 'un.')}</span></div>"
             f"<div class='cv-asp'>{graf}</div>"
             f"<div class='cv-av'><b>{_e(moeda(r['valor']))}</b><span style='color:{cor}'>{_pct(r['res'])}</span></div></div>")
@@ -269,6 +272,8 @@ CSS = f"""<style>
 {Q} .cv-ativos{{padding:12px 12px 6px}}
 {Q} .cv-a{{display:grid;grid-template-columns:42px minmax(0,1fr) minmax(54px,84px) auto;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid rgba(80,115,190,.28)}}
 {Q} .cv-a:first-of-type{{margin-top:8px}}
+{Q} .cv-ai.set{{background:none !important;box-shadow:none !important;overflow:hidden}}
+{Q} .cv-ai.set img{{width:100%;height:100%;object-fit:cover;border-radius:12px;display:block}}
 {Q} .cv-ai{{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:1.3rem;background:radial-gradient(circle at 30% 20%,color-mix(in srgb,var(--c) 55%,#fff),var(--c) 72%);box-shadow:0 3px 0 color-mix(in srgb,var(--c) 45%,#050B1F)}}
 {Q} .cv-an b{{display:block;color:#fff;font-weight:900;font-size:1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}{Q} .cv-an span{{color:#9FB6EA;font-size:.8rem;font-weight:600}}
 {Q} .cv-asp{{height:34px;min-width:0}}{Q} .cv-nsp{{font-size:.64rem;color:#6F86B8}}

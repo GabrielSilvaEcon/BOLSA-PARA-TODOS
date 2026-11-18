@@ -139,3 +139,12 @@ def test_mesa_recebe_avatar_de_cada_assento_sem_email(monkeypatch):
     assert m["Você"]["src"].endswith("panda_p.webp") and m["Jogador 3"]["src"].startswith("data:image/webp")
     assert "@" not in str(m)
     assert TBA._avatares_assentos({"jogadores": ["solo"]})["Você"]["src"].endswith("panda_p.webp")
+
+
+def test_icones_de_setor():
+    import setores as SE
+    for i in SE.IDS:
+        assert os.path.exists(os.path.join(os.path.dirname(__file__), "static", "setores", f"{i}.webp"))
+    assert SE.icone("Bancos").endswith("bancos.webp") and SE.icone("Energia Elétrica").endswith("energia.webp")
+    assert SE.id_do_setor("Lajes corporativas") == "construcao" and SE.id_do_setor("Siderurgia e aço") == "siderurgia"
+    assert SE.icone("Educação") == "" and SE.icone(None) == ""
