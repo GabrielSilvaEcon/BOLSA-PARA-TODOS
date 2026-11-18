@@ -4198,9 +4198,7 @@ def pagina_tipo():
         return
     if not acesso_liberado(u_):                                       # mesma regra de plano da página original
         minimo = paginas_plano.plano_minimo(u_, paginas_plano.ler()) or "plus"
-        ex = paginas_plano.explicacao(_todas_pg[u_].title, minimo, plano_do_usuario())
-        cabecalho("🔒", ex["titulo"], ex["texto"])
-        st.page_link(PG_PLANOS, label="Ver planos", icon=":material/workspace_premium:")
+        _tela_plano(_todas_pg[u_].title, minimo)
         return
     f = _funcao_da_pagina(u_)
     if f is None:
@@ -4410,19 +4408,21 @@ def pagina_bloqueada():
         usuarios.salvar()
         st.stop()
     minimo = paginas_plano.plano_minimo(pg.url_path, paginas_plano.ler()) or "plus"
-    ex = paginas_plano.explicacao(pg.title, minimo, plano_do_usuario())
-    cabecalho("🔒", ex["titulo"], ex["texto"])
-    inclui = [_todas_pg[u].title for u in paginas_plano.paginas_do_plano(paginas_plano.ler(), minimo) if u in _todas_pg]
-    if inclui:
-        itens = "".join(f'<span style="display:inline-block;margin:3px 6px 3px 0;padding:5px 12px;border-radius:999px;background:rgba(139,108,255,.20);'
-                        f'border:1px solid rgba(139,108,255,.55);color:#F4F1FF !important;-webkit-text-fill-color:#F4F1FF;font-size:.9rem;">{html.escape(t)}</span>'
-                        for t in inclui)
-        md(f'<div class="card" style="padding:16px 18px;"><div style="font-weight:800;font-size:1.05rem;color:#FFFFFF !important;-webkit-text-fill-color:#FFFFFF;'
-           f'margin-bottom:6px;">O plano {paginas_plano.ROTULO[minimo]} libera, entre outras</div>{itens}</div>')
-    st.page_link(PG_PLANOS, label="Ver Planos e assinaturas", icon=":material/workspace_premium:")
-    st.page_link(PG_INICIO, label="Voltar ao Início", icon=":material/home:")
+    _tela_plano(pg.title, minimo)
     usuarios.salvar()
     st.stop()
+
+
+def _tela_plano(titulo: str, minimo: str) -> None:
+    """Tela de plano do kit visual: ilustração, cadeado, o que o plano libera e o botão de planos."""
+    from design import kit as _kit
+    inclui = [_todas_pg[u].title for u in paginas_plano.paginas_do_plano(paginas_plano.ler(), minimo) if u in _todas_pg and u != pg.url_path]
+    atual = paginas_plano.ROTULO.get(plano_do_usuario() if plano_do_usuario() in paginas_plano.ROTULO else "gratuito")
+    md(_kit.plano(titulo, paginas_plano.ROTULO[minimo], atual, inclui, len(inclui)))
+    with st.container(key="kt_planos_bt"):
+        st.page_link(PG_PLANOS, label="Ver planos", icon=":material/workspace_premium:", width="stretch")
+    with st.container(key="kt_voltar_bt"):
+        st.page_link(PG_INICIO, label="Voltar ao Início", icon=":material/home:", width="stretch")
 
 
 def _pesquisa_ativo(texto: str):
@@ -4723,7 +4723,9 @@ try:                                        # nomes clicáveis em rankings e lis
     import amigos_app as _ama
     import avatares as _avs
     st.markdown(_ama.CSS_LINK + _avs.css(), unsafe_allow_html=True)        # + molduras de raridade dos avatares (qualquer tela)
-    st.markdown(css_fundo_tela(pg.url_path), unsafe_allow_html=True)      # fundo próprio de algumas telas (Início, carteira, perfil, Analisar)
+    st.markdown(css_fundo_tela(pg.url_path), unsafe_allow_html=True)
+    from design import kit as _kit_css
+    st.markdown(_kit_css.css(), unsafe_allow_html=True)               # kit visual: topo das telas e tela de plano      # fundo próprio de algumas telas (Início, carteira, perfil, Analisar)
 except Exception:
     pass
 if DESIGN_V2:

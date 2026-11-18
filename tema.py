@@ -48,9 +48,14 @@ SUPRIMIR_CABECALHO = False        # ligado enquanto uma página é mostrada dent
 
 
 def cabecalho(icone_ou_emoji: str, titulo: str, sub: str = "") -> str:
-    """Cabeçalho de página: ícone de linha num bloco com brilho, título em degradê e linha de apoio."""
+    """Cabeçalho de página no padrão do kit visual: a ilustração do assunto pela direita e o título à esquerda (design/kit.py)."""
     if SUPRIMIR_CABECALHO:
         return ""
+    try:
+        from design import kit as _kit
+        return _kit.topo(titulo, sub)
+    except Exception:
+        pass
     chave = (icone_ou_emoji or "").replace("\ufe0f", "")
     nome = _EMOJI_ICONE.get(chave) or (chave if chave in _ICONES else None)
     ico = f"<span class='pgi'>{icone(nome, 22)}</span>" if nome else (html.escape(chave) + " " if chave else "")
