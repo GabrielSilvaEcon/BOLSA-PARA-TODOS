@@ -941,7 +941,7 @@ def pagina_competicao():
         st.session_state.pop("comp_res", None)
         extra = [_html_comprovante(ordem)]
     if res and sec == "Meu patrimônio":                # cabeçalho da Minha Carteira (tela principal)
-        st.markdown(CV.CSS + CV.html_hero(), unsafe_allow_html=True)
+        st.markdown(CV.CSS + CV.html_topo_jogo(cart), unsafe_allow_html=True)
     if res:                                            # cada seção mostra só o que é dela
         WGA.resumo(a, res, perfil.get("apelido") or "", hero=False,
                    bonus_bloco=sec in ("Meu patrimônio", "Bônus e sequência"), extra=extra)
