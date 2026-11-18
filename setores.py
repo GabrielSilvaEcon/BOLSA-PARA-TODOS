@@ -40,3 +40,17 @@ def id_do_setor(setor: str | None) -> str | None:
 def icone(setor: str | None) -> str:
     i = id_do_setor(setor)
     return PASTA_URL + i + ".webp" if i else ""
+
+
+# ------------------------------------------------------------------ ícones das criptomoedas (static/cripto/<símbolo>.webp, 160 px, fundo transparente)
+CRIPTO_URL = "app/static/cripto/"
+CRIPTOS_COM_ICONE = ("btc", "eth", "xrp", "bnb", "sol", "ada", "avax", "doge", "usdt", "usdc", "trx", "dot", "shib", "link", "matic", "ltc",
+                     "bch", "dai", "uni", "cro")
+_SINONIMOS = {"pol": "matic"}          # Polygon trocou o símbolo MATIC por POL
+
+
+def icone_cripto(simbolo: str | None) -> str:
+    """'BTC', 'CRIPTO:BTC', 'BTC-USD' ou 'BTC-BRL' → endereço do ícone da moeda ('' se não houver)."""
+    s = str(simbolo or "").upper().replace("CRIPTO:", "").split("-")[0].lower()
+    s = _SINONIMOS.get(s, s)
+    return CRIPTO_URL + s + ".webp" if s in CRIPTOS_COM_ICONE else ""

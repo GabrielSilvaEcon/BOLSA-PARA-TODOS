@@ -179,7 +179,8 @@ def html_ativo(r: dict, sp: list[float] | None, i: int) -> str:
     cor = _cor(r["res"])
     graf = spark(sp, cor, f"a{i}", 120, 38) if sp else "<span class='cv-nsp'>sem histórico</span>"
     import setores as SE
-    ic_set = SE.icone(A.setor(r["tk"])) if c == "acao" else ""          # ação: ícone do setor (banco, energia, varejo...)
+    ic_set = (SE.icone(A.setor(r["tk"])) if c == "acao"                # ação: ícone do setor (banco, energia, varejo...)
+              else SE.icone_cripto(r["tk"]) if c == "cripto" else "")   # cripto: o símbolo da moeda
     ic = f"<img src='{ic_set}' alt=''>" if ic_set else _e(cl["icone"])
     return (f"<div class='cv-a'><div class='cv-ai{' set' if ic_set else ''}' style='--c:{_e(cl['cor'])}'>{ic}</div>"
             f"<div class='cv-an'><b>{_e(codigo)}</b><span>{_e(A.texto_qtd(r['tk'], r['q']))} {_UNID.get(c, 'un.')}</span></div>"

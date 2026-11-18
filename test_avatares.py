@@ -148,3 +148,13 @@ def test_icones_de_setor():
     assert SE.icone("Bancos").endswith("bancos.webp") and SE.icone("Energia Elétrica").endswith("energia.webp")
     assert SE.id_do_setor("Lajes corporativas") == "construcao" and SE.id_do_setor("Siderurgia e aço") == "siderurgia"
     assert SE.icone("Educação") == "" and SE.icone(None) == ""
+
+
+def test_icones_de_cripto():
+    import ativos_jogo as A
+    import setores as SE
+    for s in SE.CRIPTOS_COM_ICONE:
+        assert os.path.exists(os.path.join(os.path.dirname(__file__), "static", "cripto", f"{s}.webp"))
+    assert all(SE.icone_cripto(c) for c in A.CRIPTOS)                      # toda cripto negociada tem ícone
+    assert SE.icone_cripto("CRIPTO:BTC").endswith("btc.webp") and SE.icone_cripto("ETH-USD").endswith("eth.webp")
+    assert SE.icone_cripto("POL").endswith("matic.webp") and SE.icone_cripto("XYZ") == ""

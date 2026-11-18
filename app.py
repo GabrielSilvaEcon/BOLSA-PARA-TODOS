@@ -1797,22 +1797,31 @@ def _inicio_app(ativos: list):
             st.button(f"Suas empresas em análise ({len(ativos)})", key="in_ver_empresas", icon=":material/monitoring:", on_click=_sair_modo_busca, width="stretch")
 
 
-_FUNDO_INICIO = "app/static/fundos/inicio.webp"   # velas e touro (arte enviada pelo dono do app), servido com cache do navegador
+# Fundo de cada tela (artes enviadas pelo dono do app, em static/fundos, servidas com cache do navegador). Só as cenas grandes:
+# as menores ficavam borradas na tela do celular. Telas fora da lista ficam com o fundo padrão do app.
+FUNDOS_TELA = {
+    "inicio": "app/static/fundos/sede.webp",        # sede com o touro dourado e a cidade ao pôr do sol
+    "competicao": "app/static/fundos/mesa.webp",    # Minha carteira: mesa com os gráficos e o touro neon
+    "perfil": "app/static/fundos/mesa.webp",        # Meu Perfil: a mesma mesa, com o troféu na prateleira
+    "analisar": "app/static/fundos/inicio.webp",    # Analisar: velas e touro
+}
 
 
-def _css_fundo_inicio() -> str:
-    """Fundo da tela Início: a arte de velas fica fixa atrás dos cartões, escurecida embaixo para o texto continuar legível."""
+def css_fundo_tela(url_path: str) -> str:
+    """Fundo da tela, fixo atrás de tudo (camada própria: funciona também no celular, onde background-attachment:fixed falha) e
+    escurecido para os cartões e o texto continuarem legíveis. Vazio para telas sem fundo próprio."""
+    img = FUNDOS_TELA.get(url_path)
+    if not img:
+        return ""
     q = "html body .stApp.stApp.stApp"
-    return (f"<style>{q} [data-testid='stAppViewContainer']{{background:"
-            "linear-gradient(180deg,rgba(9,7,34,.35) 0%,rgba(9,7,34,.55) 45%,rgba(9,7,34,.82) 100%),"
-            f"url('{_FUNDO_INICIO}') center top/cover no-repeat,#0B0828 !important;background-attachment:fixed,fixed,scroll !important}}"
-            f"{q} [data-testid='stMain']{{background:transparent !important}}"
-            f"@media (max-width:700px){{{q} [data-testid='stAppViewContainer']{{background-attachment:scroll,scroll,scroll !important;"
-            "background-size:auto,100% auto,auto !important}}}}</style>")
+    return (f"<style>{q} [data-testid='stAppViewContainer']{{isolation:isolate;background:transparent !important}}"
+            f"{q} [data-testid='stAppViewContainer']::before{{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;"
+            "background:linear-gradient(180deg,rgba(9,7,34,.50) 0%,rgba(9,7,34,.62) 40%,rgba(9,7,34,.84) 100%),"
+            f"url('{img}') center top/cover no-repeat,#0B0828}}"
+            f"{q} [data-testid='stMain']{{background:transparent !important}}</style>")
 
 
 def pagina_inicio():
-    st.markdown(_css_fundo_inicio(), unsafe_allow_html=True)
     if experiencia_app.inicio():              # aviso de troca de modo e introdução do primeiro acesso (não para a página)
         return
     ativos = list(st.session_state.get("sel_ativos", []))
@@ -4714,6 +4723,7 @@ try:                                        # nomes clicáveis em rankings e lis
     import amigos_app as _ama
     import avatares as _avs
     st.markdown(_ama.CSS_LINK + _avs.css(), unsafe_allow_html=True)        # + molduras de raridade dos avatares (qualquer tela)
+    st.markdown(css_fundo_tela(pg.url_path), unsafe_allow_html=True)      # fundo próprio de algumas telas (Início, carteira, perfil, Analisar)
 except Exception:
     pass
 if DESIGN_V2:
