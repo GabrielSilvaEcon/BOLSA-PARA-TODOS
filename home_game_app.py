@@ -35,6 +35,17 @@ def _nome() -> str:
         return "Jogador"
 
 
+def _avatar() -> tuple[str, str]:
+    """(imagem, cor do anel) do avatar equipado ou da foto. Sem avatar: ("", verde)."""
+    try:
+        import avatares
+        import perfis_app
+        m = perfis_app.meu_avatar()
+        return m["src_p"], avatares.RARIDADES.get(m["rar"], {"cor": "#34E85E"})["cor"]
+    except Exception:
+        return "", "#34E85E"
+
+
 def _moedas():
     try:
         import tickercoins_app
@@ -113,16 +124,17 @@ def renderizar(ir, mercado_fn, educacao_app) -> None:
         except Exception:
             nivel = None
     pos, total = _posicao()
+    nome = _nome()
     try:
         itens = mercado_fn() or []
     except Exception:
         itens = []
     with st.container(key="hg_tela"):
         with st.container(key="hg_hud"):
-            _cartao_botao("hg_hud_nivel", HG.html_hud_nivel(nivel), "Meu nível e perfil", ir, "perfil")
+            _cartao_botao("hg_hud_nivel", HG.html_hud_nivel(nivel, *_avatar(), nome), "Meu perfil", ir, "perfil")
             _cartao_botao("hg_hud_tc", HG.html_hud_moedas(_moedas(), _moeda_html()), "Ticker Coins e loja", ir, "economia")
             _cartao_botao("hg_hud_rk", HG.html_hud_rank(pos, total), "Ranking", ir, "jogos-ranking")
-        _cartao_botao("hg_ban", HG.html_banner(_nome(), _passe(educacao_app)), "Abrir o Hunter Pass", ir, "jornada", {"jor_vista": "passe"})
+        _cartao_botao("hg_ban", HG.html_banner(nome, _passe(educacao_app)), "Abrir o Hunter Pass", ir, "jornada", {"jor_vista": "passe"})
         st.markdown(HG.html_orbit(itens), unsafe_allow_html=True)
         _cartao_botao("hg_miss", HG.html_missoes(_missoes(educacao_app)), "Ver todas as missões", ir, "missoes")
         with st.container(key="hg_acessos"):
