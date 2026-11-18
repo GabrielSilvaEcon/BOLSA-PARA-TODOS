@@ -298,7 +298,7 @@ def css() -> str:
             # cores forçadas: o CSS global do app pinta alguns <span>/<b> de escuro
             f"{c} :is(.hg-lvt b){{color:#DDEBFF !important;-webkit-text-fill-color:#DDEBFF !important}}"
             f"{c} :is(.hg-lvt span,.hg-tk small,.hg-mc small){{color:{lila} !important;-webkit-text-fill-color:{lila} !important}}"
-            f"{c} :is(.hg-tkh span,.hg-mt,.hg-mr span,.hg-nome span,.hg-logo .t,.hg-bc b,.hg-bm b){{color:#F4F6FF !important;-webkit-text-fill-color:#F4F6FF !important}}"
+            f"{c} :is(.hg-tkh span,.hg-mt,.hg-mr span,.hg-nome span,.hg-logo .t,.hg-bc b,.hg-bm b,.hg-av span,.hg-ovz){{color:#F4F6FF !important;-webkit-text-fill-color:#F4F6FF !important}}"
             f"{c} :is(.hg-tc b,.hg-rk b,.hg-cf b){{color:#FFD76A !important;-webkit-text-fill-color:#FFD76A !important}}"
             f"{c} .hg-tc small{{color:#FFE8A8 !important;-webkit-text-fill-color:#FFE8A8 !important}}"
             f"{c} :is(.hg-pass b,.hg-pass span){{color:#3B2400 !important;-webkit-text-fill-color:#3B2400 !important}}"
