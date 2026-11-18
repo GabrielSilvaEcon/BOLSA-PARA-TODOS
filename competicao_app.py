@@ -318,6 +318,16 @@ def _dados_ativo(tk: str, p: dict) -> dict:
             "preco": float(p.get("c") or 0), "var": float(p.get("v") or 0)}
 
 
+def _ic_ativo(tk: str, d: dict, extra: str = "") -> str:
+    """Ícone do ativo na negociação: setor (ações) ou logo (cripto); sem ícone próprio, o da classe."""
+    import setores as SE
+    u = SE.icone_ativo(tk)
+    if u:
+        return (f"<div class='cn-ic {extra}' style='--c:{html.escape(d['cl']['cor'])};background:none !important;box-shadow:none !important;overflow:hidden'>"
+                f"<img src='{u}' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block'></div>")
+    return f"<div class='cn-ic {extra}' style='--c:{html.escape(d['cl']['cor'])}'>{html.escape(d['cl']['icone'])}</div>"
+
+
 def _partes_linha(tk: str, p: dict, est: dict, lado: str) -> tuple:
     """Como na referência: [selo + código + nome] [preço + variação] [Selecionar]."""
     d = _dados_ativo(tk, p)
@@ -328,7 +338,7 @@ def _partes_linha(tk: str, p: dict, est: dict, lado: str) -> tuple:
     else:
         v, sub = d["var"], d["nome"]
     seta = "▲" if v >= 0 else "▼"
-    esq = (f"<div class='cn-l'><div class='cn-ic' style='--c:{html.escape(d['cl']['cor'])}'>{html.escape(d['cl']['icone'])}</div>"
+    esq = (f"<div class='cn-l'>{_ic_ativo(tk, d)}"
            f"<div class='cn-tx'><b>{html.escape(d['codigo'])}</b><span>{html.escape(sub)}</span></div></div>")
     meio = (f"<div class='cn-pv2'><b>{html.escape(moeda(d['preco']))}</b>"
             f"<em class='{'v' if v >= 0 else 'n'}'>{seta} {_p2(abs(v))}%</em></div>")
@@ -341,7 +351,7 @@ def _html_selecionado(tk: str, p: dict, lado: str, spark: list | None) -> str:
     cor = "#2EE59D" if v >= 0 else "#FF5B6E"
     seta = "▲" if v >= 0 else "▼"
     graf = CV.spark(spark, cor, "sel", 160, 54) if spark else ""
-    return (f"<div class='cn-sel'><div class='cn-sh'><div class='cn-ic g' style='--c:{html.escape(d['cl']['cor'])}'>{html.escape(d['cl']['icone'])}</div>"
+    return (f"<div class='cn-sel'><div class='cn-sh'>{_ic_ativo(tk, d, 'g')}"
             f"<div class='cn-tx'><b class='gr'>{html.escape(d['codigo'])}</b><span>{html.escape(d['nome'])}</span></div></div>"
             f"<div class='cn-px'>{html.escape(moeda(d['preco']))}</div><div class='cn-pv' style='color:{cor}'>{seta} {_p2(abs(v))}% <small>no dia</small></div>"
             f"<div class='cn-gr'>{graf}</div></div>")

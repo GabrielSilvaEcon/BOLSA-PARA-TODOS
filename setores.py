@@ -54,3 +54,17 @@ def icone_cripto(simbolo: str | None) -> str:
     s = str(simbolo or "").upper().replace("CRIPTO:", "").split("-")[0].lower()
     s = _SINONIMOS.get(s, s)
     return CRIPTO_URL + s + ".webp" if s in CRIPTOS_COM_ICONE else ""
+
+
+def icone_ativo(ativo: str | None) -> str:
+    """Ícone de um ativo do app: ação → setor; cripto → logo da moeda; outros → '' (a tela usa o ícone da classe)."""
+    try:
+        import ativos_jogo as A
+        c = A.classe(ativo)
+        if c == "acao":
+            return icone(A.setor(ativo))
+        if c == "cripto":
+            return icone_cripto(ativo)
+    except Exception:
+        pass
+    return ""
