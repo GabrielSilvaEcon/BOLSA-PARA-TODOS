@@ -334,7 +334,8 @@ def _hist_ok(hist, tf: str) -> bool:
     return (vol.fillna(0) <= 0).mean() <= 0.05
 
 
-def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, max_n: int = 3, ocupados: list[tuple[str, str]] | None = None) -> list[dict]:
+def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, max_n: int = 3, ocupados: list[tuple[str, str]] | None = None,
+                    motivos: dict | None = None) -> list[dict]:
     """Cenários completos de um ativo: replay de n_replay candles do gráfico formados pelos candles menores reais (cada pregão começa um trecho),
     com os n_analise candles do gráfico imediatamente anteriores como histórico. Do mais recente para trás, sem sobrepor os já guardados."""
     from datetime import timedelta as _td
@@ -343,26 +344,45 @@ def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, 
     grupos = _velas_completas(df_sub, tf, sub_tf)
     ocup = [(a, b) for a, b in (ocupados or [])]
     out = []
+    mot = motivos if motivos is not None else {}
+
+    def _n(m):
+        mot[m] = mot.get(m, 0) + 1
+    mot["candles_menores_incompletos"] = sum(1 for g in grupos if g is None)
+    mot["candles_do_grafico"] = len(grupos)
     inicios = [k for k, g in enumerate(grupos) if g and (k == 0 or not grupos[k - 1] or grupos[k - 1][0].date() != g[0].date())]
     for k in reversed(inicios):                                     # cada trecho começa na abertura de um pregão
         bloco = grupos[k:k + nr]
-        if len(bloco) < nr or any(g is None for g in bloco):
+        if len(bloco) < nr:
+            _n("pouco_replay")
+            continue
+        if any(g is None for g in bloco):
+            _n("candle_menor_faltando")
             continue
         if tf != "1d" and any((b[0] - a[0]) != _td(minutes=PASSO_MIN[tf]) and a[0].date() == b[0].date() for a, b in zip(bloco, bloco[1:])):
+            _n("pulou_hora_no_pregao")
             continue                                                # pulou um candle do gráfico dentro do pregão
         de, ate = bloco[0][0].isoformat(timespec="minutes"), bloco[-1][0].isoformat(timespec="minutes")
         if any(not (ate < a or de > b) for a, b in ocup):
+            _n("sobrepoe")
             continue                                                # sobrepõe um trecho já guardado (ou já escolhido agora)
         hist = df_vela[df_vela.index < bloco[0][0]].tail(na)
-        if len(hist) < na or not _hist_ok(hist, tf):
+        if len(hist) < na:
+            _n("historico_curto")
+            continue
+        if not _hist_ok(hist, tf):
+            _n("historico_com_buraco_ou_sem_volume")
             continue
         if (bloco[0][0] - hist.index[0]) > _td(days=MAX_DIAS_HIST[formato] + nr * (1 if tf == "1d" else 0)):
+            _n("historico_longo_demais")
             continue
         if (bloco[0][0] - hist.index[-1]) > _td(days=5):            # histórico encostado no replay (no máximo um feriado prolongado)
+            _n("historico_longe_do_replay")
             continue
         poss = [p for _ch, ps in bloco for p in ps]
         rep = df_sub.iloc[poss]
         if (rep["Volume"].fillna(0) <= 0).mean() > 0.05:
+            _n("replay_sem_volume")
             continue
         def _k(t, r):
             return {"t": t.isoformat(timespec="minutes"), "o": round(float(r.Open), 4), "h": round(float(r.High), 4), "l": round(float(r.Low), 4),
@@ -372,7 +392,9 @@ def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, 
         c = {"id": f"{ticker}-{tf}-{de.replace('-', '').replace(':', '').replace('T', '')}-d{formato}", "ticker": ticker, "nome": ticker, "tf": tf,
              "corrida": formato, "sub": sub_tf, "fonte": FONTE_REAL, "demo": False, "preparado_em": agora_iso, "n_analise": na, "candles": cand,
              "grupo": grupo, "velas_t": [g[0].isoformat(timespec="minutes") for g in bloco]}
-        if not TB.validar_cenario(c)[0]:
+        ok, why = TB.validar_cenario(c)
+        if not ok:
+            _n("invalido: " + why)
             continue
         out.append(c)
         ocup.append((de, ate))
