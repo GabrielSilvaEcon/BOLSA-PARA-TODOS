@@ -4,8 +4,9 @@ import 'api.dart';
 
 /// Compra e venda na hora, ao preço atual (servidor: `POST /carteira/ordem`). Mesmas regras do jogo.
 class CompraTela extends StatefulWidget {
-  const CompraTela({super.key, required this.api});
+  const CompraTela({super.key, required this.api, this.ladoInicial = 'C'});
   final Api api;
+  final String ladoInicial;
 
   @override
   State<CompraTela> createState() => _CompraTelaState();
@@ -14,7 +15,7 @@ class CompraTela extends StatefulWidget {
 class _CompraTelaState extends State<CompraTela> {
   final _ativo = TextEditingController();
   final _qtd = TextEditingController();
-  String _lado = 'C';
+  late String _lado = widget.ladoInicial;
   Map<String, dynamic>? _preco;
   String? _aviso;
   bool _ocupado = false;
