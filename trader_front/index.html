@@ -315,7 +315,8 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #app.corrida #q-acoes{display:block;flex:none;font-size:10px;font-weight:800;color:#BDB5E6;white-space:nowrap}
 #app.corrida #qrow .qp[data-qp="25"],#app.corrida #qrow .qp[data-qp="50"]{display:none}
 #app.corrida.bmin #pbar{display:flex !important}
-#app.corrida.mesa.replay #m-tg{display:block;align-self:center;min-height:22px;padding:0 16px;margin-bottom:2px;border-radius:0 0 12px 12px;font-size:11px;font-weight:900;
+#app.corrida #pgw{display:none !important}
+#app.corrida.mesa.replay #m-tg{display:block;align-self:center;min-height:22px;padding:0 22px;font-size:14px !important;margin-bottom:2px;border-radius:0 0 12px 12px;font-size:11px;font-weight:900;
   border:1.5px solid #7A5CFF;border-top:0;background:linear-gradient(180deg,#2A1F8E,#150F55);color:#D9D4F7}
 #app.corrida.bmin #qrow,#app.corrida.bmin #mb1,#app.corrida.bmin #mb2{display:none !important}#app.corrida #mb1 button span small{display:block;font-size:10px;font-weight:800;opacity:.85;line-height:1}#app.corrida #mb1 button span{line-height:1.1}#app.corrida #mb2{gap:4px}#app.corrida #mb2 button{min-width:0;padding:0 4px;font-size:11px;white-space:nowrap}#app.corrida #mb2 #m-ind{flex:1.15}
 /* partida corrida: as três faixas do topo viram UMA (voltar · ativo · preço · você · tempo · tela cheia) */
@@ -366,7 +367,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
         <small class="oco">Stop e alvo são ligados (OCO): quando um executa, a posição fecha e o outro é cancelado. O stop móvel sobe junto com o preço (na venda, desce) e nunca recua.</small></div>
       <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
       <details id="o-regras"><summary>ⓘ Regras da aposta</summary><small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></details></div>
-  <div id="mesa"><button id="m-tg" aria-label="Recolher ou expandir a boleta">▾ Boleta</button><div id="pbar"></div><div class="row" id="qrow"><span class="ql" id="q-rot">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
+  <div id="mesa"><button id="m-tg" aria-label="Recolher ou expandir a boleta">▾</button><div id="pbar"></div><div class="row" id="qrow"><span class="ql" id="q-rot">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
     <span id="q-acoes"></span><button class="qp" data-qp="25">25%</button><button class="qp" data-qp="50">50%</button><button class="qp" data-qp="100">Máx</button></div>
     <div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ VENDER</span></button></div>
     <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar</button><button id="m-adv">⚙ Opções ▾</button><button id="m-ind" title="Indicadores">Indicadores</button></div></div>
@@ -1030,7 +1031,7 @@ $("m-alvo").onclick=()=>{S.tool=S.tool==="malvo"?null:"malvo";ui()};
 $("m-adv").onclick=()=>{const a=$("adv");a.style.display=a.style.display==="flex"?"none":"flex";boletaUI();ui()};
 function boletaUI(){const ab=advAberto();$("app").classList.toggle("adv",ab);$("m-adv").textContent=ab?"▴ Recolher":"⚙ Opções ▾"}
 function moveEnc(){const e=$("m-enc"),l=corrida()?$("mb2"):$("pos");if(e&&l&&typeof l.insertBefore==="function"&&e.parentNode!==l){if(corrida())l.insertBefore(e,$("m-ind"));else l.appendChild(e)}}
-$("m-tg").onclick=()=>{const a=$("app"),min=!a.classList.contains("bmin");a.classList.toggle("bmin",min);$("m-tg").textContent=min?"▴ Boleta":"▾ Boleta";
+$("m-tg").onclick=()=>{const a=$("app"),min=!a.classList.contains("bmin");a.classList.toggle("bmin",min);$("m-tg").textContent=min?"▴":"▾";
   setTimeout(()=>{if(typeof layout==="function"){layout();draw()}},30)};
 $("g-ind").onclick=()=>{const m=$("mais");m.style.display=m.style.display==="flex"?"none":"flex"};
 $("m-ind").onclick=()=>{const m=$("mais");m.style.display=m.style.display==="flex"?"none":"flex"};
