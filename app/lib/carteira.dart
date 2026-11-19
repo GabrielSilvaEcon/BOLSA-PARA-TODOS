@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'compra.dart';
 
-/// Tela da Carteira: patrimônio, caixa livre e as posições por ativo (dados do servidor, `GET /carteira`).
+/// Tela da Carteira no visual do jogo: topo com a ficha do jogador, patrimônio, Comprar/Vender, abas por classe e os ativos em cartões.
+/// Dados do servidor (`GET /carteira`).
 class CarteiraTela extends StatefulWidget {
   const CarteiraTela({super.key, required this.api});
   final Api api;
@@ -12,53 +13,36 @@ class CarteiraTela extends StatefulWidget {
   State<CarteiraTela> createState() => _CarteiraTelaState();
 }
 
-/// Abas da Carteira: (chave da classe no servidor, rótulo). `null` = todas.
-const _abas = <(String?, String)>[
-  (null, 'Todos'),
-  ('acao', 'Ações'),
-  ('cripto', 'Cripto'),
-  ('etf', 'ETFs'),
-  ('fundo', 'Fundos'),
-  ('fii', 'FIIs'),
-  ('rf', 'Renda fixa'),
+/// Abas: (chave da classe no servidor, rótulo, ícone). `null` = todos os ativos.
+const _abas = <(String?, String, String)>[
+  (null, 'Todos', 'assets/carteira/valor.webp'),
+  ('acao', 'Ações', 'assets/carteira/acoes.webp'),
+  ('fii', 'FIIs', ''),
+  ('cripto', 'Cripto', 'assets/carteira/cripto.webp'),
 ];
+
+const _ordens = ['Maior valor', 'Maior alta', 'Maior queda'];
 
 class _CarteiraTelaState extends State<CarteiraTela> {
   Map<String, dynamic>? _cart;
   String? _erro;
   bool _carregando = true;
   String? _aba;
+  String _ordem = _ordens.first;
   final _apelido = TextEditingController();
   bool _aceito = false;
   bool _enviando = false;
 
   @override
-  void dispose() {
-    _apelido.dispose();
-    super.dispose();
-  }
-
-  Future<void> _comecar() async {
-    setState(() => _enviando = true);
-    try {
-      await widget.api.post('/carteira/comecar', {'apelido': _apelido.text.trim(), 'aceito': _aceito});
-      await _carregar();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _enviando = false);
-    }
-  }
-
-  Future<void> _abrirCompra() async {
-    final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => CompraTela(api: widget.api)));
-    if (ok == true) _carregar();
-  }
-
-  @override
   void initState() {
     super.initState();
     _carregar();
+  }
+
+  @override
+  void dispose() {
+    _apelido.dispose();
+    super.dispose();
   }
 
   Future<void> _carregar() async {
@@ -76,45 +60,44 @@ class _CarteiraTelaState extends State<CarteiraTela> {
     }
   }
 
-  Widget _comecar_cartao(ThemeData tema) {
-    return _cartao(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Comece a sua carteira', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
-          const SizedBox(height: 6),
-          Text(
-            'Monte sua carteira com ativos da bolsa. Escolha um apelido público: ele aparece no ranking, com o seu retorno em %.',
-            style: tema.textTheme.bodySmall,
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _apelido,
-            maxLength: 20,
-            decoration: const InputDecoration(labelText: 'Apelido público (ex.: investidor_sp)'),
-          ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _aceito,
-            onChanged: (v) => setState(() => _aceito = v ?? false),
-            title: const Text(
-              'Entendo que meu apelido e meu retorno em % aparecem no ranking. Valores em reais nunca aparecem. É uma simulação educacional, sem dinheiro real.',
-              style: TextStyle(fontSize: 12),
-            ),
-          ),
-          FilledButton(
-            onPressed: _enviando ? null : _comecar,
-            child: const Text('Participar'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _comecar() async {
+    setState(() => _enviando = true);
+    try {
+      await widget.api.post('/carteira/comecar', {'apelido': _apelido.text.trim(), 'aceito': _aceito});
+      await _carregar();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
   }
 
+  Future<void> _abrirCompra(String lado) async {
+    final ok = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => CompraTela(api: widget.api, ladoInicial: lado)),
+    );
+    if (ok == true) _carregar();
+  }
+
+  List<Map<String, dynamic>> get _todas => ((_cart?['posicoes'] as List?) ?? const []).cast<Map<String, dynamic>>();
+
+  int _contar(String? classe) => classe == null ? _todas.length : _todas.where((p) => p['classe'] == classe).length;
+
   List<Map<String, dynamic>> get _posicoes {
-    final lista = ((_cart?['posicoes'] as List?) ?? const []).cast<Map<String, dynamic>>();
-    if (_aba == null) return lista;
-    return lista.where((p) => p['classe'] == _aba).toList();
+    final lista = _aba == null ? [..._todas] : _todas.where((p) => p['classe'] == _aba).toList();
+    num valor(Map<String, dynamic> p) => (p['valor'] as num?) ?? 0;
+    num pct(Map<String, dynamic> p) => (p['pct'] as num?) ?? 0;
+    switch (_ordem) {
+      case 'Maior alta':
+        lista.sort((a, b) => pct(b).compareTo(pct(a)));
+        break;
+      case 'Maior queda':
+        lista.sort((a, b) => pct(a).compareTo(pct(b)));
+        break;
+      default:
+        lista.sort((a, b) => valor(b).compareTo(valor(a)));
+    }
+    return lista;
   }
 
   /// 1234.5 vira "T$ 1.234,50" (dinheiro virtual do jogo). Sem valor, mostra um traço.
@@ -147,14 +130,27 @@ class _CarteiraTelaState extends State<CarteiraTela> {
     return inteiro ? v.toInt().toString() : v.toStringAsFixed(4).replaceAll('.', ',');
   }
 
+  Color _corClasse(String? classe) {
+    switch (classe) {
+      case 'cripto':
+        return const Color(0xFFF5B841);
+      case 'acao':
+        return const Color(0xFF3D8BFF);
+      case 'fii':
+        return const Color(0xFF3DDC97);
+      default:
+        return const Color(0xFF8B7CFF);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    final pat = _cart?['patrimonio'];
+    final pat = (_cart?['patrimonio'] as num?)?.toDouble();
     final caixa = _cart?['disponivel'];
+    final investido = _cart?['investido'];
+    final rent = _cart?['rent_nao_realizada'];
     final comecou = _cart?['comecou'] == true;
-    final temRf = ((_cart?['posicoes'] as List?) ?? const []).any((p) => p is Map && p['classe'] == 'rf');
-    final abas = _abas.where((a) => a.$1 != 'rf' || temRf).toList();
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(title: const Text('Carteira'), backgroundColor: Colors.transparent, elevation: 0),
@@ -164,129 +160,385 @@ class _CarteiraTelaState extends State<CarteiraTela> {
           Image.asset('assets/carteira/fundo_carteira.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
           Container(color: const Color(0xB30B0930)),
           SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _carregar,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (_carregando && _cart == null)
-                const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
-              else if (_erro != null && _cart == null) ...[
-                Text(_erro!, textAlign: TextAlign.center, style: TextStyle(color: tema.colorScheme.error)),
-                const SizedBox(height: 8),
-                OutlinedButton(onPressed: _carregar, child: const Text('Tentar de novo')),
-              ] else ...[
-                _cartao(
-                  child: Row(
-                    children: [
-                      Image.asset('assets/carteira/carteira.webp', width: 56, height: 56),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Patrimônio', style: tema.textTheme.labelLarge),
-                            const SizedBox(height: 4),
-                            Text(
-                              _moeda(pat),
-                              style: tema.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, color: const Color(0xFFFFD76A)),
+            child: RefreshIndicator(
+              onRefresh: _carregar,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (_carregando && _cart == null)
+                    const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+                  else if (_erro != null && _cart == null) ...[
+                    Text(_erro!, textAlign: TextAlign.center, style: TextStyle(color: tema.colorScheme.error)),
+                    const SizedBox(height: 8),
+                    OutlinedButton(onPressed: _carregar, child: const Text('Tentar de novo')),
+                  ] else ...[
+                    _ficha(tema),
+                    const SizedBox(height: 12),
+                    _cartao(
+                      child: Row(
+                        children: [
+                          Image.asset('assets/carteira/carteira.webp', width: 56, height: 56),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Carteira', style: tema.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+                                Text('Seus ativos, seu poder!', style: tema.textTheme.bodySmall),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B0930),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFF3D4BCE)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('Valor total', style: tema.textTheme.labelSmall),
+                                Text(_moeda(pat), style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _cartao(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Caixa livre', style: tema.textTheme.labelLarge),
-                      const SizedBox(height: 4),
-                      Text(_moeda(caixa), style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (!comecou)
-                  _comecar_cartao(tema)
-                else
-                  FilledButton.icon(
-                    onPressed: _abrirCompra,
-                    icon: const Icon(Icons.add_shopping_cart),
-                    label: const Text('Comprar ativo'),
-                  ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final (chave, rotulo) in abas)
-                      ChoiceChip(
-                        label: Text(rotulo),
-                        selected: _aba == chave,
-                        onSelected: (_) => setState(() => _aba = chave),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (_posicoes.isEmpty)
-                  _cartao(
-                    child: Text(
-                      _aba == null
-                          ? 'Você ainda não tem posições. Compre um ativo no jogo para ele aparecer aqui.'
-                          : 'Nenhuma posição nesta aba.',
-                      style: tema.textTheme.bodyMedium,
                     ),
-                  )
-                else
-                  for (final p in _posicoes) ...[
-                    _posicao(tema, p),
                     const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(child: _mini(tema, 'Disponível', _moeda(caixa))),
+                        const SizedBox(width: 8),
+                        Expanded(child: _mini(tema, 'Investido', _moeda(investido))),
+                        const SizedBox(width: 8),
+                        Expanded(child: _mini(tema, 'Resultado', _percentual(rent), cor: (rent is num && rent < 0) ? const Color(0xFFFF6B7A) : const Color(0xFF6BE58A))),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (!comecou)
+                      _comecarCartao(tema)
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.icon(
+                              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4CC26B), minimumSize: const Size.fromHeight(56)),
+                              onPressed: () => _abrirCompra('C'),
+                              icon: const Icon(Icons.add_shopping_cart),
+                              label: const Text('Comprar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton.icon(
+                              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE0524F), minimumSize: const Size.fromHeight(56)),
+                              onPressed: () => _abrirCompra('V'),
+                              icon: const Icon(Icons.trending_down),
+                              label: const Text('Vender', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        for (final (i, (chave, rotulo, icone)) in _abas.indexed) ...[
+                          if (i > 0) const SizedBox(width: 8),
+                          Expanded(child: _aba_tile(tema, chave, rotulo, icone, _contar(chave))),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 48,
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: _caixa(),
+                            child: Text('≡  Meus Ativos', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: _caixa(),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _ordem,
+                                isExpanded: true,
+                                dropdownColor: const Color(0xFF16134A),
+                                items: [for (final o in _ordens) DropdownMenuItem(value: o, child: Text(o))],
+                                onChanged: (v) => setState(() => _ordem = v ?? _ordem),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (_posicoes.isEmpty)
+                      _cartao(
+                        child: Text(
+                          _aba == null
+                              ? 'Você ainda não tem posições. Compre um ativo para ele aparecer aqui.'
+                              : 'Nenhuma posição nesta aba.',
+                          style: tema.textTheme.bodyMedium,
+                        ),
+                      )
+                    else
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 0.78,
+                        children: [for (final p in _posicoes) _ativo(tema, p)],
+                      ),
                   ],
-              ],
-              const SizedBox(height: 24),
-              Text(
-                'Jogo educativo. Sem recomendação de compra ou venda.',
-                style: tema.textTheme.bodySmall,
-                textAlign: TextAlign.center,
+                  const SizedBox(height: 24),
+                  Text(
+                    'Jogo educativo. Sem recomendação de compra ou venda.',
+                    style: tema.textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
         ],
       ),
     );
   }
 
-  Widget _posicao(ThemeData tema, Map<String, dynamic> p) {
-    final pct = p['pct'] as num?;
-    final cor = (pct ?? 0) >= 0 ? const Color(0xFF6BE58A) : const Color(0xFFFF6B7A);
-    return _cartao(
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  /// Ficha do jogador no topo: apelido, posição no ranking e Ticker Coins.
+  Widget _ficha(ThemeData tema) {
+    final apelido = (_cart?['apelido'] as String?)?.trim();
+    final pos = _cart?['ranking'];
+    final moedas = _cart?['moedas'];
+    return Row(
+      children: [
+        Expanded(
+          child: _cartao(
+            child: Row(
               children: [
-                Text(p['nome']?.toString() ?? p['id']?.toString() ?? '—', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
-                const SizedBox(height: 4),
-                Text(
-                  '${_quantidade(p['qtd'])} cotas · preço médio ${_moeda(p['pm'])}',
-                  style: tema.textTheme.bodySmall,
+                Container(
+                  width: 44,
+                  height: 44,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF6BE58A), width: 2),
+                  ),
+                  child: ClipOval(child: Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (apelido == null || apelido.isEmpty) ? 'Sem apelido' : apelido,
+                        style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(pos == null ? '🏆 —' : '🏆 #$pos', style: const TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w800)),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF16134A),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFFFD76A)),
+          ),
+          child: Row(
             children: [
-              Text(_moeda(p['valor']), style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
-              const SizedBox(height: 4),
-              Text(_percentual(pct), style: tema.textTheme.bodySmall?.copyWith(color: cor, fontWeight: FontWeight.w800)),
+              const Icon(Icons.toll, color: Color(0xFFFFD76A), size: 20),
+              const SizedBox(width: 6),
+              Text(moedas == null ? '—' : '$moedas', style: const TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w900)),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Aba com contador: o ícone da classe e o número de ativos no canto.
+  Widget _aba_tile(ThemeData tema, String? chave, String rotulo, String icone, int n) {
+    final selecionada = _aba == chave;
+    return GestureDetector(
+      onTap: () => setState(() => _aba = chave),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            height: 84,
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: selecionada ? const Color(0xFF4B2FD6) : const Color(0xFF16134A),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: selecionada ? const Color(0xFFB59BFF) : const Color(0xFF3D4BCE), width: 1.5),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icone.isNotEmpty)
+                  Image.asset(icone, height: 34, width: 34, fit: BoxFit.contain)
+                else
+                  const Icon(Icons.apartment, size: 30, color: Color(0xFF9AD8FF)),
+                const SizedBox(height: 4),
+                Text(rotulo, style: tema.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800), textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+          Positioned(
+            left: -4,
+            top: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: chave == null ? const Color(0xFFF5B841) : const Color(0xFF6B5CFF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('$n', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.white)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Cartão de um ativo: letra da sigla, nome, quantidade, valor, variação e peso na carteira.
+  Widget _ativo(ThemeData tema, Map<String, dynamic> p) {
+    final cor = _corClasse(p['classe'] as String?);
+    final rotulo = (p['nome'] as String?) ?? (p['id'] as String?) ?? '—';
+    final partes = rotulo.split(' · ');
+    final nome = partes.length == 2 ? partes[0] : rotulo;
+    final sigla = partes.length == 2 ? partes[1] : (p['id'] as String?) ?? '';
+    final valor = (p['valor'] as num?)?.toDouble() ?? 0;
+    final pct = p['pct'] as num?;
+    final patrimonio = (_cart?['patrimonio'] as num?)?.toDouble() ?? 0;
+    final peso = patrimonio > 0 ? valor / patrimonio : 0.0;
+    final corPct = (pct ?? 0) >= 0 ? const Color(0xFF6BE58A) : const Color(0xFFFF6B7A);
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF28245C), Color(0xFF16134A)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cor, width: 1.2),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cor.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: cor),
+            ),
+            child: Text(
+              sigla.isEmpty ? '?' : sigla.substring(0, sigla.length < 3 ? sigla.length : 3),
+              style: TextStyle(color: cor, fontWeight: FontWeight.w900, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(sigla, style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis),
+          Text(nome, style: tema.textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8)),
+            child: Text('${_quantidade(p['qtd'])} un.', style: const TextStyle(fontSize: 11)),
+          ),
+          const SizedBox(height: 4),
+          Text(_moeda(valor), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+          Text(_percentual(pct), style: TextStyle(color: corPct, fontWeight: FontWeight.w800, fontSize: 12)),
+          const Spacer(),
+          Row(
+            children: [
+              const Text('Peso', style: TextStyle(fontSize: 10)),
+              const SizedBox(width: 4),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(value: peso.clamp(0, 1).toDouble(), minHeight: 5, color: cor, backgroundColor: Colors.white12),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text('${(peso * 100).round()}%', style: const TextStyle(fontSize: 10)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mini(ThemeData tema, String rotulo, String valor, {Color? cor}) {
+    return _cartao(
+      child: Column(
+        children: [
+          Text(rotulo, style: tema.textTheme.labelSmall),
+          const SizedBox(height: 4),
+          Text(valor, style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900, color: cor)),
+        ],
+      ),
+    );
+  }
+
+  BoxDecoration _caixa() => BoxDecoration(
+        color: const Color(0xFF16134A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF3D4BCE)),
+      );
+
+  Widget _comecarCartao(ThemeData tema) {
+    return _cartao(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Comece a sua carteira', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          Text(
+            'Monte sua carteira com ativos da bolsa. Escolha um apelido público: ele aparece no ranking, com o seu retorno em %.',
+            style: tema.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _apelido,
+            maxLength: 20,
+            decoration: const InputDecoration(labelText: 'Apelido público (ex.: investidor_sp)'),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _aceito,
+            onChanged: (v) => setState(() => _aceito = v ?? false),
+            title: const Text(
+              'Entendo que meu apelido e meu retorno em % aparecem no ranking. Valores em reais nunca aparecem. É uma simulação educacional, sem dinheiro real.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+          FilledButton(
+            onPressed: _enviando ? null : _comecar,
+            child: const Text('Participar'),
           ),
         ],
       ),
