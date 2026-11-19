@@ -137,3 +137,11 @@ def test_central_de_jogos(cli):
     d = r.json()
     assert {"vitorias", "partidas", "melhor", "ofensiva", "desafio"} <= set(d)
     assert d["vitorias"] >= 0 and d["partidas"] >= 0
+
+
+def test_tela_inicial_do_trade_battle(cli):
+    r = cli.get("/trade/central")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert [c["id"] for c in d["corridas"]] == list(TB.CORRIDAS)
+    assert all(c["minutos"] > 0 and c["grafico"] for c in d["corridas"])

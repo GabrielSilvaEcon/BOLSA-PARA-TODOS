@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'trade.dart';
 
 /// Central de Jogos ("Mundo dos Jogos!"), igual à do app antigo (jogos_app.pagina_central + design/kit.topo):
 /// topo com a arte dos jogos e "Ver como funciona", os dois jogos (Trade Battle e Ticker Battle), Sua Evolução,
@@ -109,7 +110,7 @@ class _JogosTelaState extends State<JogosTela> {
                           frase: 'Desafie outros jogadores em batalhas de trade!',
                           botao: const [Color(0xFF2EE86B), Color(0xFF14C98F)],
                           texto: const Color(0xFF06240F),
-                          acao: () => _emBreve('Trade Battle'),
+                          acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TradeTela(api: widget.api))),
                         ),
                       ),
                       const SizedBox(width: 10),
