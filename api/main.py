@@ -133,6 +133,36 @@ def sair(q: Quem = Depends(quem)) -> dict:
     return {"ok": True}
 
 
+def _ranking_da_casa(a, email: str) -> dict:
+    """Posição da pessoa no ranking geral, com as mesmas regras da Home do Streamlit (ranking oficial ou parcial do dia).
+    Só lê o banco; nunca derruba a Home (em caso de erro devolve posição vazia)."""
+    vazio = {"pos": None, "total": None, "rotulo": None, "participa": False}
+    try:
+        import competicao as C
+        import home_dados as HD
+        import ranking_parcial as RP
+        perfil = C.sanear_perfil(banco.comp_ordens_ler(a))
+        cart = banco.comp_carteira_ler(a) or {}
+        est = cart if cart.get("v") == 1 else None
+        rk = banco.comp_publico_ler("comp_ranking") or {}
+        participa = bool(perfil.get("aceite"))
+        apelido = str(perfil.get("apelido") or "")
+        listas, rotulo = RP.escolher(rk)
+        geral = listas.get("geral") or []
+        mr = (est or {}).get("rank") or {}
+        n = mr.get("n")
+        total = listas.get("geral_n") if rotulo else ((n.get("geral") if isinstance(n, dict) else n) or listas.get("geral_n"))
+        if rotulo:
+            r = HD.ranking_resumo(geral, total, None, apelido if participa else None, None, dia=rk.get("dia"), parcial=rotulo)
+        else:
+            r = HD.ranking_resumo(geral, total, mr.get("geral"), apelido if participa else None, None, dia=rk.get("dia"))
+        eu = r.get("eu") or {}
+        return {"pos": eu.get("pos"), "total": r.get("total"), "rotulo": rotulo, "participa": participa}
+    except Exception as e:
+        banco.registrar_erro("api.ranking_da_casa", e)
+        return vazio
+
+
 @app.get("/eu")
 def eu(q: Quem = Depends(quem)) -> dict:
     """O que o cabeçalho e a Home mostram: conta, perfil de jogador, carteira (caixa e patrimônio) e o placar dos jogos."""
@@ -167,9 +197,10 @@ def eu(q: Quem = Depends(quem)) -> dict:
         passe = PA.estado(JO._jor(prog)["xp_dia"], hoje) if prog is not None else None
     except Exception:
         passe = None
+    ranking = _ranking_da_casa(a, q.email)
     return {"conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
             "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar,
-            "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe}
+            "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe, "ranking": ranking}
 
 
 # ------------------------------------------------------------------ rankings (só partidas online contam)
