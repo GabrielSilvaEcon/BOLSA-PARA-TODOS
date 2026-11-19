@@ -74,7 +74,21 @@ class _JogosTelaState extends State<JogosTela> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF110C2E),
-      body: RefreshIndicator(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/jogos/fundo_batalha.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x80090722), Color(0x9E090722), Color(0xD6090722)],
+                stops: [0, 0.4, 1],
+              ),
+            ),
+          ),
+          RefreshIndicator(
         onRefresh: _carregar,
         child: Center(
           child: ConstrainedBox(
@@ -134,6 +148,8 @@ class _JogosTelaState extends State<JogosTela> {
             ),
           ),
         ),
+      ),
+        ],
       ),
     );
   }

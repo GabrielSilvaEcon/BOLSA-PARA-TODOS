@@ -306,7 +306,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
               gradient: const RadialGradient(colors: [Color(0xFF1E3A7A), Color(0xFF0B1236)]),
               border: Border.all(color: _verde, width: 1.5),
             ),
-            child: Image.asset('assets/carteira/carteira.webp', width: 40, height: 40),
+            child: ClipOval(child: Image.asset('assets/carteira/carteira_urso.webp', width: 47, height: 47, fit: BoxFit.cover)),
           ),
           const SizedBox(width: 8),
           Expanded(

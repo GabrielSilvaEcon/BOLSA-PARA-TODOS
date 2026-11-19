@@ -7,13 +7,13 @@ import 'cabecalho.dart';
 import 'home.dart';
 import 'jogos.dart';
 
-/// Itens da barra de baixo, na mesma ordem do app antigo.
-const _itens = <(String, IconData)>[
-  ('Início', Icons.home_outlined),
-  ('Jogos', Icons.sports_esports_outlined),
-  ('Aprender', Icons.menu_book_outlined),
-  ('Ranking', Icons.emoji_events_outlined),
-  ('Loja', Icons.shopping_cart_outlined),
+/// Itens da barra de baixo, na mesma ordem do app antigo: (nome, ícone 3D da arte da barra, ícone simples para a tela "em breve").
+const _itens = <(String, String, IconData)>[
+  ('Início', 'assets/nav/inicio.webp', Icons.home_outlined),
+  ('Jogos', 'assets/nav/jogos.webp', Icons.sports_esports_outlined),
+  ('Aprender', 'assets/nav/aprender.webp', Icons.menu_book_outlined),
+  ('Ranking', 'assets/nav/ranking.webp', Icons.emoji_events_outlined),
+  ('Loja', 'assets/nav/loja.webp', Icons.shopping_cart_outlined),
 ];
 
 /// Pedido de troca de aba vindo de dentro de uma tela (ex.: "Jogar agora" da Home abre a aba Jogos).
@@ -58,7 +58,7 @@ class _PrincipalState extends State<Principal> {
   Widget _raiz(int i) {
     if (i == 0) return HomeTela(api: widget.api);
     if (i == 1) return JogosTela(api: widget.api);
-    return EmBreveTela(titulo: _itens[i].$1, icone: _itens[i].$2);
+    return EmBreveTela(titulo: _itens[i].$1, icone: _itens[i].$3);
   }
 
   void _tocar(int i) {
@@ -120,22 +120,68 @@ class _PrincipalState extends State<Principal> {
     );
   }
 
-  /// Barra de baixo: faixa escura de ponta a ponta, cantos de cima arredondados, ícone ao lado do nome.
+  /// Barra de baixo no estilo da arte do jogo: moldura dourada, casas roxas com os ícones 3D, a aba aberta com moldura dourada
+  /// e brilho, e o mascote espiando por cima do canto esquerdo.
   Widget _barra() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF141236),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: Color(0x33BDB5E6))),
-        boxShadow: [BoxShadow(color: Color(0x99000000), blurRadius: 24, offset: Offset(0, -8))],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-          child: Row(
-            children: [for (var i = 0; i < _itens.length; i++) Expanded(child: _botao(i))],
-          ),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(2.5),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(26),
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFFFE27A), Color(0xFFE9A80C), Color(0xFFB07A10)],
+                ),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x99FFC93C), blurRadius: 14, spreadRadius: -4),
+                  BoxShadow(color: Color(0xCC000000), blurRadius: 18, offset: Offset(0, 8)),
+                ],
+              ),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(5, 6, 5, 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(23.5),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF3B2690), Color(0xFF21125A)],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < _itens.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 4),
+                      Expanded(child: _botao(i)),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // mascote espiando por cima da barra, no canto esquerdo (não pega toque)
+            Positioned(
+              left: 0,
+              top: -52,
+              child: IgnorePointer(
+                child: SizedBox(
+                  height: 60,
+                  child: ClipRect(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      heightFactor: 0.6,
+                      child: Image.asset('assets/nav/mascote.webp', height: 100),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -143,32 +189,50 @@ class _PrincipalState extends State<Principal> {
 
   Widget _botao(int i) {
     final ativo = i == _aba;
-    final (rotulo, icone) = _itens[i];
-    final cor = ativo ? const Color(0xFFB59BFF) : const Color(0xFFE4E0FA);
+    final (rotulo, arte, _) = _itens[i];
     return Semantics(
       button: true,
       selected: ativo,
       label: rotulo,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+      child: GestureDetector(
         onTap: () => _tocar(i),
-        child: Container(
-          height: 48,
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 62,
+          padding: const EdgeInsets.fromLTRB(2, 4, 2, 3),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: ativo ? const Color(0x338B6CFF) : null,
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              children: [
-                Icon(icone, color: cor, size: 26),
-                const SizedBox(width: 6),
-                Text(rotulo, style: TextStyle(color: cor, fontSize: 17, fontWeight: FontWeight.w700)),
-              ],
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: ativo ? const [Color(0xFF6A45E0), Color(0xFF3A1F9E)] : const [Color(0xFF2E1C78), Color(0xFF1E1150)],
             ),
+            border: Border.all(color: ativo ? const Color(0xFFFFC93C) : const Color(0x33B59BFF), width: ativo ? 2.5 : 1),
+            boxShadow: ativo ? const [BoxShadow(color: Color(0xAAFFC93C), blurRadius: 12, spreadRadius: -2)] : null,
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 150),
+                  scale: ativo ? 1.12 : 1,
+                  child: Image.asset(arte, fit: BoxFit.contain),
+                ),
+              ),
+              const SizedBox(height: 1),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  rotulo,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    shadows: [Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1))],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
