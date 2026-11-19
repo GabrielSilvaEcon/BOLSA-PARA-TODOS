@@ -95,6 +95,8 @@ class _HomeTelaState extends State<HomeTela> {
     final nivel = _eu?['nivel'] as Map?;
     final moedas = _eu?['moedas'];
     final pct = (nivel?['pct'] as num?)?.toDouble() ?? 0;
+    final rk = (_eu?['ranking'] as Map?) ?? {};
+    final pos = rk['pos'];
     return Row(
       children: [
         Expanded(
@@ -149,8 +151,14 @@ class _HomeTelaState extends State<HomeTela> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.emoji_events, color: Color(0xFFFFD76A), size: 22),
-                Text('—', style: tema.textTheme.titleMedium?.copyWith(color: const Color(0xFFFFD76A), fontWeight: FontWeight.w900)),
-                const Text('ranking', style: TextStyle(fontSize: 11)),
+                Text(
+                  pos == null ? '—' : '#$pos',
+                  style: tema.textTheme.titleMedium?.copyWith(color: const Color(0xFFFFD76A), fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  rk['total'] == null ? 'ranking' : 'de ${rk['total']}',
+                  style: const TextStyle(fontSize: 11),
+                ),
               ],
             ),
           ),
