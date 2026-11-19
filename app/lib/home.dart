@@ -161,10 +161,6 @@ class _HomeTelaState extends State<HomeTela> {
 
   /// Banner: nome do jogador e o Hunter Pass da temporada com a barra de progresso.
   Widget _bannerPasse(ThemeData tema) {
-    final passe = _eu?['passe'] as Map?;
-    final feitos = passe?['feitos'] ?? 0;
-    final total = passe?['total'] ?? 0;
-    final pct = (passe?['pct'] as num?)?.toDouble() ?? 0;
     return _cartao(
       tema,
       destaque: true,
@@ -182,39 +178,30 @@ class _HomeTelaState extends State<HomeTela> {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFFFD76A), Color(0xFFC98A1A)]),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('HUNTER PASS', style: TextStyle(color: Color(0xFF2B1A00), fontWeight: FontWeight.w900, fontSize: 11)),
-                Text('$feitos/$total', style: const TextStyle(color: Color(0xFF2B1A00), fontWeight: FontWeight.w900)),
-                SizedBox(
-                  width: 90,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(value: pct.clamp(0, 1), minHeight: 5, color: const Color(0xFF2B1A00), backgroundColor: Colors.white30),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 
-  /// Imagem central da Home (arena do pregão). Textos e cotações ficam de fora da arte.
+  /// Imagem central da Home (arena do pregão). As bordas somem num degradê, sem linha nem caixa.
   Widget _arena() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: AspectRatio(
-        aspectRatio: 768 / 490,
-        child: Image.asset('assets/home/arena.webp', fit: BoxFit.cover),
+    const cores = [Colors.transparent, Colors.white, Colors.white, Colors.transparent];
+    const paradas = [0.0, 0.22, 0.78, 1.0];
+    return AspectRatio(
+      aspectRatio: 768 / 490,
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (r) => const LinearGradient(colors: cores, stops: paradas).createShader(r),
+        child: ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (r) => const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: cores,
+            stops: paradas,
+          ).createShader(r),
+          child: Image.asset('assets/home/arena.webp', fit: BoxFit.cover),
+        ),
       ),
     );
   }
