@@ -97,6 +97,11 @@ class _HomeTelaState extends State<HomeTela> {
     final pct = (nivel?['pct'] as num?)?.toDouble() ?? 0;
     final rk = (_eu?['ranking'] as Map?) ?? {};
     final pos = rk['pos'];
+    final legenda = _eu == null
+        ? 'ranking'
+        : (pos != null || rk['participa'] == true)
+            ? (rk['total'] == null ? 'ranking' : 'de ${rk['total']}')
+            : 'Entre na competição';
     return Row(
       children: [
         Expanded(
@@ -156,8 +161,9 @@ class _HomeTelaState extends State<HomeTela> {
                   style: tema.textTheme.titleMedium?.copyWith(color: const Color(0xFFFFD76A), fontWeight: FontWeight.w900),
                 ),
                 Text(
-                  rk['total'] == null ? 'ranking' : 'de ${rk['total']}',
+                  legenda,
                   style: const TextStyle(fontSize: 11),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
