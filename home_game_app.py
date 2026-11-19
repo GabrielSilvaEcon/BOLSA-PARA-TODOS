@@ -109,7 +109,28 @@ def _cartao_botao(chave: str, html_cartao: str, rotulo: str, ir, destino: str, e
         st.button(rotulo, key=f"{chave}_b", on_click=ir, args=(destino, estado) if estado else (destino,))
 
 
-def renderizar(ir, mercado_fn, educacao_app) -> None:
+_HUD = ("hg_hud_nivel", "hg_hud_tc", "hg_hud_rk")
+
+
+def hud(ir, educacao_app) -> None:
+    """Nível (com a foto), Ticker Coins e posição no ranking, dentro do cabeçalho da Home (no lugar da antiga 2ª linha)."""
+    st.markdown(G.css_base() + HG.css() + "".join(G.css_cartao_botao(k) for k in _HUD) + HG.css_hud_topo(), unsafe_allow_html=True)
+    nivel = None
+    xp = _xp(educacao_app)
+    if xp is not None:
+        try:
+            import nivel as NV
+            nivel = NV.estado(xp)
+        except Exception:
+            nivel = None
+    pos, total = _posicao()
+    with st.container(key="hg_hud"):
+        _cartao_botao("hg_hud_nivel", HG.html_hud_nivel(nivel, *_avatar(), _nome()), "Meu perfil", ir, "perfil")
+        _cartao_botao("hg_hud_tc", HG.html_hud_moedas(_moedas(), _moeda_html()), "Ticker Coins e loja", ir, "economia")
+        _cartao_botao("hg_hud_rk", HG.html_hud_rank(pos, total), "Ranking", ir, "jogos-ranking")
+
+
+def renderizar(ir, mercado_fn, educacao_app, com_hud: bool = True) -> None:
     """Desenha a Home: HUD (nível, Ticker Coins, ranking), banner com o Hunter Pass, Pregão Orbit, missões e os três acessos.
     `ir(destino, estado=None)`: navega (a _ir_home do app). `mercado_fn()`: cotações já em cache (a mesma do bloco 'Mercado hoje').
     `educacao_app`: o módulo que guarda o progresso de estudo (XP, passe e missões)."""
@@ -130,10 +151,11 @@ def renderizar(ir, mercado_fn, educacao_app) -> None:
     except Exception:
         itens = []
     with st.container(key="hg_tela"):
-        with st.container(key="hg_hud"):
-            _cartao_botao("hg_hud_nivel", HG.html_hud_nivel(nivel, *_avatar(), nome), "Meu perfil", ir, "perfil")
-            _cartao_botao("hg_hud_tc", HG.html_hud_moedas(_moedas(), _moeda_html()), "Ticker Coins e loja", ir, "economia")
-            _cartao_botao("hg_hud_rk", HG.html_hud_rank(pos, total), "Ranking", ir, "jogos-ranking")
+        if com_hud:                                    # no app o HUD fica no cabeçalho (hud()); aqui só se alguém pedir a Home sem cabeçalho
+            with st.container(key="hg_hud"):
+                _cartao_botao("hg_hud_nivel", HG.html_hud_nivel(nivel, *_avatar(), nome), "Meu perfil", ir, "perfil")
+                _cartao_botao("hg_hud_tc", HG.html_hud_moedas(_moedas(), _moeda_html()), "Ticker Coins e loja", ir, "economia")
+                _cartao_botao("hg_hud_rk", HG.html_hud_rank(pos, total), "Ranking", ir, "jogos-ranking")
         _cartao_botao("hg_ban", HG.html_banner(nome, _passe(educacao_app)), "Abrir o Hunter Pass", ir, "jornada", {"jor_vista": "passe"})
         st.markdown(HG.html_orbit(itens), unsafe_allow_html=True)
         _cartao_botao("hg_miss", HG.html_missoes(_missoes(educacao_app)), "Ver todas as missões", ir, "missoes")

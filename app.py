@@ -1772,7 +1772,7 @@ def _inicio_app(ativos: list):
     st.markdown(IP.css(), unsafe_allow_html=True)
     import home_game_app
     try:
-        home_game_app.renderizar(_ir_home, _mercado_hoje_cache, educacao_app)
+        home_game_app.renderizar(_ir_home, _mercado_hoje_cache, educacao_app, com_hud=False)   # o HUD está no cabeçalho
     except Exception as _e_home:
         if type(_e_home).__name__ in ("StopException", "RerunException"):
             raise
@@ -4636,6 +4636,13 @@ def _topo_acoes():
     with st.container(key="topo_perfil"):
         st.markdown(_marca_html(26), unsafe_allow_html=True)
         st.markdown(_css_topo_avatar(), unsafe_allow_html=True)
+        if pg.url_path == PG_INICIO.url_path:                         # Home: nível, Ticker Coins e ranking ficam no próprio cabeçalho
+            try:
+                import home_game_app
+                home_game_app.hud(_ir_home, educacao_app)
+            except Exception as _e_hud:
+                if type(_e_hud).__name__ in ("StopException", "RerunException"):
+                    raise
         if st.button("Pesquisar", key="topo_busca", icon=":material/search:", type="tertiary"):
             _dialogo_busca()
         st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css_topo

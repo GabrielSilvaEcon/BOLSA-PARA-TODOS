@@ -206,6 +206,23 @@ def html_acesso(chave: str) -> str:
 
 
 # ------------------------------------------------------------------ CSS da tela
+def css_hud_topo() -> str:
+    """HUD dentro do cabeçalho (linha única): ícone do app à esquerda, nível/moedas/ranking no meio, busca e sino à direita."""
+    t = f"{Q} .st-key-topo_perfil"
+    return ("<style>"
+            f"{t} [data-testid='stLayoutWrapper']:has(>.st-key-hg_hud),{t} .st-key-hg_hud{{flex:1 1 auto !important;min-width:0 !important;width:auto !important}}"
+            f"{t} .st-key-hg_hud{{display:grid !important;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr) minmax(0,.8fr);gap:4px !important;margin:0 4px !important}}"
+            f"{t} .st-key-hg_hud .hg-h{{height:36px;padding:2px 6px;border-radius:11px}}"
+            f"{t} .st-key-hg_hud .hg-av{{width:28px;height:28px}}"
+            f"{t} .st-key-hg_hud .hg-lvt span{{display:none}}{t} .st-key-hg_hud .hg-lvt b{{font-size:.78rem}}"
+            f"{t} .st-key-hg_hud .hg-tc b,{t} .st-key-hg_hud .hg-rk b{{font-size:.9rem}}{t} .st-key-hg_hud .hg-tc small{{font-size:.6rem}}"
+            f"{t} .st-key-hg_hud .hg-tc svg,{t} .st-key-hg_hud .hg-tc .hg-co{{display:none}}"
+            f"{t} .st-key-hg_hud .hg-rk img{{width:22px;height:22px}}"
+            f"{t} .st-key-hg_hud [data-testid='stElementContainer']{{margin:0 !important}}"
+            "@media (max-width:400px){" f"{t} .st-key-hg_hud .hg-tc small{{display:none}}" "}"
+            "</style>")
+
+
 def css() -> str:
     c = Q
     t = f"{c} .st-key-hg_tela"
