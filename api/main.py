@@ -617,6 +617,38 @@ def trade_solo_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
     return _estado_solo(q, pid, d, p, cen)
 
 
+_ABAS_RELATORIO = """<style>
+html,body{margin:0;background:transparent;font-family:'Source Sans 3','Source Sans Pro',system-ui,sans-serif;color:#fff}
+section[role=dialog]{padding:14px 12px 16px;min-height:100vh;box-sizing:border-box}
+.ab{display:flex;gap:6px;margin:4px 0 10px}.ab button{flex:1;padding:8px 4px;border-radius:12px;border:1.5px solid #5B4BD6;background:#1B1460;
+color:#D9D4F7;font:800 13px inherit;font-family:inherit}.ab button.on{background:linear-gradient(90deg,#7C5CFF,#B06BFF);color:#fff;border-color:#B9A8FF}
+.pn{display:none}.pn.on{display:block}
+</style>"""
+
+
+@app.get("/trade/solo/{pid}/relatorio")
+def trade_solo_relatorio(pid: str, q: Quem = Depends(quem)) -> dict:
+    """Relatório do fim da partida corrida, o mesmo do app antigo (trader_relatorio): topo, e as abas Resumo, Operações e Raio-X.
+    Devolve uma página HTML pronta para o app mostrar."""
+    import trader_relatorio as TR
+    d, p, cen = _ler_solo(q, pid)
+    if p.get("fase") != "fim":
+        raise HTTPException(400, "A partida ainda não terminou.")
+    res = (p.get("resultados") or {}).get(TB._chave(1, q.email))
+    if not res:
+        raise HTTPException(404, "Sem resultado para esta partida.")
+    revelado = TB.revelacao(p, cen)
+    paineis = (("Resumo", TR.html_resumo(res, revelado, "")), ("Operações", TR.html_operacoes(res)), ("Raio-X", TR.html_raiox(TB.explicar_mesa(res))))
+    botoes = "".join(f"<button class='{'on' if i == 0 else ''}' onclick='ab({i})'>{n}</button>" for i, (n, _) in enumerate(paineis))
+    corpo = "".join(f"<div class='pn{' on' if i == 0 else ''}'>{h}</div>" for i, (_, h) in enumerate(paineis))
+    js = ("<script>function ab(i){document.querySelectorAll('.ab button').forEach((b,k)=>b.classList.toggle('on',k===i));"
+          "document.querySelectorAll('.pn').forEach((p,k)=>p.classList.toggle('on',k===i))}</script>")
+    pagina = ("<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+              + _ABAS_RELATORIO + TR.CSS + "</head><body><section role='dialog'>" + TR.html_topo()
+              + f"<div class='ab'>{botoes}</div>{corpo}</section>{js}</body></html>")
+    return {"html": pagina}
+
+
 # ------------------------------------------------------------------ Trade Battle · salas online (2 a 4 jogadores)
 def _sala(fn, *args):
     try:
