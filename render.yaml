@@ -1,0 +1,18 @@
+# Servidor do jogo (api/main.py) no Render: Blueprint lido ao conectar o repositório (Render > New > Blueprint).
+# Os dois segredos do Supabase são os mesmos do Streamlit e dos robôs do GitHub: o Render pede os valores na criação.
+services:
+  - type: web
+    name: tickerhunters-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /saude
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: BPT_SUPABASE_URL
+        sync: false
+      - key: BPT_SUPABASE_KEY
+        sync: false
