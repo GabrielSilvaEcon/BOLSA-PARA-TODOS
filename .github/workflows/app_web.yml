@@ -34,7 +34,7 @@ jobs:
         working-directory: app
         env:
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        run: flutter build web --release --base-href /BOLSA-PARA-TODOS/ --dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY
+        run: flutter build web --release --pwa-strategy=none --base-href /BOLSA-PARA-TODOS/ --dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app/build/web
