@@ -142,6 +142,13 @@ CSS = f"""
 {Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ct b{{grid-column:2 !important;grid-row:1 !important;align-self:center;font-size:clamp(.8rem,3.6vw,1rem) !important;
   white-space:normal !important;line-height:1.1 !important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
 {Q} .st-key-an_grade [class*="st-key-an_card_"] .an-n{{display:none !important}}
+/* o cartão inteiro é o botão (sem o "Abrir" escrito): o st.button fica por cima, invisível, e leva o toque */
+{Q} .st-key-an_grade [class*="st-key-an_card_"]{{transition:transform .08s}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"]:has(button:active){{transform:translateY(3px) scale(.985)}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] [data-testid="stElementContainer"]:has(.stButton){{position:absolute !important;inset:0;width:100% !important;height:100% !important;margin:0 !important;z-index:5}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .stButton,{Q} .st-key-an_grade [class*="st-key-an_card_"] .stButton>button{{width:100% !important;height:100% !important;min-height:0 !important;
+  padding:0 !important;margin:0 !important;opacity:0 !important;cursor:pointer}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ch{{min-height:46px}}
 {Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ct b{{word-break:normal !important;overflow-wrap:normal !important;hyphens:none !important}}
 {Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ci.an-3d{{width:36px !important;height:36px !important}}
 {Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ci.an-3d img{{width:34px;max-height:34px}}
