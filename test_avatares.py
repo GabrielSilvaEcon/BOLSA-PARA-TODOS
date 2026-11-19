@@ -1,3 +1,4 @@
+import base64
 """Coleção de Avatares: catálogo, arquivos, raridades, desbloqueio, persistência e bloqueio de avatar não liberado."""
 import hashlib
 import os
@@ -135,10 +136,14 @@ def test_mesa_recebe_avatar_de_cada_assento_sem_email(monkeypatch):
     monkeypatch.setattr(PA, "avatar_de_email", lambda e: {"b@x.com": ("dragao", ""), "c@x.com": ("foto", "data:image/webp;base64,AAA")}.get(e, ("raposa", "")))
     m = TBA._avatares_assentos({"jogadores": ["b@x.com", "eu@x.com", "c@x.com"]})
     assert set(m) == {"Jogador 1", "Você", "Jogador 3"}
-    assert m["Jogador 1"] == {"src": "/app/static/avatares/dragao_p.webp", "cor": AV.RARIDADES["mitico"]["cor"]}
-    assert m["Você"]["src"].endswith("panda_p.webp") and m["Jogador 3"]["src"].startswith("data:image/webp")
+    # a imagem vai junto (data URI): endereço de arquivo quebra dentro do iframe quando o app roda sob um prefixo
+    def arq(nome):
+        with open(os.path.join(os.path.dirname(__file__), "static", "avatares", nome), "rb") as f:
+            return "data:image/webp;base64," + base64.b64encode(f.read()).decode("ascii")
+    assert m["Jogador 1"] == {"src": arq("dragao_p.webp"), "cor": AV.RARIDADES["mitico"]["cor"]}
+    assert m["Você"]["src"] == arq("panda_p.webp") and m["Jogador 3"]["src"].startswith("data:image/webp")
     assert "@" not in str(m)
-    assert TBA._avatares_assentos({"jogadores": ["solo"]})["Você"]["src"].endswith("panda_p.webp")
+    assert TBA._avatares_assentos({"jogadores": ["solo"]})["Você"]["src"] == arq("panda_p.webp")
 
 
 def test_icones_de_setor():
