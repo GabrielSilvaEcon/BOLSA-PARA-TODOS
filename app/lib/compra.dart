@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'cabecalho.dart';
 
 /// Compra e venda na hora, ao preço atual (servidor: `POST /carteira/ordem`). Mesmas regras do jogo.
 class CompraTela extends StatefulWidget {
@@ -88,6 +89,8 @@ class _CompraTelaState extends State<CompraTela> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            Cabecalho(api: widget.api),
+            const SizedBox(height: 12),
             _cartao(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
