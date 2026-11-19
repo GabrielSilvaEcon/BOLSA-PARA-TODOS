@@ -96,3 +96,11 @@ def test_comprar_e_stop_movel_pela_tela_levam_quantidade_e_distancia():
     t2 = t + 3 * TB.cfg_de(p)["t_replay_s"] / TB.cfg_de(p)["n_replay"]
     TG.processar(p, {"seq": 2, "evento": "acao", "dados": {"aid": "c2", "tipo": "stop_movel", "dist": 0.3}}, est, EU, ref, t2, cen=cen)
     assert est.get("erro", "") == "" and p["acoes"][-1]["dist"] == 0.3
+
+
+def test_lote_e_10_por_cento_do_capital_fixo_na_partida():
+    p, cen, ref = _p()                                                         # capital T$ 10.000
+    L = TB.lote_de(p, EU, ref)
+    assert L == int(1000 // (ref * (1 + TB.cfg_de(p)["taxa"])))
+    assert 10 * L * ref <= 10_000 and 11 * L * ref * (1 + TB.cfg_de(p)["taxa"]) > 10_000   # cabem 10 lotes, não 11
+    assert TB.lote_de(p, EU, 999_999.0) == 1                                  # ação cara: lote mínimo de 1 ação

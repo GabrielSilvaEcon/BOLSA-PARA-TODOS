@@ -65,6 +65,7 @@ def args_mesa(v: dict, p: dict, estado: dict, agora: float | None = None) -> dic
             "seg": v["segundos"], "ref": cand[-1]["c"], "token": p["id"], "sr": sr, "inicial": inicial, "limites": dict(TB.MAX_MARCAS),
             "erro": estado.get("erro", ""), "erro_seq": estado.get("erro_seq", 0), "ok_seq": estado.get("ok_seq", 0),
             "corrida": TB.qtd_de(p), "confirmados": v.get("confirmados"),
+            "lote": TB.lote_de(p, v["jogador"], v["candles"][v["n_analise"] - 1]["c"]) if TB.qtd_de(p) and v.get("n_analise") else None,
             "plano_cfg": {"capital": TB.capital_de(p, v["jogador"]), "taxa": float(TB.cfg_de(p).get("taxa", 0.0))} if TB.qtd_de(p) else None,
             "motor": v.get("motor", TB.MOTOR_LEGADO), "pausada": bool(v.get("pausada")), "mesa": texto_mesa(v.get("mesa")) if mesa else None, "placar": placar(v) if mesa else None, "moldura": None}
 
