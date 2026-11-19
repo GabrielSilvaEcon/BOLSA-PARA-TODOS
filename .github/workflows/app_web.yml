@@ -4,7 +4,7 @@ name: app_web
 on:
   push:
     branches: [main]
-    paths: ['app/**', '.github/workflows/app_web.yml']
+    paths: ['app/**', 'trader_front/**', '.github/workflows/app_web.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,6 +30,9 @@ jobs:
           rm -rf test                      # o teste de exemplo do flutter create não combina com o app: removido
           flutter pub get
           flutter analyze --no-fatal-infos
+      - name: Mesa do Trade Battle (a mesma página do app antigo)
+        working-directory: app
+        run: mkdir -p web/mesa && cp ../trader_front/index.html web/mesa/index.html
       - name: Compilar versão web
         working-directory: app
         env:
