@@ -347,7 +347,8 @@ def _hist_ok(hist, tf: str) -> bool:
             if a.date() == b.date() and b - a != passo:
                 return False
     vol = hist["Volume"]
-    return (vol.fillna(0) <= 0).mean() <= 0.05
+    # o Yahoo zera o volume do candle de 1 h das 10:00 em boa parte dos dias (o preço vem certo): no histórico intraday aceita até 15%
+    return (vol.fillna(0) <= 0).mean() <= (0.15 if tf != "1d" else 0.05)
 
 
 def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, max_n: int = 3, ocupados: list[tuple[str, str]] | None = None,
