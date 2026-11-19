@@ -129,3 +129,11 @@ def test_alertas_lista_e_marca_lidas(cli):
     assert isinstance(r.json()["itens"], list)
     r = cli.post("/alertas/lidas", json={"ids": []})
     assert r.status_code == 200 and r.json()["marcados"] == 0
+
+
+def test_central_de_jogos(cli):
+    r = cli.get("/jogos/central")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert {"vitorias", "partidas", "melhor", "ofensiva", "desafio"} <= set(d)
+    assert d["vitorias"] >= 0 and d["partidas"] >= 0

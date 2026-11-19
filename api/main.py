@@ -429,6 +429,40 @@ def alertas_lidas(body: LidasIn, q: Quem = Depends(quem)) -> dict:
     return {"ok": True, "marcados": n}
 
 
+# ------------------------------------------------------------------ Central de Jogos (o que o "Jogar agora" abre)
+@app.get("/jogos/central")
+def jogos_central(q: Quem = Depends(quem)) -> dict:
+    """Números da Central de Jogos, com as mesmas regras do app antigo (jogos_app.pagina_central):
+    vitórias e partidas (placar dos dois jogos), melhor posição nos rankings, sequência de estudo e o desafio da semana."""
+    a = q.ator
+    try:
+        es = J.estatisticas(J.sanear(banco.jogos_placar_ler(a)))
+    except Exception:
+        es = {}
+    pos = []
+    try:
+        linhas = banco.sis_comp_todos(J.CH_PLACAR)
+        for jogo in (J.TRADE, J.TICKER):
+            rk = J.montar_ranking(jogo, linhas, q.email)
+            if rk and rk.get("eu"):
+                pos.append((int(rk["eu"]["pos"]), J.NOME[jogo].split()[0]))
+    except Exception:
+        pass
+    melhor = min(pos) if pos else None
+    ofensiva, desafio = 0, None
+    try:
+        dados = banco.ler_dados(a, q.email) or {}
+        prog = ED.normalizar(dados.get("edu_progresso"))
+        ofensiva = int(JO.resumo(prog).get("ofensiva") or 0)
+        import jogar as JG
+        d = JG.desafio_semana(prog)
+        desafio = {k: d.get(k) for k in ("titulo", "texto", "atual", "alvo", "ok", "pontos")}
+    except Exception:
+        pass
+    return {"vitorias": int(es.get("vitorias") or 0), "partidas": int(es.get("partidas") or 0),
+            "melhor": {"pos": melhor[0], "jogo": melhor[1]} if melhor else None, "ofensiva": ofensiva, "desafio": desafio}
+
+
 # ------------------------------------------------------------------ rankings (só partidas online contam)
 @app.get("/ranking/{jogo}")
 def ranking(jogo: str, metrica: str = "pts", q: Quem = Depends(quem)) -> dict:
