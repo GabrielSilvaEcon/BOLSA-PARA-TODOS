@@ -1540,6 +1540,7 @@ def _fechar_rodada_mesa(p: dict, cenario: dict) -> None:
             import trader_qtd as TQ
             res["fin"] = TQ.financeiro(sim["trades"], _stake(p, r, j))
             res["qtd"] = True
+            res["relatorio"] = TQ.relatorio(sim)
         else:
             res["fin"] = financeiro_mesa(sim["trades"], _stake(p, r, j))
         res["limite_atingido"] = bool(sim["bloq"])

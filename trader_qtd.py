@@ -46,7 +46,7 @@ def capital_da_partida(caixa_livre: float) -> float:
 # ------------------------------------------------------------------ estado
 def _novo(cap: float, taxa: float) -> dict:
     return {"cap": float(cap), "taxa": float(taxa), "pos": None, "pend": None, "mkt": [], "trades": [], "ignoradas": 0, "bloq": False,
-            "taxas": 0.0, "limite_x": 1.0}
+            "taxas": 0.0, "limite_x": 1.0, "curva": []}
 
 
 def realizado(st: dict) -> float:
@@ -266,6 +266,7 @@ def simular(candles: list[dict], acoes: list[dict], preco_ref: float, cap: float
             break
         _candle(st, candles[i], i)
         px = candles[i]["c"]
+        st["curva"].append(round(realizado(st) + aberto(st, px), 2))        # resultado da partida no fechamento de cada candle
     if final:
         if st["pos"]:
             _fechar(st, st["pos"]["q"], px, n - 1, "fim")
@@ -334,6 +335,29 @@ def validar(d: dict, st: dict, px: float, n: int, nr: int, preco_obrig) -> dict 
             raise ErroQtd(f"o {campo} está do lado errado da entrada" + (" (stop abaixo e alvo acima)" if dirc == "alta" else " (alvo abaixo e stop acima)"))
         out[campo] = v
     return out
+
+
+# ------------------------------------------------------------------ relatório do fim da partida
+def relatorio(st: dict) -> dict:
+    """Estatísticas da partida, como um extrato de corretora: operações, acertos, ganho médio × perda média, maior queda e taxas."""
+    tr = st["trades"]
+    ganhos = [t["pnl"] for t in tr if t["pnl"] > 0]
+    perdas = [t["pnl"] for t in tr if t["pnl"] < 0]
+    pico, queda = 0.0, 0.0
+    for v in [0.0] + list(st.get("curva") or []):
+        pico = max(pico, v)
+        queda = max(queda, pico - v)
+    cap = st["cap"] or 1.0
+    gm = sum(ganhos) / len(ganhos) if ganhos else None
+    pm = sum(perdas) / len(perdas) if perdas else None
+    return {"n_ops": len(tr), "acertos": len(ganhos), "erros": len(perdas),
+            "taxa_acerto": round(len(ganhos) / len(tr) * 100, 1) if tr else None,
+            "ganho_medio": round(gm, 2) if gm is not None else None, "perda_media": round(pm, 2) if pm is not None else None,
+            "payoff": round(gm / abs(pm), 2) if gm is not None and pm else None,
+            "maior_queda": round(queda, 2), "maior_queda_pct": round(queda / cap * 100, 2),
+            "melhor": round(max(t["pnl"] for t in tr), 2) if tr else None, "pior": round(min(t["pnl"] for t in tr), 2) if tr else None,
+            "taxas": round(sum(t.get("taxas", 0.0) for t in tr), 2), "com_stop": sum(1 for t in tr if t.get("com_stop")),
+            "q_total": sum(t["q"] for t in tr)}
 
 
 # ------------------------------------------------------------------ financeiro e visão

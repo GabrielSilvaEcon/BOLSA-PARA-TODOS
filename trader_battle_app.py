@@ -770,7 +770,42 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago
             st.markdown(("" if revelado else f"<div class='tb-rx-r'>Rodada {k}</div>") + _raiox_html(linhas), unsafe_allow_html=True)
 
 
-def _registrar_ranking(pid: str, fz: dict, p: dict, jog: str | None = None) -> None:
+@st.dialog("📊 Relatório da partida")
+def _dialogo_relatorio(res: dict, revelado: dict | None, xp_txt: str) -> None:
+    """Pop-up do fim da partida corrida: cabe na tela sem rolar (as informações ficam em abas)."""
+    import trader_relatorio as TR
+    st.markdown(TR.CSS, unsafe_allow_html=True)
+    a1, a2, a3 = st.tabs(["Resumo", "Operações", "Raio-X"])
+    with a1:
+        st.markdown(TR.html_resumo(res, revelado, xp_txt), unsafe_allow_html=True)
+    with a2:
+        st.markdown(TR.html_operacoes(res), unsafe_allow_html=True)
+    with a3:
+        st.markdown(TR.html_raiox(TB.explicar_mesa(res)), unsafe_allow_html=True)
+
+
+def _res_jogador(p: dict, jog: str | None, v: dict | None = None) -> dict | None:
+    """Resultado do jogador na partida corrida. Na sala online a tela só recebe a visão dele (v["resultado"]); no individual, a partida inteira."""
+    if v is not None and v.get("resultado"):
+        return v["resultado"]
+    return (p.get("resultados") or {}).get(TB._chave(1, jog)) if jog else None
+
+
+def _relatorio(p: dict, jog: str | None, revelado: dict | None, xp: dict | None, v: dict | None = None) -> None:
+    """Partida corrida terminada: abre o relatório sozinho UMA vez e deixa o botão para abrir de novo."""
+    if not (TB.qtd_de(p) and jog):
+        return
+    res = _res_jogador(p, jog, v)
+    if not res:
+        return
+    xp_txt = f"⭐ +{int(xp.get('xp') or 0)} XP nesta partida" if xp and xp.get("xp") else ""
+    abrir = st.button("📊 Ver relatório da partida", key="tb_rel_ver", width="stretch")
+    if abrir or _ss().get("tb_rel_aberto") != p["id"]:
+        _ss()["tb_rel_aberto"] = p["id"]
+        _dialogo_relatorio(res, revelado, xp_txt)
+
+
+def _registrar_ranking(pid: str, fz: dict, p: dict, jog: str | None = None, v: dict | None = None) -> None:
     """Partida terminada entra no placar da Central de Jogos (pontos e colocação calculados aqui, no servidor)."""
     try:
         import jogos_app
@@ -778,7 +813,7 @@ def _registrar_ranking(pid: str, fz: dict, p: dict, jog: str | None = None) -> N
         n = len(fz["placar"])
         extra = {}
         if TB.qtd_de(p) and jog:                              # partida corrida: lucro (T$), retorno (% do capital) e nota de qualidade para o Ranking
-            res = p["resultados"].get(TB._chave(1, jog)) or {}
+            res = _res_jogador(p, jog, v) or {}
             fin = res.get("fin") or {}
             extra = {"lucro": fin.get("pnl"), "retorno": fin.get("pct_aposta"), "qualidade": res.get("qualidade_nota")}
             if extra["lucro"] is None or extra["retorno"] is None:
@@ -791,8 +826,9 @@ def _registrar_ranking(pid: str, fz: dict, p: dict, jog: str | None = None) -> N
 def _fim_online(b: dict) -> None:
     v = b["v"]
     _ss()["tb_av_assentos"] = _avatares_assentos(b["p"])
-    _registrar_ranking(b["p"]["id"], v["final"], b["p"], _email_online())
+    _registrar_ranking(b["p"]["id"], v["final"], b["p"], _email_online(), v)
     _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]), v.get("revelado"))
+    _relatorio(b["p"], _email_online(), v.get("revelado"), v["final"].get("xp"), v)
     st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
     try:                                          # quem jogou na sala: botão para o perfil de cada um (o placar mostra "Jogador N")
         import amigos_app as AMA
@@ -1322,6 +1358,7 @@ def _fim(p: dict) -> None:
     _registrar_ranking(p["id"], fz, p, j)
     rv = TB.revelacao(p, _cen()[p["cenarios"][0]]) if TB.qtd_de(p) else None
     _tela_final(fz, TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]], _pagar_xp(p["id"], fz["xp"]), rv)
+    _relatorio(p, j, rv, fz.get("xp"))
     st.button("Jogar novamente", key="tb_de_novo", icon=":material/replay:", width="stretch", on_click=_de_novo)
     st.button("Voltar ao início do Trade Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_sair)
 

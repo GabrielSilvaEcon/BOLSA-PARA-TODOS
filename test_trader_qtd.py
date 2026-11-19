@@ -114,3 +114,21 @@ def test_visao_traz_quantidade_preco_medio_exposicao_e_poder():
     assert v["qtd"] and v["posicao"]["q"] == 300 and v["exposicao"] == pytest.approx(3030.0)
     assert v["poder"] == pytest.approx(CAP - 3030.0) and v["pode_abrir"] and v["pode_reduzir"]
     assert v["limite"]["pct_pat"] == 5.0
+
+
+def test_relatorio_taxa_de_acerto_payoff_e_maior_queda():
+    cand = [k(10, 10, 10, 10), k(11, 11, 11, 11), k(9, 9, 9, 9), k(9, 9, 9, 9), k(12, 12, 12, 12), k(13, 13, 13, 13)]
+    acoes = [ac(1, 0, "mercado", direcao="alta", q=100), ac(2, 1, "encerrar"),                 # compra 10, vende 11: +100
+             ac(3, 2, "mercado", direcao="alta", q=100), ac(4, 3, "encerrar"),                 # compra 9, vende 9: 0
+             ac(5, 4, "mercado", direcao="baixa", q=100), ac(6, 5, "encerrar")]                # vende 12, recompra 13: −100
+    st = sim(cand, acoes, final=True)
+    r = Q.relatorio(st)
+    assert [t["pnl"] for t in st["trades"]] == [100.0, 0.0, -100.0]          # cada ordem executa na abertura do candle seguinte
+    assert (r["n_ops"], r["acertos"], r["erros"], r["taxa_acerto"]) == (3, 1, 1, 33.3)
+    assert r["payoff"] == 1.0                                                  # ganho médio 100 ÷ perda média 100
+    assert r["maior_queda"] == 100.0 and r["maior_queda_pct"] == 1.0          # resultado da partida: pico de +100, depois volta a 0
+
+
+def test_relatorio_sem_operacoes():
+    r = Q.relatorio(sim(PLANO, [], final=True))
+    assert r["n_ops"] == 0 and r["taxa_acerto"] is None and r["maior_queda"] == 0.0
