@@ -92,7 +92,7 @@ def test_trade_lucratividade_retorno_e_qualidade_formatados(mundo):
         a = banco.Ator(id="id-" + em, email=em, papel="usuario")
         d = banco.jogos_placar_ler(a)
         for i, (lc, rt, ql) in enumerate(lista):
-            d, _ = J.registrar_trade(d, f"{em}{i}", 5, 1, "rapida", None, 1, "x", lucro=lc, retorno=rt, qualidade=ql)
+            d, _ = J.registrar_trade(d, f"{em}{i}", 5, 1, "rapida", None, 2, "x", lucro=lc, retorno=rt, qualidade=ql)
         banco.jogos_placar_gravar(a, d)
     luc = mundo.RA._linhas_jogo(J.TRADE, "lucro")
     assert [r["nome"] for r in luc] == ["xLoboTH", "Bia Trader"] and luc[0]["valor"].startswith("+") and "T$" in luc[0]["valor"]

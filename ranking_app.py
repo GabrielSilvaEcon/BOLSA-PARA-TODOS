@@ -153,10 +153,10 @@ def _so_amigos(linhas: list[dict]) -> list[dict]:
 
 
 METRICAS = (("lucro", "Lucratividade"), ("retorno", "Retorno"), ("qualidade", "Qualidade"))
-REGRA_TRADE = {"lucro": "Lucro total em T$ nas partidas corridas (o capital de cada partida é 5% do saldo disponível).",
-               "retorno": "Retorno médio por partida, em % do capital. Entra quem tem 3 partidas corridas ou mais.",
-               "qualidade": "Nota média da análise e da operação (direção, entrada, stop e confiança), de 0 a 100. Mínimo de 3 partidas."}
-REGRA = {"ticker": "Vitórias nos duelos, contra o sistema e online.", "trade": "Pontos somados nas partidas terminadas.",
+REGRA_TRADE = {"lucro": "Lucro total em T$ nas partidas online (salas com 2 ou mais jogadores). Partida solo não conta.",
+               "retorno": "Retorno médio por partida online, em % do capital. Entra quem tem 3 partidas online ou mais.",
+               "qualidade": "Nota média da leitura e da operação nas partidas online (direção, entrada e stop), de 0 a 100. Mínimo de 3 partidas."}
+REGRA = {"ticker": "Vitórias nos duelos online. Contra o sistema não conta.", "trade": "Pontos somados nas partidas online terminadas.",
          "carteira": "Retorno da carteira virtual desde a entrada. Atualiza no fechamento do mercado."}
 VAZIO = {"ticker": "Ainda ninguém venceu um duelo do Ticker Battle. Seja o primeiro!", "trade": "Ainda ninguém tem partidas corridas suficientes neste ranking. Jogue e seja o primeiro!",
          "carteira": "O ranking da Carteira aparece depois do primeiro fechamento com participantes."}

@@ -387,7 +387,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
       <button id="pl-ok">✔ Confirmar Estratégia</button></div>
     <div class="pf"><span id="pl-msg"></span></div>
     <div id="pl-esp">✔ Estratégia confirmada<span id="pl-esp-t">Aguardando os outros jogadores…</span></div></div>
-  <div id="rkb"><span>ⓘ Você está no modo Trade Battle. Suas operações contam para o ranking!</span><span id="ap"></span><button id="b-rank">🏆 Ranking</button></div>
+  <div id="rkb"><span id="rkb-t">ⓘ Você está no modo Trade Battle. Suas operações contam para o ranking!</span><span id="ap"></span><button id="b-rank">🏆 Ranking</button></div>
   <div id="bt"><button id="conf">Confirmar estratégia</button><button id="rep">Iniciar replay</button><button id="enc">⏹ Encerrar operação</button></div>
 </div>
 <script>
@@ -821,7 +821,9 @@ function uiLotes(m){   // partida corrida: quantidade em lotes (1 lote = 10% do 
   else if(p&&p.direcao==="baixa"){rot("m-sell",`⚡ VENDER +${n}`,"aumenta a posição");rot("m-buy",zera?"⚡ ZERAR":`⚡ COMPRAR ${n}`,zera?"fecha tudo":resta(fica))}
   else{rot("m-buy",`⚡ COMPRAR ${n}`);rot("m-sell",`⚡ VENDER ${n}`)}
   const e=$("m-enc");if(e&&e.lastChild&&e.lastChild.nodeType===3)e.lastChild.textContent="Zerar"}
-function topoCorrida(){const hd=$("hd"),vt=$("vt");if(!corrida()||!hd||!vt||typeof hd.insertBefore!=="function"||vt.parentNode===hd)return;hd.insertBefore(vt,hd.firstChild)}
+function rankAviso(){const t=$("rkb-t");if(!t||!A)return;const multi=!!(A.multi||(A.placar&&A.placar.jogadores.length>1));
+  t.textContent=multi?"ⓘ Partida online: conta para o ranking!":"ⓘ Partida solo: treino, não conta para o ranking (só partidas online contam)."}
+function topoCorrida(){rankAviso();const hd=$("hd"),vt=$("vt");if(!corrida()||!hd||!vt||typeof hd.insertBefore!=="function"||vt.parentNode===hd)return;hd.insertBefore(vt,hd.firstChild)}
 function placarUI(){   // placar da rodada (o servidor já manda ordenado e formatado): você em destaque, medalhas de 1º a 3º
   const P=A&&A.placar,el=$("placar");
   if(corrida()){const eu=P&&P.jogadores.find(j=>j.voce),multi=!!(P&&P.jogadores.length>1);$("app").classList.toggle("multi",multi);
