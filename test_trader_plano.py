@@ -86,3 +86,17 @@ def test_componente_manda_a_boleta_e_o_servidor_converte():
     assert (a["tipo"], a["direcao"], a["q"], a["preco"]) == ("stop_entrada", "baixa", 50, round(ref * 0.99, 2))
     args = TG.args_mesa(TB.visao(p, cen, 1010.5, EU), p, {}, 1010.5)
     assert args["corrida"] and args["plano_cfg"]["capital"] == 10_000.0
+
+
+def test_comprar_e_stop_movel_pela_tela_levam_quantidade_e_distancia():
+    # caminho real da tela: componente -> TG.processar -> motor (antes a quantidade e a distância eram descartadas no caminho)
+    import trader_grafico as TG
+    p, cen, ref = _p()
+    TB.salvar_estrategia(p, EU, {"direcao": None, "tipo": "aguardar"}, None, ref, 1010.0)
+    est = {}
+    t = 1010.0 + 2 * TB.cfg_de(p)["t_replay_s"] / TB.cfg_de(p)["n_replay"]
+    TG.processar(p, {"seq": 1, "evento": "acao", "dados": {"aid": "c1", "tipo": "mercado", "direcao": "alta", "q": 120}}, est, EU, ref, t, cen=cen)
+    assert est.get("erro", "") == "" and p["acoes"][-1]["q"] == 120
+    t2 = t + 3 * TB.cfg_de(p)["t_replay_s"] / TB.cfg_de(p)["n_replay"]
+    TG.processar(p, {"seq": 2, "evento": "acao", "dados": {"aid": "c2", "tipo": "stop_movel", "dist": 0.3}}, est, EU, ref, t2, cen=cen)
+    assert est.get("erro", "") == "" and p["acoes"][-1]["dist"] == 0.3

@@ -233,7 +233,7 @@ def estrategia_de(val: dict) -> dict:
     return out
 
 
-_CAMPOS_ACAO = ("tipo", "direcao", "preco", "stop", "alvo", "qual", "aid")
+_CAMPOS_ACAO = ("tipo", "direcao", "preco", "stop", "alvo", "qual", "aid", "q", "dist")
 
 
 def acao_de(dados) -> dict:
