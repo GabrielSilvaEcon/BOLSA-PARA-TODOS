@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
-import 'cabecalho.dart';
 import 'carteira.dart';
 
 /// Home no estilo de jogo: cabeçalho (nível, Ticker Coins e ranking), banner do Hunter Pass e os três acessos.
@@ -64,8 +63,6 @@ class _HomeTelaState extends State<HomeTela> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Cabecalho(api: widget.api),
-              const SizedBox(height: 14),
               _arena(),
               const SizedBox(height: 14),
               if (_carregando && _eu == null)
