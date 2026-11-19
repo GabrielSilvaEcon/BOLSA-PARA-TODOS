@@ -258,4 +258,10 @@ t("corrida em lotes: 3 lotes comprados, vender 2 manda 2 lotes em ações e most
   const h2 = carregar(); h2.render(args({ motor: 2, mesa: m, corrida: true, lote: 100 }));
   h2.els["q-val"].value = "5"; h2.els["m-sell"].onclick(); a = h2.acoes(); eq(a[0].dados.q, 300, "mais lotes que a posição = zera, nunca inverte");
 });
+t("aviso sobre o gráfico aparece e some sozinho (também durante a partida)", () => {
+  const h = carregar(); const m = mesaQtd(true); h.render(args({ motor: 2, mesa: m, corrida: true, lote: 100 }));
+  eq(h.els.dica.style.display, "block", "dica da 1ª posição aparece");
+  const tm = h.timers.filter(x => x.ms >= 1600).pop(); tm.f();
+  eq(h.els.dica.style.display, "none", "e some");
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

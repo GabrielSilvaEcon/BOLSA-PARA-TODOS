@@ -960,7 +960,7 @@ function toque(p){
   else if(t==="apagar"){const h=acharApagar(p);if(h){if(h.tipo==="linha")S.lines[h.k]=null;else if(h.tipo==="nivel")S.marcas.niveis.splice(h.i,1);else if(h.tipo==="nota")S.marcas.notas.splice(h.i,1);else if(h.tipo==="tend")S.marcas.tendencias.splice(h.i,1)}else flash("Nada para apagar aqui")}
   ui();draw();
 }
-let ft=0;function flash(m,ms){const d=$("dica");d.style.display="block";d.textContent=m;clearTimeout(ft);ft=setTimeout(ui,ms||1600)}
+let ft=0;function flash(m,ms){const d=$("dica");d.style.display="block";d.textContent=m;clearTimeout(ft);ft=setTimeout(()=>{d.style.display="none";d.textContent="";ui()},ms||1600)}   // aparece e some sozinho
 function escolhe(t){S.tool=S.tool===t?null:t;S.pend=null;$("mais").style.display="none";ui()}
 $("b-buy").onclick=()=>{S.dir=S.dir==="alta"?null:"alta";S.erroLocal="";ui()};
 $("b-sell").onclick=()=>{S.dir=S.dir==="baixa"?null:"baixa";S.erroLocal="";ui()};
