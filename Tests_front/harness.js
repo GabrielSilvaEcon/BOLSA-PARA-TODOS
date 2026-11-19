@@ -174,4 +174,20 @@ t("placar da mesa: avatar equipado de cada assento com a cor da raridade; sem ma
   h2.render(args({ motor: 2, modo: "resultado", fase_key: "1-resultado", mesa: mesaSem(), resultado: res, placar: pl, multi: true, seg: 3, candles: candles(144), revelados: 24 }));
   yes(!h2.els.res.innerHTML.includes("dragao_p.webp") && h2.els.res.innerHTML.includes("hue-rotate"), "sem mapa: raposa por assento");
 });
+t("boleta: abre embaixo do gráfico, troca os botões rápidos pelo Confirmar e volta recolhida na rodada seguinte", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem() }));
+  h.els["m-adv"].onclick();
+  eq(h.els.adv.style.display, "flex", "boleta aberta"); yes(h.els.app._c.has("adv"), "app marca a boleta aberta (esconde COMPRAR/VENDER rápidos)");
+  eq(h.els["m-adv"].textContent, "▴ Recolher");
+  h.els["m-adv"].onclick();
+  eq(h.els.adv.style.display, "none", "boleta recolhida"); yes(!h.els.app._c.has("adv")); eq(h.els["m-adv"].textContent, "⚙ Opções ▾");
+  h.els["m-adv"].onclick();
+  h.render(args({ motor: 2, modo: "resultado", fase_key: "1-resultado", mesa: mesaSem(), resultado: null, seg: 3 }));
+  yes(!h.els.app._c.has("adv") && h.els.adv.style.display === "none", "fim da rodada: boleta recolhida e botões rápidos de volta");
+});
+t("boleta recolhida: COMPRAR rápido manda ordem a mercado num toque", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem() }));
+  h.els["m-sell"].onclick();
+  const a = h.acoes(); eq(a.length, 1); eq([a[0].dados.tipo, a[0].dados.direcao], ["mercado", "baixa"]);
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

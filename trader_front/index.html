@@ -132,7 +132,10 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #mb1 button[disabled]{filter:grayscale(.7);box-shadow:none}
 #mb2 button{min-height:34px;font-size:11px;font-weight:800}
 #m-can{display:none}
-#adv{position:absolute;left:6px;right:6px;bottom:6px;max-height:68%;overflow:auto;display:none;flex-direction:column;gap:4px;z-index:4;padding:8px;border-radius:14px;border:1px solid #8B6CFF;background:rgba(18,12,56,.97);box-shadow:0 8px 26px rgba(0,0,0,.5)}
+#adv{position:relative;flex:0 1 auto;max-height:46%;min-height:0;overflow:auto;display:none;flex-direction:column;gap:4px;padding:7px 8px;border-radius:14px;
+  border:1.5px solid #8B6CFF;background:linear-gradient(180deg,rgba(36,26,110,.97),rgba(16,11,52,.98));box-shadow:0 0 14px rgba(139,108,255,.3)}
+#app.adv #mb1{display:none}
+#app.short #adv{max-height:58%}
 #adv .g{font-size:10px;color:#BDB5E6;font-weight:800;margin-top:2px}
 #adv input,#adv select{min-width:0;border-radius:10px;border:1px solid #8B6CFF;background:#120C38;color:#fff;padding:0 8px;min-height:38px;font-size:16px;-webkit-user-select:text;user-select:text}
 #adv input:focus,#adv select:focus{outline:2px solid #F2B84B}
@@ -142,6 +145,8 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #adv #o-lista .it span{flex:1}#adv #o-lista .it button{min-height:30px;flex:none;width:34px;padding:0}
 #adv #o-lista .vz{font-size:11px;color:#BDB5E6}
 #adv small{color:#BDB5E6;font-size:10.5px;line-height:1.3}
+#o-regras summary{cursor:pointer;font-size:11px;font-weight:800;color:#C9C2F2;list-style:none}#o-regras summary::-webkit-details-marker{display:none}
+#o-regras[open] summary{margin-bottom:3px}
 #sm b.op.up{color:#6BFF8A}#sm b.op.down{color:#FF6B87}
 #app.mesa #sm .pz{color:#F2B84B;font-weight:900}
 
@@ -260,21 +265,21 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
   <div id="cvw"><canvas id="cv"></canvas><div id="dica"></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
     <div id="mais"><div class="g an">ESTRATÉGIA</div><button id="b-tipo" class="an"></button><button id="b-conf" class="an"></button><div class="g">INDICADORES</div><button data-i="vol">Volume</button><button data-i="sma">Média simples (20)</button><button data-i="ema">Média exponencial (9)</button><button data-i="rsi">RSI (14)</button><button data-i="sr">Suporte/Resistência</button>
       <div class="g an">MARCAÇÕES DE ANÁLISE</div><button data-t="nivel" class="an">Nível de preço</button><button data-t="tend" class="an">Linha de tendência</button><button data-t="nota" class="an">Anotação</button></div>
-    <div id="adv"><div class="g">NOVA ORDEM</div>
-      <div id="o-nova"><div class="row"><select id="o-tipo"><option value="mercado">A mercado</option><option value="limite">Limite</option><option value="stop_entrada">Stop de entrada</option></select><input id="o-preco" inputmode="decimal" placeholder="Preço de entrada" autocomplete="off"></div>
-        <div class="row"><input id="o-stop" inputmode="decimal" placeholder="Stop loss (opcional)" autocomplete="off"><input id="o-alvo" inputmode="decimal" placeholder="Alvo (opcional)" autocomplete="off"></div>
-        <div class="row"><button id="o-buy" class="buy">Enviar COMPRA</button><button id="o-sell" class="sell">Enviar VENDA</button></div></div>
-      <div id="o-gerir"><div class="g">STOP E ALVO DA POSIÇÃO</div>
-        <div class="row"><input id="g-stop" inputmode="decimal" placeholder="Stop" autocomplete="off"><button id="g-stop-b">Definir stop</button></div>
-        <div class="row"><input id="g-alvo" inputmode="decimal" placeholder="Alvo" autocomplete="off"><button id="g-alvo-b">Definir alvo</button></div></div>
-      <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
-      <small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></div>
     <div id="res"></div><button id="res-ver">🏆 Ver resultado da rodada</button>
     <div id="nota"><input id="nota-t" maxlength="40" placeholder="Texto curto"><button id="nota-ok">OK</button></div></div>
   <div id="pgw"><div id="pg"></div></div>
   <div id="pos"><div id="sm"></div><button id="m-enc" class="enc"><span class="ic">🏁</span>Encerrar</button></div>
-  <div id="mesa"><div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>VENDER</span></button></div>
-    <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar ordem</button><button id="m-adv">⚙ Ordem</button><button id="m-ind" title="Indicadores">⋯</button></div></div>
+  <div id="adv"><div class="g">BOLETA · NOVA ORDEM</div>
+      <div id="o-nova"><div class="row"><select id="o-tipo"><option value="mercado">A mercado</option><option value="limite">Limite</option><option value="stop_entrada">Stop de entrada</option></select><input id="o-preco" inputmode="decimal" placeholder="Preço de entrada" autocomplete="off"></div>
+        <div class="row"><input id="o-stop" inputmode="decimal" placeholder="Stop loss (opcional)" autocomplete="off"><input id="o-alvo" inputmode="decimal" placeholder="Alvo (opcional)" autocomplete="off"></div>
+        <div class="row"><button id="o-buy" class="buy">⚡ Confirmar compra</button><button id="o-sell" class="sell">⚡ Confirmar venda</button></div></div>
+      <div id="o-gerir"><div class="g">STOP E ALVO DA POSIÇÃO</div>
+        <div class="row"><input id="g-stop" inputmode="decimal" placeholder="Stop" autocomplete="off"><button id="g-stop-b">Definir stop</button></div>
+        <div class="row"><input id="g-alvo" inputmode="decimal" placeholder="Alvo" autocomplete="off"><button id="g-alvo-b">Definir alvo</button></div></div>
+      <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
+      <details id="o-regras"><summary>ⓘ Regras da aposta</summary><small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></details></div>
+  <div id="mesa"><div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ VENDER</span></button></div>
+    <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar ordem</button><button id="m-adv">⚙ Opções ▾</button><button id="m-ind" title="Indicadores">⋯</button></div></div>
   <div id="rkb"><span>ⓘ Você está no modo Trade Battle. Suas operações contam para o ranking!</span><span id="ap"></span><button id="b-rank">🏆 Ranking</button></div>
   <div id="bt"><button id="conf">Confirmar estratégia</button><button id="rep">Iniciar replay</button><button id="enc">⏹ Encerrar operação</button></div>
 </div>
@@ -350,7 +355,7 @@ function cresce(a){   // candles novos já liberados pelo servidor entram no MES
     else{S.cands=S.cands.concat(novos);cache()}}
   else if(a.candles.length<tem){S.fila=[];S.cands=a.candles;cache()}
 }
-function modoClasses(){const m=S.modo!=="analise";$("app").classList.toggle("replay",m);$("app").classList.toggle("mesa",mesaOn());$("app").classList.toggle("rs",S.modo==="resultado");if(S.modo!=="replay"){$("adv").style.display="none"}}
+function modoClasses(){const m=S.modo!=="analise";$("app").classList.toggle("replay",m);$("app").classList.toggle("mesa",mesaOn());$("app").classList.toggle("rs",S.modo==="resultado");if(S.modo!=="replay"){$("adv").style.display="none"}boletaUI()}
 function transicao(a){   // mudou de fase/rodada: o gráfico, o zoom e os desenhos pessoais permanecem
   const velho=S.modo,nova=S.rodada!==a.rodada;
   S.fk=a.fase_key;S.modo=a.modo;S.locked=false;S.timeoutSent=false;$("app").classList.remove("locked");S.tool=null;S.pend=null;
@@ -826,7 +831,8 @@ $("m-enc").onclick=()=>{if(!sendAcao({tipo:"encerrar"}))flash("Aguarde a ordem a
 $("m-can").onclick=()=>{sendAcao({tipo:"cancelar",qual:"todas"})};
 $("m-stop").onclick=()=>{S.tool=S.tool==="mstop"?null:"mstop";ui()};
 $("m-alvo").onclick=()=>{S.tool=S.tool==="malvo"?null:"malvo";ui()};
-$("m-adv").onclick=()=>{const a=$("adv");a.style.display=a.style.display==="flex"?"none":"flex";ui()};
+$("m-adv").onclick=()=>{const a=$("adv");a.style.display=a.style.display==="flex"?"none":"flex";boletaUI();ui()};
+function boletaUI(){const ab=advAberto();$("app").classList.toggle("adv",ab);$("m-adv").textContent=ab?"▴ Recolher":"⚙ Opções ▾"}
 $("m-ind").onclick=()=>{const m=$("mais");m.style.display=m.style.display==="flex"?"none":"flex"};
 $("o-tipo").onchange=()=>ui();$("o-buy").onclick=()=>enviarOrdem("alta");$("o-sell").onclick=()=>enviarOrdem("baixa");
 ["o-preco","o-stop","o-alvo","g-stop","g-alvo"].forEach(id=>$(id).addEventListener("focus",()=>{S.campo=id}));
