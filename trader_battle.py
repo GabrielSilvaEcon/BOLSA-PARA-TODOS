@@ -795,7 +795,7 @@ def _visao_mesa(p: dict, cenario: dict, agora: float, jog: str) -> dict | None:
             "pode_gerir": bool(ativo and (pos or pend))}
 
 
-_ROT_MOTIVO = {"stop": "no stop", "limite": "no limite de perda", "alvo": "no alvo", "manual": "encerrada por você", "fim": "no fim da rodada"}
+_ROT_MOTIVO = {"stop": "no stop", "stop_movel": "no stop móvel", "limite": "no limite de perda", "alvo": "no alvo", "manual": "encerrada por você", "fim": "no fim da rodada"}
 
 
 def explicar_mesa(r: dict) -> list[tuple[str, str]]:
@@ -810,6 +810,10 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
     linhas.append(("O mercado", f"O preço foi de {real['ref']:.2f} para {real['fim']:.2f} ({real['mov_pct']:+.1f}%): {nome[real['direcao']]}."))
     ops = r.get("operacoes") or []
     if not ops:
+        if r.get("qualidade_nota") is not None:          # partida corrida: a leitura ainda vale para o ranking de Qualidade
+            linhas.append(("Operações", "Você não operou: sem lucro, sem prejuízo e 0 ponto na partida."))
+            linhas.append(("Qualidade", f"Sua leitura (direção e confiança) vale nota {r['qualidade_nota']:.0f}/100 no ranking de Qualidade."))
+            return linhas
         linhas.append(("Operações", "Você não operou nesta rodada: sem lucro, sem prejuízo e 0 ponto."))
         return linhas
     for t in ops:
@@ -825,6 +829,11 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
     elif r.get("limite_atingido"):
         linhas.append(("Limite de perda", f"A perda acumulada chegou a {LIMITE_PERDA_PCT_PAT * 100:.0f}% do patrimônio: posições encerradas, ordens pendentes canceladas e novas entradas bloqueadas até a próxima rodada. O prejuízo real foi mantido."))
     q = pt["q"]
+    if "peso_res" in pt:                                    # partida corrida: 70% resultado + 30% qualidade
+        linhas.append(("Resultado", f"Lucro de {pt['x'] * 100:+.2f}% do capital (movimento típico do ativo: {pt['unidade'] * 100:.2f}%) → {pt['res']:+.1f} de 100."))
+        linhas.append(("Qualidade", f"Direção {q['direcao']:+.0f} · entrada {q['entrada']:+.2f} · risco {q['risco']:+.2f} · confiança {q['confianca']:+.2f} → nota {r['qualidade_nota']:.0f}/100."))
+        linhas.append(("Pontos", f"70% × {pt['res']:+.1f} + 30% × {pt['qual'] * 100:+.0f} = {r['pontos']:+.1f}. O lucro pesa mais; a qualidade da análise completa."))
+        return linhas
     linhas.append(("Resultado", f"Soma das operações: {pt['x'] * 100:+.2f}% (unidade da rodada: {pt['unidade'] * 100:.2f}%) → {pt['base']:+.1f} pontos."))
     linhas.append(("Qualidade", f"Direção {q['direcao']:+.0f} · entrada {q['entrada']:+.2f} · risco {q['risco']:+.2f} · confiança {q['confianca']:+.2f} = {q['total']:+.2f} (ajuste de até ±25%)."))
     linhas.append(("Pontos", f"{pt['base']:+.1f} × {pt['fator']:.2f} = {r['pontos']:+.1f}. Lucro e prejuízo valem no patrimônio e nos pontos, sem compensação."))
@@ -1472,6 +1481,33 @@ def avaliar_mesa(cen_r: dict, est: dict, trades: list[dict]) -> dict:
                                           "q": {"direcao": d, "entrada": round(e, 3), "risco": rk, "confianca": round(c, 3), "total": round(q, 3)}}}
 
 
+PESO_RESULTADO = 0.7            # partida corrida: o lucro pesa mais (70%) e a qualidade da análise/operação completa (30%)
+
+
+def avaliar_corrida(cen_r: dict, est: dict, trades: list[dict]) -> dict:
+    """Pontuação da partida corrida (determinística, só no servidor), de −100 a +100:
+      resultado = 100 × tanh(x / U), com x = lucro ÷ capital e U = movimento típico do ativo na partida (o mesmo de avaliar_mesa);
+      qualidade = média dos componentes educacionais (direção, entrada, risco, confiança), de −1 a +1;
+      pontos    = 70% × resultado + 30% × (qualidade × 100). Sem operação: 0 ponto (a qualidade da leitura ainda vale para o ranking de Qualidade).
+    `qualidade_nota` (0 a 100) é o que o ranking de Qualidade usa: 50 = neutro, 100 = tudo certo."""
+    base = avaliar_mesa(cen_r, est, trades)
+    pt = base["partes"]
+    q = pt["q"]
+    if trades:
+        qual = q["total"]
+    else:                                                   # sem operação: só a leitura conta (direção e confiança)
+        qual = (q["direcao"] + q["confianca"]) / 2.0 if est.get("confianca") else q["direcao"] / 2.0
+    res = PONTOS_MAX * math.tanh(pt["x"] / pt["unidade"]) if trades else 0.0
+    pts = PESO_RESULTADO * res + (1 - PESO_RESULTADO) * qual * PONTOS_MAX if trades else 0.0
+    pts = max(-PONTOS_MAX, min(PONTOS_MAX, pts))
+    if trades and abs(pt["x"]) > EPS_X and abs(pts) < PONTOS_MIN_SINAL:
+        pts = math.copysign(PONTOS_MIN_SINAL, pts or pt["x"])
+    base["pontos"] = round(pts, 1)
+    base["qualidade_nota"] = round(50 * (qual + 1), 1)
+    base["partes"] = {**pt, "res": round(res, 2), "qual": round(qual, 3), "peso_res": PESO_RESULTADO}
+    return base
+
+
 def validar_leitura(est: dict) -> dict:
     """Análise da mesa: a pessoa registra a leitura (direção, tipo e confiança) e os desenhos. Entrada, stop e alvo agora são ordens enviadas no replay."""
     if not isinstance(est, dict):
@@ -1499,11 +1535,12 @@ def _fechar_rodada_mesa(p: dict, cenario: dict) -> None:
         if k in p["resultados"]:
             continue
         sim = _sim_jog(p, j, rep, acoes_da_rodada(p, r, j), ref, True)
-        res = avaliar_mesa(cen_r, p["estrategias"][k], sim["trades"])
+        res = (avaliar_corrida if qtd_de(p) else avaliar_mesa)(cen_r, p["estrategias"][k], sim["trades"])
         if qtd_de(p):
             import trader_qtd as TQ
             res["fin"] = TQ.financeiro(sim["trades"], _stake(p, r, j))
             res["qtd"] = True
+            res["relatorio"] = TQ.relatorio(sim)
         else:
             res["fin"] = financeiro_mesa(sim["trades"], _stake(p, r, j))
         res["limite_atingido"] = bool(sim["bloq"])

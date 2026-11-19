@@ -56,8 +56,18 @@ def hash_conta(email: str) -> str:
 
 
 # ------------------------------------------------------------------ documento da conta
+# Trade Battle · visões do ranking (nov/2026). A partida corrida grava, além dos pontos, o lucro em T$, o retorno (% do capital) e a nota de
+# qualidade (0 a 100). Retorno e Qualidade são MÉDIAS por partida corrida (jogar mais não sobe sozinho) e pedem um mínimo de partidas.
+METRICAS_TRADE = ("lucro", "retorno", "qualidade", "pts")
+ROTULO_METRICA = {"lucro": "Lucratividade", "retorno": "Retorno", "qualidade": "Qualidade", "pts": "Pontos"}
+MIN_PARTIDAS_MEDIA = 3
+LUCRO_MAX_PARTIDA = 10_000_000.0           # sanidade: nenhum lucro/prejuízo de partida passa disso
+RET_MAX_PARTIDA = 1000.0                   # % do capital
+
+
 def vazio() -> dict:
-    return {"v": 1, "apelido": "", TRADE: {"pts": 0.0, "partidas": 0, "salas": 0, "vitorias": 0, "melhor": None, "ids": [], "hist": []},
+    return {"v": 1, "apelido": "", TRADE: {"pts": 0.0, "partidas": 0, "salas": 0, "vitorias": 0, "melhor": None, "ids": [], "hist": [],
+                                           "lucro": 0.0, "ret_soma": 0.0, "n_ret": 0, "qual_soma": 0.0, "n_qual": 0},
             TICKER: {"v": 0, "e": 0, "d": 0, "ids": [], "hist": []}}
 
 
@@ -76,6 +86,10 @@ def sanear(doc) -> dict:
                       melhor=None if t.get("melhor") is None else round(_num(t.get("melhor")), 1),
                       ids=[str(x)[:40] for x in (t.get("ids") or []) if x][-IDS_GUARDADOS:],
                       hist=hist_t)
+    n_ret, n_qual = _int(t.get("n_ret"), 0, part), _int(t.get("n_qual"), 0, part)
+    out[TRADE].update(lucro=round(max(-LUCRO_MAX_PARTIDA * n_ret, min(LUCRO_MAX_PARTIDA * n_ret, _num(t.get("lucro")))), 2),
+                      ret_soma=round(max(-RET_MAX_PARTIDA * n_ret, min(RET_MAX_PARTIDA * n_ret, _num(t.get("ret_soma")))), 3), n_ret=n_ret,
+                      qual_soma=round(max(0.0, min(100.0 * n_qual, _num(t.get("qual_soma")))), 1), n_qual=n_qual)
     k = d.get(TICKER) if isinstance(d.get(TICKER), dict) else {}
     out[TICKER].update(v=_int(k.get("v")), e=_int(k.get("e")), d=_int(k.get("d")),
                        ids=[str(x)[:40] for x in (k.get("ids") or []) if x][-IDS_GUARDADOS:],
@@ -83,7 +97,8 @@ def sanear(doc) -> dict:
     return out
 
 
-def registrar_trade(doc, pid: str, pontos: float, rodadas: int, formato: str, pos: int | None, n_jog: int, em: str, apelido: str = "") -> tuple[dict, bool]:
+def registrar_trade(doc, pid: str, pontos: float, rodadas: int, formato: str, pos: int | None, n_jog: int, em: str, apelido: str = "",
+                    lucro: float | None = None, retorno: float | None = None, qualidade: float | None = None) -> tuple[dict, bool]:
     """Soma uma partida TERMINADA do Trade Battle (pontos já calculados pelo servidor). Devolve (doc, mudou). Repetir o mesmo `pid` não soma."""
     d = sanear(doc)
     if apelido:
@@ -101,7 +116,20 @@ def registrar_trade(doc, pid: str, pontos: float, rodadas: int, formato: str, po
     t["vitorias"] += int(venceu)
     t["melhor"] = p if t["melhor"] is None else max(t["melhor"], p)
     t["ids"] = (t["ids"] + [pid])[-IDS_GUARDADOS:]
-    t["hist"] = ([{"id": pid, "em": str(em)[:16], "pts": p, "formato": str(formato or "")[:10], "pos": pos, "n": int(n_jog)}] + t["hist"])[:HIST_MAX]
+    h = {"id": pid, "em": str(em)[:16], "pts": p, "formato": str(formato or "")[:14], "pos": pos, "n": int(n_jog)}
+    if lucro is not None and retorno is not None:            # partida corrida: lucro (T$) e retorno (% do capital)
+        lc = round(max(-LUCRO_MAX_PARTIDA, min(LUCRO_MAX_PARTIDA, _num(lucro))), 2)
+        rt = round(max(-RET_MAX_PARTIDA, min(RET_MAX_PARTIDA, _num(retorno))), 3)
+        t["lucro"] = round(t["lucro"] + lc, 2)
+        t["ret_soma"] = round(t["ret_soma"] + rt, 3)
+        t["n_ret"] += 1
+        h.update(lucro=lc, ret=rt)
+    if qualidade is not None:
+        qn = round(max(0.0, min(100.0, _num(qualidade))), 1)
+        t["qual_soma"] = round(t["qual_soma"] + qn, 1)
+        t["n_qual"] += 1
+        h["qual"] = qn
+    t["hist"] = ([h] + t["hist"])[:HIST_MAX]
     return d, True
 
 
@@ -122,12 +150,25 @@ def registrar_ticker(doc, did: str, resultado: str, modo: str, em: str, apelido:
 
 
 # ------------------------------------------------------------------ rankings
-def _linha(jogo: str, email: str, d: dict) -> dict | None:
+def _linha(jogo: str, email: str, d: dict, metrica: str = "pts") -> dict | None:
     if jogo == TRADE:
         t = d[TRADE]
         if not t["partidas"]:
             return None
-        return {"valor": t["pts"], "partidas": t["partidas"], "vitorias": t["vitorias"], "desempate": t["melhor"] or 0.0}
+        base = {"partidas": t["partidas"], "vitorias": t["vitorias"]}
+        if metrica == "lucro":                              # soma do lucro em T$ das partidas corridas
+            if not t["n_ret"]:
+                return None
+            return {**base, "valor": t["lucro"], "desempate": t["ret_soma"] / t["n_ret"], "n_metrica": t["n_ret"]}
+        if metrica == "retorno":                            # retorno médio por partida (% do capital)
+            if t["n_ret"] < MIN_PARTIDAS_MEDIA:
+                return None
+            return {**base, "valor": round(t["ret_soma"] / t["n_ret"], 3), "desempate": t["lucro"], "n_metrica": t["n_ret"]}
+        if metrica == "qualidade":                          # nota média de qualidade (0 a 100)
+            if t["n_qual"] < MIN_PARTIDAS_MEDIA:
+                return None
+            return {**base, "valor": round(t["qual_soma"] / t["n_qual"], 1), "desempate": t["lucro"], "n_metrica": t["n_qual"]}
+        return {**base, "valor": t["pts"], "desempate": t["melhor"] or 0.0}
     k = d[TICKER]
     n = k["v"] + k["e"] + k["d"]
     if not n:
@@ -135,7 +176,7 @@ def _linha(jogo: str, email: str, d: dict) -> dict | None:
     return {"valor": k["v"], "partidas": n, "vitorias": k["v"], "desempate": k["v"] - k["d"]}
 
 
-def montar_ranking(jogo: str, linhas: list[dict], eu_email: str | None = None, base_pos: dict | None = None) -> dict:
+def montar_ranking(jogo: str, linhas: list[dict], eu_email: str | None = None, base_pos: dict | None = None, metrica: str = "pts") -> dict:
     """Ranking de UM jogo a partir de [{email, dados}] (uma consulta). Ordena pela métrica do jogo; desempate pelo critério do jogo e
     depois pelo apelido. `base_pos` ({hash: posição}) dá a variação desde o início do dia. Entrega só apelido (nunca e-mail)."""
     if jogo not in JOGOS:
@@ -143,7 +184,7 @@ def montar_ranking(jogo: str, linhas: list[dict], eu_email: str | None = None, b
     rows = []
     for r in linhas or []:
         d = sanear(r.get("dados"))
-        ln = _linha(jogo, r.get("email", ""), d)
+        ln = _linha(jogo, r.get("email", ""), d, metrica if jogo == TRADE else "pts")
         if ln:
             rows.append({**ln, "apelido": d["apelido"] or "Jogador", "h": hash_conta(r.get("email", "")), "eu": bool(eu_email and r.get("email") == eu_email)})
     rows.sort(key=lambda x: (-x["valor"], -x["desempate"], x["apelido"].lower()))
@@ -154,7 +195,7 @@ def montar_ranking(jogo: str, linhas: list[dict], eu_email: str | None = None, b
         x["var"] = (ant - i) if isinstance(ant, int) else None
         if x["eu"]:
             meu = x
-    return {"jogo": jogo, "total": len(rows), "linhas": rows[:TOPO], "eu": meu}
+    return {"jogo": jogo, "metrica": metrica, "total": len(rows), "linhas": rows[:TOPO], "eu": meu}
 
 
 def posicoes(ranking: dict) -> dict:

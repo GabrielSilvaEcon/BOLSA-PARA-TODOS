@@ -114,3 +114,43 @@ def test_visao_traz_quantidade_preco_medio_exposicao_e_poder():
     assert v["qtd"] and v["posicao"]["q"] == 300 and v["exposicao"] == pytest.approx(3030.0)
     assert v["poder"] == pytest.approx(CAP - 3030.0) and v["pode_abrir"] and v["pode_reduzir"]
     assert v["limite"]["pct_pat"] == 5.0
+
+
+def test_relatorio_taxa_de_acerto_payoff_e_maior_queda():
+    cand = [k(10, 10, 10, 10), k(11, 11, 11, 11), k(9, 9, 9, 9), k(9, 9, 9, 9), k(12, 12, 12, 12), k(13, 13, 13, 13)]
+    acoes = [ac(1, 0, "mercado", direcao="alta", q=100), ac(2, 1, "encerrar"),                 # compra 10, vende 11: +100
+             ac(3, 2, "mercado", direcao="alta", q=100), ac(4, 3, "encerrar"),                 # compra 9, vende 9: 0
+             ac(5, 4, "mercado", direcao="baixa", q=100), ac(6, 5, "encerrar")]                # vende 12, recompra 13: −100
+    st = sim(cand, acoes, final=True)
+    r = Q.relatorio(st)
+    assert [t["pnl"] for t in st["trades"]] == [100.0, 0.0, -100.0]          # cada ordem executa na abertura do candle seguinte
+    assert (r["n_ops"], r["acertos"], r["erros"], r["taxa_acerto"]) == (3, 1, 1, 33.3)
+    assert r["payoff"] == 1.0                                                  # ganho médio 100 ÷ perda média 100
+    assert r["maior_queda"] == 100.0 and r["maior_queda_pct"] == 1.0          # resultado da partida: pico de +100, depois volta a 0
+
+
+def test_relatorio_sem_operacoes():
+    r = Q.relatorio(sim(PLANO, [], final=True))
+    assert r["n_ops"] == 0 and r["taxa_acerto"] is None and r["maior_queda"] == 0.0
+
+
+def test_stop_movel_acompanha_a_alta_nunca_recua_e_executa():
+    pr = lambda d, c="preco": float(d[c])
+    cand = [k(10, 10, 10, 10), k(10, 11, 10, 11), k(11, 12, 11, 12), k(12, 12.2, 11.6, 11.7), k(11.4, 11.5, 11.0, 11.1)]
+    base = [ac(1, 0, "mercado", direcao="alta", q=100), ac(2, 1, "stop_movel", dist=0.5)]
+    st = sim(cand[:3], base)
+    assert st["pos"]["stop"] == pytest.approx(11.5) and st["pos"]["trail"] == 0.5        # máxima 12 − 0,5
+    st2 = sim(cand[:4], base)
+    assert st2["pos"]["stop"] == pytest.approx(11.7)                                      # subiu com a máxima 12,2 e não recuou na queda
+    st3 = sim(cand, base)
+    assert st3["pos"] is None and st3["trades"][0]["motivo"] == "stop_movel" and st3["trades"][0]["saida"] == 11.4   # gap abaixo do stop: sai na abertura
+    with pytest.raises(Q.ErroQtd, match="posição aberta"):
+        Q.validar({"tipo": "stop_movel", "dist": 0.5}, sim(PLANO[:1], []), 10, 1, 10, pr)
+    with pytest.raises(Q.ErroQtd, match="maior que zero"):
+        Q.validar({"tipo": "stop_movel", "dist": 0}, st, 12, 3, 10, pr)
+
+
+def test_stop_movel_na_venda_desce_com_a_minima():
+    cand = [k(10, 10, 10, 10), k(10, 10, 9, 9), k(9, 9, 8, 8)]
+    st = sim(cand, [ac(1, 0, "mercado", direcao="baixa", q=100), ac(2, 1, "stop_movel", dist=0.5)])
+    assert st["pos"]["stop"] == pytest.approx(8.5)

@@ -69,6 +69,10 @@ def html_escopo(chave: str, ativo: bool) -> str:
     return f"<div class='rk-esc-b{' on' if ativo else ''}'>{ic}{_E(rot)}</div>"
 
 
+def html_metrica(rot: str, ativo: bool) -> str:
+    return f"<div class='rk-met{' on' if ativo else ''}'>{_E(rot)}</div>"
+
+
 # ------------------------------------------------------------------ 5. faixa
 def html_faixa(regra: str) -> str:
     return (f"<div class='rk-faixa'><img src='{arte('faixa')}' alt='Modo ranqueado'></div>"
@@ -144,6 +148,13 @@ def css() -> str:
             f"{c} .rk-esc-b{{height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:.84rem;font-weight:900;{branco};"
             "background:#1C2366}"
             f"{c} .rk-esc-b.on{{background:linear-gradient(180deg,#9A5CFF,#6A2FE0);box-shadow:0 0 12px -2px #9A5CFF}}"
+            # visões do Trade Battle
+            f"{c} .st-key-rk_metricas{{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px !important;max-width:420px;width:100%;margin:0 auto !important}}"
+            f"{c} .st-key-rk_metricas>*{{min-width:0}}"
+            f"{c} .rk-met{{height:30px;display:flex;align-items:center;justify-content:center;border-radius:99px;font-size:.74rem;font-weight:900;white-space:nowrap;"
+            f"background:#121646;border:1.5px solid #3A4FB0;{branco}}}"
+            f"{c} .rk-met.on{{background:linear-gradient(180deg,#FFD76A,#E9A80C);border-color:#FFE9A0;color:#2A1800 !important;-webkit-text-fill-color:#2A1800 !important;"
+            "box-shadow:0 0 10px -2px #F2B84B}"
             # 5. faixa
             f"{c} .rk-faixa{{line-height:0;border-radius:12px;overflow:hidden;border:1.5px solid #4A2FA8}}{c} .rk-faixa img{{width:100%;height:auto;max-height:64px;object-fit:cover;display:block}}"
             f"{c} .rk-regra{{text-align:center;font-size:.68rem;font-weight:700;{lila};margin-top:-2px}}"

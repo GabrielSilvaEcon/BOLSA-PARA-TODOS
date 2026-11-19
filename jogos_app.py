@@ -294,7 +294,7 @@ def _limpar_cache() -> None:
     _usuarios_por_hash.clear()
 
 
-def ranking(jogo: str) -> dict | None:
+def ranking(jogo: str, metrica: str = "pts") -> dict | None:
     """Ranking de um jogo com a variação desde o início do dia. None se o banco não responder."""
     try:
         linhas = _placares()
@@ -302,18 +302,19 @@ def ranking(jogo: str) -> dict | None:
         banco.registrar_erro("jogos_app.ranking", e)
         return None
     eu = _email()
-    rk = J.montar_ranking(jogo, linhas, eu)
+    rk = J.montar_ranking(jogo, linhas, eu, metrica=metrica)
     try:
-        chave = f"jogos_rk|{jogo}"
-        cache = st.session_state.get(f"_jg_base_{jogo}")
+        sufixo = "" if metrica == "pts" else f"|{metrica}"           # cada visão tem a sua base do dia (variação de posição)
+        chave = f"jogos_rk|{jogo}{sufixo}"
+        cache = st.session_state.get(f"_jg_base_{jogo}{sufixo}")
         if cache and cache[0] == _hoje():
             base = cache[1]
         else:
             base, novo = J.base_do_dia(banco.cfg_ler(chave), _hoje(), rk)
             if novo:
                 banco.cfg_gravar(chave, novo)
-            st.session_state[f"_jg_base_{jogo}"] = (_hoje(), base)
-        rk = J.montar_ranking(jogo, linhas, eu, base)
+            st.session_state[f"_jg_base_{jogo}{sufixo}"] = (_hoje(), base)
+        rk = J.montar_ranking(jogo, linhas, eu, base, metrica=metrica)
     except Exception as e:
         banco.registrar_erro("jogos_app.base_do_dia", e)
     return rk
@@ -348,13 +349,15 @@ def _gravar(fn, *args, **kw) -> bool:
         return False
 
 
-def registrar_trade(pid: str, pontos: float, rodadas: int, formato: str, pos: int | None, n_jog: int) -> None:
+def registrar_trade(pid: str, pontos: float, rodadas: int, formato: str, pos: int | None, n_jog: int,
+                    lucro: float | None = None, retorno: float | None = None, qualidade: float | None = None) -> None:
     """Fim de partida do Trade Battle (pontos já calculados pelo servidor). Uma vez por partida e por sessão (o placar também é idempotente)."""
     ss = st.session_state
     feitos = ss.setdefault("_jg_trade_ok", set())
     if pid in feitos:
         return
-    _gravar(J.registrar_trade, pid, pontos, rodadas, formato, pos, n_jog, _agora().strftime("%Y-%m-%d %H:%M"))
+    _gravar(J.registrar_trade, pid, pontos, rodadas, formato, pos, n_jog, _agora().strftime("%Y-%m-%d %H:%M"),
+            lucro=lucro, retorno=retorno, qualidade=qualidade)
     feitos.add(pid)
 
 

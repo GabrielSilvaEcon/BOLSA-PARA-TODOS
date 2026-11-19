@@ -58,7 +58,19 @@ def _sub(usuario: str | None, eu: bool, extra: str = "") -> str:
 
 
 # ------------------------------------------------------------------ dados
-def _linhas_jogo(jogo: str) -> list[dict] | None:
+def _valor_trade(metrica: str, x: dict) -> str:
+    import wallet_game as WG
+    v = float(x["valor"])
+    if metrica == "lucro":
+        return ("+" if v > 0 else "−" if v < 0 else "") + WG.moeda_curta(abs(v)) if hasattr(WG, "moeda_curta") else WG.moeda(v)
+    if metrica == "retorno":
+        return f"{v:+.2f}%".replace(".", ",").replace("-", "−")
+    if metrica == "qualidade":
+        return f"{v:.0f}/100"
+    return None
+
+
+def _linhas_jogo(jogo: str, metrica: str = "pts") -> list[dict] | None:
     """[{pos, nome, sub, valor, src, eu, email}] do Trade Battle ou do Ticker Battle. None se o banco não responder."""
     import amigos_app as AMA
     import jogos_app as JA
@@ -67,7 +79,7 @@ def _linhas_jogo(jogo: str) -> list[dict] | None:
             JA.sincronizar_ticker()
         except Exception:
             pass
-    rk = JA.ranking(jogo)
+    rk = JA.ranking(jogo, metrica) if jogo == J.TRADE else JA.ranking(jogo)
     if rk is None:
         return None
     try:
@@ -79,12 +91,14 @@ def _linhas_jogo(jogo: str) -> list[dict] | None:
     out = []
     for x in rk["linhas"][:LIMITE] + ([rk["eu"]] if rk.get("eu") and rk["eu"]["pos"] > LIMITE else []):
         email = eu_email if x["eu"] else emails.get(x["h"])
-        valor = JA._fmt_valor(jogo, x["valor"]).replace(" vitórias", " vit.").replace(" vitória", " vit.")
+        valor = (_valor_trade(metrica, x) if jogo == J.TRADE and metrica != "pts" else None) or \
+            JA._fmt_valor(jogo, x["valor"]).replace(" vitórias", " vit.").replace(" vitória", " vit.")
         out.append({"pos": x["pos"], "nome": AMA.nome_de_email(email, x.get("apelido", "")), "valor": valor, "eu": x["eu"], "email": email,
                     "usuario": None if x["eu"] else usuarios_h.get(x["h"]),
                     "src": _meu_src() if x["eu"] else _src_de_email(email)})
-    for r in out:
-        r["sub"] = _sub(r["usuario"], r["eu"])
+    for r, x in zip(out, rk["linhas"][:LIMITE] + ([rk["eu"]] if rk.get("eu") and rk["eu"]["pos"] > LIMITE else [])):
+        n = x.get("n_metrica") or x.get("partidas") or 0
+        r["sub"] = _sub(r["usuario"], r["eu"], f"{n} partida{'s' if n != 1 else ''}" if jogo == J.TRADE else "")
     return out
 
 
@@ -138,9 +152,13 @@ def _so_amigos(linhas: list[dict]) -> list[dict]:
     return out
 
 
+METRICAS = (("lucro", "Lucratividade"), ("retorno", "Retorno"), ("qualidade", "Qualidade"))
+REGRA_TRADE = {"lucro": "Lucro total em T$ nas partidas corridas (o capital de cada partida é 5% do saldo disponível).",
+               "retorno": "Retorno médio por partida, em % do capital. Entra quem tem 3 partidas corridas ou mais.",
+               "qualidade": "Nota média da análise e da operação (direção, entrada, stop e confiança), de 0 a 100. Mínimo de 3 partidas."}
 REGRA = {"ticker": "Vitórias nos duelos, contra o sistema e online.", "trade": "Pontos somados nas partidas terminadas.",
          "carteira": "Retorno da carteira virtual desde a entrada. Atualiza no fechamento do mercado."}
-VAZIO = {"ticker": "Ainda ninguém venceu um duelo do Ticker Battle. Seja o primeiro!", "trade": "Ainda ninguém terminou uma partida do Trade Battle. Seja o primeiro!",
+VAZIO = {"ticker": "Ainda ninguém venceu um duelo do Ticker Battle. Seja o primeiro!", "trade": "Ainda ninguém tem partidas corridas suficientes neste ranking. Jogue e seja o primeiro!",
          "carteira": "O ranking da Carteira aparece depois do primeiro fechamento com participantes."}
 JOGAR = {"ticker": ("Jogar Ticker Battle", "battle"), "trade": ("Jogar Trade Battle", "trader"), "carteira": ("Abrir a Carteira", "competicao")}
 
@@ -160,9 +178,10 @@ def pagina() -> None:
     ss = _ss()
     aba = ss.get("rk_aba") if ss.get("rk_aba") in {a[0] for a in RV.ABAS} else J.TRADE
     escopo = ss.get("rk_escopo") if ss.get("rk_escopo") in dict(RV.ESCOPOS) else "global"
-    chaves = [f"rk_aba_{a[0]}" for a in RV.ABAS] + [f"rk_esc_{e}" for e, _ in RV.ESCOPOS]
+    metrica = ss.get("rk_met") if ss.get("rk_met") in dict(METRICAS) else "lucro"
+    chaves = [f"rk_aba_{a[0]}" for a in RV.ABAS] + [f"rk_esc_{e}" for e, _ in RV.ESCOPOS] + [f"rk_met_{m}" for m, _ in METRICAS]
     st.markdown(G.css_base() + RV.css() + "".join(G.css_cartao_botao(k) for k in chaves), unsafe_allow_html=True)
-    linhas = _linhas_carteira() if aba == "carteira" else _linhas_jogo(aba)
+    linhas = _linhas_carteira() if aba == "carteira" else _linhas_jogo(aba, metrica if aba == J.TRADE else "pts")
     if linhas is not None and escopo == "amigos":
         linhas = _so_amigos(linhas)
     meu = next((r for r in (linhas or []) if r["eu"]), None)
@@ -185,7 +204,11 @@ def pagina() -> None:
         with st.container(key="rk_escopo"):
             for k, rot in RV.ESCOPOS:
                 _botao(f"rk_esc_{k}", RV.html_escopo(k, k == escopo), rot, _escolher, ("rk_escopo", k))
-        st.markdown(RV.html_faixa(REGRA[aba]), unsafe_allow_html=True)
+        if aba == J.TRADE:                                # Trade Battle: Lucratividade (padrão) · Retorno · Qualidade
+            with st.container(key="rk_metricas"):
+                for k, rot in METRICAS:
+                    _botao(f"rk_met_{k}", RV.html_metrica(rot, k == metrica), rot, _escolher, ("rk_met", k))
+        st.markdown(RV.html_faixa(REGRA_TRADE[metrica] if aba == J.TRADE else REGRA[aba]), unsafe_allow_html=True)
         if linhas is None:
             st.markdown(RV.html_vazio("O ranking não carregou agora. Tente de novo em instantes."), unsafe_allow_html=True)
             return

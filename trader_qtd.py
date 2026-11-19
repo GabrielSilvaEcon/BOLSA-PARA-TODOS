@@ -46,7 +46,7 @@ def capital_da_partida(caixa_livre: float) -> float:
 # ------------------------------------------------------------------ estado
 def _novo(cap: float, taxa: float) -> dict:
     return {"cap": float(cap), "taxa": float(taxa), "pos": None, "pend": None, "mkt": [], "trades": [], "ignoradas": 0, "bloq": False,
-            "taxas": 0.0, "limite_x": 1.0}
+            "taxas": 0.0, "limite_x": 1.0, "curva": []}
 
 
 def realizado(st: dict) -> float:
@@ -171,6 +171,16 @@ def _aplicar(st: dict, a: dict, px: float, i: int) -> None:
         o[campo] = a["preco"]
         if campo == "stop" and p:
             p["com_stop"] = True
+    elif t == "stop_movel":                                    # o stop acompanha o preço a favor, a uma distância fixa, e nunca recua
+        if p is None:
+            st["ignoradas"] += 1
+            return
+        dist = float(a["dist"])
+        p["trail"] = dist
+        novo = px - dist if _lado(p["direcao"]) == 1 else px + dist
+        if p["stop"] is None or (novo > p["stop"] if _lado(p["direcao"]) == 1 else novo < p["stop"]):
+            p["stop"] = novo
+        p["com_stop"] = True
     elif t == "cancelar":
         o = a.get("qual")
         if o in ("entrada", "todas"):
@@ -179,6 +189,7 @@ def _aplicar(st: dict, a: dict, px: float, i: int) -> None:
         if alvo_o is not None:
             if o in ("stop", "todas"):
                 alvo_o["stop"] = None
+                alvo_o.pop("trail", None)
             if o in ("alvo", "todas"):
                 alvo_o["alvo"] = None
     elif t == "encerrar":
@@ -242,12 +253,16 @@ def _candle(st: dict, k: dict, i: int) -> None:
         stop, motivo = lim, "limite"
     bateu_stop = stop is not None and (k["l"] <= stop if lado == 1 else k["h"] >= stop)
     bateu_alvo = alvo is not None and (k["h"] >= alvo if lado == 1 else k["l"] <= alvo)
-    if bateu_stop:                                             # stop e alvo no mesmo candle: vale o stop
+    if bateu_stop:                                             # stop e alvo no mesmo candle: vale o stop (são ligados: um executa, o outro some)
         gap = k["o"] <= stop if lado == 1 else k["o"] >= stop
-        _fechar(st, p["q"], k["o"] if gap else stop, i, motivo)
+        _fechar(st, p["q"], k["o"] if gap else stop, i, "stop_movel" if motivo == "stop" and p.get("trail") else motivo)
     elif bateu_alvo:
         gap = k["o"] >= alvo if lado == 1 else k["o"] <= alvo
         _fechar(st, p["q"], k["o"] if gap else alvo, i, "alvo")
+    elif p.get("trail"):                                       # stop móvel: acompanha a máxima (compra) ou a mínima (venda) do candle
+        novo = k["h"] - p["trail"] if lado == 1 else k["l"] + p["trail"]
+        if p["stop"] is None or (novo > p["stop"] if lado == 1 else novo < p["stop"]):
+            p["stop"] = round(novo, 4)
 
 
 def simular(candles: list[dict], acoes: list[dict], preco_ref: float, cap: float, final: bool = False, taxa: float = TAXA_B3) -> dict:
@@ -266,6 +281,7 @@ def simular(candles: list[dict], acoes: list[dict], preco_ref: float, cap: float
             break
         _candle(st, candles[i], i)
         px = candles[i]["c"]
+        st["curva"].append(round(realizado(st) + aberto(st, px), 2))        # resultado da partida no fechamento de cada candle
     if final:
         if st["pos"]:
             _fechar(st, st["pos"]["q"], px, n - 1, "fim")
@@ -290,6 +306,16 @@ def _q(d: dict) -> int:
 def validar(d: dict, st: dict, px: float, n: int, nr: int, preco_obrig) -> dict | None:
     """Valida as ordens de entrada/redução (quantidade, teto e lado). Para os outros tipos devolve None (a mesa antiga valida igual)."""
     t = d.get("tipo") if isinstance(d, dict) else None
+    if t == "stop_movel":
+        if st["pos"] is None:
+            raise ErroQtd("o stop móvel precisa de uma posição aberta")
+        try:
+            dist = float(d.get("dist"))
+        except (TypeError, ValueError):
+            raise ErroQtd("informe a distância do stop móvel em R$")
+        if not (math.isfinite(dist) and 0 < dist < px * 0.5):
+            raise ErroQtd("a distância do stop móvel precisa ser maior que zero e menor que metade do preço")
+        return {"tipo": "stop_movel", "dist": round(dist, 4)}
     if t not in TIPOS_ENTRADA:
         return None
     dirc = d.get("direcao")
@@ -336,6 +362,29 @@ def validar(d: dict, st: dict, px: float, n: int, nr: int, preco_obrig) -> dict 
     return out
 
 
+# ------------------------------------------------------------------ relatório do fim da partida
+def relatorio(st: dict) -> dict:
+    """Estatísticas da partida, como um extrato de corretora: operações, acertos, ganho médio × perda média, maior queda e taxas."""
+    tr = st["trades"]
+    ganhos = [t["pnl"] for t in tr if t["pnl"] > 0]
+    perdas = [t["pnl"] for t in tr if t["pnl"] < 0]
+    pico, queda = 0.0, 0.0
+    for v in [0.0] + list(st.get("curva") or []):
+        pico = max(pico, v)
+        queda = max(queda, pico - v)
+    cap = st["cap"] or 1.0
+    gm = sum(ganhos) / len(ganhos) if ganhos else None
+    pm = sum(perdas) / len(perdas) if perdas else None
+    return {"n_ops": len(tr), "acertos": len(ganhos), "erros": len(perdas),
+            "taxa_acerto": round(len(ganhos) / len(tr) * 100, 1) if tr else None,
+            "ganho_medio": round(gm, 2) if gm is not None else None, "perda_media": round(pm, 2) if pm is not None else None,
+            "payoff": round(gm / abs(pm), 2) if gm is not None and pm else None,
+            "maior_queda": round(queda, 2), "maior_queda_pct": round(queda / cap * 100, 2),
+            "melhor": round(max(t["pnl"] for t in tr), 2) if tr else None, "pior": round(min(t["pnl"] for t in tr), 2) if tr else None,
+            "taxas": round(sum(t.get("taxas", 0.0) for t in tr), 2), "com_stop": sum(1 for t in tr if t.get("com_stop")),
+            "q_total": sum(t["q"] for t in tr)}
+
+
 # ------------------------------------------------------------------ financeiro e visão
 def financeiro(trades: list[dict], ap: dict | None) -> dict | None:
     """Efeito em dinheiro da partida (vai para a Carteira): soma de todas as operações, com as taxas."""
@@ -376,7 +425,7 @@ def visao(st: dict, ini: int, ativo: bool, n: int, nr: int, n_acoes: int, max_ac
     pode = ativo and n < nr and n_acoes < max_acoes
     return {"qtd": True, "preco_atual": px, "stake": cap, "capital": cap, "pat_ini": pat,
             "posicao": None if not pos else {"direcao": pos["direcao"], "preco_entrada": pos["entrada"], "indice_entrada": ini + pos["i_entrada"],
-                                             "stop": pos["stop"], "alvo": pos["alvo"], "q": pos["q"]},
+                                             "stop": pos["stop"], "alvo": pos["alvo"], "q": pos["q"], "trail": pos.get("trail")},
             "ordens": ordens, "fila": fila,
             "operacoes": [{"n": t["n"], "direcao": t["direcao"], "q": t["q"], "preco_entrada": t["entrada"], "indice_entrada": ini + t["i_entrada"],
                            "preco_saida": t["saida"], "indice_saida": ini + t["i_saida"], "motivo": t["motivo"], "pct": round(t["ret"] * 100, 3), "val": t["pnl"]}
