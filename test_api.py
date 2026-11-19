@@ -95,3 +95,11 @@ def test_eu_traz_nivel_moedas_e_passe(cli):
 def test_eu_traz_a_posicao_no_ranking(cli):
     r = cli.get("/eu").json()
     assert {"pos", "total", "rotulo", "participa"} <= set(r["ranking"])      # chaves sempre presentes (sem competição: vazias)
+
+
+def test_carteira_traz_caixa_patrimonio_e_posicoes(cli):
+    r = cli.get("/carteira")
+    assert r.status_code == 200, r.text
+    assert {"disponivel", "investido", "valor_atual", "patrimonio", "posicoes"} <= set(r.json())
+    assert isinstance(r.json()["posicoes"], list)
+    assert r.json()["patrimonio"] >= r.json()["disponivel"]
