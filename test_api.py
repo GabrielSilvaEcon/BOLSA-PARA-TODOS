@@ -90,3 +90,8 @@ def test_eu_traz_nivel_moedas_e_passe(cli):
     assert r["moedas"] is None or r["moedas"] >= 0
     if r["nivel"]:
         assert r["nivel"]["nivel"] >= 1
+
+
+def test_eu_traz_a_posicao_no_ranking(cli):
+    r = cli.get("/eu").json()
+    assert {"pos", "total", "rotulo", "participa"} <= set(r["ranking"])      # chaves sempre presentes (sem competição: vazias)
