@@ -59,6 +59,8 @@ class _HomeTelaState extends State<HomeTela> {
             children: [
               _cabecalho(tema),
               const SizedBox(height: 14),
+              _arena(),
+              const SizedBox(height: 14),
               if (_carregando && _eu == null)
                 const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
               else if (_erro != null && _eu == null)
@@ -161,6 +163,8 @@ class _HomeTelaState extends State<HomeTela> {
       destaque: true,
       child: Row(
         children: [
+          Image.asset('assets/home/mascote_principal.webp', width: 72, height: 72, fit: BoxFit.contain),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,39 +201,39 @@ class _HomeTelaState extends State<HomeTela> {
     );
   }
 
-  /// Os três acessos da Home. Os destinos chegam nas próximas partes.
+  /// Imagem central da Home (arena do pregão). Textos e cotações ficam de fora da arte.
+  Widget _arena() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: AspectRatio(
+        aspectRatio: 768 / 490,
+        child: Image.asset('assets/home/arena.webp', fit: BoxFit.cover),
+      ),
+    );
+  }
+
+  /// Os três acessos da Home com a arte dos botões. Os destinos chegam nas próximas partes.
   Widget _acessos(ThemeData tema) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(child: _acesso(tema, 'Carteira', Icons.account_balance_wallet, const Color(0xFF3D8BFF))),
+        Expanded(child: _botao('assets/home/btn_carteira.webp', 'Carteira')),
         const SizedBox(width: 8),
-        Expanded(flex: 2, child: _acesso(tema, 'Jogar agora', Icons.play_arrow_rounded, const Color(0xFFB6FF3D))),
+        Expanded(flex: 2, child: _botao('assets/home/btn_jogar.webp', 'Jogar agora')),
         const SizedBox(width: 8),
-        Expanded(child: _acesso(tema, 'Mercado', Icons.show_chart, const Color(0xFFFF3D7A))),
+        Expanded(child: _botao('assets/home/btn_mercado.webp', 'Mercado')),
       ],
     );
   }
 
-  Widget _acesso(ThemeData tema, String rotulo, IconData icone, Color cor) {
+  Widget _botao(String arquivo, String rotulo) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$rotulo: em breve'))),
-      child: Container(
-        height: 110,
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: cor.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cor, width: 1.5),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icone, color: cor, size: 34),
-            const SizedBox(height: 6),
-            Text(rotulo, style: tema.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900), textAlign: TextAlign.center),
-          ],
-        ),
+      child: Semantics(
+        button: true,
+        label: rotulo,
+        child: Image.asset(arquivo, fit: BoxFit.contain),
       ),
     );
   }
