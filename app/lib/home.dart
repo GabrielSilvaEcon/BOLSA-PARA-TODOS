@@ -51,7 +51,12 @@ class _HomeTelaState extends State<HomeTela> {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     return Scaffold(
-      body: SafeArea(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/home/fundo_home.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          Container(color: const Color(0xD90B0930)),
+          SafeArea(
         child: RefreshIndicator(
           onRefresh: _carregar,
           child: ListView(
@@ -79,6 +84,8 @@ class _HomeTelaState extends State<HomeTela> {
             ],
           ),
         ),
+      ),
+        ],
       ),
     );
   }
