@@ -230,7 +230,50 @@ def carteira(q: Quem = Depends(quem)) -> dict:
     return {"disponivel": r["disponivel"], "investido": r["investido"], "valor_atual": r["valor_atual"],
             "nao_realizado": r["nao_realizado"], "patrimonio": r["patrimonio"], "posicoes": posicoes,
             "rent_nao_realizada": r["rent_nao_realizada"], "comecou": bool(perfil.get("aceite")), "apelido": perfil.get("apelido") or "",
-            "ranking": _ranking_da_casa(q.ator, q.email).get("pos"), "moedas": _moedas_seguro(q)}
+            "ranking": _ranking_da_casa(q.ator, q.email).get("pos"), "moedas": _moedas_seguro(q),
+            "serie": _serie_patrimonio(est), "var_dia": _var_dia(est), "missao": _missao_ativa_seguro(q)}
+
+
+def _serie_patrimonio(est: dict) -> list[dict]:
+    """Patrimônio de cada fechamento (sem aportes) + o de agora. Mesma conta do gráfico do Streamlit."""
+    import competicao as C
+    try:
+        pat_liq = C.patrimonio(est) - C.aportes(est)
+        pts = []
+        for x in est.get("hist") or []:
+            try:
+                pts.append({"d": str(x["d"])[:10], "v": round(float(C._liq(x)), 2)})
+            except Exception:
+                continue
+        if pts:
+            pts.append({"d": _agora_brt().date().isoformat(), "v": round(float(pat_liq), 2)})
+        return pts[-90:]
+    except Exception:
+        return []
+
+
+def _var_dia(est: dict):
+    """Variação % desde o último fechamento (o mesmo critério do cartão do Streamlit)."""
+    s = _serie_patrimonio(est)
+    if len(s) < 2 or not s[-2]["v"] or s[-2]["v"] <= 0:
+        return None
+    return round((s[-1]["v"] / s[-2]["v"] - 1) * 100, 2)
+
+
+def _missao_ativa_seguro(q: "Quem"):
+    """Primeira missão ainda não feita (diária, semanal ou especial), como no Streamlit. Sem efeito colateral de XP aqui."""
+    try:
+        import wallet_game as W
+        res = W.avaliar(q.email, q.conta.get("id"), registrar_visita=False)
+    except Exception:
+        return None
+    ms = res.get("missoes") or []
+    for per in ("dia", "semana", "especial"):
+        for m in ms:
+            if m.get("periodo") == per and not m.get("feita"):
+                return {"nome": m.get("nome"), "progresso": m.get("progresso") or 0, "meta": m.get("meta") or 1,
+                        "recompensa": m.get("recompensa") or {}}
+    return None
 
 
 def _moedas_seguro(q: "Quem"):
