@@ -52,7 +52,7 @@ class _HomeTelaState extends State<HomeTela> {
     } catch (e) {
       setState(() {
         _ok = false;
-        _estado = 'Sem conexão com o servidor ($e)';
+        _estado = 'Não consegui falar com o servidor agora. Toque em "Tentar de novo".';
       });
     }
   }
