@@ -21,7 +21,7 @@ def _icone(ic: str) -> str:
 def html_ganhos(msgs: list[dict]) -> str:
     itens = "".join(f"<div class='it'><div class='im'>{_icone(m.get('icone', ''))}</div><div class='tx'><b>{html.escape(str(m.get('texto', '')))}</b>"
                     f"<span>{html.escape(SUB.get(m.get('icone', ''), ''))}</span></div></div>" for m in msgs)
-    mascote = f"<img src='{AG.uri('mascote')}' alt='Caramelo comemorando'>" if AG.existe("mascote") else AT.img(AT.pose("celebrando"), 150)
+    mascote = f"<img src='{AG.uri('mascote')}' alt='Mascote do TickerHunters comemorando'>" if AG.existe("mascote") else AT.img(AT.pose("celebrando"), 150)
     chuva = "".join(f"<i class='fx f{i}{'' if i % 3 else ' est'}'></i>" for i in range(7)) if AG.existe("moedas") else ""
     return (f"<div class='gv-box'><div class='gv-fx' aria-hidden='true'>{chuva}</div><div class='gv-t'>Você <i>ganhou!</i></div><div class='gv-g'><div class='gv-m'>{mascote}</div><div class='gv-l'></div>"
             f"<div class='gv-i'>{itens}</div></div></div>")

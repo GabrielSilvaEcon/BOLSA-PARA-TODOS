@@ -12,6 +12,7 @@ import streamlit as st
 
 import arte_cartela as CT
 import arte_trader as ART
+import mascote_novo as MN
 import trader_battle as TB
 import trader_carteira as TCA
 import trader_dados as TD
@@ -532,7 +533,7 @@ def _frag_sala(pid: str) -> None:
             if j["voce"]:
                 m = PA.meu_avatar()
                 return PA.avatar_html(m["id"], m["foto"], 30)
-            return AMA.avatar_por_apelido(j["nick"], 30) or PA.avatar_html("raposa", "", 30)
+            return AMA.avatar_por_apelido(j["nick"], 30) or f"<img src='{MN.uri('rosto')}' alt='' style='width:30px;height:30px;border-radius:50%'>"
         except Exception:
             return ""
     cards = "".join(f"<div class='tb-lin'><span class='tb-lin-n'>{_av_sala(j)}{_e(AMA.nome_exibicao(j['nick']) if not j['voce'] else (PA.meu_perfil() or {}).get('nome') or j['nick'])}{' (você)' if j['voce'] else ''}</span>"
@@ -672,7 +673,7 @@ def _args(v: dict, p: dict, est: dict, agora: float) -> dict:
 
 def _avatares_assentos(p: dict) -> dict:
     """{rótulo do placar ("Você", "Jogador N"): {src, cor}}: o avatar equipado de cada assento, com a cor da raridade. Montado no servidor
-    a partir dos jogadores da partida; só imagem e cor vão para a tela (nunca o e-mail). Falha: {} (a mesa volta às raposas por assento)."""
+    a partir dos jogadores da partida; só imagem e cor vão para a tela (nunca o e-mail). Falha: {} (a mesa volta ao rosto do mascote por assento)."""
     try:
         import avatares as AV
         import perfis_app as PA
@@ -688,6 +689,9 @@ def _avatares_assentos(p: dict) -> dict:
                 av, foto = PA.avatar_de_email(j)
             else:
                 continue
+            if not foto and av == AV.PADRAO:                              # sem avatar escolhido: o rosto do mascote (não a raposa)
+                out["Você" if eu else f"Jogador {n}"] = {"src": MN.uri("rosto"), "cor": "#34E85E"}
+                continue
             src = foto or AV.url(av, True)
             src = src if src.startswith("data:") else "/" + src           # a mesa roda num iframe: endereço absoluto
             out["Você" if eu else f"Jogador {n}"] = {"src": src, "cor": "#34E85E" if foto else AV.RARIDADES[AV.raridade_de(av)]["cor"]}
@@ -700,17 +704,16 @@ _AV_COR = {1: "hue-rotate(185deg) saturate(1.2)", 2: "hue-rotate(95deg)", 3: "hu
 
 
 def _avatar_placar(x: dict) -> str:
-    """Avatar no placar final: o equipado de cada assento (Coleção de Avatares); sem ele, a raposa por assento."""
+    """Avatar no placar final: o equipado de cada assento (Coleção de Avatares); sem ele, o rosto do mascote por assento."""
     import re
-    import arte_conta as AC
     m = (_ss().get("tb_av_assentos") or {}).get(x["rotulo"])
     if m:
         return f"<span class='tb-av' style='box-shadow:0 0 0 2px {m['cor']},0 0 8px {m['cor']}'><img src='{m['src'].lstrip('/') if not m['src'].startswith('data:') else m['src']}' alt=''></span>"
     if x["voce"]:
         aro = _moldura() or "#34E85E"
-        return f"<span class='tb-av' style='box-shadow:0 0 0 2px {aro},0 0 8px {aro}'><img src='{AC.uri('avatar')}' alt=''></span>"
+        return f"<span class='tb-av' style='box-shadow:0 0 0 2px {aro},0 0 8px {aro}'><img src='{MN.uri('rosto')}' alt=''></span>"
     n = int((re.search(r"\d+", x["rotulo"]) or [0])[0] or 0)
-    return f"<span class='tb-av'><img src='{AC.uri('avatar')}' alt='' style='filter:{_AV_COR.get(n, _AV_COR[1])}'></span>"
+    return f"<span class='tb-av'><img src='{MN.uri('rosto')}' alt='' style='filter:{_AV_COR.get(n, _AV_COR[1])}'></span>"
 
 
 def _html_revelacao(rv: dict | None) -> str:
@@ -950,7 +953,7 @@ def _central() -> None:
                                     for f in TB.CORRIDAS) + "</style>", unsafe_allow_html=True)
     if _n_reais_corrida(atual) < TB.MIN_CENARIOS_REAIS:
         st.markdown(f"<div class='tb-demo2'><div><b><span>i</span>Modo Demonstração</b><p>Ainda não há gráficos reais preparados para esta duração. "
-                    f"Os gráficos serão simulados e não são cotações reais.</p></div><img src='{CT.uri('raposa_confiante')}' alt=''></div>", unsafe_allow_html=True)
+                    f"Os gráficos serão simulados e não são cotações reais.</p></div><img src='{MN.uri('apontando')}' alt=''></div>", unsafe_allow_html=True)
     em = _email_online()
     try:
         ativa = TOD.partida_ativa(em) if em else None

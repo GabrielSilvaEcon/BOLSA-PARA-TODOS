@@ -46,22 +46,21 @@ Hoje os ícones desta tela são emojis (provisórios). As artes abaixo deixam a 
 
 ## 0. Mascote (todas as telas)
 
-O mascote novo (touro-urso roxo de jaqueta TH) vai aparecer nas próximas telas. Hoje o app ainda usa o Caramelo (cachorro) em várias telas:
-decidir se o novo **substitui** o Caramelo em tudo. Se sim, são estas poses:
+O mascote novo (touro roxo de jaqueta TH) **substituiu o Caramelo em todo o app** e a raposa padrão da mesa do Trade Battle.
+Enquanto as poses próprias não chegam, as telas usam recortes das duas artes enviadas (`mascote_novo.py` diz qual pose usa qual arquivo).
+Para trocar: salve o arquivo novo em `static/mascote/` e ajuste a linha da pose em `mascote_novo.POSE_ARQ`.
 
-| # | Pose | Arquivo | Onde aparece hoje (com o Caramelo) | Tamanho ideal | Fundo | Status |
-|---|------|---------|-------------------------------------|---------------|-------|--------|
-| 0.1 | Braços cruzados (pose principal) | `static/mascote/principal.webp` | Capa, login, banners | 1024 × 1024 px | Transparente | ⏳ Recebida com fundo (arte da conversa) |
-| 0.2 | Apontando / chamando para jogar | `static/mascote/chamando.webp` | Botão JOGAR AGORA, convites | 1024 × 1024 px | Transparente | ⏳ Só dentro do botão |
-| 0.3 | Rosto (para avatar, selos e ranking) | `static/mascote/rosto.webp` | Selo do ranking, banner da Home (no lugar do touro roxo) | 512 × 512 px | Transparente | 🎨 Falta |
-| 0.4 | Animado | `static/mascote/animado.webp` | Boas-vindas, missões | 1024 × 1024 px | Transparente | 🎨 Falta |
-| 0.5 | Pensativo | `static/mascote/pensativo.webp` | Telas vazias, Ajuda, Analisar | 1024 × 1024 px | Transparente | 🎨 Falta |
-| 0.6 | Celebrando | `static/mascote/celebrando.webp` | Conquistas, lição concluída, vitória | 1024 × 1024 px | Transparente | 🎨 Falta |
-| 0.7 | Surpreso | `static/mascote/surpreso.webp` | Novidades, baú aberto | 1024 × 1024 px | Transparente | 🎨 Falta |
-| 0.8 | Triste | `static/mascote/triste.webp` | Erro, derrota, ofensiva perdida | 1024 × 1024 px | Transparente | 🎨 Falta |
-| 0.9 | Dormindo | `static/mascote/dormindo.webp` | Mercado fechado, sem atividade | 1024 × 1024 px | Transparente | 🎨 Falta |
-
----
+| # | Pose | Arquivo | Onde aparece | Tamanho ideal | Fundo | Status |
+|---|------|---------|--------------|---------------|-------|--------|
+| 0.1 | Braços cruzados (pose principal) | `static/mascote/principal.webp` | Início, login, perfil, carteira, loja, conquistas, "Você ganhou!" | 1024 × 1024 px | Transparente | ✅ Recorte da arte do dono (fundo removido) |
+| 0.2 | Apontando para quem joga | `static/mascote/apontando.webp` | Analisar, Aprender, Ajuda, Missões, aviso de gráficos do Trade Battle | 1024 × 1024 px | Transparente | ✅ Recorte da arte do dono (fundo removido) |
+| 0.3 | Rosto (avatar, selos, placar) | `static/mascote/rosto.webp` | Assento sem avatar no Trade Battle | 512 × 512 px | Cena (vai em círculo) | ✅ Recorte da arte do dono |
+| 0.4 | Animado | `static/mascote/animado.webp` | Boas-vindas, missões (hoje: apontando) | 1024 × 1024 px | Transparente | 🎨 Falta |
+| 0.5 | Pensativo | `static/mascote/pensativo.webp` | Telas vazias, Ajuda, quiz (hoje: apontando) | 1024 × 1024 px | Transparente | 🎨 Falta |
+| 0.6 | Celebrando | `static/mascote/celebrando.webp` | Conquistas, lição concluída, vitória (hoje: braços cruzados) | 1024 × 1024 px | Transparente | 🎨 Falta |
+| 0.7 | Surpreso | `static/mascote/surpreso.webp` | Novidades, baú aberto (hoje: apontando) | 1024 × 1024 px | Transparente | 🎨 Falta |
+| 0.8 | Triste | `static/mascote/triste.webp` | Erro, derrota, ofensiva perdida (hoje: braços cruzados) | 1024 × 1024 px | Transparente | 🎨 Falta |
+| 0.9 | Dormindo | `static/mascote/dormindo.webp` | Mercado fechado, sem atividade (hoje: braços cruzados) | 1024 × 1024 px | Transparente | 🎨 Falta |
 
 ## 3. Ranking
 

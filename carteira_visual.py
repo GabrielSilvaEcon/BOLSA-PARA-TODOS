@@ -160,7 +160,7 @@ def html_patrimonio(pat: float, caixa: float, inv: float, var: float | None, rot
     delta = (f"<div class='cv-dl' style='color:{cor}'><span>{seta}</span><b>{_pct(abs(var) if abs(var) < 0.05 else var)}</b><i>({_e(rot)})</i></div>" if var is not None
              else "<div class='cv-dl sem'>O gráfico aparece depois do primeiro fechamento.</div>")
     texto, pose = fala(n_pos, ret)
-    cav = AT.img(AT.pose(pose), 112, alt="Caramelo, o mascote")
+    cav = AT.img(AT.pose(pose), 112, alt="Mascote do TickerHunters")
     return (f"<div class='cv-card cv-pat'><div class='cv-pl'>"
             f"<div class='cv-tt'>{AT.img('saco_dinheiro', 26)}<span>Meu Patrimônio</span></div>"
             f"<div class='cv-val{cls}'>{_e(valor.replace('T$ ', ''))}<small>T$</small></div>{delta}"

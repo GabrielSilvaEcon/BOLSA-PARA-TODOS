@@ -170,7 +170,7 @@ def html_resposta(ok: bool, ex: dict, s: dict, xp_conclusao: int) -> str:
 
 
 def html_dica(ok: bool, eid: str) -> str:
-    return (f"<div class='jf-dica'><span class='b'>💡</span><div><b>Dica do Caramelo:</b><q>{_e(dica_caramelo(ok, eid))}</q></div>"
+    return (f"<div class='jf-dica'><span class='b'>💡</span><div><b>Dica do mascote:</b><q>{_e(dica_caramelo(ok, eid))}</q></div>"
             "<svg viewBox='0 0 40 40' aria-hidden='true'><ellipse cx='20' cy='26' rx='9' ry='8'/><ellipse cx='8' cy='15' rx='4' ry='5'/><ellipse cx='16' cy='8' rx='4' ry='5'/>"
             "<ellipse cx='25' cy='8' rx='4' ry='5'/><ellipse cx='33' cy='15' rx='4' ry='5'/></svg></div>")
 

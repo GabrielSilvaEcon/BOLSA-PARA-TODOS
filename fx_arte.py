@@ -194,7 +194,7 @@ def html_bau(raridade: str = "comum", estado: str = "abrindo", premio: dict | No
 def html_nivel(nivel: int, titulo: str = "", animar: bool = True, pose: str = "celebrando", cores: list | None = None) -> str:
     leitor = f"Você subiu para o nível {nivel}!" + (f" Novo título: {titulo}" if titulo else "")
     return (_raiz("fxa-nivel", "lendario", animar, leitor) + "<div class='fxa-onda'></div>"
-            + f"<div class='fxa-cena'>{AT.img(AT.pose(pose), 150, 'Caramelo comemorando', 'caramelo')}</div>"
+            + f"<div class='fxa-cena'>{AT.img(AT.pose(pose), 150, 'Mascote do TickerHunters comemorando', 'caramelo')}</div>"
             + f"<div class='fxa-sel'><b>NÍVEL {int(nivel)}</b></div>" + _brilhos("epico", 10, 0.6, cores)
             + "<div class='fxa-t'>Você subiu de nível!</div>" + (f"<div class='fxa-s'>Novo título: {_e(titulo)}</div>" if titulo else "") + "</div>")
 

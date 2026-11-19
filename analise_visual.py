@@ -24,7 +24,7 @@ def aplica(url_path: str) -> bool:
 
 def html_destaque(titulo: str, texto: str, pose: str = "m_lupa", cor: str = "#3DDC97") -> str:
     """Cartão com o Caramelo: título, uma linha de apoio e arte de fundo. Serve para dicas e estados vazios em qualquer área."""
-    mascote = AA.img(pose, "ad-m", "Caramelo")
+    mascote = AA.img(pose, "ad-m", "Mascote do TickerHunters")
     return (f"<div class='ad' style='--ac:{html.escape(cor)}'><div class='ad-bg'>{AA.img('i_crescimento', 'ad-art')}</div>{mascote}"
             f"<div class='ad-t'><b>{html.escape(titulo)}</b><span>{html.escape(texto)}</span></div></div>")
 
