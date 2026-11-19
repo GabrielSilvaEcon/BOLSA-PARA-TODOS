@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
+import 'cabecalho.dart';
 import 'carteira.dart';
 
 /// Home no estilo de jogo: cabeçalho (nível, Ticker Coins e ranking), banner do Hunter Pass e os três acessos.
@@ -63,7 +64,7 @@ class _HomeTelaState extends State<HomeTela> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _cabecalho(tema),
+              Cabecalho(api: widget.api),
               const SizedBox(height: 14),
               _arena(),
               const SizedBox(height: 14),
@@ -88,89 +89,6 @@ class _HomeTelaState extends State<HomeTela> {
       ),
         ],
       ),
-    );
-  }
-
-  /// Linha de cima: nível (com barra de XP), Ticker Coins e ranking.
-  Widget _cabecalho(ThemeData tema) {
-    final nivel = _eu?['nivel'] as Map?;
-    final moedas = _eu?['moedas'];
-    final pct = (nivel?['pct'] as num?)?.toDouble() ?? 0;
-    final rk = (_eu?['ranking'] as Map?) ?? {};
-    final pos = rk['pos'];
-    final legenda = _eu == null
-        ? 'ranking'
-        : (pos != null || rk['participa'] == true)
-            ? (rk['total'] == null ? 'ranking' : 'de ${rk['total']}')
-            : 'Entre na competição';
-    return Row(
-      children: [
-        Expanded(
-          flex: 5,
-          child: _cartao(
-            tema,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  nivel == null ? 'Nível —' : 'Nível ${nivel['nivel']}',
-                  style: tema.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(value: pct.clamp(0, 1), minHeight: 6, color: Colors.lightBlueAccent, backgroundColor: Colors.white12),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _eu?['xp'] == null ? '' : '${_eu!['xp']} XP',
-                  style: tema.textTheme.labelSmall,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 3,
-          child: _cartao(
-            tema,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.toll, color: Color(0xFFFFD76A), size: 22),
-                Text(
-                  moedas == null ? '—' : '$moedas',
-                  style: tema.textTheme.titleMedium?.copyWith(color: const Color(0xFFFFD76A), fontWeight: FontWeight.w900),
-                ),
-                const Text('TC', style: TextStyle(fontSize: 11)),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 3,
-          child: _cartao(
-            tema,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.emoji_events, color: Color(0xFFFFD76A), size: 22),
-                Text(
-                  pos == null ? '—' : '#$pos',
-                  style: tema.textTheme.titleMedium?.copyWith(color: const Color(0xFFFFD76A), fontWeight: FontWeight.w900),
-                ),
-                Text(
-                  legenda,
-                  style: const TextStyle(fontSize: 11),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
