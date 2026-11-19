@@ -76,15 +76,12 @@ POSES = {"normal": "inicio", "festa": "wallet", "pensa": "ajuda", "triste": "car
 @functools.lru_cache(maxsize=16)
 def _uri_pose(arquivo: str) -> str | None:
     """Imagem do mascote em data URI (None se o arquivo não estiver no repositório: aí vale a moeda Tico desenhada)."""
-    try:
-        with open(os.path.join(PASTA_MASCOTE, f"mascote_{arquivo}.webp"), "rb") as f:
-            return "data:image/webp;base64," + base64.b64encode(f.read()).decode("ascii")
-    except OSError:
-        return None
+    import mascote_novo as MN                      # mascote novo (touro TH) no lugar do Caramelo
+    return MN.uri(arquivo)
 
 
 def mascote(festa: bool = False, tamanho: int = 92, humor: str | None = None) -> str:
-    """Mascote cachorro do TickerHunters. `humor`/pose: normal, festa, pensa, triste, analise, aprender, conquistas, loja, perfil.
+    """Mascote do TickerHunters (touro TH; antes o Caramelo). `humor`/pose: normal, festa, pensa, triste, analise, aprender, conquistas, loja, perfil.
     Sem os arquivos mascote_*.webp, cai na moeda Tico desenhada (mesmo contrato de antes)."""
     h = humor or ("festa" if festa else "normal")
     uri = _uri_pose(POSES.get(h, "inicio"))

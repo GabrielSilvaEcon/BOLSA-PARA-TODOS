@@ -375,7 +375,7 @@ def _vitrine(est: dict, precos: dict, por_classe: dict, disp: list, rot: dict, l
                 bal = "Ótima escolha! Agora é só definir quanto comprar!" if lado == "Comprar" else "Vamos realizar o lucro? Defina quanto vender."
             else:
                 bal = "Digite o código da ação ou o nome da empresa!" if lado == "Comprar" else "Qual ativo vamos vender?"
-            st.markdown(f"<div class='cn-tr'><div class='cn-bal'>{html.escape(bal)}</div><div class='cn-mas'>{AT.img(AT.pose('animado'), 92, alt='Caramelo, o mascote')}</div></div>",
+            st.markdown(f"<div class='cn-tr'><div class='cn-bal'>{html.escape(bal)}</div><div class='cn-mas'>{AT.img(AT.pose('animado'), 92, alt='Mascote do TickerHunters')}</div></div>",
                         unsafe_allow_html=True)
     if lado == "Vender":
         itens = sorted([t for t in (est.get("pos") or {}) if t in precos], key=lambda t: -(est["pos"][t]["q"] * float(precos[t]["c"])))

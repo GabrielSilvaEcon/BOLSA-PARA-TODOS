@@ -1142,11 +1142,17 @@ def app_falso(jog="ana@x.com", pat=100000.0, caixa=100000.0):
     sys.modules.pop("trader_battle_app", None)
     try:
         import trader_battle_app as APP
+        import trader_dados as _TD
+        _orig = _TD.escolher_corrida
+        _TD.escolher_corrida = lambda f, s, banco=None, permitir_demo=False: _TD.demo_corrida(f, s)   # sem banco de cenários reais no teste
         with banco_isolado(), livro(pat=pat, caixa=caixa) as lanc:
             APP._jogador = lambda: jog
             APP._conta = lambda: {"id": "c-" + jog}
             yield APP, lanc
     finally:
+        import trader_dados as _TD
+        if "_orig" in locals():
+            _TD.escolher_corrida = _orig
         for n, m in antigos.items():
             if m is None:
                 sys.modules.pop(n, None)

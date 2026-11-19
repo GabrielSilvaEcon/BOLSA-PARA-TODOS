@@ -24,7 +24,7 @@ def cartao_busca(chave: str, placeholder: str, tem: bool = False, n: int = 0, de
                 r["q"] = CUX.busca(f"an_q_{chave}_{n}", placeholder, debounce)
         with cd:
             bal = balao_tem if tem else balao_vazio
-            st.markdown(f"<div class='abc-r'><div class='abc-b'>{html.escape(bal)}</div>{AA.img('m_vitoria' if tem else 'm_lupa', 'abc-m', 'Caramelo')}</div>",
+            st.markdown(f"<div class='abc-r'><div class='abc-b'>{html.escape(bal)}</div>{AA.img('m_vitoria' if tem else 'm_lupa', 'abc-m', 'Mascote do TickerHunters')}</div>",
                         unsafe_allow_html=True)
     return (r.get("q") or "").strip()
 

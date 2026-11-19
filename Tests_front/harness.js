@@ -221,4 +221,14 @@ t("corrida: stop móvel manda a distância e o painel mostra STOP MÓVEL", () =>
   h.els["g-trail"].value = "0,30"; h.els["g-trail-b"].onclick();
   const a = h.acoes(); eq([a[0].dados.tipo, a[0].dados.dist], ["stop_movel", 0.3]);
 });
+t("candle se formando: o último candle cresce no lugar (sem duplicar) e o próximo entra depois", () => {
+  const h = carregar(); const c = candles(126); h.render(args({ motor: 2, mesa: mesaQtd(false), candles: c }));
+  eq(vm.runInContext('S', h.sb).cands.length, 126);
+  const c2 = c.map(x => ({ ...x })); c2[125] = { ...c2[125], h: 12.5, c: 12.4 };
+  h.render(args({ motor: 2, mesa: mesaQtd(false), candles: c2 }));
+  eq(vm.runInContext('S', h.sb).cands.length + vm.runInContext('S', h.sb).fila.length, 126, "não duplica"); eq([vm.runInContext('S', h.sb).cands[125].h, vm.runInContext('S', h.sb).cands[125].c], [12.5, 12.4]);
+  const c3 = c2.concat([{ ...c2[125], t: "2026-01-05T12:00", o: 12.4, h: 12.45, l: 12.3, c: 12.35 }]);
+  h.render(args({ motor: 2, mesa: mesaQtd(false), candles: c3 }));
+  eq(vm.runInContext('S', h.sb).cands.length + vm.runInContext('S', h.sb).fila.length, 127, "candle novo entra");
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

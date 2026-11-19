@@ -40,12 +40,15 @@ TIMEFRAMES = {"15m": {"nome": "15 minutos", "n_analise": 120, "na_aceitos": (120
               "5m": {"nome": "5 minutos", "n_analise": 360, "na_aceitos": (360,), "n_replay": 84, "passo_min": 5, "max_dias": 20},
               "1d": {"nome": "1 dia", "n_analise": 300, "na_aceitos": (300,), "n_replay": 120, "passo_min": 1440, "max_dias": 900}}
 # ---- PARTIDA CORRIDA (nov/2026): sem rodadas. Uma leitura no início, histórico 3x maior e um replay longo em que se opera com quantidade livre
-# (regras em trader_qtd.py). Cada duração usa um tempo gráfico: rápida = 5 minutos, intermediária = 1 hora, longa = 1 dia.
-CORRIDAS = {"rapida": {"tf": "5m", "n_analise": 360, "n_replay": 84},           # 84 candles de 5 min = um pregão inteiro
-            "intermediaria": {"tf": "1h", "n_analise": 300, "n_replay": 70},    # 70 candles de 1 h ≈ 10 pregões
-            "longa": {"tf": "1d", "n_analise": 300, "n_replay": 120}}           # 120 candles diários ≈ 6 meses
+# (regras em trader_qtd.py). Cada duração usa um tempo gráfico: rápida = 15 minutos, intermediária = 1 hora, longa = 1 dia.
+# CANDLE SE FORMANDO (etapa D): o replay guarda os candles MENORES reais (`sub`) e cada um é um passo da partida. O candle do gráfico é a soma
+# dos passos já revelados (abertura do 1º, máxima e mínima de todos, fechamento do último): ele cresce na tela exatamente como aconteceu.
+# A simulação (ordens, stop, alvo, taxa) roda passo a passo nesses preços reais; nada entre dois passos é inventado.
+CORRIDAS = {"rapida": {"tf": "15m", "sub": "5m", "k": 3, "n_analise": 300, "n_replay": 56},         # 56 × 15 min = 2 pregões · 3 passos por candle
+            "intermediaria": {"tf": "1h", "sub": "5m", "k": 12, "n_analise": 300, "n_replay": 56},  # 56 × 1 h ≈ 8 pregões · 12 passos por candle
+            "longa": {"tf": "1d", "sub": "1h", "k": 7, "n_analise": 300, "n_replay": 80}}           # 80 dias ≈ 4 meses · ~7 passos (horas do pregão)
 ROTULO_CORRIDA = {"rapida": "Rápida", "intermediaria": "Intermediária", "longa": "Longa"}
-SEG_POR_CANDLE = 2.5
+SEG_POR_CANDLE = 4.0
 JOGADORES_MIN, JOGADORES_MAX = 1, 4          # nesta etapa joga 1; a estrutura já aceita 2 a 4
 DIRECOES = ("alta", "baixa", "lateral")
 ESTRATEGIAS = ("continuacao", "reversao", "rompimento", "aguardar")
@@ -96,8 +99,13 @@ def validar_cenario(c: dict) -> tuple[bool, str]:
         return False, "sem identificação"
     if c.get("corrida") is not None:
         sp = CORRIDAS.get(c["corrida"])
-        if not sp or sp["tf"] != tf or na != sp["n_analise"] or len(cand) != na + sp["n_replay"]:
+        if not sp or sp["tf"] != tf or na != sp["n_analise"]:
             return False, "quantidade de candles diferente da prevista"
+        g, vt = c.get("grupo"), c.get("velas_t")                 # candle se formando: passo -> candle do gráfico (0, 0, 0, 1, 1, ...)
+        if (not isinstance(g, list) or not g or len(cand) != na + len(g) or g[0] != 0 or g[-1] != sp["n_replay"] - 1
+                or any(not isinstance(x, int) or isinstance(x, bool) or y - x not in (0, 1) for x, y in zip(g, g[1:]))
+                or not isinstance(vt, list) or len(vt) != sp["n_replay"]):
+            return False, "passos do replay incompletos (sem os candles menores reais)"
     elif na not in cfg["na_aceitos"] or len(cand) not in (na + RODADAS * cfg["n_replay"], na + RODADAS * N_REPLAY_MESA):
         return False, "quantidade de candles diferente da prevista"
     ant = None
@@ -132,6 +140,60 @@ def candles_sem_data(candles: list[dict]) -> list[dict]:
         if t[:10] != ant:
             dia, ant = dia + 1, t[:10]
         out.append({**k, "t": t[11:16], "d": dia})
+    return out
+
+
+def formando(c: dict) -> bool:
+    """Cenário com o candle se formando (passos = candles menores reais)."""
+    return bool(c.get("grupo"))
+
+
+def agrupar(subs: list[dict], grupo: list[int], velas_t: list[str] | None = None) -> list[dict]:
+    """Candles do gráfico a partir dos passos já revelados: abertura do 1º passo, máxima e mínima de todos, fechamento do último, volume somado.
+    O último pode estar incompleto (é o candle que está se formando). `velas_t`: horário de início de cada candle do gráfico."""
+    out, ult = [], None
+    for k, g in zip(subs, grupo):
+        if g != ult:
+            out.append({"t": velas_t[g] if velas_t else k["t"], "o": k["o"], "h": k["h"], "l": k["l"], "c": k["c"], "v": k["v"]})
+            ult = g
+        else:
+            m = out[-1]
+            m["h"], m["l"], m["c"], m["v"] = max(m["h"], k["h"]), min(m["l"], k["l"]), k["c"], m["v"] + k["v"]
+    return out
+
+
+def velas_replay(c: dict, ini: int, n: int) -> list[dict]:
+    """Os n primeiros passos do replay, já como candles do gráfico (cenário sem passos: os próprios candles)."""
+    if not formando(c):
+        return [dict(k) for k in c["candles"][ini:ini + n]]
+    return agrupar(c["candles"][ini:ini + n], c["grupo"][:n], c.get("velas_t"))
+
+
+def cenario_em_velas(c: dict) -> dict:
+    """O cenário inteiro com o replay em candles do gráfico (para a pontuação, o mercado real e a revelação)."""
+    if not formando(c):
+        return c
+    na = int(c["n_analise"])
+    return {**{k: v for k, v in c.items() if k not in ("grupo", "velas_t")}, "candles": c["candles"][:na] + velas_replay(c, na, len(c["grupo"]))}
+
+
+def _idx_vela(c: dict, i: int) -> int:
+    """Índice do passo -> índice do candle do gráfico (dentro do replay)."""
+    g = c.get("grupo")
+    if not g:
+        return i
+    return g[max(0, min(len(g) - 1, int(i)))]
+
+
+def _em_velas(st: dict, c: dict) -> dict:
+    """Estado da simulação com os índices das operações em candles do gráfico (para desenhar e pontuar). O original não é alterado."""
+    if not formando(c):
+        return st
+    out = dict(st)
+    out["trades"] = [{**t, "i_entrada": _idx_vela(c, t["i_entrada"]), "i_exc": _idx_vela(c, t["i_exc"]), "i_saida": _idx_vela(c, t["i_saida"]),
+                      "p_entrada": t["i_entrada"], "p_saida": t["i_saida"]} for t in st["trades"]]
+    if st.get("pos"):
+        out["pos"] = {**st["pos"], "i_entrada": _idx_vela(c, st["pos"]["i_entrada"]), "i_exc": _idx_vela(c, st["pos"]["i_exc"])}
     return out
 
 
@@ -194,14 +256,15 @@ def config_mesa(formato: str) -> dict:
     return {"v": 2, "motor": MOTOR_MESA, "formato": formato, "rodadas": FORMATOS[formato], "n_replay": N_REPLAY_MESA, "t_replay_s": float(T_REPLAY_MESA_S)}
 
 
-def config_corrida(formato: str) -> dict:
-    """Partida corrida: UMA rodada longa, quantidade livre (trader_qtd) e capital de 5% do caixa livre da Carteira."""
+def config_corrida(formato: str, n_passos: int | None = None) -> dict:
+    """Partida corrida: UMA rodada longa, quantidade livre (trader_qtd) e capital de 5% do caixa livre da Carteira.
+    `n_replay` conta PASSOS (candles menores reais); `n_velas` = candles do gráfico. O relógio dá SEG_POR_CANDLE a cada candle do gráfico."""
     import trader_qtd as TQ
     sp = CORRIDAS.get(formato)
     if not sp:
         raise ErroTrader("formato de partida inválido")
-    return {"v": 3, "motor": MOTOR_MESA, "formato": formato, "rodadas": 1, "n_replay": sp["n_replay"], "t_replay_s": float(sp["n_replay"] * SEG_POR_CANDLE),
-            "qtd": True, "taxa": TQ.TAXA_B3, "pct_capital": TQ.PCT_CAPITAL}
+    return {"v": 4, "motor": MOTOR_MESA, "formato": formato, "rodadas": 1, "n_replay": int(n_passos or sp["n_replay"]), "n_velas": sp["n_replay"],
+            "t_replay_s": float(sp["n_replay"] * SEG_POR_CANDLE), "qtd": True, "taxa": TQ.TAXA_B3, "pct_capital": TQ.PCT_CAPITAL}
 
 
 def qtd_de(p: dict) -> bool:
@@ -253,9 +316,9 @@ def nova_partida(cenario: dict, tf: str, jogadores: list[str], agora: float, pid
             "demo": bool(cenario.get("demo")), "rodada": 1, "fase": "analise", "t_fase": float(agora), "versao": 1,
             "estrategias": {}, "travadas": {}, "resultados": {}, "pontos": {j: 0.0 for j in jogadores}, "multi": bool(multi), "prontos": {}, "apostas": dict(apostas or {}), "encerradas": {}}
     if corrida is not None:
-        cfg = config_corrida(corrida)
         if cenario.get("corrida") != corrida or CORRIDAS[corrida]["tf"] != tf:
             raise ErroTrader("o cenário não é desta duração de partida")
+        cfg = config_corrida(corrida, len(cenario["grupo"]))
         p["cfg"] = cfg
         p["cenarios"] = [cenario["id"]]
         p["acoes"], p["seq_acao"], p["pausas"] = [], 0, []
@@ -686,9 +749,9 @@ def visao(p: dict, cenario: dict, agora: float, jog: str) -> dict:
     if p["fase"] == "analise":
         visiveis = cand[:ini]
     elif p["fase"] == "replay":
-        visiveis = cand[:ini + n_revelados(p, agora)]
+        visiveis = cand[:ini] + velas_replay(cenario, ini, n_revelados(p, agora))
     else:
-        visiveis = cand[:ini + nr]
+        visiveis = cand[:ini] + velas_replay(cenario, ini, nr)
     k = _chave(p["rodada"], jog)
     fim = p["fase"] in ("resultado", "fim")
     oculto = qtd_de(p) and p["fase"] != "fim"                 # corrida: o ativo e a data só aparecem no fim (ninguém pesquisa o futuro fora do jogo)
@@ -696,7 +759,7 @@ def visao(p: dict, cenario: dict, agora: float, jog: str) -> dict:
          "oculto": oculto, "revelado": revelacao(p, cenario) if qtd_de(p) and p["fase"] == "fim" else None, "tf": cenario["tf"], "demo": bool(cenario.get("demo")),
          "fonte": cenario.get("fonte", ""), "rodada": p["rodada"], "rodadas": cfg["rodadas"], "fase": p["fase"], "segundos": segundos_restantes(p, agora),
          "n_analise": ini, "candles": [dict(c) for c in visiveis], "revelados": max(0, len(visiveis) - ini),
-         "total_replay": nr, "motor": motor_de(p), "formato": cfg.get("formato"), "pausada": pausada(p),
+         "total_replay": int(cfg.get("n_velas") or nr), "motor": motor_de(p), "formato": cfg.get("formato"), "pausada": pausada(p),
          "estrategia": p["estrategias"].get(k), "travada": bool(p["travadas"].get(k)), "pontos": p["pontos"].get(jog, 0.0),
          "resultado": p["resultados"].get(k) if fim else None,
          "adversarios": [] if mesa else entradas_adversarios(p, cenario, agora, jog), "jogador": jog, "marcas_ant": _marcas_anteriores(p, jog),
@@ -721,7 +784,7 @@ def _sim_rodada(p: dict, cenario: dict, agora: float, jog: str):
     ini = inicio_rodada(cenario, r, nr)
     n = n_revelados(p, agora)
     st = _sim_jog(p, jog, cenario["candles"][ini:ini + n], acoes_da_rodada(p, r, jog), cenario["candles"][ini - 1]["c"], p["fase"] != "replay")
-    return st, ini, n
+    return _em_velas(st, cenario), ini, n
 
 
 def _ops_publicas(st: dict, ini: int) -> list[dict]:
@@ -896,7 +959,7 @@ def revelacao(p: dict, cenario: dict) -> dict:
     """Fim da partida corrida: qual era o ativo e de quando eram os candles do replay (datas reais)."""
     nr = _nrp(p)
     ini = inicio_rodada(cenario, 1, nr)
-    rep = cenario["candles"][ini:ini + nr]
+    rep = velas_replay(cenario, ini, nr)
 
     def br(t):
         t = str(t)
@@ -1528,13 +1591,13 @@ def _fechar_rodada_mesa(p: dict, cenario: dict) -> None:
     nr, r = _nrp(p), p["rodada"]
     ini = inicio_rodada(cenario, r, nr)
     rep, ref = cenario["candles"][ini:ini + nr], cenario["candles"][ini - 1]["c"]
-    cen_r = cenario_da_rodada(cenario, r, nr)
+    cen_r = cenario_em_velas(cenario) if formando(cenario) else cenario_da_rodada(cenario, r, nr)
     novo = False
     for j in p["jogadores"]:
         k = _chave(r, j)
         if k in p["resultados"]:
             continue
-        sim = _sim_jog(p, j, rep, acoes_da_rodada(p, r, j), ref, True)
+        sim = _em_velas(_sim_jog(p, j, rep, acoes_da_rodada(p, r, j), ref, True), cenario)
         res = (avaliar_corrida if qtd_de(p) else avaliar_mesa)(cen_r, p["estrategias"][k], sim["trades"])
         if qtd_de(p):
             import trader_qtd as TQ

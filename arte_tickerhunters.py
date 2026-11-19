@@ -15,6 +15,10 @@ for _novo, _velho in (("escudo_coroa", "em_escudo_coroa"), ("escudo_grafico", "e
 # --- grupos (nome lógico -> nome do sprite)
 POSES = {"rosto": "caramelo_rosto", "animado": "caramelo_animado", "pensativo": "caramelo_pensativo", "celebrando": "caramelo_celebrando",
          "surpreso": "caramelo_surpreso", "triste": "caramelo_triste", "dormindo": "caramelo_dormindo"}
+import mascote_novo as _MN                      # o mascote novo substitui o Caramelo em todas as poses
+for _pose, _sprite in POSES.items():
+    if _MN.sprite(_pose):
+        SPRITES[_sprite] = _MN.sprite(_pose)
 BAUS = {"comum": "bau_comum", "raro": "bau_raro", "epico": "bau_epico", "lendario": "bau_lendario"}
 RANKS = ("bronze", "prata", "ouro", "platina", "diamante", "mestre")
 RANK_ROTULO = {"bronze": "Bronze", "prata": "Prata", "ouro": "Ouro", "platina": "Platina", "diamante": "Diamante", "mestre": "Mestre"}

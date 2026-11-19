@@ -1,0 +1,27 @@
+name: trader_cenarios
+# Gráficos reais do Trade Battle: todo dia útil depois do pregão (UTC 22h10 = 19h10 em Brasília) baixa do Yahoo os candles de 15 min, 1 h, 1 dia e
+# os candles menores (5 min e 1 h) e guarda no banco só os trechos novos. A biblioteca cresce todo dia (o Yahoo só guarda 5 min dos últimos ~60 dias).
+on:
+  schedule:
+    - cron: "10 22 * * 1-5"
+  workflow_dispatch:
+concurrency:
+  group: trader_cenarios
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  preparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python trader_cenarios_job.py
+        env:
+          BPT_SUPABASE_URL: ${{ secrets.BPT_SUPABASE_URL }}
+          BPT_SUPABASE_KEY: ${{ secrets.BPT_SUPABASE_KEY }}
