@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+# banco SQLite local (criado ao rodar o app ou o servidor sem o Supabase)
+usuarios.db
