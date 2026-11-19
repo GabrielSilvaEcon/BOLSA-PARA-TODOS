@@ -267,6 +267,8 @@ def processar(p: dict, val, estado: dict, jog: str, ref: float, agora: float, op
             ops.tempo(agora) if ops else TB.avancar(p, agora)
         elif ev == "voltar":
             estado["voltar"] = True                   # a tela (Streamlit) decide como sair: individual encerra, sala só desanexa
+        elif ev == "ranking":
+            estado["voltar"] = estado["ranking"] = True   # botão Ranking (só no fim da rodada): sai como o Voltar e abre o Ranking
         elif ev == "proxima":
             if p["fase"] != "resultado":
                 return True

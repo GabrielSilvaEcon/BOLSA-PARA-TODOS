@@ -421,6 +421,9 @@ def _saiu(est: dict, saida) -> None:
     """O Voltar agora fica dentro do cabeçalho do componente: quando ele pedir, a tela sai como o botão antigo saía."""
     if est.pop("voltar", None):
         saida()
+        if est.pop("ranking", None):                  # botão Ranking da faixa de baixo: depois de sair, abre a tela de Ranking
+            _ss()["rk_aba"] = "trade"
+            _ss()["_nav_pend"] = "jogos-ranking"
         st.rerun(scope="app")
 
 
