@@ -770,13 +770,20 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago
             st.markdown(("" if revelado else f"<div class='tb-rx-r'>Rodada {k}</div>") + _raiox_html(linhas), unsafe_allow_html=True)
 
 
-def _registrar_ranking(pid: str, fz: dict, p: dict) -> None:
+def _registrar_ranking(pid: str, fz: dict, p: dict, jog: str | None = None) -> None:
     """Partida terminada entra no placar da Central de Jogos (pontos e colocação calculados aqui, no servidor)."""
     try:
         import jogos_app
         meu = next(x for x in fz["placar"] if x["voce"])
         n = len(fz["placar"])
-        jogos_app.registrar_trade(pid, meu["pontos"], len(fz["rodadas"]), TB.cfg_de(p).get("formato") or "", meu["pos"] if n > 1 else None, n)
+        extra = {}
+        if TB.qtd_de(p) and jog:                              # partida corrida: lucro (T$), retorno (% do capital) e nota de qualidade para o Ranking
+            res = p["resultados"].get(TB._chave(1, jog)) or {}
+            fin = res.get("fin") or {}
+            extra = {"lucro": fin.get("pnl"), "retorno": fin.get("pct_aposta"), "qualidade": res.get("qualidade_nota")}
+            if extra["lucro"] is None or extra["retorno"] is None:
+                extra.update(lucro=None, retorno=None)
+        jogos_app.registrar_trade(pid, meu["pontos"], len(fz["rodadas"]), TB.cfg_de(p).get("formato") or "", meu["pos"] if n > 1 else None, n, **extra)
     except Exception:
         pass
 
@@ -784,7 +791,7 @@ def _registrar_ranking(pid: str, fz: dict, p: dict) -> None:
 def _fim_online(b: dict) -> None:
     v = b["v"]
     _ss()["tb_av_assentos"] = _avatares_assentos(b["p"])
-    _registrar_ranking(b["p"]["id"], v["final"], b["p"])
+    _registrar_ranking(b["p"]["id"], v["final"], b["p"], _email_online())
     _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]), v.get("revelado"))
     st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
     try:                                          # quem jogou na sala: botão para o perfil de cada um (o placar mostra "Jogador N")
@@ -1312,7 +1319,7 @@ def _fim(p: dict) -> None:
     _liquidar(p, forcar=True)
     fz = TB.resumo_final(p, j)
     _ss()["tb_av_assentos"] = _avatares_assentos(p)
-    _registrar_ranking(p["id"], fz, p)
+    _registrar_ranking(p["id"], fz, p, j)
     rv = TB.revelacao(p, _cen()[p["cenarios"][0]]) if TB.qtd_de(p) else None
     _tela_final(fz, TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]], _pagar_xp(p["id"], fz["xp"]), rv)
     st.button("Jogar novamente", key="tb_de_novo", icon=":material/replay:", width="stretch", on_click=_de_novo)

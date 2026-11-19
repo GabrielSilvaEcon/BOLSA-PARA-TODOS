@@ -48,8 +48,8 @@ def test_trade_ordena_por_pontos_com_nome_do_perfil(mundo):
     assert [r["nome"] for r in ln] == ["xLoboTH", "Bia Trader", "Wall Sticker", "Léo"]
     assert [r["pos"] for r in ln] == [1, 2, 3, 4]
     eu = next(r for r in ln if r["eu"])
-    assert eu["sub"] == "Você" and eu["usuario"] is None
-    assert ln[0]["sub"] == "@xlobo" and ln[0]["valor"].endswith("pts")
+    assert eu["sub"] == "Você · 5 partidas" and eu["usuario"] is None
+    assert ln[0]["sub"] == "@xlobo · 5 partidas" and ln[0]["valor"].endswith("pts")
 
 
 def test_ticker_ordena_por_vitorias(mundo):
@@ -82,3 +82,21 @@ def test_linha_html_destaca_o_primeiro_e_voce():
 
 def test_abas_na_ordem_da_referencia():
     assert [a[1] for a in RV.ABAS] == ["Ticker Battle", "Trade Battle", "Carteira"]
+
+
+def test_trade_lucratividade_retorno_e_qualidade_formatados(mundo):
+    import banco
+    import jogos as J
+    from test_perfil_foto import _contas  # noqa: F401
+    for em, lista in {"lobo@x.com": [(800.0, 4.0, 70)] * 3, "bia@x.com": [(100.0, 9.0, 95)] * 3}.items():
+        a = banco.Ator(id="id-" + em, email=em, papel="usuario")
+        d = banco.jogos_placar_ler(a)
+        for i, (lc, rt, ql) in enumerate(lista):
+            d, _ = J.registrar_trade(d, f"{em}{i}", 5, 1, "rapida", None, 1, "x", lucro=lc, retorno=rt, qualidade=ql)
+        banco.jogos_placar_gravar(a, d)
+    luc = mundo.RA._linhas_jogo(J.TRADE, "lucro")
+    assert [r["nome"] for r in luc] == ["xLoboTH", "Bia Trader"] and luc[0]["valor"].startswith("+") and "T$" in luc[0]["valor"]
+    ret = mundo.RA._linhas_jogo(J.TRADE, "retorno")
+    assert ret[0]["nome"] == "Bia Trader" and ret[0]["valor"] == "+9,00%"
+    qual = mundo.RA._linhas_jogo(J.TRADE, "qualidade")
+    assert qual[0]["valor"] == "95/100" and qual[0]["sub"].endswith("3 partidas")
