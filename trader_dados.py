@@ -16,7 +16,7 @@ import trader_battle as TB
 
 CHAVE = "tb_cenarios_{tf}"
 MAX_POR_FUSO = 80                      # teto de cenários guardados por timeframe
-ATIVOS = ("PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "BBAS3", "B3SA3", "RENT3", "SUZB3", "GGBR4", "PRIO3", "LREN3", "ELET3", "RADL3", "JBSS3")
+ATIVOS = ("PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "BBAS3", "ITSA4", "RENT3", "SUZB3", "GGBR4", "PRIO3", "LREN3", "AXIA3", "RADL3", "EQTL3")
 SUFIXO_B24 = "-b24"                    # cenários de 24 candles por bloco no 1h: id próprio, para nunca colidir com os antigos (16 por bloco)
 MAX_DIAS_B24 = {"1h": 90}              # 340 candles de 1h passam de 60 dias corridos: o limite de 70 do formato antigo reprovaria quase tudo
 PERIODO_YAHOO = {"15m": "60d", "1h": "2y"}           # limite gratuito de cada intervalo
@@ -292,7 +292,7 @@ def _chave_vela(t, tf: str):
     return t.floor(f"{m}min")
 
 
-def _velas_completas(sub, tf: str, sub_tf: str) -> list[tuple]:
+def _velas_completas(sub, tf: str, sub_tf: str, vela=None) -> list[tuple]:
     """Agrupa os candles menores (DataFrame) por candle do gráfico. Devolve [(início, posições dos menores)] só com grupos sem buraco: dentro de cada
     pregão os menores vêm em sequência exata (5 min a 5 min, ou 1 h a 1 h), e no intraday o grupo não pode pular um horário do candle do gráfico."""
     from datetime import timedelta as _td
@@ -311,14 +311,30 @@ def _velas_completas(sub, tf: str, sub_tf: str) -> list[tuple]:
             atual[1].append(pos)
     out = []
     for ch, poss, ok in grupos:
-        if not ok:
-            out.append(None)
-            continue
         if tf != "1d" and idx[poss[0]] != ch and (idx[poss[0]] - ch) >= passo:   # o 1º menor tem que abrir o candle do gráfico
+            ok = False
+        if not ok and not _igual_ao_real(sub, poss, vela, ch):
             out.append(None)
             continue
         out.append((ch, poss))
     return out
+
+
+TOL_REAL = 0.0005          # 0,05% (≈ 1 centavo numa ação de R$ 20-30): diferença de arredondamento entre as séries do Yahoo
+
+
+def _igual_ao_real(sub, poss: list[int], vela, ch) -> bool:
+    """Grupo com candle menor faltando só vale se a soma dos menores que vieram for IGUAL ao candle real do gráfico (abertura, máxima, mínima e
+    fechamento do Yahoo): aí o candle mostrado é exatamente o real e só a formação pula aqueles minutos. Nada é inventado."""
+    if vela is None or ch not in vela.index:
+        return False
+    r = vela.loc[ch]
+    if hasattr(r, "ndim") and r.ndim > 1:
+        r = r.iloc[-1]
+    g = sub.iloc[poss]
+    agg = (float(g["Open"].iloc[0]), float(g["High"].max()), float(g["Low"].min()), float(g["Close"].iloc[-1]))
+    real = (float(r["Open"]), float(r["High"]), float(r["Low"]), float(r["Close"]))
+    return all(abs(a - b) <= TOL_REAL * b for a, b in zip(agg, real))
 
 
 def _hist_ok(hist, tf: str) -> bool:
@@ -341,7 +357,7 @@ def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, 
     from datetime import timedelta as _td
     sp = _spec(formato)
     tf, sub_tf, nr, na = sp["tf"], sp["sub"], sp["n_replay"], sp["n_analise"]
-    grupos = _velas_completas(df_sub, tf, sub_tf)
+    grupos = _velas_completas(df_sub, tf, sub_tf, df_vela)
     ocup = [(a, b) for a, b in (ocupados or [])]
     out = []
     mot = motivos if motivos is not None else {}

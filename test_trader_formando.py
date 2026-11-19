@@ -207,3 +207,15 @@ def test_job_diario_prepara_e_guarda_no_banco(monkeypatch):
         assert JOB.main(["longa"]) == 0
         assert len(TD.listar_corrida("longa")) == 1
         assert not TD.escolher_corrida("longa", 3)["demo"]
+
+
+def test_candle_menor_faltando_so_vale_se_o_candle_do_grafico_bate_com_o_real():
+    idx = pd.date_range("2024-03-04 10:00", periods=12, freq="5min")
+    sub = pd.DataFrame({"Open": [10.0 + i * 0.01 for i in range(12)], "High": [10.2] + [10.1] * 11, "Low": [9.9] * 12,
+                        "Close": [10.0 + i * 0.01 for i in range(12)], "Volume": [1000.0] * 12}, index=idx)
+    furado = sub.drop(idx[5])                                                 # 10:25 não veio do Yahoo (máxima e mínima estão em outros minutos)
+    real = pd.DataFrame({"Open": [10.0], "High": [10.2], "Low": [9.9], "Close": [10.11], "Volume": [12000.0]}, index=[pd.Timestamp("2024-03-04 10:00")])
+    assert TD._velas_completas(furado, "1h", "5m", real)[0] is not None       # igual ao candle real de 1 h: entra (sem inventar o 10:25)
+    diferente = real.assign(High=[10.6])                                     # a máxima real aconteceu justo no minuto que faltou: fica de fora
+    assert TD._velas_completas(furado, "1h", "5m", diferente)[0] is None
+    assert TD._velas_completas(furado, "1h", "5m", None)[0] is None
