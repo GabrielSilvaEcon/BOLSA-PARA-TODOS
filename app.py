@@ -4643,8 +4643,7 @@ def _topo_acoes():
             except Exception as _e_hud:
                 if type(_e_hud).__name__ in ("StopException", "RerunException"):
                     raise
-        if st.button("Pesquisar", key="topo_busca", icon=":material/search:", type="tertiary"):
-            _dialogo_busca()
+        # (a lupa de pesquisa saiu do cabeçalho, nov/2026: os ativos se escolhem pelo Analisar)
         st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css_topo
         if pg.url_path not in (PG_INICIO.url_path, PG_PERFIL.url_path):     # Home: avatar no cartão de nível; Perfil: já é a tela do avatar
             st.button("Meu perfil", key="topo_conta", icon=":material/account_circle:", type="tertiary",      # avatar: abre o Meu Perfil (com as opções da conta)
