@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -14,6 +16,7 @@ class Cabecalho extends StatefulWidget {
 
 class _CabecalhoState extends State<Cabecalho> {
   Map<String, dynamic>? _eu;
+  bool _falhou = false;
 
   @override
   void initState() {
@@ -24,9 +27,14 @@ class _CabecalhoState extends State<Cabecalho> {
   Future<void> _carregar() async {
     try {
       final r = await widget.api.get('/eu');
-      if (mounted) setState(() => _eu = r);
+      if (mounted) {
+        setState(() {
+          _eu = r;
+          _falhou = false;
+        });
+      }
     } catch (_) {
-      // sem dados: o cabeçalho continua com traços
+      if (mounted) setState(() => _falhou = true);
     }
   }
 
@@ -47,17 +55,19 @@ class _CabecalhoState extends State<Cabecalho> {
       children: [
         Expanded(
           flex: 5,
-          child: _cartao(
+          child: GestureDetector(
+            onTap: _falhou ? _carregar : null,
+            child: _cartao(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    _avatar(_eu?['perfil']?['avatar']),
+                    _avatar(_eu?['avatar_img']),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        nivel == null ? 'Nível —' : 'Nível ${nivel['nivel']}',
+                        nivel == null ? (_falhou ? 'Toque para atualizar' : 'Nível —') : 'Nível ${nivel['nivel']}',
                         style: tema.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
                       ),
                     ),
@@ -77,6 +87,7 @@ class _CabecalhoState extends State<Cabecalho> {
                 Text(_eu?['xp'] == null ? '' : '${_eu!['xp']} XP', style: tema.textTheme.labelSmall),
               ],
             ),
+          ),
           ),
         ),
         const SizedBox(width: 8),
@@ -118,8 +129,8 @@ class _CabecalhoState extends State<Cabecalho> {
   }
 
   /// Avatar equipado (arquivo em assets/avatares). Sem ele, ou sem arquivo, mostra o mascote.
-  Widget _avatar(Object? id) {
-    final nome = id is String && id.isNotEmpty ? id : null;
+  Widget _avatar(Object? img) {
+    final texto = img is String && img.isNotEmpty ? img : null;
     final mascote = Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover);
     return Container(
       width: 40,
@@ -130,13 +141,19 @@ class _CabecalhoState extends State<Cabecalho> {
         border: Border.all(color: const Color(0xFF6BE58A), width: 2),
       ),
       child: ClipOval(
-        child: nome == null
+        child: texto == null
             ? mascote
-            : Image.asset(
-                'assets/avatares/$nome.webp',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => mascote,
-              ),
+            : texto.startsWith('data:')
+                ? Image.memory(
+                    base64Decode(texto.substring(texto.indexOf(',') + 1)),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => mascote,
+                  )
+                : Image.asset(
+                    'assets/$texto',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => mascote,
+                  ),
       ),
     );
   }

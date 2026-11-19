@@ -200,7 +200,20 @@ def eu(q: Quem = Depends(quem)) -> dict:
     ranking = _ranking_da_casa(a, q.email)
     return {"conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
             "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar,
-            "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe, "ranking": ranking}
+            "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe, "ranking": ranking,
+            "avatar_img": _avatar_img(perfil.get("avatar"))}
+
+
+def _avatar_img(avatar) -> str:
+    """Imagem do avatar equipado: caminho do arquivo do app ('avatares/x.webp') ou data URI (avatares feitos em código). Padrão se faltar."""
+    try:
+        import avatares as AV
+        u = AV.url(str(avatar or ""), True)
+        if u.startswith("app/static/avatares/"):
+            return "avatares/" + u.split("app/static/avatares/", 1)[1]
+        return u
+    except Exception:
+        return ""
 
 
 # ------------------------------------------------------------------ carteira (posições por ativo)
