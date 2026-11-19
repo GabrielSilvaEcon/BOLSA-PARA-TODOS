@@ -27,7 +27,7 @@ def test_agrupar_monta_o_candle_do_grafico_com_os_passos_revelados():
 def _partida(formato="intermediaria"):
     cen = TD.demo_corrida(formato, 5)
     p = TB.nova_partida(cen, cen["tf"], [EU], 1000.0, apostas={EU: {"stake": 10_000.0, "pat": 200_000.0}}, corrida=formato)
-    TB.salvar_estrategia(p, EU, {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1001.0)
+    TB.salvar_estrategia(p, EU, {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1002.0)
     TB.iniciar_replay(p, EU, 1002.0)
     return p, cen
 

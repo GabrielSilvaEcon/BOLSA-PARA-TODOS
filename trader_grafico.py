@@ -64,6 +64,8 @@ def args_mesa(v: dict, p: dict, estado: dict, agora: float | None = None) -> dic
             "candles": TB.candles_sem_data(cand), "ticker": v["ticker"], "tf_nome": TB.TIMEFRAMES[v["tf"]]["nome"], "demo": v["demo"], "rodada": v["rodada"], "rodadas": v["rodadas"],
             "seg": v["segundos"], "ref": cand[-1]["c"], "token": p["id"], "sr": sr, "inicial": inicial, "limites": dict(TB.MAX_MARCAS),
             "erro": estado.get("erro", ""), "erro_seq": estado.get("erro_seq", 0), "ok_seq": estado.get("ok_seq", 0),
+            "corrida": TB.qtd_de(p), "confirmados": v.get("confirmados"),
+            "plano_cfg": {"capital": TB.capital_de(p, v["jogador"]), "taxa": float(TB.cfg_de(p).get("taxa", 0.0))} if TB.qtd_de(p) else None,
             "motor": v.get("motor", TB.MOTOR_LEGADO), "pausada": bool(v.get("pausada")), "mesa": texto_mesa(v.get("mesa")) if mesa else None, "placar": placar(v) if mesa else None, "moldura": None}
 
 
@@ -222,8 +224,13 @@ def estrategia_de(val: dict) -> dict:
         conf = int(val.get("confianca"))
     except (TypeError, ValueError):
         conf = None
-    return {"direcao": direcao, "tipo": tipo, "confianca": conf,
-            "entrada": None if esp else val.get("entrada"), "stop": None if esp else val.get("stop"), "alvo": None if esp else val.get("alvo")}
+    out = {"direcao": direcao, "tipo": tipo, "confianca": conf,
+           "entrada": None if esp else val.get("entrada"), "stop": None if esp else val.get("stop"), "alvo": None if esp else val.get("alvo")}
+    if isinstance(val.get("plano"), dict):                 # partida corrida: a boleta do início (o motor valida tudo)
+        pl = val["plano"]
+        out.update(direcao=pl.get("direcao"), tipo=pl.get("tipo") or ("aguardar" if pl.get("direcao") in (None, "lateral") else "continuacao"),
+                   confianca=None, ordem=pl.get("ordem"), q=pl.get("q"), preco=pl.get("preco"), stop=pl.get("stop"), alvo=pl.get("alvo"))
+    return out
 
 
 _CAMPOS_ACAO = ("tipo", "direcao", "preco", "stop", "alvo", "qual", "aid")

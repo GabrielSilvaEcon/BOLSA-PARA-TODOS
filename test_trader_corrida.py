@@ -25,7 +25,7 @@ def test_tres_duracoes_com_os_tempos_graficos_pedidos_e_historico_3x():
 
 def test_partida_inteira_com_quantidade_e_resultado_em_dinheiro():
     p, cen = partida()
-    TB.salvar_estrategia(p, "eu@x.com", {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1001.0)
+    TB.salvar_estrategia(p, "eu@x.com", {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1002.0)
     TB.iniciar_replay(p, "eu@x.com", 1002.0)
     t = 1002.0 + 2 * TB.SEG_POR_CANDLE + 0.1                                    # 2 candles revelados
     TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 100}, t)
@@ -82,7 +82,7 @@ def test_resultado_da_partida_vira_um_lancamento_na_carteira():
     from test_trader_mesa import livro
     p, cen = partida()
     p["apostas"] = {"eu@x.com": {"stake": 10_000.0, "pat": 500_000.0, "conta": "c1"}}
-    TB.salvar_estrategia(p, "eu@x.com", {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1001.0)
+    TB.salvar_estrategia(p, "eu@x.com", {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1002.0)
     TB.iniciar_replay(p, "eu@x.com", 1002.0)
     TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 200}, 1002.0 + 0.1)
     TB.avancar(p, 1002.0 + TB.cfg_de(p)["t_replay_s"] + 1, TD.por_id([cen]))
@@ -97,7 +97,7 @@ def test_resultado_da_partida_vira_um_lancamento_na_carteira():
 
 def _fim_com(trades_fn, est=None):
     p, cen = partida()
-    TB.salvar_estrategia(p, "eu@x.com", est or {"direcao": "alta", "tipo": "continuacao", "confianca": 5}, None, 0, 1001.0)
+    TB.salvar_estrategia(p, "eu@x.com", est or {"direcao": "alta", "tipo": "continuacao", "confianca": 5}, None, 0, 1002.0)
     TB.iniciar_replay(p, "eu@x.com", 1002.0)
     trades_fn(p, cen)
     TB.avancar(p, 1002.0 + TB.cfg_de(p)["t_replay_s"] + 1, TD.por_id([cen]))
@@ -163,7 +163,7 @@ def test_placar_antigo_sem_os_campos_novos_continua_valido():
 
 def test_stop_movel_pelo_servidor():
     p, cen = partida()
-    TB.salvar_estrategia(p, "eu@x.com", {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1001.0)
+    TB.salvar_estrategia(p, "eu@x.com", {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1002.0)
     TB.iniciar_replay(p, "eu@x.com", 1002.0)
     TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 100}, 1002.1)
     t = 1002.0 + 2 * TB.SEG_POR_CANDLE + 0.1

@@ -258,6 +258,42 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #placar.c .avw,#placar.c .av{grid-row:1;width:22px;height:22px}
 #placar.c .avw .rk{width:13px;height:13px;font-size:7px;right:-4px;bottom:-3px}
 #placar.c .pj b{grid-column:1/3;grid-row:2;font-size:12.5px;margin-top:1px}
+/* ===== partida corrida: pop-up da estratégia (boleta do início) ===== */
+#plano{position:absolute;left:6px;right:6px;bottom:6px;z-index:6;display:none;flex-direction:column;gap:6px;padding:8px;border-radius:18px;
+  background:linear-gradient(180deg,rgba(28,18,84,.98),rgba(14,9,48,.98));border:2px solid #7A5CFF;box-shadow:0 0 22px rgba(122,92,255,.55),0 -6px 30px rgba(0,0,0,.6)}
+#plano.on{display:flex}
+#plano .ph{display:flex;align-items:center;gap:8px}#plano .ph b{flex:1;font-size:15px;font-weight:900;color:#fff}
+#plano .ph #pl-tm{font-weight:900;color:#3DDC97;font-size:14px}
+#plano .ph button{min-height:30px;padding:0 10px;font-size:12px;font-weight:800;border-radius:10px;background:#231a63;border:1px solid #5a49c9;color:#d9d4f7}
+#plano .pb{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"lado lado" "risco qtd" "ok ok";gap:6px}
+#plano.min .pb,#plano.min .pf,#plano.min #pl-esp{display:none}
+#plano .pc{min-width:0;display:flex;flex-direction:column;gap:5px;padding:7px;border-radius:14px;background:rgba(10,6,36,.7);border:1px solid rgba(139,108,255,.35)}
+#plano .lado{grid-area:lado}#plano .risco{grid-area:risco}#plano .qtd{grid-area:qtd}
+#plano .row{display:flex;gap:6px}#plano .row>button{flex:1;min-width:0}
+#plano #pl-buy,#plano #pl-sell{min-height:42px;font-size:15px;font-weight:900;border-radius:13px;color:#fff;opacity:.55}
+#plano #pl-buy{background:linear-gradient(180deg,#1E7A4A,#0F4A2C);border:2px solid #2EE86B}
+#plano #pl-sell{background:linear-gradient(180deg,#7A1E33,#4A0F1E);border:2px solid #FF4D6D}
+#plano #pl-buy.sel,#plano #pl-sell.sel{opacity:1}#plano #pl-buy.sel{box-shadow:0 0 16px rgba(46,232,107,.7)}#plano #pl-sell.sel{box-shadow:0 0 16px rgba(255,77,109,.7)}
+#plano small{font-size:11px;font-weight:800;color:#C9C2F2}
+#plano .tipos button{min-height:44px;padding:2px 4px;font-size:11px;font-weight:800;line-height:1.15;border-radius:12px;background:#1B1546;border:1px solid #3A3182;color:#d9d4f7}
+#plano .tipos button.sel{background:linear-gradient(180deg,#8B5CFF,#5B2FD6);border-color:#B79CFF;color:#fff;box-shadow:0 0 12px rgba(139,92,255,.6)}
+#plano .tipos i{display:block;font-style:normal;font-size:15px}
+#plano .campo{display:flex;flex-direction:column;gap:3px}
+#plano .stp{display:flex;align-items:center;gap:4px}
+#plano .stp button{flex:0 0 32px;min-height:32px;padding:0;font-size:18px;font-weight:900;border-radius:9px;background:#3A2B9A;border:1px solid #7A5CFF;color:#fff}
+#plano .stp input{flex:1;min-width:0;min-height:32px;text-align:center;font-size:15px;font-weight:900;border-radius:9px;background:#0B0828;border:1px solid #2B2470;color:#fff}
+#plano .rr{display:flex;flex-direction:column;align-items:center;gap:1px;padding-top:2px;border-top:1px solid rgba(139,108,255,.3)}
+#plano .rr b{font-size:20px;font-weight:900;color:#3DDC97}#plano .rr b.ruim{color:#FFB648}#plano .rr span{font-size:10.5px;font-weight:700;color:#C9C2F2;text-align:center}
+#plano #pl-ok{grid-area:ok;min-height:48px;font-size:16px;font-weight:900;border-radius:15px;border:2px solid #9BFFB8;color:#06240F;
+  background:linear-gradient(180deg,#5CF08A,#18B957);box-shadow:0 0 18px rgba(46,232,107,.5)}
+#plano #pl-ok[disabled]{background:#3a3560;border-color:#4b4680;color:#9a95c2;box-shadow:none}
+#plano .pf{display:flex;align-items:center;gap:8px}#plano .pf button{min-height:30px;padding:0 10px;font-size:12px;font-weight:800;border-radius:10px;background:transparent;border:1px solid #5a49c9;color:#C9C2F2}
+#plano #pl-msg{flex:1;font-size:11.5px;font-weight:800;color:#FFB648;text-align:right}
+#plano #pl-esp{display:none;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;text-align:center;font-size:16px;font-weight:900;color:#3DDC97}
+#plano #pl-esp span{font-size:13px;font-weight:800;color:#d9d4f7}
+#plano.esp .pb,#plano.esp .pf{display:none}#plano.esp #pl-esp{display:flex}
+#app.corrida #bt,#app.corrida #b-buy,#app.corrida #b-sell,#app.corrida #b-entrada,#app.corrida #b-stop,#app.corrida #b-alvo,#app.corrida #mais .an:not([data-t]){display:none !important}
+@media (min-width:700px){#plano .pb{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) auto;grid-template-areas:"lado risco qtd ok"}#plano #pl-ok{min-width:150px}}
 </style></head><body>
 <div id="app">
   <div id="ban"><button id="vt" title="Voltar" aria-label="Voltar"><span>←</span></button>
@@ -292,6 +328,19 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
     <button class="qp" data-qp="25">25%</button><button class="qp" data-qp="50">50%</button><button class="qp" data-qp="100">Máx</button></div>
     <div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ VENDER</span></button></div>
     <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar ordem</button><button id="m-adv">⚙ Opções ▾</button><button id="m-ind" title="Indicadores">⋯</button></div></div>
+<div id="plano"><div class="ph"><b>🎯 Monte sua estratégia</b><span id="pl-tm"></span><button id="pl-min">▾ Ver gráfico</button></div>
+    <div class="pb">
+      <div class="pc lado"><div class="row"><button id="pl-buy">⬆ Comprar</button><button id="pl-sell">⬇ Vender</button></div>
+        <small>Tipo de ordem</small>
+        <div class="row tipos"><button data-ot="mercado"><i>⚡</i>A Mercado</button><button data-ot="limite"><i>⌖</i>Limitada</button><button data-ot="stop_entrada"><i>↗</i>Stop</button></div>
+        <div class="campo" id="pl-precow"><small id="pl-preco-l">Preço da ordem</small><div class="stp"><button data-pd="preco" data-ps="-1">−</button><input id="pl-preco" inputmode="decimal" autocomplete="off"><button data-pd="preco" data-ps="1">+</button></div></div></div>
+      <div class="pc risco"><div class="campo"><small>🛡 Stop Loss</small><div class="stp"><button data-pd="stop" data-ps="-1">−</button><input id="pl-stop" inputmode="decimal" autocomplete="off"><button data-pd="stop" data-ps="1">+</button></div></div>
+        <div class="campo"><small>🏆 Take Profit</small><div class="stp"><button data-pd="alvo" data-ps="-1">−</button><input id="pl-alvo" inputmode="decimal" autocomplete="off"><button data-pd="alvo" data-ps="1">+</button></div></div></div>
+      <div class="pc qtd"><div class="campo"><small>🪙 Quantidade</small><div class="stp"><button data-pd="q" data-ps="-1">−</button><input id="pl-q" inputmode="numeric" autocomplete="off"><button data-pd="q" data-ps="1">+</button></div></div>
+        <div class="rr"><small>Risco / Retorno</small><b id="pl-rr">—</b><span id="pl-rrt"></span></div></div>
+      <button id="pl-ok">✔ Confirmar Estratégia</button></div>
+    <div class="pf"><button id="pl-obs">Só observar no início</button><span id="pl-msg"></span></div>
+    <div id="pl-esp">✔ Estratégia confirmada<span id="pl-esp-t">Aguardando os outros jogadores…</span></div></div>
   <div id="rkb"><span>ⓘ Você está no modo Trade Battle. Suas operações contam para o ranking!</span><span id="ap"></span><button id="b-rank">🏆 Ranking</button></div>
   <div id="bt"><button id="conf">Confirmar estratégia</button><button id="rep">Iniciar replay</button><button id="enc">⏹ Encerrar operação</button></div>
 </div>
@@ -543,7 +592,7 @@ function hline(p,col,dash,label,destaque){
 
 /* ===== UI (barras, resumo, confirmação) ===== */
 function ui(){
-  const v=Geo.validar(S,A.ref,mesaOn());S.v=v;$("bt").classList.remove("enc");
+  uiPlano();const v=Geo.validar(S,A.ref,mesaOn());S.v=v;$("bt").classList.remove("enc");
   if(S.modo==="resultado"){if(mesaOn()){$("sm").innerHTML='<div class="l2"><span class="ok">🏁 Rodada encerrada</span> · resultado no gráfico</div>';$("pg").style.width="100%";return}const Ln=S.lines;$("sm").innerHTML=`<div class="l1"><span class="e">ENT ${fmt(Ln.entrada)}</span><span class="s">STOP ${fmt(Ln.stop)}</span><span class="a">ALVO ${fmt(Ln.alvo)}</span></div><div class="l2"><span class="ok">🏁 Rodada encerrada</span> · resultado no gráfico</div>`;$("pg").style.width="100%";return}
   if(S.modo==="replay"){if(mesaOn())return uiMesa();const Ln=S.lines,o=A.operacao;
     $("sm").innerHTML=`<div class="l1"><span class="e">ENT ${fmt(Ln.entrada)}</span><span class="s">STOP ${fmt(Ln.stop)}</span><span class="a">ALVO ${fmt(Ln.alvo)}</span></div><div class="l2"><span class="ok">🔒 Estratégia travada</span> · ${S.dir==="alta"?"Compra":S.dir==="baixa"?"Venda":"Aguardar"} · ${ROT[S.tipo]} ★${S.conf} · candle ${A.revelados}/${A.total_replay}${o?` · <b class="op ${o.cor}">${esc(o.txt)}</b>`:""}${S.erroLocal?` · <span class="er">${esc(S.erroLocal)}</span>`:""}</div>`;
@@ -612,7 +661,7 @@ function resultado(a){
 }
 function tick(){
   if(!A)return;const seg=A.pausada?Math.max(0,A.seg):Math.max(0,Math.ceil((T0-performance.now())/1000)),tm=$("tm");
-  tm.textContent=String(Math.floor(seg/60)).padStart(2,"0")+":"+String(seg%60).padStart(2,"0");
+  tm.textContent=String(Math.floor(seg/60)).padStart(2,"0")+":"+String(seg%60).padStart(2,"0");const ptm=$("pl-tm");if(ptm)ptm.textContent="⏱ "+tm.textContent;
   const salvo=S&&S.savedSig===sig()&&S.v&&S.v.ok;
   tm.classList.toggle("fim",seg<=15);tm.classList.toggle("pisca",seg<=15&&!salvo);
   if(S&&S.modo!=="analise"){if(S.modo==="resultado"&&!A.multi)tm.textContent="--:--";return}
@@ -622,11 +671,67 @@ function tick(){
 setInterval(tick,250);
 function send(evento){
   S.seq++;const v={seq:S.seq,evento,direcao:S.dir,tipo:S.tipo,confianca:S.conf,entrada:S.lines.entrada,stop:S.lines.stop,alvo:S.lines.alvo,marcas:S.marcas};
+  if(S.plano)v.plano=S.plano;
   if(evento==="confirmar"){S.sentSeq=S.seq;S.sentSig=sig()}
   else if(evento==="encerrar"){S.sentSeq=S.seq}
   post({type:"streamlit:setComponentValue",value:v,dataType:"json"});
 }
 
+
+/* ===== Partida corrida: pop-up da estratégia (boleta do início). O servidor valida tudo de novo (capital, lados, preços). ===== */
+const PL={dir:null,ordem:"mercado",preco:null,stop:null,alvo:null,q:null,min:false,ini:false,tok:null};
+const corrida=()=>!!(A&&A.corrida);
+const r2=x=>Math.round(x*100)/100;
+function atrPl(){const c=S&&S.cands||[];const n=Math.min(14,c.length-1);if(n<1)return (A&&A.ref||10)*0.01;let t=0;
+  for(let i=c.length-n;i<c.length;i++){const k=c[i],a=c[i-1];t+=Math.max(k.h-k.l,Math.abs(k.h-a.c),Math.abs(k.l-a.c))}return t/n}
+function entPl(){return PL.ordem==="mercado"?A.ref:PL.preco}
+function maxQPl(){const cfg=A&&A.plano_cfg||{};const e=entPl()||A.ref;return e>0?Math.max(0,Math.floor((cfg.capital||0)/(e*(1+(cfg.taxa||0))))):0}
+function padraoPl(){const a=atrPl(),e=A.ref,s=PL.dir==="baixa"?-1:1;
+  PL.preco=PL.ordem==="mercado"?null:r2(PL.ordem==="limite"?e-s*a*0.5:e+s*a*0.5);
+  const en=entPl();PL.stop=r2(en-s*a*1.2);PL.alvo=r2(en+s*a*2.4);PL.q=Math.min(Math.max(1,PL.q||0),Math.max(1,maxQPl()))}
+function iniPl(){if(PL.ini&&PL.tok===A.token)return;PL.ini=true;PL.tok=A.token;PL.dir=null;PL.ordem="mercado";PL.min=false;PL.q=null;
+  PL.q=Math.max(1,Math.floor(maxQPl()*0.25));padraoPl()}
+function validaPl(){const e=entPl(),s=PL.dir==="baixa"?-1:1;
+  if(!PL.dir)return "Escolha Comprar ou Vender";
+  if(!(PL.q>=1))return "Informe a quantidade";if(PL.q>maxQPl())return `Cabem no máximo ${maxQPl()} ações (5% do saldo)`;
+  if(PL.ordem!=="mercado"){if(!(PL.preco>0))return "Informe o preço da ordem";
+    const lim=PL.ordem==="limite";if(lim?(s*(PL.preco-A.ref)>=0):(s*(PL.preco-A.ref)<=0))return lim?(s>0?"A compra limitada fica abaixo do preço atual":"A venda limitada fica acima do preço atual"):(s>0?"A compra stop fica acima do preço atual":"A venda stop fica abaixo do preço atual")}
+  if(PL.stop!=null&&s*(PL.stop-e)>=0)return s>0?"O stop fica abaixo da entrada":"O stop fica acima da entrada";
+  if(PL.alvo!=null&&s*(PL.alvo-e)<=0)return s>0?"O alvo fica acima da entrada":"O alvo fica abaixo da entrada";
+  return ""}
+function uiPlano(){const el=$("plano");if(!el||!S||!A)return;
+  const on=corrida()&&S.modo==="analise";$("app").classList.toggle("corrida",corrida());el.classList.toggle("on",on);if(!on)return;
+  iniPl();const cf=A.confirmados||{},esp=!!cf.eu;el.classList.toggle("esp",esp);el.classList.toggle("min",PL.min&&!esp);
+  $("pl-min").textContent=PL.min?"▴ Abrir boleta":"▾ Ver gráfico";$("pl-min").style.display=esp?"none":"";
+  if(esp){$("pl-esp-t").textContent=cf.total>1&&cf.n<cf.total?`Aguardando os outros jogadores (${cf.n}/${cf.total})…`:"A partida vai começar!";return}
+  $("pl-buy").classList.toggle("sel",PL.dir==="alta");$("pl-sell").classList.toggle("sel",PL.dir==="baixa");
+  document.querySelectorAll("#plano [data-ot]").forEach(b=>b.classList.toggle("sel",b.dataset.ot===PL.ordem));
+  $("pl-precow").style.display=PL.ordem==="mercado"?"none":"";$("pl-preco-l").textContent=PL.ordem==="limite"?"Preço limite":"Preço de disparo (stop)";
+  const fx=v=>v==null?"":v.toFixed(2).replace(".",",");
+  for(const k of ["preco","stop","alvo"])if(document.activeElement!==$("pl-"+k))$("pl-"+k).value=fx(PL[k]);
+  if(document.activeElement!==$("pl-q"))$("pl-q").value=PL.q==null?"":String(PL.q);
+  const e=entPl(),risco=PL.stop!=null&&e?Math.abs(e-PL.stop):null,ret=PL.alvo!=null&&e?Math.abs(PL.alvo-e):null;
+  const rr=$("pl-rr");rr.textContent=risco&&ret?`1 : ${(ret/risco).toFixed(1).replace(".",",")}`:"—";rr.classList.toggle("ruim",!!(risco&&ret&&ret/risco<1));
+  const tq=v=>"T$ "+(v*(PL.q||0)).toFixed(2).replace(".",",");
+  $("pl-rrt").textContent=risco&&ret?`Risco ${tq(risco)} · Retorno ${tq(ret)}`:(PL.stop==null?"Sem stop: o risco é o capital todo":"");
+  const msg=PL.dir?validaPl():"";$("pl-msg").textContent=S.erroLocal||msg;
+  $("pl-ok").disabled=!PL.dir||!!validaPl()||(S.sentSeq>0&&S.sentSeq===S.seq&&!S.erroLocal);
+  if(PL.dir){S.lines={entrada:e,stop:PL.stop,alvo:PL.alvo};S.dir=PL.dir}}
+function confirmaPl(obs){if(!S)return;S.erroLocal="";
+  S.plano=obs?{direcao:null,tipo:"aguardar"}:{direcao:PL.dir,ordem:PL.ordem,q:PL.q,preco:PL.ordem==="mercado"?null:PL.preco,stop:PL.stop,alvo:PL.alvo};
+  send("confirmar");S.plano=null;uiPlano();draw()}
+function passoPl(k,d){const t=Math.max(0.01,r2(atrPl()*0.1));
+  if(k==="q")PL.q=Math.max(1,Math.min(maxQPl()||1,(PL.q||0)+d*Math.max(1,Math.round((maxQPl()||100)/20))));
+  else{const base=PL[k]!=null?PL[k]:entPl();PL[k]=r2(Math.max(0.01,base+d*t))}uiPlano();draw()}
+$("pl-buy").onclick=()=>{const m=PL.dir!=="alta";PL.dir="alta";if(m)padraoPl();uiPlano();draw()};
+$("pl-sell").onclick=()=>{const m=PL.dir!=="baixa";PL.dir="baixa";if(m)padraoPl();uiPlano();draw()};
+document.querySelectorAll("#plano [data-ot]").forEach(b=>b.onclick=()=>{PL.ordem=b.dataset.ot;if(!PL.dir)PL.dir="alta";padraoPl();uiPlano();draw()});
+document.querySelectorAll("#plano [data-pd]").forEach(b=>b.onclick=()=>passoPl(b.dataset.pd,+b.dataset.ps));
+for(const k of ["preco","stop","alvo","q"])$("pl-"+k).addEventListener("change",e=>{const v=parseFloat(String(e.target.value).replace(/\./g,"").replace(",","."));
+  PL[k]=k==="q"?(isFinite(v)?Math.floor(v):null):(isFinite(v)&&v>0?r2(v):null);uiPlano();draw()});
+$("pl-min").onclick=()=>{PL.min=!PL.min;uiPlano()};
+$("pl-ok").onclick=()=>{if(!validaPl())confirmaPl(false)};
+$("pl-obs").onclick=()=>confirmaPl(true);
 /* ===== Mesa de operações (motor 2): ordens ao vivo, linhas próprias e entradas/saídas dos adversários ===== */
 const mz=()=>A&&A.mesa;
 const advAberto=()=>$("adv").style.display==="flex";
