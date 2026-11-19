@@ -65,3 +65,20 @@ def test_ranking_pela_api(cli):
     r = cli.get("/ranking/trade", params={"metrica": "lucro"})
     assert r.status_code == 200 and "linhas" in r.json()
     assert cli.get("/ranking/xadrez").status_code == 404
+
+
+def test_login_pelo_supabase_auth_cria_a_conta_do_jogo(monkeypatch):
+    import banco
+    from test_trader_mesa import banco_isolado
+    jwt = "aaa.bbb.ccc"
+    usuarios = {jwt: {"email": "nova@x.com", "email_confirmed_at": "2026-11-19T10:00:00Z", "user_metadata": {"full_name": "Nova Jogadora"}},
+                "ddd.eee.fff": {"email": "sem@x.com"}}                                  # e-mail ainda não confirmado
+    monkeypatch.setattr(API, "_usuario_supabase", lambda t: usuarios.get(t))
+    API._CACHE_AUTH.clear()
+    with banco_isolado():
+        c = TestClient(API.app)
+        r = c.get("/eu", headers={"Authorization": f"Bearer {jwt}"})
+        assert r.status_code == 200 and r.json()["conta"]["email"] == "nova@x.com"
+        assert banco.sis_conta_por_email("nova@x.com")["nome"] == "Nova Jogadora"      # a conta do jogo nasceu no 1º acesso
+        assert c.get("/eu", headers={"Authorization": "Bearer ddd.eee.fff"}).status_code == 401
+        assert c.get("/eu", headers={"Authorization": "Bearer xxx.yyy.zzz"}).status_code == 401   # token que o Supabase não reconhece

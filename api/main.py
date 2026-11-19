@@ -3,8 +3,9 @@
 Nada de regra nova aqui: cada rota só chama os módulos puros que o app em Streamlit já usa (contas, banco, trader_battle, trader_qtd,
 trader_dados, trader_carteira, trader_online_dados, jogos, perfis) e devolve JSON. Mesmo banco (Supabase), mesmas contas, mesmos testes.
 
-Login: o app manda e-mail e senha uma vez (`POST /auth/entrar`) e recebe o mesmo token de sessão que o Streamlit usa; depois envia
-`Authorization: Bearer <token>` em toda chamada. O servidor valida o token a cada chamada (contas.validar_sessao).
+Login: o app novo entra pelo Supabase Auth (e-mail ou Google, pelo plugin do Flutter) e manda o token dele em toda chamada,
+`Authorization: Bearer <token>`. O servidor confirma o token com o próprio Supabase e liga o e-mail à conta do jogo (criada na 1ª vez).
+Também aceita o token de sessão do app atual (`POST /auth/entrar`, e-mail e senha), enquanto os dois apps existem.
 
 Rodar localmente:  uvicorn api.main:app --reload      ·  documentação interativa em /docs
 Ainda não está aqui (próximas partes da etapa 1): login com Google, XP da partida (fica no progresso de estudo) e as telas de Aprender/Analisar.
@@ -51,9 +52,45 @@ class Quem(BaseModel):
         return contas.ator_de(self.conta)
 
 
+_CACHE_AUTH: dict[str, tuple[float, dict | None]] = {}
+CACHE_AUTH_S = 60                       # o token do Supabase é conferido no máximo 1 vez por minuto (o app chama o servidor o tempo todo)
+
+
+def _usuario_supabase(tok: str) -> dict | None:
+    """Usuário do Supabase Auth dono deste token (o próprio Supabase confirma: token falso ou vencido = None)."""
+    sb = banco._supabase()
+    if not sb:
+        return None
+    import requests
+    url, key = sb
+    try:
+        r = requests.get(f"{url}/auth/v1/user", headers={"apikey": key, "Authorization": f"Bearer {tok}"}, timeout=8)
+    except Exception:
+        return None
+    return r.json() if r.status_code == 200 else None
+
+
+def _conta_do_token(tok: str) -> dict | None:
+    if tok.count(".") != 2:                                         # token de sessão do app atual (e-mail e senha)
+        return contas.validar_sessao(tok)
+    c = _CACHE_AUTH.get(tok)
+    if c and time.time() - c[0] < CACHE_AUTH_S:
+        return c[1]
+    u = _usuario_supabase(tok)
+    conta = None
+    if u and u.get("email") and (u.get("email_confirmed_at") or u.get("confirmed_at")):       # só e-mail confirmado entra no jogo
+        meta = u.get("user_metadata") or {}
+        r = contas.login_google(u["email"], meta.get("full_name") or meta.get("name") or "")  # cria ou reativa a conta do jogo
+        conta = r.dado if r.ok else None
+    if len(_CACHE_AUTH) > 5000:
+        _CACHE_AUTH.clear()
+    _CACHE_AUTH[tok] = (time.time(), conta)
+    return conta
+
+
 def quem(authorization: str = Header(default="")) -> Quem:
     tok = authorization.removeprefix("Bearer ").strip()
-    conta = contas.validar_sessao(tok) if tok else None
+    conta = _conta_do_token(tok) if tok else None
     if not conta:
         raise HTTPException(401, "Sessão inválida ou expirada: entre de novo.")
     return Quem(conta={k: v for k, v in conta.items() if k != "senha_hash"}, email=conta["email"], token=tok)
