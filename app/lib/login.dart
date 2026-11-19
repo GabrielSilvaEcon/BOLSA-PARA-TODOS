@@ -84,11 +84,7 @@ class _LoginTelaState extends State<LoginTela> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF3B2A9E), Color(0xFF1A1258), Color(0xFF0B0828)],
-          ),
+          image: DecorationImage(image: AssetImage('assets/fundo_login.webp'), fit: BoxFit.cover),
         ),
         child: SafeArea(
           child: Center(
@@ -100,7 +96,6 @@ class _LoginTelaState extends State<LoginTela> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Image.asset('assets/mascote.webp', height: 160, fit: BoxFit.contain),
                     const SizedBox(height: 8),
                     Text('TickerHunters', textAlign: TextAlign.center, style: tema.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
                     const SizedBox(height: 4),
