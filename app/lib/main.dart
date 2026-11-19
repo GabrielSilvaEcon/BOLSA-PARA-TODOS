@@ -3,8 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
 import 'config.dart';
-import 'home.dart';
 import 'login.dart';
+import 'navegacao.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +37,7 @@ class TickerHuntersApp extends StatelessWidget {
   }
 }
 
-/// Mostra o login enquanto não há sessão, e a Home quando há. Troca sozinha ao entrar ou sair.
+/// Mostra o login enquanto não há sessão, e o app (Home e barra de baixo) quando há. Troca sozinha ao entrar ou sair.
 class PortaDeEntrada extends StatelessWidget {
   const PortaDeEntrada({super.key});
 
@@ -49,7 +49,7 @@ class PortaDeEntrada extends StatelessWidget {
         final sessao = Supabase.instance.client.auth.currentSession;
         if (sessao == null) return const LoginTela();
         final api = Api(tokenAtual: () => Supabase.instance.client.auth.currentSession?.accessToken);
-        return HomeTela(api: api);
+        return Principal(api: api);
       },
     );
   }
