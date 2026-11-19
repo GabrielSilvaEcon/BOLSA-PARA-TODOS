@@ -463,6 +463,34 @@ def jogos_central(q: Quem = Depends(quem)) -> dict:
             "melhor": {"pos": melhor[0], "jogo": melhor[1]} if melhor else None, "ofensiva": ofensiva, "desafio": desafio}
 
 
+# ------------------------------------------------------------------ tela inicial do Trade Battle
+@app.get("/trade/central")
+def trade_central(q: Quem = Depends(quem)) -> dict:
+    """O que a tela inicial do Trade Battle mostra (trader_battle_app._central): as durações (com quantos gráficos reais há),
+    a sala em andamento da pessoa e a faixa do ranking do jogo."""
+    corridas = []
+    for f, sp in TB.CORRIDAS.items():
+        try:
+            reais = len(TD.listar_corrida(f))
+        except Exception:
+            reais = 0
+        corridas.append({"id": f, "rotulo": TB.ROTULO_CORRIDA[f], "grafico": TB.TIMEFRAMES[sp["tf"]]["nome"],
+                         "minutos": round((TB.T_ANALISE_S + sp["n_replay"] * TB.SEG_POR_CANDLE) / 60), "reais": reais})
+    try:
+        ativa = OL.partida_ativa(q.email)
+    except Exception:
+        ativa = None
+    ranking = None
+    try:
+        rk = J.montar_ranking(J.TRADE, banco.sis_comp_todos(J.CH_PLACAR), q.email)
+        if rk and rk.get("eu"):
+            ranking = {"pos": int(rk["eu"]["pos"]), "total": int(rk.get("total") or 0), "valor": float(rk["eu"].get("valor") or 0),
+                       "nome": rk["eu"].get("apelido") or ""}
+    except Exception:
+        ranking = None
+    return {"corridas": corridas, "ativa": ativa, "ranking": ranking, "xp_dia": TB.XP_PARTIDAS_DIA}
+
+
 # ------------------------------------------------------------------ rankings (só partidas online contam)
 @app.get("/ranking/{jogo}")
 def ranking(jogo: str, metrica: str = "pts", q: Quem = Depends(quem)) -> dict:
