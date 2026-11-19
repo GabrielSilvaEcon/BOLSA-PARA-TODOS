@@ -1,0 +1,10 @@
+{
+  "name": "TickerHunters",
+  "short_name": "TickerHunters",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0B0828",
+  "theme_color": "#0B0828",
+  "description": "Jogo de investimentos. Educativo, sem recomendação de compra ou venda.",
+  "icons": []
+}

@@ -1,0 +1,46 @@
+name: app_web
+# Link de teste do app novo (Flutter): a cada mudança em app/, compila a versão web e publica no GitHub Pages.
+# Abre no navegador do tablet ou do celular: https://gabrielsilvaecon.github.io/BOLSA-PARA-TODOS/
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/app_web.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: app-web-pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Dependências e análise
+        working-directory: app
+        run: |
+          flutter create --project-name tickerhunters --platforms web . --no-overwrite || true
+          flutter pub get
+          flutter analyze --no-fatal-infos
+      - name: Compilar versão web
+        working-directory: app
+        run: flutter build web --release --base-href /BOLSA-PARA-TODOS/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/build/web
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
