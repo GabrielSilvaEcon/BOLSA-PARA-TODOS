@@ -23,6 +23,7 @@ def css_topo(n_alertas: int = 0) -> str:
         f'{Q} .st-key-topo_perfil [data-testid="stPageLink"] a[data-testid="stPageLink-NavLink"]{{position:relative;overflow:visible;width:44px !important;min-width:44px !important;'
         "height:44px !important;min-height:44px !important;padding:0 !important;justify-content:center !important;background:transparent !important;border:0 !important;box-shadow:none !important}"
         f'{Q} .st-key-topo_perfil a [data-testid="stIconMaterial"]{{font-size:26px !important;color:var(--dz-texto) !important}}'
+        f'{Q} .st-key-topo_perfil .wm-t{{display:none !important}}'                 # só o ícone do app (sem o nome escrito)'
         + sino +
         f"@media (min-width:{LARGURA}px){{{Q} .st-key-topo_perfil{{padding-left:max(10px,calc((100vw - {LARGURA}px)/2)) !important;"
         f"right:max(44px,calc((100vw - {LARGURA}px)/2 + 44px)) !important}}}}"

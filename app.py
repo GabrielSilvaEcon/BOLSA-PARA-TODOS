@@ -1772,7 +1772,7 @@ def _inicio_app(ativos: list):
     st.markdown(IP.css(), unsafe_allow_html=True)
     import home_game_app
     try:
-        home_game_app.renderizar(_ir_home, _mercado_hoje_cache, educacao_app)
+        home_game_app.renderizar(_ir_home, _mercado_hoje_cache, educacao_app, com_hud=False)   # o HUD está no cabeçalho
     except Exception as _e_home:
         if type(_e_home).__name__ in ("StopException", "RerunException"):
             raise
@@ -4026,7 +4026,8 @@ def _pagina_hub(area_id: str):
     if False and ultima and ultima in _todas_pg and ultima != areas.pagina_inicial(area_id):      # desligado
         with st.container(key="an_continuar"):
             st.page_link(_todas_pg[ultima], label=f"Continuar de onde parou: {_todas_pg[ultima].title}", icon=":material/history:")
-    md(analisar_visual.html_secao("Escolha o que analisar") if area_id == "analisar" else '<div class="an-sec">Escolha o que analisar</div>')
+    if area_id != "analisar":                                  # Analisar: o título já está no cartão do topo (sem repetir fora dos cartões)
+        md('<div class="an-sec">Escolha o que analisar</div>')
     grade = st.container(key="an_grade") if area_id == "analisar" else st.container()      # Analisar: grade compacta de 2 colunas também no celular
     for i in range(0, len(cartoes), 2):
         cols = grade.columns(2)
@@ -4219,7 +4220,7 @@ PG_TEC_ACOES = st.Page(pagina_tecnica_acoes, title="Análise técnica de ações
 PG_TEC_AV = st.Page(pagina_tecnica_avancada_app, title="Análise técnica avançada", icon=":material/query_stats:", url_path="tecnica-avancada")
 PG_TEC = st.Page(pagina_tecnica_cripto, title="Análise técnica de cripto", icon=":material/candlestick_chart:", url_path="tecnica-cripto")
 PG_PICK = st.Page(pagina_picking, title="Ranking", icon=":material/leaderboard:", url_path="stock-picking")
-PG_MACRO = st.Page(pagina_macro, title="Economia", icon=":material/public:", url_path="macro")
+PG_MACRO = st.Page(pagina_macro, title="Cenário econômico", icon=":material/public:", url_path="macro")
 PG_CART = st.Page(pagina_carteira_app, title="Carteira", icon=":material/account_balance_wallet:", url_path="carteira")
 PG_NOTICIAS = st.Page(pagina_noticias_app, title="Central de notícias e eventos", icon=":material/newspaper:", url_path="noticias")
 PG_INTEL = st.Page(pagina_intel_app, title="Radar da carteira", icon=":material/psychology:", url_path="inteligencia")
@@ -4315,27 +4316,25 @@ PGS_FUNDAMENTALISTA = [PG_PRECO, PG_VAL, PG_MICRO, PG_DIV, PG_DCF]
 paginas = {
     ":material/home: Início": [PG_INICIO],
     ":material/query_stats: Analisar": [PG_ANALISAR, PG_TIPO],
-    ":material/show_chart: Ações": [PG_ACOES] + PGS_FUNDAMENTALISTA + [PG_TEC_ACOES, PG_TEC_AV, PG_PICK],   # o Ranking continua no app, só não aparece no menu
+    ":material/show_chart: Ações": [PG_ACOES] + PGS_FUNDAMENTALISTA + [PG_TEC_ACOES, PG_PICK],   # o Ranking continua no app, só não aparece no menu
     ":material/account_balance: Fundos de investimento": [PG_FIIS, PG_FUNDOS_ACOES, PG_MULTI, PG_FUNDOS_RF],
     ":material/stacked_line_chart: ETFs": [PG_ETFS],
     ":material/currency_bitcoin: Criptoativos": [PG_CRIPTO, PG_ONCHAIN, PG_RECEITAS, PG_FUND_CRIPTO, PG_CRIPTO_AV, PG_TEC],
     ":material/savings: Renda fixa": [PG_RF, PG_TESOURO, PG_CALC],
-    ":material/public: Economia": [PG_MACRO],
-    ":material/account_balance_wallet: Minha carteira": [PG_COMP, PG_GESTAO, PG_RISCO, PG_REL, PG_SIM],
-    ":material/psychology: Inteligência": [PG_INTEL, PG_NOTICIAS, PG_NOTIF],
+    ":material/public: Cenário econômico": [PG_MACRO],
+    ":material/account_balance_wallet: Minha carteira": [PG_COMP, PG_GESTAO, PG_SIM],
     ":material/sports_esports: Central de Jogos": [PG_JOGOS, PG_TRADER, PG_BATTLE, PG_JG_RANK, PG_JG_AMIGOS, PG_JG_EVENTOS, PG_JOGADOR],
     ":material/school: Aprender": [PG_JORNADA, PG_JOGAR, PG_EDU, PG_GLOSSARIO],
-    ":material/compare_arrows: Comparar": [PG_COMPARAR, PG_EVOLUCAO],
     ":material/toll: Loja Ticker": [PG_ECONOMIA],
     ":material/help: Ajuda": [PG_AJUDA],
 }
 
 # A navegação nativa do Streamlit fica escondida: o menu próprio fica na barra lateral (botão ☰).
 try:
-    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN, PG_CART]}, position="hidden")
+    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN, PG_CART, PG_NOTIF]}, position="hidden")
 except TypeError:
     st.warning("Esta versão do Streamlit é antiga (`pip install -U streamlit`). Usando o menu lateral.")
-    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN, PG_CART]})
+    pg = st.navigation({**paginas, ":material/account_circle: Conta": [PG_PERFIL, PG_PERFIL_EDITAR, PG_CONTA, PG_PLANOS, PG_ADMIN, PG_CART, PG_NOTIF]})
 
 
 def _marca_html(tam: int = 34) -> str:
@@ -4637,6 +4636,13 @@ def _topo_acoes():
     with st.container(key="topo_perfil"):
         st.markdown(_marca_html(26), unsafe_allow_html=True)
         st.markdown(_css_topo_avatar(), unsafe_allow_html=True)
+        if pg.url_path == PG_INICIO.url_path:                         # Home: nível, Ticker Coins e ranking ficam no próprio cabeçalho
+            try:
+                import home_game_app
+                home_game_app.hud(_ir_home, educacao_app)
+            except Exception as _e_hud:
+                if type(_e_hud).__name__ in ("StopException", "RerunException"):
+                    raise
         if st.button("Pesquisar", key="topo_busca", icon=":material/search:", type="tertiary"):
             _dialogo_busca()
         st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css_topo
@@ -4645,7 +4651,7 @@ def _topo_acoes():
                       on_click=lambda: st.session_state.update(_nav_pend="perfil"))
 
 
-conta_app.registrar_paginas(gestao=PG_GESTAO, inteligencia=PG_INTEL, relatorios=PG_REL, noticias=PG_NOTICIAS, admin=PG_ADMIN)
+conta_app.registrar_paginas(gestao=PG_GESTAO, admin=PG_ADMIN)   # Radar, Notícias, Relatórios e Risco saíram do app (nov/2026)
 _todas_pg = {p.url_path: p for n_, p in list(globals().items()) if n_.startswith("PG_") and hasattr(p, "url_path")}
 notif_app.registrar_paginas(_todas_pg)
 conta_app.TODAS.update({u_: p_.title for u_, p_ in _todas_pg.items()})
@@ -4737,11 +4743,6 @@ except Exception:
     pass
 if not acesso_liberado(pg.url_path):   # bloqueio no servidor: vale também para quem abre a página direto pela URL
     pagina_bloqueada()
-try:                                       # Notícias: começa a buscar em segundo plano ao entrar no app, para a página abrir mais rápido
-    if pg.url_path != PG_NOTICIAS.url_path and acesso_liberado(PG_NOTICIAS.url_path):
-        noticias_app.pre_aquecer(_hooks_noticias())
-except Exception:
-    pass
 # O Streamlit apaga o estado de widgets que não aparecem na tela; regravamos a seleção de ações e o perfil
 # para não se perderem ao trocar de página (a escolha é feita dentro das páginas que precisam dela).
 for _k in ("sel_ativos", "perfil"):

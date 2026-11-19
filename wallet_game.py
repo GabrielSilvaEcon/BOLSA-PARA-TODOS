@@ -253,12 +253,8 @@ def resgatar_bonus(email: str, conta_id: str, agora: datetime | None = None) -> 
 # ------------------------------------------------------------------ missões e conquistas (definições)
 # periodo: dia | semana | especial. meta é o número a atingir; a recompensa pode ter xp, tc (TickerCoins) e capital (T$).
 MISSOES = [
-    {"id": "d_bonus", "periodo": "dia", "nome": "Resgatar o bônus do dia", "descricao": "Abra a sua carteira e resgate o bônus de hoje.",
-     "objetivo": "1 resgate", "meta": 1, "recompensa": {"xp": 5}},
     {"id": "d_conferir", "periodo": "dia", "nome": "Conferir sua carteira", "descricao": "Veja como está seu patrimônio hoje.",
      "objetivo": "1 visita", "meta": 1, "recompensa": {"xp": 3}},
-    {"id": "s_bonus5", "periodo": "semana", "nome": "Constância na semana", "descricao": "Resgate o bônus diário em 5 dias da semana.",
-     "objetivo": "5 resgates", "meta": 5, "recompensa": {"xp": 30, "tc": 5}},
     {"id": "s_operacao", "periodo": "semana", "nome": "Uma compra e uma venda", "descricao": "Faça uma compra e uma venda na semana (sem pressa: uma de cada basta).",
      "objetivo": "1 compra + 1 venda", "meta": 2, "recompensa": {"xp": 20}},
     {"id": "e_primeiro", "periodo": "especial", "nome": "Primeiro investimento", "descricao": "Compre seu primeiro ativo na carteira virtual.",
@@ -271,13 +267,10 @@ MISSOES = [
      "objetivo": "7 dias", "meta": 7, "recompensa": {"xp": 40, "tc": 5}},
     {"id": "e_rent5", "periodo": "especial", "nome": "Rentabilidade de 5%", "descricao": "Alcance +5% de resultado simulado (sem contar bônus).",
      "objetivo": "+5%", "meta": 5, "recompensa": {"xp": 60, "tc": 10, "capital": 300.0}},
-    {"id": "e_seq7", "periodo": "especial", "nome": "Sequência de 7 dias", "descricao": "Resgate o bônus 7 dias seguidos.",
-     "objetivo": "7 dias seguidos", "meta": 7, "recompensa": {"xp": 50, "tc": 10}},
 ]
 CONQUISTAS = [
     {"id": "c_primeiro", "nome": "Primeiro investimento", "descricao": "Fez a primeira compra na carteira virtual.", "emblema": "🌱", "cor": "#3DDC97", "recompensa": {"tc": 3}},
     {"id": "c_diversa", "nome": "Carteira diversificada", "descricao": "Montou uma carteira com 4 ativos em 3 classes.", "emblema": "🧺", "cor": "#2BA7C9", "recompensa": {"tc": 5}},
-    {"id": "c_seq7", "nome": "7 dias seguidos", "descricao": "Resgatou o bônus por 7 dias seguidos.", "emblema": "🔥", "cor": "#FF9B3D", "recompensa": {"tc": 5}},
     {"id": "c_prata", "nome": "Rank Prata", "descricao": "Chegou ao rank Prata.", "emblema": "🥈", "cor": "#C0C7D4", "recompensa": {"tc": 5}},
     {"id": "c_ouro", "nome": "Rank Ouro", "descricao": "Chegou ao rank Ouro.", "emblema": "🥇", "cor": "#F2B84B", "recompensa": {"tc": 10}},
     {"id": "c_positiva", "nome": "Primeira rentabilidade positiva", "descricao": "Seus investimentos fecharam no positivo (sem contar bônus).", "emblema": "📈", "cor": "#8BE04E", "recompensa": {"tc": 3}},

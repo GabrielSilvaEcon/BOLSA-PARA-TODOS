@@ -23,12 +23,12 @@ AREAS = [
         "id": "analisar", "nome": "Analisar", "icone": ":material/query_stats:", "grupo_menu": "acoes", "entrada": "analisar",
         "descricao": "Carteira, ações, fundos, cripto e mais",
         "paginas": [
-            "analisar", "tipo", "carteira", "gestao-carteira", "risco", "relatorios", "simulador", "calculadoras",
-            "acoes", "preco-justo", "valuation", "micro", "dividendos", "dcf", "tecnica", "tecnica-avancada", "stock-picking",
+            "analisar", "tipo", "carteira", "gestao-carteira", "simulador", "calculadoras",
+            "acoes", "preco-justo", "valuation", "micro", "dividendos", "dcf", "tecnica", "stock-picking",
             "fiis", "etfs", "fundos-acoes", "multimercados", "fundos-renda-fixa",
             "renda-fixa", "tesouro-cdi",
             "criptomoedas", "cripto-onchain", "cripto-receitas", "cripto-fundamentalista", "cripto-avancada", "tecnica-cripto",
-            "macro", "comparar", "evolucao", "noticias", "inteligencia", "notificacoes",
+            "macro", "notificacoes",
         ],
     },
     {
@@ -37,6 +37,10 @@ AREAS = [
         "paginas": ["competicao"],
     },
 ]
+
+# Ferramentas complexas que SAÍRAM do app (nov/2026, decisão do dono): o código continua no repositório, mas as páginas não entram
+# no menu nem na navegação. Para trazer uma de volta: tirar daqui e pôr de novo em AREAS/HUBS e no st.navigation do app.py.
+FORA_DO_APP = {"tecnica-avancada", "comparar", "evolucao", "noticias", "inteligencia", "risco", "relatorios"}
 
 # Cartões da tela-raiz de Analisar (url_path, rótulo). Todo url_path precisa estar nas páginas da mesma área.
 HUBS = {
@@ -64,18 +68,15 @@ HUBS = {
              "paginas": [("criptomoedas", "Visão geral e tokenomics"), ("cripto-onchain", "Adoção e on-chain"),
                          ("cripto-receitas", "Receitas e emissão"), ("cripto-fundamentalista", "Análise fundamentalista"),
                          ("cripto-avancada", "Análise avançada")]},
-            {"titulo": "Minha carteira", "descricao": "Carteira, gestão, risco e relatórios",
-             "grupos": [('Carteira', ':material/account_balance_wallet:', ['Minha carteira', 'Gestão de carteira']), ('Risco e relatórios', ':material/shield:', ['Gestão de risco', 'Relatórios e dashboard'])],
-             "dicas": {"Carteira": "Seus ativos, posições e como a carteira está distribuída.", "Risco e relatórios": "Quanto a carteira pode oscilar e relatórios para exportar."},
-             "paginas": [("carteira", "Minha carteira"), ("gestao-carteira", "Gestão de carteira"), ("risco", "Gestão de risco"), ("relatorios", "Relatórios e dashboard")]},
-            {"titulo": "Central de inteligência", "descricao": "Compare, calcule, monitore e entenda o mercado",
-             "grupos": [('Comparar ativos', ':material/compare_arrows:', ['Comparar ativos']), ('Radar da carteira', ':material/psychology:', ['Radar da carteira']), ('Calculadoras', ':material/calculate:', ['Calculadoras']), ('Cenário econômico', ':material/public:', ['Cenário econômico'])],
-             "dicas": {"Comparar ativos": "Põe 2 ou mais ativos lado a lado, com notas, risco e retorno.",
-                       "Radar da carteira": "Lê os ativos que você acompanha e mostra oportunidades, riscos e notícias.",
-                       "Calculadoras": "Juros compostos, Tesouro, CDB x LCI/LCA e meta de patrimônio.",
-                       "Cenário econômico": "Juros, inflação, dólar e o que isso significa para cada setor."},
-             "paginas": [("comparar", "Comparar ativos"), ("inteligencia", "Radar da carteira"), ("calculadoras", "Calculadoras"),
-                         ("macro", "Cenário econômico")]},
+            {"titulo": "Minha carteira", "descricao": "Carteira e gestão",
+             "grupos": [('Carteira', ':material/account_balance_wallet:', ['Minha carteira', 'Gestão de carteira'])],
+             "dicas": {"Carteira": "Seus ativos, posições e como a carteira está distribuída."},
+             "paginas": [("carteira", "Minha carteira"), ("gestao-carteira", "Gestão de carteira")]},
+            {"titulo": "Cenário econômico", "descricao": "Juros, inflação, dólar e o que isso muda nos investimentos",
+             "grupos": [('Cenário econômico', ':material/public:', ['Cenário econômico']), ('Calculadoras', ':material/calculate:', ['Calculadoras'])],
+             "dicas": {"Cenário econômico": "Juros, inflação, dólar e o que isso significa para cada setor.",
+                       "Calculadoras": "Juros compostos, Tesouro, CDB x LCI/LCA e meta de patrimônio."},
+             "paginas": [("macro", "Cenário econômico"), ("calculadoras", "Calculadoras")]},
         ],
     },
 }
@@ -88,7 +89,7 @@ VISUAL_CARTOES = {
     "FIIs, fundos e ETFs": {"id": "fundos", "icone": "fundos", "cor": "#2BA7C9"},
     "Renda fixa": {"id": "rf", "icone": "cofre", "cor": "#3DDC97"},
     "Criptomoedas": {"id": "cripto", "icone": "cripto", "cor": "#F2B84B"},
-    "Central de inteligência": {"id": "ferr", "icone": "ferramentas", "cor": "#D23FC8"},
+    "Cenário econômico": {"id": "ferr", "icone": "ferramentas", "cor": "#D23FC8"},
     "Minha carteira": {"id": "cart", "icone": "carteira", "cor": "#7A8CFF"},
 }
 VISUAL_PADRAO = {"id": "outros", "icone": "bussola", "cor": "#8B6CFF"}

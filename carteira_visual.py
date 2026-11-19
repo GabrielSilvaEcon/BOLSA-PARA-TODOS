@@ -229,14 +229,10 @@ def html_ranking(rank: dict | None, semana: float | None) -> str:
 
 # Atalhos do fim da tela: (chave, rótulo, ícone, seção da carteira ou página do app)
 ATALHOS = (
-    ("bonus", "Bônus", "presente", ("sec", "Bônus e sequência")),
     ("conq", "Conquistas", "medalha_estrela", ("sec", "Conquistas")),
     ("hist", "Histórico", "jornal", ("sec", "Histórico")),
     ("gestao", "Gestão", "escudo_grafico", ("pag", "gestao-carteira")),
-    ("risco", "Risco", "escudo_ok", ("pag", "risco")),
-    ("rel", "Relatórios", "grafico_alta", ("pag", "relatorios")),
     ("sim", "Simulador", "foguete", ("pag", "simulador")),
-    ("radar", "Radar", "bussola", ("pag", "inteligencia")),
 )
 
 

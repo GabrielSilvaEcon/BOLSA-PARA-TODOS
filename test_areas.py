@@ -18,7 +18,7 @@ def test_lista_valida():
 
 def test_toda_pagina_do_app_tem_lugar():
     # nenhuma página pode ficar sem área nem fora de SEMPRE (senão sumiria do menu)
-    sem_lugar = {p for p in _url_paths_do_app() if A.area_da_pagina(p) is None and p not in A.SEMPRE}
+    sem_lugar = {p for p in _url_paths_do_app() if A.area_da_pagina(p) is None and p not in A.SEMPRE and p not in A.FORA_DO_APP}
     assert sem_lugar == set()
 
 
@@ -33,7 +33,8 @@ def test_paginas_da_area_e_area_da_pagina():
     assert A.paginas_da_area("wallet") == ["competicao"]
     assert A.paginas_da_area("aprender") == ["jornada", "missoes", "educacao", "glossario"]
     assert "carteira" in A.paginas_da_area("analisar")             # Carteira fica dentro de Analisar
-    assert A.area_da_pagina("fiis") == "analisar" and A.area_da_pagina("comparar") == "analisar"
+    assert A.area_da_pagina("fiis") == "analisar" and A.area_da_pagina("macro") == "analisar"
+    assert all(A.area_da_pagina(p) is None for p in A.FORA_DO_APP)                # ferramentas complexas fora do app
     assert A.area_da_pagina("educacao") == "aprender" and A.area_da_pagina("missoes") == "aprender"
     assert A.area_da_pagina("competicao") == "wallet"
     assert A.area_da_pagina("inicio") is None and A.area_da_pagina("ajuda") is None
