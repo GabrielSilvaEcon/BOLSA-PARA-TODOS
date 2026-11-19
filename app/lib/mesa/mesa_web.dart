@@ -4,13 +4,13 @@ import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 
-/// Mesa de jogo na web: iframe com a página original (web/mesa/index.html, copiada de trader_front/index.html no build).
+/// Mesa de jogo na web: iframe com a página original (assets/mesa/index.html, copiada de trader_front/index.html no build).
 /// O app manda os dados com "streamlit:render" e recebe as jogadas com "streamlit:setComponentValue", como fazia o Streamlit.
 class MesaHost {
   MesaHost({required this.aoEvento, required this.aoPronto}) {
     ui_web.platformViewRegistry.registerViewFactory(_tipo, (int _) {
       final f = web.HTMLIFrameElement()
-        ..src = 'mesa/index.html'
+        ..src = 'assets/assets/mesa/index.html'
         ..style.border = '0'
         ..style.width = '100%'
         ..style.height = '100%'

@@ -5,4 +5,4 @@ __pycache__/
 usuarios.db
 
 # cópia da mesa do Trade Battle feita no build do app (a original fica em trader_front/)
-app/web/mesa/
+app/assets/mesa/
