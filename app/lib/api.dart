@@ -26,16 +26,29 @@ class Api {
     };
   }
 
-  Future<Map<String, dynamic>> get(String caminho) async {
-    final r = await http.get(Uri.parse('$apiBase$caminho'), headers: _cabecalhos).timeout(const Duration(seconds: 60));
-    return _ler(r);
-  }
+  /// Chamadas com nova tentativa: o servidor grátis "dorme" e leva alguns segundos para acordar.
+  /// Tenta até 4 vezes (esperas de 2, 4 e 8 s) quando não há resposta ou o servidor responde 5xx.
+  Future<Map<String, dynamic>> get(String caminho) => _com_tentativas(() => http.get(Uri.parse('$apiBase$caminho'), headers: _cabecalhos));
 
-  Future<Map<String, dynamic>> post(String caminho, [Map<String, dynamic>? corpo]) async {
-    final r = await http
-        .post(Uri.parse('$apiBase$caminho'), headers: _cabecalhos, body: jsonEncode(corpo ?? {}))
-        .timeout(const Duration(seconds: 60));
-    return _ler(r);
+  Future<Map<String, dynamic>> post(String caminho, [Map<String, dynamic>? corpo]) => _com_tentativas(
+        () => http.post(Uri.parse('$apiBase$caminho'), headers: _cabecalhos, body: jsonEncode(corpo ?? {})),
+      );
+
+  Future<Map<String, dynamic>> _com_tentativas(Future<http.Response> Function() chamada) async {
+    const esperas = [Duration(seconds: 2), Duration(seconds: 4), Duration(seconds: 8)];
+    for (var i = 0; ; i++) {
+      try {
+        final r = await chamada().timeout(const Duration(seconds: 45));
+        if (r.statusCode >= 500 && i < esperas.length) {
+          await Future.delayed(esperas[i]);
+          continue;
+        }
+        return _ler(r);
+      } catch (e) {
+        if (e is ApiErro || i >= esperas.length) rethrow;
+        await Future.delayed(esperas[i]);
+      }
+    }
   }
 
   Map<String, dynamic> _ler(http.Response r) {
