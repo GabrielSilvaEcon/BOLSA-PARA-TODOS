@@ -508,9 +508,18 @@ function draw(){
     const ry=v=>t+(100-v)/100*h;ctx.strokeStyle="rgba(255,255,255,.2)";ctx.setLineDash([3,3]);for(const v of [30,70]){ctx.beginPath();ctx.moveTo(0,ry(v));ctx.lineTo(L.pw,ry(v));ctx.stroke()}ctx.setLineDash([]);
     ctx.strokeStyle=COR.rsi;ctx.lineWidth=1.4;ctx.beginPath();let m=false;for(let i=Math.max(0,i0-1);i<=i1;i++){const v=S.rsiV[i];if(v==null){m=false;continue}const x=L.x(i),y=ry(v);if(!m){ctx.moveTo(x,y);m=true}else ctx.lineTo(x,y)}ctx.stroke();
     ctx.fillStyle="#C4B5FF";ctx.textAlign="left";ctx.fillText("RSI",3,t+8)}
-  // eixo de tempo
+  // pregão: no intraday, uma linha na abertura de cada dia (o dia é contado a partir do gráfico: D1, D2..., nunca a data real)
+  const diario=A&&A.tf_nome==="1 dia";
+  if(!diario){ctx.save();ctx.strokeStyle="rgba(242,184,75,.28)";ctx.setLineDash([4,4]);ctx.fillStyle="rgba(242,184,75,.75)";ctx.font="bold 9px system-ui";ctx.textAlign="left";
+    const xs=[];for(let i=Math.max(1,i0);i<=i1;i++){const c=S.cands[i],ant=S.cands[i-1];if(!c||!ant||c.d===ant.d)continue;const x=L.x(i)-cw/2;if(x>=2&&x<=L.pw-2)xs.push([x,c.d])}
+    let ultT=-1e9;                                                  // sem sobrepor: "Abertura D7" se couber até a próxima linha; senão "D7"; senão nada
+    xs.forEach(([x,d],k)=>{ctx.beginPath();ctx.moveTo(x,L.mTop);ctx.lineTo(x,L.mTop+L.mH);ctx.stroke();
+      const prox=k+1<xs.length?xs[k+1][0]:L.pw,cheio="Abertura D"+d,rot=ctx.measureText(cheio).width+8<prox-x?cheio:"D"+d;
+      if(x+3>ultT+4){ctx.fillText(rot,x+3,L.mTop+10);ultT=x+3+ctx.measureText(rot).width}});
+    ctx.restore()}
+  // eixo de tempo (gráfico diário: só o número do pregão)
   ctx.fillStyle="#9E96CE";ctx.textAlign="center";ctx.font="9px system-ui";const gap=Math.max(1,Math.round(70/cw));
-  for(let i=Math.ceil(S.off/gap)*gap;i<=i1;i+=gap){if(i<0)continue;const c=S.cands[i],x=L.x(i);if(x<14||x>L.pw-14)continue;ctx.fillText((c.d?"D"+c.d+" ":"")+c.t,x,H-6)}
+  for(let i=Math.ceil(S.off/gap)*gap;i<=i1;i+=gap){if(i<0)continue;const c=S.cands[i],x=L.x(i);if(x<14||x>L.pw-14)continue;ctx.fillText(diario?"Pregão "+(c.d||i+1):(c.d?"D"+c.d+" ":"")+c.t,x,H-6)}
   // último preço
   const u=S.cands[S.cands.length-1];if(u){const y=L.y(u.c);if(y>0&&y<L.mTop+L.mH){ctx.strokeStyle="rgba(255,255,255,.35)";ctx.setLineDash([2,3]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(L.pw,y);ctx.stroke();ctx.setLineDash([])}}
 }
