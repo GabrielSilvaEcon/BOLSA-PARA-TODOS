@@ -203,6 +203,25 @@ def eu(q: Quem = Depends(quem)) -> dict:
             "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe, "ranking": ranking}
 
 
+# ------------------------------------------------------------------ carteira (posições por ativo)
+@app.get("/carteira")
+def carteira(q: Quem = Depends(quem)) -> dict:
+    """Carteira do jogo: caixa livre, patrimônio e cada posição aberta (mesmas contas da tela do Streamlit)."""
+    import ativos_jogo as A
+    import carteira_unica as CU
+    import wallet_game as WG
+    try:
+        est = WG.sincronizar(q.email)
+    except Exception as e:
+        _erro(e)
+    r = CU.resumo(est)
+    posicoes = [{"id": x["id"], "nome": A.rotulo(x["id"]), "classe": x.get("classe"), "qtd": x["qtd"], "pm": x["pm"],
+                 "preco": x["preco"], "valor": x["valor"], "pct": x["pct"], "lucro_nao_realizado": x["lucro_nao_realizado"]}
+                for x in r["posicoes"]]
+    return {"disponivel": r["disponivel"], "investido": r["investido"], "valor_atual": r["valor_atual"],
+            "nao_realizado": r["nao_realizado"], "patrimonio": r["patrimonio"], "posicoes": posicoes}
+
+
 # ------------------------------------------------------------------ rankings (só partidas online contam)
 @app.get("/ranking/{jogo}")
 def ranking(jogo: str, metrica: str = "pts", q: Quem = Depends(quem)) -> dict:

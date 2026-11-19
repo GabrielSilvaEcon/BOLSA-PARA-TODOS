@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 
-/// Tela da Carteira: patrimônio e caixa livre de quem joga (dados do servidor, `GET /eu`).
-/// As posições por ativo entram na próxima etapa.
+/// Tela da Carteira: patrimônio, caixa livre e as posições por ativo (dados do servidor, `GET /carteira`).
 class CarteiraTela extends StatefulWidget {
   const CarteiraTela({super.key, required this.api});
   final Api api;
@@ -12,10 +11,22 @@ class CarteiraTela extends StatefulWidget {
   State<CarteiraTela> createState() => _CarteiraTelaState();
 }
 
+/// Abas da Carteira: (chave da classe no servidor, rótulo). `null` = todas.
+const _abas = <(String?, String)>[
+  (null, 'Todos'),
+  ('acao', 'Ações'),
+  ('cripto', 'Cripto'),
+  ('etf', 'ETFs'),
+  ('fundo', 'Fundos'),
+  ('fii', 'FIIs'),
+  ('rf', 'Renda fixa'),
+];
+
 class _CarteiraTelaState extends State<CarteiraTela> {
   Map<String, dynamic>? _cart;
   String? _erro;
   bool _carregando = true;
+  String? _aba;
 
   @override
   void initState() {
@@ -29,13 +40,19 @@ class _CarteiraTelaState extends State<CarteiraTela> {
       _erro = null;
     });
     try {
-      final r = await widget.api.get('/eu');
-      setState(() => _cart = (r['carteira'] as Map?)?.cast<String, dynamic>());
+      final r = await widget.api.get('/carteira');
+      setState(() => _cart = r);
     } catch (e) {
       setState(() => _erro = 'Não consegui carregar a sua carteira agora.');
     } finally {
       if (mounted) setState(() => _carregando = false);
     }
+  }
+
+  List<Map<String, dynamic>> get _posicoes {
+    final lista = ((_cart?['posicoes'] as List?) ?? const []).cast<Map<String, dynamic>>();
+    if (_aba == null) return lista;
+    return lista.where((p) => p['classe'] == _aba).toList();
   }
 
   /// 1234.5 vira "T$ 1.234,50" (dinheiro virtual do jogo). Sem valor, mostra um traço.
@@ -53,11 +70,28 @@ class _CarteiraTelaState extends State<CarteiraTela> {
     return '${neg ? '-' : ''}T\$ $buf,$centavos';
   }
 
+  /// 0.1234 vira "+12,34%".
+  String _percentual(Object? v) {
+    if (v is! num) return '—';
+    final p = v * 100;
+    final sinal = p > 0 ? '+' : '';
+    return '$sinal${p.toStringAsFixed(2).replaceAll('.', ',')}%';
+  }
+
+  /// Quantidade: sem casas decimais se for inteira.
+  String _quantidade(Object? v) {
+    if (v is! num) return '—';
+    final inteiro = v == v.roundToDouble();
+    return inteiro ? v.toInt().toString() : v.toStringAsFixed(4).replaceAll('.', ',');
+  }
+
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    final pat = _cart?['pat'];
-    final caixa = _cart?['caixa'];
+    final pat = _cart?['patrimonio'];
+    final caixa = _cart?['disponivel'];
+    final temRf = ((_cart?['posicoes'] as List?) ?? const []).any((p) => p is Map && p['classe'] == 'rf');
+    final abas = _abas.where((a) => a.$1 != 'rf' || temRf).toList();
     return Scaffold(
       appBar: AppBar(title: const Text('Carteira')),
       body: SafeArea(
@@ -105,13 +139,34 @@ class _CarteiraTelaState extends State<CarteiraTela> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                _cartao(
-                  child: Text(
-                    'Suas posições por ativo aparecem aqui na próxima etapa.',
-                    style: tema.textTheme.bodyMedium,
-                  ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (chave, rotulo) in abas)
+                      ChoiceChip(
+                        label: Text(rotulo),
+                        selected: _aba == chave,
+                        onSelected: (_) => setState(() => _aba = chave),
+                      ),
+                  ],
                 ),
+                const SizedBox(height: 12),
+                if (_posicoes.isEmpty)
+                  _cartao(
+                    child: Text(
+                      _aba == null
+                          ? 'Você ainda não tem posições. Compre um ativo no jogo para ele aparecer aqui.'
+                          : 'Nenhuma posição nesta aba.',
+                      style: tema.textTheme.bodyMedium,
+                    ),
+                  )
+                else
+                  for (final p in _posicoes) ...[
+                    _posicao(tema, p),
+                    const SizedBox(height: 10),
+                  ],
               ],
               const SizedBox(height: 24),
               Text(
@@ -122,6 +177,38 @@ class _CarteiraTelaState extends State<CarteiraTela> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _posicao(ThemeData tema, Map<String, dynamic> p) {
+    final pct = p['pct'] as num?;
+    final cor = (pct ?? 0) >= 0 ? const Color(0xFF6BE58A) : const Color(0xFFFF6B7A);
+    return _cartao(
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(p['nome']?.toString() ?? p['id']?.toString() ?? '—', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text(
+                  '${_quantidade(p['qtd'])} cotas · preço médio ${_moeda(p['pm'])}',
+                  style: tema.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(_moeda(p['valor']), style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              Text(_percentual(pct), style: tema.textTheme.bodySmall?.copyWith(color: cor, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ],
       ),
     );
   }
