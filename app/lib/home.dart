@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
+import 'carteira.dart';
 
 /// Home no estilo de jogo: cabeçalho (nível, Ticker Coins e ranking), banner do Hunter Pass e os três acessos.
 /// Os dados vêm do servidor (`GET /eu`). Ranking e telas de destino entram nas próximas partes.
@@ -225,7 +226,13 @@ class _HomeTelaState extends State<HomeTela> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(child: _botao('assets/home/btn_carteira.webp', 'Carteira')),
+        Expanded(
+          child: _botao(
+            'assets/home/btn_carteira.webp',
+            'Carteira',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CarteiraTela(api: widget.api))),
+          ),
+        ),
         const SizedBox(width: 8),
         Expanded(flex: 2, child: _botao('assets/home/btn_jogar.webp', 'Jogar agora')),
         const SizedBox(width: 8),
@@ -234,10 +241,10 @@ class _HomeTelaState extends State<HomeTela> {
     );
   }
 
-  Widget _botao(String arquivo, String rotulo) {
+  Widget _botao(String arquivo, String rotulo, {VoidCallback? onTap}) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$rotulo: em breve'))),
+      onTap: onTap ?? () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$rotulo: em breve'))),
       child: Semantics(
         button: true,
         label: rotulo,
