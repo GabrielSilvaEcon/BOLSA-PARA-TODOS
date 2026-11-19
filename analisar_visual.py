@@ -137,4 +137,15 @@ CSS = f"""
 {Q} .st-key-an_grade [class*="st-key-an_card_"] button{{min-height:32px !important;height:32px !important;padding:0 8px !important;border-radius:11px !important}}
 {Q} .st-key-an_grade [class*="st-key-an_card_"] button :is(p,span){{font-size:.82rem !important}}
 {Q} .st-key-an_grade [data-testid="stElementContainer"]{{margin-bottom:0 !important}}
+/* cartão compacto em UMA linha (ícone · nome · contagem) e o Abrir logo abaixo: o nome nunca fica atrás do botão */
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ch{{grid-template-columns:auto minmax(0,1fr) auto !important;row-gap:0 !important;min-height:38px}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ct b{{grid-column:2 !important;grid-row:1 !important;align-self:center;font-size:clamp(.8rem,3.6vw,1rem) !important;
+  white-space:normal !important;line-height:1.1 !important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-n{{display:none !important}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ct b{{word-break:normal !important;overflow-wrap:normal !important;hyphens:none !important}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ci.an-3d{{width:36px !important;height:36px !important}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ci.an-3d img{{width:34px;max-height:34px}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-ci.an-3d::before{{inset:-3px}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"] .an-art{{top:4px;height:34px;right:34px;opacity:.18}}
+{Q} .st-key-an_grade [class*="st-key-an_card_"]{{padding:7px 8px 8px !important;gap:5px !important;border-radius:14px !important}}
 """

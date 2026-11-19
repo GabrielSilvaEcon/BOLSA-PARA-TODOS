@@ -237,9 +237,7 @@ def resumo(a, res: dict, apelido: str = "", hero: bool = True, bonus_bloco: bool
         return
     if bonus and not bonus.get("ok"):
         st.warning(bonus.get("erro", "Não foi possível resgatar agora."))
-    if not seq["resgatou_hoje"]:                       # já resgatado: o aviso some da tela (a data do próximo fica na aba Bônus)
-        st.button(f"Resgatar bônus de hoje ({moeda(W.config()['bonus']['diario'])})", key="wg_resgatar", type="primary", width="stretch",
-                  on_click=_resgatar, args=(a,))
+    # o bônus diário saiu do app (nov/2026): nenhum botão de resgate em lugar nenhum
 
 
 # ------------------------------------------------------------------ seções

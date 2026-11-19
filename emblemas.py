@@ -19,7 +19,6 @@ _CAT = [
     ("k_3", "Consistência", "3 dias seguidos", "Estudou 3 dias seguidos.", "🔥", "#FF9B3D", ("min", "ofensiva", 3)),
     ("k_7", "Consistência", "7 dias seguidos", "Estudou 7 dias seguidos.", "🔥", "#FF9B3D", ("min", "ofensiva", 7)),
     ("k_30", "Consistência", "30 dias seguidos", "Estudou 30 dias seguidos.", "🏅", "#FF9B3D", ("min", "ofensiva", 30)),
-    ("k_bonus7", "Consistência", "Bônus 7 dias", "Resgatou o bônus da carteira 7 dias seguidos.", "📅", "#FF9B3D", ("wg", "c_seq7")),
     ("f_primeiro", "Evolução financeira simulada", "Primeiro investimento", "Fez a primeira compra na carteira virtual.", "🌱", "#3DDC97", ("wg", "c_primeiro")),
     ("f_positiva", "Evolução financeira simulada", "Resultado positivo", "A carteira virtual fechou no positivo.", "📈", "#3DDC97", ("wg", "c_positiva")),
     ("f_val10", "Evolução financeira simulada", "10% de valorização", "Chegou a +10% de resultado simulado.", "🚀", "#3DDC97", ("wg", "c_val10")),

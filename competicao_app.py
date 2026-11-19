@@ -790,7 +790,7 @@ CSS_NEG = ("<style>html body .stApp.stApp .ng-sec{font-weight:800;color:#CFC8EE;
 # ------------------------------------------------------------------ página
 _GRUPOS_WG = [  # (grupo, ícone, seções); o grupo só aparece se a seção existir (Wallet Game nova exige resultado)
     ("Carteira", ":material/account_balance_wallet:", ["Meu patrimônio", "Histórico"]),
-    ("Progresso", ":material/redeem:", ["Bônus e sequência", "Missões do jogo", "Conquistas"]),
+    ("Progresso", ":material/redeem:", ["Missões do jogo", "Conquistas"]),
     ("Negociar", ":material/swap_horiz:", ["Negociar"]),
     ("Ranking", ":material/leaderboard:", ["Classificação"]),
 ]
@@ -923,7 +923,7 @@ def pagina_competicao():
     except Exception as e:
         banco.registrar_erro("competicao_app.wallet_game", e)
         res = None
-    nomes = (["Meu patrimônio", "Bônus e sequência", "Missões do jogo", "Conquistas"] if res else []) + \
+    nomes = (["Meu patrimônio", "Missões do jogo", "Conquistas"] if res else []) + \
             ["Classificação", "Negociar", "Histórico"]
     if st.session_state.get("wg_sec") not in nomes:
         st.session_state["wg_sec"] = nomes[0]
@@ -944,12 +944,10 @@ def pagina_competicao():
         st.markdown(CV.CSS + CV.html_topo_jogo(cart), unsafe_allow_html=True)
     if res:                                            # cada seção mostra só o que é dela
         WGA.resumo(a, res, perfil.get("apelido") or "", hero=False,
-                   bonus_bloco=sec in ("Meu patrimônio", "Bônus e sequência"), extra=extra)
+                   bonus_bloco=False, extra=extra)
     with st.container():
         if sec == "Meu patrimônio":
             _aba_carteira(a, perfil, cart, res)
-        elif sec == "Bônus e sequência":
-            WGA.aba_bonus(a, res)
         elif sec == "Missões do jogo":
             WGA.aba_missoes(res)
         elif sec == "Conquistas":
