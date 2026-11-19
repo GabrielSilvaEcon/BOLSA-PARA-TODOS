@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -78,6 +80,103 @@ class _CarteiraTelaState extends State<CarteiraTela> {
       MaterialPageRoute(builder: (_) => CompraTela(api: widget.api, ladoInicial: lado)),
     );
     if (ok == true) _carregar();
+  }
+
+  List<double> get _serie => ((_cart?['serie'] as List?) ?? const [])
+      .whereType<Map>()
+      .map((x) => ((x['v'] as num?) ?? 0).toDouble())
+      .toList();
+
+  Color get _corSerie {
+    final s = _serie;
+    return s.length < 2 || s.last >= s.first ? const Color(0xFF6BE58A) : const Color(0xFFFF6B7A);
+  }
+
+  Widget _missao(ThemeData tema) {
+    final m = _cart?['missao'] as Map?;
+    return _cartao(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Image.asset('assets/carteira/trofeu.webp', width: 28, height: 28),
+              const SizedBox(width: 8),
+              Text('Minhas Missões', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (m == null)
+            Text('Tudo em dia! Nenhuma missão pendente agora.', style: tema.textTheme.bodyMedium)
+          else ...[
+            Text('${m['nome'] ?? ''}', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text(
+              '${_inteiro(m['progresso'])} / ${_inteiro(m['meta'])}',
+              style: tema.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: (((m['progresso'] as num?) ?? 0) / (((m['meta'] as num?) ?? 1) == 0 ? 1 : ((m['meta'] as num?) ?? 1))).clamp(0, 1).toDouble(),
+                minHeight: 8,
+                color: const Color(0xFFFFD76A),
+                backgroundColor: Colors.white12,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Recompensa: ${_recompensa((m['recompensa'] as Map?) ?? {})}',
+              style: const TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w800),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _inteiro(Object? v) => v is num ? '${v.round()}' : '—';
+
+  String _recompensa(Map r) {
+    if (r['tc'] is num) return '+${(r['tc'] as num).round()} TC';
+    if (r['xp'] is num) return '+${(r['xp'] as num).round()} XP';
+    if (r['capital'] is num) return '+${_moeda(r['capital'])}';
+    return '—';
+  }
+
+  /// Atalhos do fim da tela. As telas de destino ainda não existem no app novo: por enquanto avisam que estão em breve.
+  Widget _atalhos(ThemeData tema) {
+    const itens = [
+      ('Conquistas', Icons.workspace_premium),
+      ('Histórico', Icons.history),
+      ('Gestão', Icons.shield_outlined),
+      ('Simulador', Icons.rocket_launch),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Mais da sua carteira', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        for (final (rotulo, icone) in itens) ...[
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$rotulo: em breve'))),
+            child: _cartao(
+              child: Row(
+                children: [
+                  Icon(icone, color: const Color(0xFF9AD8FF)),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(rotulo, style: tema.textTheme.titleSmall)),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
   }
 
   List<Map<String, dynamic>> get _todas => ((_cart?['posicoes'] as List?) ?? const []).cast<Map<String, dynamic>>();
@@ -201,6 +300,15 @@ class _CarteiraTelaState extends State<CarteiraTela> {
                               children: [
                                 Text('Valor total', style: tema.textTheme.labelSmall),
                                 Text(_moeda(pat), style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                                if (_cart?['var_dia'] is num)
+                                  Text(
+                                    '${_percentual(_cart?['var_dia'] / 100)} (último fechamento)',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: ((_cart?['var_dia'] as num) >= 0) ? const Color(0xFF6BE58A) : const Color(0xFFFF6B7A),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -208,6 +316,16 @@ class _CarteiraTelaState extends State<CarteiraTela> {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    if (_serie.length >= 2) ...[
+                      _cartao(
+                        child: SizedBox(
+                          height: 70,
+                          width: double.infinity,
+                          child: CustomPaint(painter: _SparklinePainter(_serie, _corSerie)),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     Row(
                       children: [
                         Expanded(child: _mini(tema, 'Disponível', _moeda(caixa))),
@@ -303,6 +421,10 @@ class _CarteiraTelaState extends State<CarteiraTela> {
                         children: [for (final p in _posicoes) _ativo(tema, p)],
                       ),
                   ],
+                  const SizedBox(height: 14),
+                  _missao(tema),
+                  const SizedBox(height: 14),
+                  _atalhos(tema),
                   const SizedBox(height: 24),
                   Text(
                     'Jogo educativo. Sem recomendação de compra ou venda.',
@@ -504,3 +626,40 @@ class _CarteiraTelaState extends State<CarteiraTela> {
     );
   }
 }
+
+/// Linha do patrimônio ao longo dos fechamentos (verde se subiu no período, vermelha se caiu).
+class _SparklinePainter extends CustomPainter {
+  _SparklinePainter(this.valores, this.cor);
+  final List<double> valores;
+  final Color cor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (valores.length < 2) return;
+    final minV = valores.reduce((a, b) => a < b ? a : b);
+    final maxV = valores.reduce((a, b) => a > b ? a : b);
+    final faixa = (maxV - minV).abs() < 1e-9 ? 1.0 : maxV - minV;
+    final caminho = ui.Path();
+    for (var i = 0; i < valores.length; i++) {
+      final x = size.width * i / (valores.length - 1);
+      final y = size.height - (valores[i] - minV) / faixa * size.height;
+      if (i == 0) {
+        caminho.moveTo(x, y);
+      } else {
+        caminho.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+      caminho,
+      ui.Paint()
+        ..color = cor
+        ..style = ui.PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..strokeJoin = ui.StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter antigo) => antigo.valores != valores || antigo.cor != cor;
+}
+
