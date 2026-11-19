@@ -804,8 +804,8 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago
 def _dialogo_relatorio(res: dict, revelado: dict | None, xp_txt: str) -> None:
     """Pop-up do fim da partida corrida: cabe na tela sem rolar (as informações ficam em abas)."""
     import trader_relatorio as TR
-    st.markdown(TR.CSS, unsafe_allow_html=True)
-    a1, a2, a3 = st.tabs(["Resumo", "Operações", "Raio-X"])
+    st.markdown(TR.CSS + TR.html_topo(), unsafe_allow_html=True)
+    a1, a2, a3 = st.tabs([":material/emoji_events: Resumo", ":material/settings: Operações", ":material/bar_chart: Raio-X"])
     with a1:
         st.markdown(TR.html_resumo(res, revelado, xp_txt), unsafe_allow_html=True)
     with a2:

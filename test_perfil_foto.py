@@ -207,11 +207,12 @@ def test_estatisticas_nao_editaveis_vem_do_placar():
     import jogos as J
     d, _ = J.registrar_trade({}, "p1", 12.0, 3, "rapida", 1, 3, "2026-11-17")
     d, _ = J.registrar_trade(d, "p2", -4.0, 3, "rapida", 2, 2, "2026-11-17")
-    d, _ = J.registrar_trade(d, "p3", 5.0, 3, "rapida", 1, 1, "2026-11-17")            # solo: partida, mas sem vitória/derrota
+    d, ok = J.registrar_trade(d, "p3", 5.0, 3, "rapida", 1, 1, "2026-11-17")           # solo: não conta (só partidas online entram)
+    assert not ok
     d, _ = J.registrar_ticker(d, "d1", "vitoria", "online", "2026-11-17")
     d, _ = J.registrar_ticker(d, "d2", "empate", "online", "2026-11-17")
     e = J.estatisticas(d)
-    assert (e["partidas"], e["vitorias"], e["derrotas"], e["empates"], e["disputadas"]) == (5, 2, 1, 1, 4)
+    assert (e["partidas"], e["vitorias"], e["derrotas"], e["empates"], e["disputadas"]) == (4, 2, 1, 1, 4)
     assert e["taxa"] == 50.0 and J.estatisticas({})["taxa"] is None
 
 

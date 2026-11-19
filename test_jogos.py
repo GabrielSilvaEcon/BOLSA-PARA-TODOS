@@ -17,22 +17,22 @@ def test_trade_soma_uma_vez_por_partida_e_guarda_historico():
     assert m and d["apelido"] == "Ana" and d["trade"]["pts"] == 42.5 and d["trade"]["partidas"] == 1 and d["trade"]["vitorias"] == 1
     d2, m2 = J.registrar_trade(d, "p1", 42.5, 3, "rapida", 1, 3, "2026-11-17 10:00")
     assert not m2 and d2["trade"]["pts"] == 42.5 and d2["trade"]["partidas"] == 1          # atualizar a página não soma de novo
-    d3, _ = J.registrar_trade(d2, "p2", -10, 3, "rapida", None, 1, "2026-11-17 11:00")
+    d3, _ = J.registrar_trade(d2, "p2", -10, 3, "rapida", None, 2, "2026-11-17 11:00")
     assert d3["trade"]["pts"] == 32.5 and d3["trade"]["partidas"] == 2 and d3["trade"]["vitorias"] == 1   # partida solo não conta vitória
     assert [h["id"] for h in d3["trade"]["hist"]] == ["p2", "p1"] and d3["trade"]["melhor"] == 42.5
 
 
 def test_trade_limita_pontos_ao_teto_do_formato():
-    d, _ = J.registrar_trade({}, "p1", 99999, 3, "rapida", None, 1, "x")
+    d, _ = J.registrar_trade({}, "p1", 99999, 3, "rapida", None, 2, "x")
     assert d["trade"]["pts"] == 300.0                                                        # 3 rodadas × 100 pontos no máximo
-    d, _ = J.registrar_trade({}, "p2", float("nan"), 3, "rapida", None, 1, "x")
+    d, _ = J.registrar_trade({}, "p2", float("nan"), 3, "rapida", None, 2, "x")
     assert d["trade"]["pts"] == 0.0
 
 
 def test_ticker_conta_vitorias_empates_derrotas_uma_vez_por_duelo():
     d = {}
     for did, r in (("a", "vitoria"), ("b", "derrota"), ("c", "empate"), ("a", "vitoria"), ("d", "invalido")):
-        d, _ = J.registrar_ticker(d, did, r, "sistema", "2026-11-17 10:00")
+        d, _ = J.registrar_ticker(d, did, r, "online", "2026-11-17 10:00")
     k = J.sanear(d)["ticker"]
     assert (k["v"], k["e"], k["d"]) == (1, 1, 1) and len(k["ids"]) == 3
 
@@ -45,8 +45,8 @@ def test_documento_adulterado_nao_distorce_o_ranking():
 
 # ------------------------------------------------------------------ rankings
 def test_ranking_separado_por_jogo_ordenado_e_sem_email():
-    a, _ = J.registrar_trade({}, "1", 50, 3, "rapida", None, 1, "x", apelido="Ana")
-    b, _ = J.registrar_trade({}, "2", 80, 3, "rapida", None, 1, "x", apelido="Bia")
+    a, _ = J.registrar_trade({}, "1", 50, 3, "rapida", None, 2, "x", apelido="Ana")
+    b, _ = J.registrar_trade({}, "2", 80, 3, "rapida", None, 2, "x", apelido="Bia")
     c, _ = J.registrar_ticker({}, "d1", "vitoria", "online", "x", apelido="Caio")
     linhas = _linhas(("a@x.com", a), ("b@x.com", b), ("c@x.com", c))
     rt = J.montar_ranking(J.TRADE, linhas, "a@x.com")
@@ -57,21 +57,21 @@ def test_ranking_separado_por_jogo_ordenado_e_sem_email():
 
 
 def test_variacao_de_posicao_desde_o_inicio_do_dia():
-    a, _ = J.registrar_trade({}, "1", 10, 3, "rapida", None, 1, "x", apelido="Ana")
-    b, _ = J.registrar_trade({}, "2", 20, 3, "rapida", None, 1, "x", apelido="Bia")
+    a, _ = J.registrar_trade({}, "1", 10, 3, "rapida", None, 2, "x", apelido="Ana")
+    b, _ = J.registrar_trade({}, "2", 20, 3, "rapida", None, 2, "x", apelido="Bia")
     linhas = _linhas(("a@x.com", a), ("b@x.com", b))
     r0 = J.montar_ranking(J.TRADE, linhas)
     base, novo = J.base_do_dia(None, "2026-11-17", r0)
     assert novo and novo["dia"] == "2026-11-17"
-    a2, _ = J.registrar_trade(a, "3", 50, 3, "rapida", None, 1, "x")                          # Ana passa a Bia
+    a2, _ = J.registrar_trade(a, "3", 50, 3, "rapida", None, 2, "x")                          # Ana passa a Bia
     r1 = J.montar_ranking(J.TRADE, _linhas(("a@x.com", a2), ("b@x.com", b)), "a@x.com", J.base_do_dia(novo, "2026-11-17", r0)[0])
     assert r1["eu"]["pos"] == 1 and r1["eu"]["var"] == 1 and r1["linhas"][1]["var"] == -1
     assert J.base_do_dia(novo, "2026-11-18", r1)[1]["dia"] == "2026-11-18"                    # dia novo: nova base
 
 
 def test_ranking_entre_amigos_e_campeoes_desligado():
-    a, _ = J.registrar_trade({}, "1", 10, 3, "rapida", None, 1, "x", apelido="Ana")
-    b, _ = J.registrar_trade({}, "2", 20, 3, "rapida", None, 1, "x", apelido="Bia")
+    a, _ = J.registrar_trade({}, "1", 10, 3, "rapida", None, 2, "x", apelido="Ana")
+    b, _ = J.registrar_trade({}, "2", 20, 3, "rapida", None, 2, "x", apelido="Bia")
     r = J.ranking_entre(J.TRADE, _linhas(("a@x.com", a), ("b@x.com", b)), {"a@x.com"}, "a@x.com")
     assert r["total"] == 1 and r["eu"]["pos"] == 1
     assert J.ranking_campeoes() is None                                                      # sem fórmula arbitrária
@@ -101,7 +101,7 @@ def test_banco_placar_e_ligas_de_amigos():
         for e in ("a@x.com", "b@x.com"):
             banco._inserir("contas", {"id": "id-" + e, "email": e, "nome": e, "criado_em": "2026-01-01T00:00:00Z"})
         A, B = (banco.Ator(id="id-" + e, email=e, papel="usuario") for e in ("a@x.com", "b@x.com"))
-        d, _ = J.registrar_trade(banco.jogos_placar_ler(A), "p1", 30, 3, "rapida", None, 1, "x", apelido="Ana")
+        d, _ = J.registrar_trade(banco.jogos_placar_ler(A), "p1", 30, 3, "rapida", None, 2, "x", apelido="Ana")
         banco.jogos_placar_gravar(A, d)
         todos = banco.sis_comp_todos(J.CH_PLACAR)                                     # uma consulta para todos
         assert len(todos) == 1 and J.sanear(todos[0]["dados"])["trade"]["pts"] == 30
@@ -114,3 +114,14 @@ def test_banco_placar_e_ligas_de_amigos():
         with pytest.raises(banco.SemPermissao):
             banco.comp_liga_encerrar(B, cod)                                         # só quem criou encerra
         assert banco.comp_liga_encerrar(A, cod) and banco.comp_liga_definicao(A, cod) is None
+
+
+def test_so_partidas_online_contam_para_o_ranking():
+    d, m = J.registrar_trade({}, "solo1", 50, 1, "rapida", 1, 1, "x", lucro=300.0, retorno=3.0, qualidade=80)
+    assert not m and d[J.TRADE]["partidas"] == 0 and d[J.TRADE]["lucro"] == 0           # Trade Battle solo: nada
+    d, m = J.registrar_trade(d, "sala1", 50, 1, "rapida", 1, 2, "x", lucro=300.0, retorno=3.0, qualidade=80)
+    assert m and d[J.TRADE]["partidas"] == 1 and d[J.TRADE]["lucro"] == 300.0             # em sala: conta
+    d, m = J.registrar_ticker(d, "cpu1", "vitoria", "sistema", "x")
+    assert not m and d[J.TICKER]["v"] == 0                                               # Ticker Battle contra o sistema: nada
+    d, m = J.registrar_ticker(d, "on1", "vitoria", "online", "x")
+    assert m and d[J.TICKER]["v"] == 1

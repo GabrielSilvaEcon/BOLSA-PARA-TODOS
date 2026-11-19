@@ -138,9 +138,9 @@ def test_placar_guarda_lucro_retorno_qualidade_e_ranking_tem_as_tres_visoes():
     for em, lista in partidas.items():
         d = J.vazio()
         for i, (lc, rt, ql) in enumerate(lista):
-            d, ok = J.registrar_trade(d, f"{em}-{i}", 10, 1, "rapida", None, 1, "2026-11-19 10:00", em.split("@")[0], lucro=lc, retorno=rt, qualidade=ql)
+            d, ok = J.registrar_trade(d, f"{em}-{i}", 10, 1, "rapida", None, 2, "2026-11-19 10:00", em.split("@")[0], lucro=lc, retorno=rt, qualidade=ql)
             assert ok
-        d, ok = J.registrar_trade(d, f"{em}-0", 10, 1, "rapida", None, 1, "x", lucro=999, retorno=9, qualidade=9)
+        d, ok = J.registrar_trade(d, f"{em}-0", 10, 1, "rapida", None, 2, "x", lucro=999, retorno=9, qualidade=9)
         assert not ok                                                                       # a mesma partida não soma duas vezes
         docs[em] = d
     linhas = [{"email": e, "dados": d} for e, d in docs.items()]

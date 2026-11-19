@@ -99,8 +99,11 @@ def sanear(doc) -> dict:
 
 def registrar_trade(doc, pid: str, pontos: float, rodadas: int, formato: str, pos: int | None, n_jog: int, em: str, apelido: str = "",
                     lucro: float | None = None, retorno: float | None = None, qualidade: float | None = None) -> tuple[dict, bool]:
-    """Soma uma partida TERMINADA do Trade Battle (pontos já calculados pelo servidor). Devolve (doc, mudou). Repetir o mesmo `pid` não soma."""
+    """Soma uma partida TERMINADA do Trade Battle (pontos já calculados pelo servidor). Devolve (doc, mudou). Repetir o mesmo `pid` não soma.
+    Só partidas ONLINE (sala com 2 ou mais jogadores) contam para o ranking: a partida solo não soma nada."""
     d = sanear(doc)
+    if int(n_jog or 0) < 2:
+        return d, False
     if apelido:
         d["apelido"] = str(apelido)[:20]
     t = d[TRADE]
@@ -134,8 +137,11 @@ def registrar_trade(doc, pid: str, pontos: float, rodadas: int, formato: str, po
 
 
 def registrar_ticker(doc, did: str, resultado: str, modo: str, em: str, apelido: str = "") -> tuple[dict, bool]:
-    """Soma um duelo TERMINADO do Ticker Battle (vitoria | empate | derrota, decidido pelo servidor). Repetir o mesmo `did` não soma."""
+    """Soma um duelo TERMINADO do Ticker Battle (vitoria | empate | derrota, decidido pelo servidor). Repetir o mesmo `did` não soma.
+    Só duelos ONLINE contam para o ranking: contra o sistema não soma nada."""
     d = sanear(doc)
+    if str(modo) != "online":
+        return d, False
     if apelido:
         d["apelido"] = str(apelido)[:20]
     k = d[TICKER]
