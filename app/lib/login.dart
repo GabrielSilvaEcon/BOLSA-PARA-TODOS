@@ -82,20 +82,25 @@ class _LoginTelaState extends State<LoginTela> {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('TickerHunters', textAlign: TextAlign.center, style: tema.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 4),
-                  Text(_criando ? 'Crie sua conta de jogador' : 'Entre para jogar', textAlign: TextAlign.center, style: tema.textTheme.bodyMedium),
-                  const SizedBox(height: 28),
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(image: AssetImage('assets/fundo_login.webp'), fit: BoxFit.cover),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 8),
+                    Text('TickerHunters', textAlign: TextAlign.center, style: tema.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
+                    const SizedBox(height: 4),
+                    Text(_criando ? 'Crie sua conta de jogador' : 'Entre para jogar', textAlign: TextAlign.center, style: tema.textTheme.bodyMedium?.copyWith(color: const Color(0xFFCFC8F5))),
+                    const SizedBox(height: 28),
                   if (_criando) ...[
                     TextField(controller: _nome, decoration: const InputDecoration(labelText: 'Nome de jogador'), textInputAction: TextInputAction.next),
                     const SizedBox(height: 12),
@@ -149,6 +154,7 @@ class _LoginTelaState extends State<LoginTela> {
               ),
             ),
           ),
+        ),
         ),
       ),
     );
