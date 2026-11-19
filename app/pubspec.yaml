@@ -22,3 +22,4 @@ flutter:
   assets:
     - assets/mascote.webp
     - assets/fundo_login.webp
+    - assets/home/
