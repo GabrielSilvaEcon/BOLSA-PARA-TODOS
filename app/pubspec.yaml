@@ -28,6 +28,7 @@ flutter:
     - assets/carteira/
     - assets/jogos/
     - assets/nav/
+    - assets/cabecalho/
     - assets/logos/setores/
     - assets/logos/cripto/
     - assets/avatares/
