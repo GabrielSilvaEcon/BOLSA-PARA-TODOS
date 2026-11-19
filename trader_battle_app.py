@@ -680,6 +680,24 @@ def _args(v: dict, p: dict, est: dict, agora: float) -> dict:
     return a
 
 
+def _src_inline(src: str) -> str:
+    """Imagem do avatar como data URI para o componente da mesa (iframe): 'app/static/...' e '/app/static/...' não funcionam lá dentro
+    quando o app roda sob um prefixo de endereço (ex.: Streamlit Cloud). Arquivo que não existir: rosto do mascote."""
+    import base64
+    import os
+    if not src or src.startswith("data:"):
+        return src or MN.uri("rosto")
+    rel = src.split("?")[0].lstrip("/")
+    rel = rel[len("app/"):] if rel.startswith("app/static/") else rel
+    caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)), rel)
+    try:
+        with open(caminho, "rb") as f:
+            ext = os.path.splitext(caminho)[1].lstrip(".").lower().replace("jpg", "jpeg") or "webp"
+            return f"data:image/{ext};base64," + base64.b64encode(f.read()).decode("ascii")
+    except OSError:
+        return MN.uri("rosto")
+
+
 def _avatares_assentos(p: dict) -> dict:
     """{rótulo do placar ("Você", "Jogador N"): {src, cor}}: o avatar equipado de cada assento, com a cor da raridade. Montado no servidor
     a partir dos jogadores da partida; só imagem e cor vão para a tela (nunca o e-mail). Falha: {} (a mesa volta ao rosto do mascote por assento)."""
@@ -702,7 +720,7 @@ def _avatares_assentos(p: dict) -> dict:
                 out["Você" if eu else f"Jogador {n}"] = {"src": MN.uri("rosto"), "cor": "#34E85E"}
                 continue
             src = foto or AV.url(av, True)
-            src = src if src.startswith("data:") else "/" + src           # a mesa roda num iframe: endereço absoluto
+            src = _src_inline(src)                                           # a mesa roda num iframe: a imagem vai junto (endereço relativo quebra)
             out["Você" if eu else f"Jogador {n}"] = {"src": src, "cor": "#34E85E" if foto else AV.RARIDADES[AV.raridade_de(av)]["cor"]}
         return out
     except Exception:
