@@ -5,6 +5,7 @@ import 'alertas.dart';
 import 'api.dart';
 import 'cabecalho.dart';
 import 'home.dart';
+import 'jogos.dart';
 
 /// Itens da barra de baixo, na mesma ordem do app antigo.
 const _itens = <(String, IconData)>[
@@ -14,6 +15,12 @@ const _itens = <(String, IconData)>[
   ('Ranking', Icons.emoji_events_outlined),
   ('Loja', Icons.shopping_cart_outlined),
 ];
+
+/// Pedido de troca de aba vindo de dentro de uma tela (ex.: "Jogar agora" da Home abre a aba Jogos).
+final abaPedida = ValueNotifier<int?>(null);
+
+/// Abre a aba [i] da barra de baixo (0 Início, 1 Jogos, 2 Aprender, 3 Ranking, 4 Loja).
+void abrirAba(int i) => abaPedida.value = i;
 
 /// Estrutura do app, igual à do app antigo: cabeçalho fixo no topo, a tela no meio e a barra de navegação fixa embaixo.
 /// Cada aba tem a sua própria pilha de telas, então o cabeçalho e a barra continuam visíveis dentro da Carteira, da compra etc.
@@ -29,8 +36,28 @@ class _PrincipalState extends State<Principal> {
   int _aba = 0;
   final _chaves = List.generate(_itens.length, (_) => GlobalKey<NavigatorState>());
 
+  @override
+  void initState() {
+    super.initState();
+    abaPedida.addListener(_trocarPedida);
+  }
+
+  @override
+  void dispose() {
+    abaPedida.removeListener(_trocarPedida);
+    super.dispose();
+  }
+
+  void _trocarPedida() {
+    final i = abaPedida.value;
+    if (i == null) return;
+    abaPedida.value = null;
+    if (mounted && i != _aba) setState(() => _aba = i);
+  }
+
   Widget _raiz(int i) {
     if (i == 0) return HomeTela(api: widget.api);
+    if (i == 1) return JogosTela(api: widget.api);
     return EmBreveTela(titulo: _itens[i].$1, icone: _itens[i].$2);
   }
 
