@@ -225,13 +225,24 @@ def carteira(q: Quem = Depends(quem)) -> dict:
         _erro(e)
     r = CU.resumo(est)
     posicoes = [{"id": x["id"], "nome": A.rotulo(x["id"]), "classe": x.get("classe"), "qtd": x["qtd"], "pm": x["pm"],
-                 "preco": x["preco"], "valor": x["valor"], "pct": x["pct"], "lucro_nao_realizado": x["lucro_nao_realizado"]}
+                 "preco": x["preco"], "valor": x["valor"], "pct": x["pct"], "lucro_nao_realizado": x["lucro_nao_realizado"],
+                "logo": _logo_ativo(x["id"])}
                 for x in r["posicoes"]]
     return {"disponivel": r["disponivel"], "investido": r["investido"], "valor_atual": r["valor_atual"],
             "nao_realizado": r["nao_realizado"], "patrimonio": r["patrimonio"], "posicoes": posicoes,
             "rent_nao_realizada": r["rent_nao_realizada"], "comecou": bool(perfil.get("aceite")), "apelido": perfil.get("apelido") or "",
             "ranking": _ranking_da_casa(q.ator, q.email).get("pos"), "moedas": _moedas_seguro(q),
             "serie": _serie_patrimonio(est), "var_dia": _var_dia(est), "missao": _missao_ativa_seguro(q)}
+
+
+def _logo_ativo(tk: str):
+    """Logo do ativo na pasta de logos do app: 'setores/x.webp' (ação) ou 'cripto/x.webp'. None se não houver."""
+    try:
+        import setores as SE
+        u = SE.icone_ativo(tk)
+        return u.split("app/static/", 1)[1] if u and "app/static/" in u else None
+    except Exception:
+        return None
 
 
 def _serie_patrimonio(est: dict) -> list[dict]:
