@@ -37,6 +37,8 @@ button[disabled]{opacity:.45;cursor:default}
 @keyframes pb{from{opacity:1}to{opacity:.3}}
 #fs{flex:none;min-height:26px;width:30px;padding:0}
 .tbr button{font-size:11px;font-weight:800;padding:0 2px;min-height:36px}
+#aovivo{position:absolute;right:58px;bottom:26px;z-index:3;display:none;padding:5px 10px;border-radius:999px;border:1.5px solid #3DDC97;background:rgba(10,30,24,.92);color:#7CF0C0;font:800 11px system-ui;box-shadow:0 0 10px rgba(61,220,151,.45)}
+#aovivo.on{display:block}
 #cvw{position:relative;flex:1 1 auto;min-height:120px;border-radius:12px;overflow:hidden;border:1px solid rgba(139,108,255,.4);background:rgba(10,7,32,.9)}
 #cv{position:absolute;left:0;top:0;width:100%;height:100%;touch-action:none;display:block}
 #dica{position:absolute;left:6px;top:6px;max-width:75%;padding:3px 8px;border-radius:8px;background:rgba(242,184,75,.95);color:#1A1030;font-size:11px;font-weight:800;pointer-events:none;display:none}
@@ -268,7 +270,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
   <div class="row tbr" id="t2"><button id="b-buy" class="buy" style="flex:1.3"><span class="ar">▲ </span>Compra</button><button id="b-sell" class="sell" style="flex:1.25"><span class="ar">▼ </span>Venda</button>
     <button id="b-entrada" style="flex:1.2">Entrada</button><button id="b-stop">Stop</button><button id="b-alvo">Alvo</button>
     <button id="b-apagar" title="Apagar marcação" style="flex:.7">⌫</button><button id="b-limpar" title="Limpar operação" style="flex:.7">✕</button><button id="b-mais" style="flex:.7">⋯</button></div>
-  <div id="cvw"><canvas id="cv"></canvas><div id="dica"></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
+  <div id="cvw"><canvas id="cv"></canvas><button id="aovivo" title="Voltar aos candles novos">▶ Ao vivo</button><div id="dica"></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
     <div id="mais"><div class="g an">ESTRATÉGIA</div><button id="b-tipo" class="an"></button><button id="b-conf" class="an"></button><div class="g">INDICADORES</div><button data-i="vol">Volume</button><button data-i="sma">Média simples (20)</button><button data-i="ema">Média exponencial (9)</button><button data-i="rsi">RSI (14)</button><button data-i="sr">Suporte/Resistência</button>
       <div class="g an">MARCAÇÕES DE ANÁLISE</div><button data-t="nivel" class="an">Nível de preço</button><button data-t="tend" class="an">Linha de tendência</button><button data-t="nota" class="an">Anotação</button></div>
     <div id="res"></div><button id="res-ver">🏆 Ver resultado da rodada</button>
@@ -373,7 +375,8 @@ function transicao(a){   // mudou de fase/rodada: o gráfico, o zoom e os desenh
   if(a.modo!=="analise")aplicaOp(a);
   if(a.modo==="analise"&&a.inicial&&a.inicial.tipo){aplicaOp(a);S.savedSig=sig()}
   cresce(a);modoClasses();
-  if(a.modo!=="analise"){S.follow=true;if(velho==="analise")S.domNovo=true}
+  if(a.modo!=="analise"){S.follow=true;if(velho==="analise"){S.domNovo=true;zoomReplay()}}
+  aoVivoUI();
   if(a.modo==="analise"){S.dom=null;S.follow=true}
   S.res=null;
 }
@@ -386,7 +389,8 @@ function onRender(a){
     if(!tem(mm)&&tem(a.marcas_ant))S.marcas={niveis:(a.marcas_ant.niveis||[]).map(x=>({...x})),tendencias:(a.marcas_ant.tendencias||[]).map(x=>({...x})),notas:(a.marcas_ant.notas||[]).map(x=>({...x}))};
     if(a.inicial&&(a.inicial.tipo)){S.savedSig=sig()}
     modoClasses();zoomInicial();
-    if(S.modo!=="analise"){S.domNovo=true}
+    if(S.modo!=="analise"){S.domNovo=true;if(S.modo==="replay")zoomReplay()}
+    aoVivoUI();
   }else if(a.fase_key!==S.fk){transicao(a)}
   else{cresce(a)}
   clearTimeout(S.nextT);
@@ -769,6 +773,7 @@ function acharApagar(pt){
 }
 function candleEm(x){return Math.max(0,Math.min(S.cands.length-1,Math.round((x-S.cw/2)/S.cw+S.off)))}
 cv=$("cv");ctx=cv.getContext("2d");
+$("aovivo").addEventListener("click",()=>{if(!S)return;S.follow=true;if(S.cw<(W-axisW())/(VIS_REPLAY*2))zoomReplay();aoVivoUI();kick()});
 cv.addEventListener("pointerdown",e=>{
   if(S.locked)return;try{cv.setPointerCapture(e.pointerId)}catch(_){}const p=pos(e);ptrs.set(e.pointerId,p);
   if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),cw:S.cw,mx:(a.x+b.x)/2,idx:(((a.x+b.x)/2)-S.cw/2)/S.cw+S.off};modo="pinch";return}
@@ -780,7 +785,7 @@ cv.addEventListener("pointerdown",e=>{
 cv.addEventListener("pointermove",e=>{
   if(!ptrs.has(e.pointerId))return;const p=pos(e);ptrs.set(e.pointerId,p);
   if(modo==="pinch"&&ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);
-    S.cw=Math.max(2,Math.min(40,pinch.cw*d/pinch.d));S.off=pinch.idx-(pinch.mx-S.cw/2)/S.cw;limita();draw();return}
+    S.cwAlvo=null;S.cw=Math.max(2,Math.min(40,pinch.cw*d/pinch.d));S.off=pinch.idx-(pinch.mx-S.cw/2)/S.cw;limita();draw();return}
   if(!t0)return;
   if(Math.hypot(p.x-t0.x,p.y-t0.y)>6)t0.moved=true;
   if(modo==="drag"&&t0.moved){
@@ -788,19 +793,24 @@ cv.addEventListener("pointermove",e=>{
     if(pr<=0)return;const h=t0.hit;
     if(h.tipo==="linha"){if(mesaOn())S.ovr={k:h.k,p:pr,ate:performance.now()+60000};else S.lines[h.k]=pr}else S.marcas.niveis[h.i].preco=pr;
     ui();draw();
-  }else if(modo==="pan"&&t0.moved){S.follow=false;S.off=t0.off-(p.x-t0.x)/S.cw;limita();draw()}
+  }else if(modo==="pan"&&t0.moved){S.follow=false;S.cwAlvo=null;aoVivoUI();S.off=t0.off-(p.x-t0.x)/S.cw;limita();draw()}
 });
 function fim(e){
   const p=ptrs.get(e.pointerId)||pos(e);ptrs.delete(e.pointerId);
   if(modo==="pinch"){if(ptrs.size<2){modo=null;pinch=null;t0=null}return}
   const tap=t0&&!t0.moved&&performance.now()-t0.t<600;
+  if(modo==="pan"&&t0&&t0.moved&&S.modo!=="analise"&&S.off>=fimOff()-1.5){S.follow=true;aoVivoUI()}
   if(modo==="drag"){frozen=null;if(mesaOn()&&t0&&t0.hit&&t0.moved)soltaLinha(t0.hit.k);draw()}
   if(tap&&modo==="pan"&&p.x<=L.pw&&(S.tool||(mesaOn()&&S.modo==="replay"&&S.campo&&advAberto())))toque(p);
   modo=null;t0=null;frozen=null;
 }
 cv.addEventListener("pointerup",fim);cv.addEventListener("pointercancel",e=>{ptrs.delete(e.pointerId);modo=null;t0=null;frozen=null;pinch=null;draw()});
-cv.addEventListener("wheel",e=>{e.preventDefault();const p=pos(e),idx=(p.x-S.cw/2)/S.cw+S.off;S.cw=Math.max(2,Math.min(40,S.cw*(e.deltaY<0?1.12:1/1.12)));S.off=idx-(p.x-S.cw/2)/S.cw;limita();draw()},{passive:false});
+cv.addEventListener("wheel",e=>{e.preventDefault();S.cwAlvo=null;const p=pos(e),idx=(p.x-S.cw/2)/S.cw+S.off;S.cw=Math.max(2,Math.min(40,S.cw*(e.deltaY<0?1.12:1/1.12)));S.off=idx-(p.x-S.cw/2)/S.cw;limita();draw()},{passive:false});
 cv.addEventListener("contextmenu",e=>e.preventDefault());
+const VIS_REPLAY=40;                                                // candles na tela quando o gráfico começa a andar
+function fimOff(){return S.cands.length+3-(W-axisW())/S.cw}
+function zoomReplay(){if(!W)return;S.cwAlvo=Math.max(2,Math.min(40,(W-axisW())/(VIS_REPLAY+3)));S.follow=true;aoVivoUI()}
+function aoVivoUI(){const b=$("aovivo");if(b)b.classList.toggle("on",!!S&&S.modo!=="analise"&&!S.follow)}
 function limita(){const n=S.cands.length,pw=W-axisW();S.off=Math.max(-3,Math.min(n-pw/S.cw+3,S.off))}
 function toque(p){
   layout();const t=S.tool,pr=Geo.r2(L.price(p.y));
@@ -852,6 +862,8 @@ function loop(){
   if(S.fila.length)mexe=true;
   if(S.anim){const t=Math.min(1,(now-S.anim.t0)/S.anim.dur);S.anim.e=ease(t);if(t>=1)S.anim=null;else mexe=true}
   if(S.modo!=="analise"){
+    if(S.cwAlvo){const d=S.cwAlvo-S.cw;if(Math.abs(d)>0.02){S.cw+=d*0.15;mexe=true}else{S.cw=S.cwAlvo;S.cwAlvo=null}}
+    if(S.follow)S.offAlvo=fimOff();
     if(S.follow&&S.offAlvo!=null){const d=S.offAlvo-S.off;if(Math.abs(d)>0.01){S.off+=d*0.18;mexe=true}else S.off=S.offAlvo}
     const alvo=dominio();if(!S.dom||S.domNovo){S.dom=alvo;S.domNovo=false}
     else{const dl=(alvo[0]-S.dom[0]),dh=(alvo[1]-S.dom[1]);if(Math.abs(dl)+Math.abs(dh)>(alvo[1]-alvo[0])*0.002){S.dom=[S.dom[0]+dl*0.2,S.dom[1]+dh*0.2];mexe=true}else S.dom=alvo}
