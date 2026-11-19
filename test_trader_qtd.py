@@ -132,3 +132,25 @@ def test_relatorio_taxa_de_acerto_payoff_e_maior_queda():
 def test_relatorio_sem_operacoes():
     r = Q.relatorio(sim(PLANO, [], final=True))
     assert r["n_ops"] == 0 and r["taxa_acerto"] is None and r["maior_queda"] == 0.0
+
+
+def test_stop_movel_acompanha_a_alta_nunca_recua_e_executa():
+    pr = lambda d, c="preco": float(d[c])
+    cand = [k(10, 10, 10, 10), k(10, 11, 10, 11), k(11, 12, 11, 12), k(12, 12.2, 11.6, 11.7), k(11.4, 11.5, 11.0, 11.1)]
+    base = [ac(1, 0, "mercado", direcao="alta", q=100), ac(2, 1, "stop_movel", dist=0.5)]
+    st = sim(cand[:3], base)
+    assert st["pos"]["stop"] == pytest.approx(11.5) and st["pos"]["trail"] == 0.5        # máxima 12 − 0,5
+    st2 = sim(cand[:4], base)
+    assert st2["pos"]["stop"] == pytest.approx(11.7)                                      # subiu com a máxima 12,2 e não recuou na queda
+    st3 = sim(cand, base)
+    assert st3["pos"] is None and st3["trades"][0]["motivo"] == "stop_movel" and st3["trades"][0]["saida"] == 11.4   # gap abaixo do stop: sai na abertura
+    with pytest.raises(Q.ErroQtd, match="posição aberta"):
+        Q.validar({"tipo": "stop_movel", "dist": 0.5}, sim(PLANO[:1], []), 10, 1, 10, pr)
+    with pytest.raises(Q.ErroQtd, match="maior que zero"):
+        Q.validar({"tipo": "stop_movel", "dist": 0}, st, 12, 3, 10, pr)
+
+
+def test_stop_movel_na_venda_desce_com_a_minima():
+    cand = [k(10, 10, 10, 10), k(10, 10, 9, 9), k(9, 9, 8, 8)]
+    st = sim(cand, [ac(1, 0, "mercado", direcao="baixa", q=100), ac(2, 1, "stop_movel", dist=0.5)])
+    assert st["pos"]["stop"] == pytest.approx(8.5)

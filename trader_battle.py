@@ -795,7 +795,7 @@ def _visao_mesa(p: dict, cenario: dict, agora: float, jog: str) -> dict | None:
             "pode_gerir": bool(ativo and (pos or pend))}
 
 
-_ROT_MOTIVO = {"stop": "no stop", "limite": "no limite de perda", "alvo": "no alvo", "manual": "encerrada por você", "fim": "no fim da rodada"}
+_ROT_MOTIVO = {"stop": "no stop", "stop_movel": "no stop móvel", "limite": "no limite de perda", "alvo": "no alvo", "manual": "encerrada por você", "fim": "no fim da rodada"}
 
 
 def explicar_mesa(r: dict) -> list[tuple[str, str]]:

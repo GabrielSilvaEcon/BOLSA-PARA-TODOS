@@ -12,7 +12,7 @@ import html
 
 _E = html.escape
 OPS_MAX = 7
-_MOTIVO = {"stop": "stop", "alvo": "alvo", "manual": "você", "fim": "fim", "limite": "limite"}
+_MOTIVO = {"stop": "stop", "stop_movel": "stop móvel", "alvo": "alvo", "manual": "você", "fim": "fim", "limite": "limite"}
 
 
 def _br(v: float, casas: int = 2) -> str:

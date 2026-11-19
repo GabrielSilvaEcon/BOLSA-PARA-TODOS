@@ -157,3 +157,16 @@ def test_placar_antigo_sem_os_campos_novos_continua_valido():
     assert d["trade"]["pts"] == 50 and d["trade"]["n_ret"] == 0 and d["trade"]["lucro"] == 0.0
     assert J.montar_ranking(J.TRADE, [{"email": "x@x.com", "dados": antigo}], metrica="lucro")["total"] == 0
     assert J.montar_ranking(J.TRADE, [{"email": "x@x.com", "dados": antigo}])["total"] == 1
+
+
+def test_stop_movel_pelo_servidor():
+    p, cen = partida()
+    TB.salvar_estrategia(p, "eu@x.com", {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1001.0)
+    TB.iniciar_replay(p, "eu@x.com", 1002.0)
+    TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 100}, 1002.1)
+    t = 1002.0 + 2 * TB.SEG_POR_CANDLE + 0.1
+    with pytest.raises(TB.ErroTrader, match="maior que zero"):
+        TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a2", "tipo": "stop_movel", "dist": -1}, t)
+    TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a3", "tipo": "stop_movel", "dist": 0.4}, t)
+    v = TB.visao(p, cen, t + 0.5, "eu@x.com")
+    assert v["mesa"]["posicao"]["trail"] == 0.4 and v["mesa"]["posicao"]["stop"] is not None

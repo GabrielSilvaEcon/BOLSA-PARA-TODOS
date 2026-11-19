@@ -214,4 +214,11 @@ t("corrida: sem quantidade, a ordem não sai", () => {
   const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(false) }));
   h.els["q-val"].value = ""; h.els["m-buy"].onclick(); eq(h.acoes().length, 0);
 });
+t("corrida: stop móvel manda a distância e o painel mostra STOP MÓVEL", () => {
+  const h = carregar(); const m = mesaQtd(true); m.posicao.stop = 11.0; m.posicao.trail = 0.3; m.pode_gerir = true;
+  h.render(args({ motor: 2, mesa: m }));
+  yes(h.els.sm.innerHTML.includes("STOP MÓVEL"), "painel");
+  h.els["g-trail"].value = "0,30"; h.els["g-trail-b"].onclick();
+  const a = h.acoes(); eq([a[0].dados.tipo, a[0].dados.dist], ["stop_movel", 0.3]);
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

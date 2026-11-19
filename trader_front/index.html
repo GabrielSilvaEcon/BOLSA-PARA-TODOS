@@ -135,6 +135,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #adv{position:relative;flex:0 1 auto;max-height:46%;min-height:0;overflow:auto;display:none;flex-direction:column;gap:4px;padding:7px 8px;border-radius:14px;
   border:1.5px solid #8B6CFF;background:linear-gradient(180deg,rgba(36,26,110,.97),rgba(16,11,52,.98));box-shadow:0 0 14px rgba(139,108,255,.3)}
 #app.adv #mb1{display:none}
+#app:not(.qtd) #adv .trail{display:none}#adv .oco{display:block;margin-top:2px}
 #qrow{display:none;align-items:center;gap:4px}#app.qtd.mesa.replay #qrow{display:flex}
 #qrow .ql{flex:none;font-size:11px;font-weight:900;color:#C9C2F2;padding:0 2px}
 #qrow button{flex:none;min-height:32px;padding:0 9px;font-size:13px;font-weight:900}
@@ -280,7 +281,9 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
         <div class="row"><button id="o-buy" class="buy">⚡ Confirmar compra</button><button id="o-sell" class="sell">⚡ Confirmar venda</button></div></div>
       <div id="o-gerir"><div class="g">STOP E ALVO DA POSIÇÃO</div>
         <div class="row"><input id="g-stop" inputmode="decimal" placeholder="Stop" autocomplete="off"><button id="g-stop-b">Definir stop</button></div>
-        <div class="row"><input id="g-alvo" inputmode="decimal" placeholder="Alvo" autocomplete="off"><button id="g-alvo-b">Definir alvo</button></div></div>
+        <div class="row"><input id="g-alvo" inputmode="decimal" placeholder="Alvo" autocomplete="off"><button id="g-alvo-b">Definir alvo</button></div>
+        <div class="row trail"><input id="g-trail" inputmode="decimal" placeholder="Distância (R$)" autocomplete="off"><button id="g-trail-b">Stop móvel</button></div>
+        <small class="oco">Stop e alvo são ligados (OCO): quando um executa, a posição fecha e o outro é cancelado. O stop móvel sobe junto com o preço (na venda, desce) e nunca recua.</small></div>
       <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
       <details id="o-regras"><summary>ⓘ Regras da aposta</summary><small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></details></div>
   <div id="mesa"><div class="row" id="qrow"><span class="ql">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
@@ -687,7 +690,8 @@ function uiMesa(){   // atualiza só textos e estados dos botões (a tela não �
   if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
   if(m&&m.qtd){   // partida corrida: quantidade, preço médio, poder de compra e exposição
     const p=m.posicao,fila=(m.fila||[]).length?` · <span class="pz">⏳ ordem a mercado: executa na abertura do próximo candle</span>`:"";
-    if(p)l1=`<span class="e">${p.direcao==="alta"?"Comprado":"Vendido"} ${p.q} · PM ${fmt(p.preco_entrada)}</span>${sa}`;
+    const sa2=p&&p.trail?sa.replace("STOP ","STOP MÓVEL "):sa;
+    if(p)l1=`<span class="e">${p.direcao==="alta"?"Comprado":"Vendido"} ${p.q} · PM ${fmt(p.preco_entrada)}</span>${sa2}`;
     else if(o.pend)l1=`<span class="e">Ordem ${o.pend.tipo==="limite"?"limite":"stop"} ${o.pend.direcao==="alta"?"compra":"venda"} ${o.pend.q||""} em ${fmt(o.pend.preco)}</span>${sa}`;
     else l1=`<span class="e">Sem posição</span><span class="pz">pronto para operar</span>`;
     if(lm&&lm.bloqueado)l1=`<span class="s">🛑 a perda chegou ao capital da partida: sem novas entradas</span>`;
@@ -870,6 +874,7 @@ function boletaUI(){const ab=advAberto();$("app").classList.toggle("adv",ab);$("
 $("m-ind").onclick=()=>{const m=$("mais");m.style.display=m.style.display==="flex"?"none":"flex"};
 $("o-tipo").onchange=()=>ui();$("o-buy").onclick=()=>enviarOrdem("alta");$("o-sell").onclick=()=>enviarOrdem("baixa");
 ["o-preco","o-stop","o-alvo","g-stop","g-alvo"].forEach(id=>$(id).addEventListener("focus",()=>{S.campo=id}));
+$("g-trail-b").onclick=()=>{const v=num("g-trail");if(v==null||Number.isNaN(v)||v<=0)return flash("Informe a distância do stop móvel em R$");if(!sendAcao({tipo:"stop_movel",dist:v}))flash("Aguarde a ordem anterior")};
 $("g-stop-b").onclick=()=>{const v=num("g-stop");if(v==null||Number.isNaN(v))return flash("Informe o preço do stop");if(!sendAcao({tipo:linhasMesa().stop!=null?"mover_stop":"definir_stop",preco:v}))flash("Aguarde a ordem anterior")};
 $("g-alvo-b").onclick=()=>{const v=num("g-alvo");if(v==null||Number.isNaN(v))return flash("Informe o preço do alvo");if(!sendAcao({tipo:linhasMesa().alvo!=null?"mover_alvo":"definir_alvo",preco:v}))flash("Aguarde a ordem anterior")};
 window.__TB={kick,sendAcao,uiMesa,desenhaMesa,linhasMesa,Geo,get A(){return A},get S(){return S},get L(){return L},draw,ui,fit,send};
