@@ -206,12 +206,21 @@ def eu(q: Quem = Depends(quem)) -> dict:
 # ------------------------------------------------------------------ carteira (posições por ativo)
 @app.get("/carteira")
 def carteira(q: Quem = Depends(quem)) -> dict:
-    """Carteira do jogo: caixa livre, patrimônio e cada posição aberta (mesmas contas da tela do Streamlit)."""
+    """Carteira da pessoa: a da competição (depois de começar) ou a do jogo (antes). Mesma regra da tela do Streamlit."""
     import ativos_jogo as A
     import carteira_unica as CU
+    import competicao as C
     import wallet_game as WG
     try:
-        est = WG.sincronizar(q.email)
+        perfil = C.sanear_perfil(banco.comp_ordens_ler(q.ator))
+    except Exception:
+        perfil = {}
+    try:
+        if perfil.get("aceite"):
+            cart = banco.comp_carteira_ler(q.ator) or {}
+            est = cart if cart.get("v") == 1 else C.novo_estado(perfil.get("entrada") or _agora_brt().date().isoformat())
+        else:
+            est = WG.sincronizar(q.email)
     except Exception as e:
         _erro(e)
     r = CU.resumo(est)
@@ -219,7 +228,96 @@ def carteira(q: Quem = Depends(quem)) -> dict:
                  "preco": x["preco"], "valor": x["valor"], "pct": x["pct"], "lucro_nao_realizado": x["lucro_nao_realizado"]}
                 for x in r["posicoes"]]
     return {"disponivel": r["disponivel"], "investido": r["investido"], "valor_atual": r["valor_atual"],
-            "nao_realizado": r["nao_realizado"], "patrimonio": r["patrimonio"], "posicoes": posicoes}
+            "nao_realizado": r["nao_realizado"], "patrimonio": r["patrimonio"], "posicoes": posicoes,
+            "comecou": bool(perfil.get("aceite")), "apelido": perfil.get("apelido") or ""}
+
+
+class ComecarIn(BaseModel):
+    apelido: str
+    aceito: bool = False
+
+
+class OrdemIn(BaseModel):
+    ativo: str
+    qtd: float
+    lado: str = "C"                     # "C" compra · "V" venda
+
+
+def _agora_brt():
+    from datetime import datetime, timedelta, timezone
+    return datetime.now(timezone(timedelta(hours=-3))).replace(tzinfo=None)
+
+
+@app.post("/carteira/comecar")
+def carteira_comecar(body: ComecarIn, q: Quem = Depends(quem)) -> dict:
+    """Entra na competição da carteira: escolhe o apelido público e confirma o regulamento (mesma regra do app antigo)."""
+    import competicao as C
+    a = q.ator
+    perfil = C.sanear_perfil(banco.comp_ordens_ler(a))
+    if perfil.get("aceite"):
+        return {"ok": True, "apelido": perfil.get("apelido") or ""}
+    if not body.aceito:
+        raise HTTPException(400, "Marque a confirmação para participar.")
+    ok, msg = C.apelido_valido(body.apelido)
+    if not ok:
+        raise HTTPException(400, msg)
+    if not banco.comp_apelido_livre(a, C.chave_apelido(body.apelido)):
+        raise HTTPException(400, "Esse apelido já está em uso. Escolha outro.")
+    novo = {"apelido": body.apelido.strip(), "aceite": True, "entrada": _agora_brt().date().isoformat(), "drip": False, "pend": []}
+    banco.comp_ordens_gravar(a, C.sanear_perfil(novo))
+    return {"ok": True, "apelido": novo["apelido"]}
+
+
+@app.get("/carteira/preco")
+def carteira_preco(ativo: str, q: Quem = Depends(quem)) -> dict:
+    """Cotação atual de um ativo (B3, EUA e cripto). Fundos e Tesouro ainda não têm preço ao vivo aqui."""
+    import ativos_jogo as A
+    import cotacoes_jogo as CJ
+    tk = ativo.upper().strip()
+    if not A.valido(tk):
+        raise HTTPException(400, "Ativo não encontrado no jogo.")
+    px = CJ.preco_agora(tk)
+    if not px:
+        raise HTTPException(400, "Sem cotação ao vivo para esse ativo agora.")
+    return {"ativo": tk, "rotulo": A.rotulo(tk), "px": px}
+
+
+@app.post("/carteira/ordem")
+def carteira_ordem(body: OrdemIn, q: Quem = Depends(quem)) -> dict:
+    """Compra ou venda na hora, ao preço atual. Mesmas regras do motor do jogo (caixa, limite de concentração e limite diário)."""
+    import ativos_jogo as A
+    import competicao as C
+    import cotacoes_jogo as CJ
+    import planos as PL
+    a = q.ator
+    perfil = C.sanear_perfil(banco.comp_ordens_ler(a))
+    if not perfil.get("aceite"):
+        raise HTTPException(400, "Comece a sua carteira primeiro.")
+    lado = {"C": "C", "COMPRAR": "C", "V": "V", "VENDER": "V"}.get(str(body.lado or "").upper().strip())
+    if not lado:
+        raise HTTPException(400, "Escolha compra ou venda.")
+    tk = body.ativo.upper().strip()
+    if not A.valido(tk):
+        raise HTTPException(400, "Ativo não encontrado no jogo.")
+    qtd = A.norm_qtd(tk, body.qtd)
+    if not A.qtd_valida(tk, qtd):
+        raise HTTPException(400, f"Quantidade inválida para {A.rotulo(tk)}. Esse tipo de ativo aceita múltiplos de {A.texto_qtd(tk, A.passo(tk))}.")
+    liberado, info = PL.usar("comp_ordens_dia", email=q.email, papel=None)
+    if not liberado:
+        raise HTTPException(429, (info or {}).get("mensagem") or "Limite diário de ordens atingido.")
+    px = CJ.preco_agora(tk)
+    if not px:
+        raise HTTPException(400, "Sem cotação ao vivo para esse ativo agora. Tente de novo em instantes.")
+    agora = _agora_brt()
+    atual = banco.comp_carteira_ler(a) or {}
+    base = atual if atual.get("v") == 1 else C.novo_estado(perfil.get("entrada") or agora.date().isoformat())
+    ok, msg, novo = C.executar_agora(base, perfil.get("pend") or [], lado, tk, qtd, px, agora)
+    if not ok:
+        raise HTTPException(400, msg)
+    banco.comp_carteira_gravar(a, novo)
+    verbo = "Compra" if lado == "C" else "Venda"
+    return {"ok": True, "msg": f"{verbo} executada: {A.texto_qtd(tk, qtd)} × {A.rotulo(tk)} a R$ {px:,.2f}.".replace(",", "X").replace(".", ",").replace("X", "."),
+            "px": px, "caixa": float(novo.get("caixa", 0))}
 
 
 # ------------------------------------------------------------------ rankings (só partidas online contam)

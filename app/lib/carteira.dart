@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'compra.dart';
 
 /// Tela da Carteira: patrimônio, caixa livre e as posições por ativo (dados do servidor, `GET /carteira`).
 class CarteiraTela extends StatefulWidget {
@@ -27,6 +28,32 @@ class _CarteiraTelaState extends State<CarteiraTela> {
   String? _erro;
   bool _carregando = true;
   String? _aba;
+  final _apelido = TextEditingController();
+  bool _aceito = false;
+  bool _enviando = false;
+
+  @override
+  void dispose() {
+    _apelido.dispose();
+    super.dispose();
+  }
+
+  Future<void> _comecar() async {
+    setState(() => _enviando = true);
+    try {
+      await widget.api.post('/carteira/comecar', {'apelido': _apelido.text.trim(), 'aceito': _aceito});
+      await _carregar();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  Future<void> _abrirCompra() async {
+    final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => CompraTela(api: widget.api)));
+    if (ok == true) _carregar();
+  }
 
   @override
   void initState() {
@@ -47,6 +74,41 @@ class _CarteiraTelaState extends State<CarteiraTela> {
     } finally {
       if (mounted) setState(() => _carregando = false);
     }
+  }
+
+  Widget _comecar_cartao(ThemeData tema) {
+    return _cartao(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Comece a sua carteira', style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          Text(
+            'Monte sua carteira com ativos da bolsa. Escolha um apelido público: ele aparece no ranking, com o seu retorno em %.',
+            style: tema.textTheme.bodySmall,
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _apelido,
+            maxLength: 20,
+            decoration: const InputDecoration(labelText: 'Apelido público (ex.: investidor_sp)'),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _aceito,
+            onChanged: (v) => setState(() => _aceito = v ?? false),
+            title: const Text(
+              'Entendo que meu apelido e meu retorno em % aparecem no ranking. Valores em reais nunca aparecem. É uma simulação educacional, sem dinheiro real.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+          FilledButton(
+            onPressed: _enviando ? null : _comecar,
+            child: const Text('Participar'),
+          ),
+        ],
+      ),
+    );
   }
 
   List<Map<String, dynamic>> get _posicoes {
@@ -90,6 +152,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
     final tema = Theme.of(context);
     final pat = _cart?['patrimonio'];
     final caixa = _cart?['disponivel'];
+    final comecou = _cart?['comecou'] == true;
     final temRf = ((_cart?['posicoes'] as List?) ?? const []).any((p) => p is Map && p['classe'] == 'rf');
     final abas = _abas.where((a) => a.$1 != 'rf' || temRf).toList();
     return Scaffold(
@@ -145,6 +208,15 @@ class _CarteiraTelaState extends State<CarteiraTela> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                if (!comecou)
+                  _comecar_cartao(tema)
+                else
+                  FilledButton.icon(
+                    onPressed: _abrirCompra,
+                    icon: const Icon(Icons.add_shopping_cart),
+                    label: const Text('Comprar ativo'),
+                  ),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 8,
