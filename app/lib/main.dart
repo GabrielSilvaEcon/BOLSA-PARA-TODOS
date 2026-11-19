@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
+import 'config.dart';
 import 'home.dart';
+import 'login.dart';
 
-void main() {
-  runApp(const TickerHuntersApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final configurado = supabaseUrl.isNotEmpty && supabaseKey.isNotEmpty;
+  if (configurado) {
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
+  }
+  runApp(TickerHuntersApp(configurado: configurado));
 }
 
 class TickerHuntersApp extends StatelessWidget {
-  const TickerHuntersApp({super.key});
+  const TickerHuntersApp({super.key, required this.configurado});
+  final bool configurado;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +32,36 @@ class TickerHuntersApp extends StatelessWidget {
         scaffoldBackgroundColor: fundo,
         colorScheme: ColorScheme.fromSeed(seedColor: roxo, brightness: Brightness.dark, surface: fundo),
       ),
-      home: HomeTela(api: Api()),
+      home: configurado ? const PortaDeEntrada() : const _SemConfiguracao(),
+    );
+  }
+}
+
+/// Mostra o login enquanto não há sessão, e a Home quando há. Troca sozinha ao entrar ou sair.
+class PortaDeEntrada extends StatelessWidget {
+  const PortaDeEntrada({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
+      builder: (context, _) {
+        final sessao = Supabase.instance.client.auth.currentSession;
+        if (sessao == null) return const LoginTela();
+        final api = Api(tokenAtual: () => Supabase.instance.client.auth.currentSession?.accessToken);
+        return HomeTela(api: api);
+      },
+    );
+  }
+}
+
+class _SemConfiguracao extends StatelessWidget {
+  const _SemConfiguracao();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: Padding(padding: EdgeInsets.all(24), child: Text('App sem configuração do Supabase. Avise o administrador.', textAlign: TextAlign.center))),
     );
   }
 }

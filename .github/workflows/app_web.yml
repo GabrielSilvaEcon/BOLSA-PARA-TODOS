@@ -32,7 +32,9 @@ jobs:
           flutter analyze --no-fatal-infos
       - name: Compilar versão web
         working-directory: app
-        run: flutter build web --release --base-href /BOLSA-PARA-TODOS/
+        env:
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: flutter build web --release --base-href /BOLSA-PARA-TODOS/ --dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app/build/web

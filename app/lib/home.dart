@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Home no estilo de jogo (primeira versão). Mostra a conexão com o servidor; o HUD completo vem na próxima parte.
 class HomeTela extends StatefulWidget {
@@ -55,6 +56,7 @@ class _HomeTelaState extends State<HomeTela> {
                 const SizedBox(height: 12),
                 Text(_estado, textAlign: TextAlign.center),
                 const SizedBox(height: 24),
+                TextButton(onPressed: () => Supabase.instance.client.auth.signOut(), child: const Text('Sair')),
                 if (!_ok)
                   OutlinedButton(onPressed: _conferirServidor, child: const Text('Tentar de novo')),
                 const SizedBox(height: 32),
