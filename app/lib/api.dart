@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'config.dart';
 
 /// Servidor do jogo (api/main.py, já no ar no Render). Mesmo motor do app atual.
 const String apiBase = 'https://tickerhunters-api.onrender.com';
