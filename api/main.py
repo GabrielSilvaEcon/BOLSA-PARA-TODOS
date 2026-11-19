@@ -229,7 +229,15 @@ def carteira(q: Quem = Depends(quem)) -> dict:
                 for x in r["posicoes"]]
     return {"disponivel": r["disponivel"], "investido": r["investido"], "valor_atual": r["valor_atual"],
             "nao_realizado": r["nao_realizado"], "patrimonio": r["patrimonio"], "posicoes": posicoes,
-            "comecou": bool(perfil.get("aceite")), "apelido": perfil.get("apelido") or ""}
+            "rent_nao_realizada": r["rent_nao_realizada"], "comecou": bool(perfil.get("aceite")), "apelido": perfil.get("apelido") or "",
+            "ranking": _ranking_da_casa(q.ator, q.email).get("pos"), "moedas": _moedas_seguro(q)}
+
+
+def _moedas_seguro(q: "Quem"):
+    try:
+        return TC.saldo(q.conta.get("id"))
+    except Exception:
+        return None
 
 
 class ComecarIn(BaseModel):
