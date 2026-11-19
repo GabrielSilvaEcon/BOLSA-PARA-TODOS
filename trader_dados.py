@@ -197,7 +197,7 @@ def resolver(ref: dict, banco=None) -> dict:
     if chave in _CACHE_CEN:
         return _CACHE_CEN[chave]
     if ref.get("corrida"):                                    # partida corrida: cenários próprios por duração
-        c = demo_corrida(ref["corrida"], int(ref["semente"])) if ref.get("demo") else por_id(listar_corrida(ref["corrida"], banco)).get(ref["id"])
+        c = demo_corrida(ref["corrida"], int(ref["semente"])) if ref.get("demo") else carregar_corrida(ref["corrida"], ref["id"], banco)
         if c is None:
             raise TB.ErroTrader("O cenário desta partida não está mais disponível.")
     elif ref.get("demo"):
@@ -212,11 +212,19 @@ def resolver(ref: dict, banco=None) -> dict:
     return c
 
 
-# ------------------------------------------------------------------ PARTIDA CORRIDA (rápida = 5 min · intermediária = 1 h · longa = 1 dia)
+# ------------------------------------------------------------------ PARTIDA CORRIDA (rápida = 15 min · intermediária = 1 h · longa = 1 dia)
+# Cada cenário guarda: o histórico (n_analise candles do tempo gráfico da partida) + o replay em candles MENORES reais (5 min ou 1 h), com
+# `grupo` (a que candle do gráfico cada passo pertence) e `velas_t` (horário de início de cada candle do gráfico). Nada é inventado: trecho com
+# qualquer candle menor faltando fica de fora.
+# Armazenamento: um registro por cenário (`tb_cc|<formato>|<id>`) e um índice pequeno por formato (`tb_corrida_<formato>`), para a biblioteca
+# crescer todo dia (o workflow trader_cenarios_job.py prepara depois do pregão) sem um registro gigante.
 CHAVE_CORRIDA = "tb_corrida_{formato}"
-PERIODO_CORRIDA = {"5m": "60d", "1h": "2y", "1d": "10y"}          # o máximo gratuito de cada intervalo
-INTERVALO_YAHOO = {"5m": "5m", "1h": "60m", "1d": "1d"}
-MAX_DIAS_CORRIDA = {"rapida": 14, "intermediaria": 120, "longa": 900}   # dias corridos máximos do cenário inteiro (feriados e fins de semana inclusos)
+CHAVE_CEN_CORRIDA = "tb_cc|{formato}|{id}"
+MAX_CORRIDA = 1500                                                  # teto de cenários guardados por duração (os mais antigos saem)
+PERIODO_CORRIDA = {"5m": "60d", "15m": "60d", "1h": "2y", "1d": "10y"}   # o máximo gratuito de cada intervalo no Yahoo
+INTERVALO_YAHOO = {"5m": "5m", "15m": "15m", "1h": "60m", "1d": "1d"}
+PASSO_MIN = {"5m": 5, "15m": 15, "1h": 60, "1d": 1440}
+MAX_DIAS_HIST = {"rapida": 40, "intermediaria": 150, "longa": 900}   # dias corridos máximos do histórico (feriados e fins de semana inclusos)
 
 
 def _spec(formato: str) -> dict:
@@ -226,132 +234,249 @@ def _spec(formato: str) -> dict:
     return sp
 
 
-def listar_corrida(formato: str, banco=None) -> list[dict]:
+def _indice(formato: str, banco=None) -> list[dict]:
     try:
         dados = _banco(banco).cfg_ler(CHAVE_CORRIDA.format(formato=formato))
     except Exception:
         return []
-    return [c for c in ((dados or {}).get("cenarios") or []) if TB.validar_cenario(c)[0] and not c.get("demo") and c.get("corrida") == formato]
+    if (dados or {}).get("v") != 2:                                  # índice antigo (cenários sem passos): não serve mais
+        return []
+    return list(dados.get("itens") or [])
+
+
+def listar_corrida(formato: str, banco=None) -> list[dict]:
+    """Índice dos cenários reais guardados (id, ativo e período do replay). O cenário inteiro só é lido na hora de jogar (`carregar_corrida`)."""
+    return [x for x in _indice(formato, banco) if x.get("id")]
+
+
+def carregar_corrida(formato: str, cid: str, banco=None) -> dict | None:
+    try:
+        c = _banco(banco).cfg_ler(CHAVE_CEN_CORRIDA.format(formato=formato, id=cid))
+    except Exception:
+        return None
+    if not c or not TB.validar_cenario(c)[0] or c.get("demo") or c.get("corrida") != formato:
+        return None
+    return c
+
+
+def _item(c: dict) -> dict:
+    vt = c["velas_t"]
+    return {"id": c["id"], "ticker": c["ticker"], "de": vt[0], "ate": vt[-1]}
 
 
 def salvar_corrida(formato: str, cenarios: list[dict], banco=None) -> int:
-    ok = [c for c in cenarios if TB.validar_cenario(c)[0] and not c.get("demo") and c.get("corrida") == formato]
-    ok = sorted(ok, key=lambda c: c["candles"][0]["t"])[-MAX_POR_FUSO:]
-    _banco(banco).cfg_gravar(CHAVE_CORRIDA.format(formato=formato), {"v": 1, "formato": formato, "cenarios": ok})
-    return len(ok)
+    """Grava os cenários novos (cada um no seu registro) e atualiza o índice. Devolve o total guardado."""
+    b = _banco(banco)
+    itens = {x["id"]: x for x in _indice(formato, b)}
+    for c in cenarios:
+        if not TB.validar_cenario(c)[0] or c.get("demo") or c.get("corrida") != formato or c["id"] in itens:
+            continue
+        b.cfg_gravar(CHAVE_CEN_CORRIDA.format(formato=formato, id=c["id"]), c)
+        itens[c["id"]] = _item(c)
+    ordem = sorted(itens.values(), key=lambda x: x["de"])
+    for velho in ordem[:-MAX_CORRIDA]:
+        try:
+            b.cfg_apagar(CHAVE_CEN_CORRIDA.format(formato=formato, id=velho["id"]))
+        except Exception:
+            pass
+    ordem = ordem[-MAX_CORRIDA:]
+    b.cfg_gravar(CHAVE_CORRIDA.format(formato=formato), {"v": 2, "formato": formato, "itens": ordem})
+    return len(ordem)
 
 
-def janelas_corrida(df, formato: str, max_n: int = 3) -> list[tuple[int, int]]:
-    """Trechos [i, j) completos para a partida corrida: no intraday, sem candle faltando dentro do pregão; volume quase sempre presente."""
+def _chave_vela(t, tf: str):
+    """Início do candle do gráfico a que o candle menor de horário `t` pertence."""
+    if tf == "1d":
+        return t.normalize()
+    m = PASSO_MIN[tf]
+    return t.floor(f"{m}min")
+
+
+def _velas_completas(sub, tf: str, sub_tf: str) -> list[tuple]:
+    """Agrupa os candles menores (DataFrame) por candle do gráfico. Devolve [(início, posições dos menores)] só com grupos sem buraco: dentro de cada
+    pregão os menores vêm em sequência exata (5 min a 5 min, ou 1 h a 1 h), e no intraday o grupo não pode pular um horário do candle do gráfico."""
+    from datetime import timedelta as _td
+    idx = list(sub.index)
+    passo = _td(minutes=PASSO_MIN[sub_tf])
+    grupos, atual, chave_ant = [], None, None
+    for pos, t in enumerate(idx):
+        ch = _chave_vela(t, tf)
+        if ch != chave_ant:
+            atual = [ch, [pos], True]
+            grupos.append(atual)
+            chave_ant = ch
+        else:
+            if t - idx[atual[1][-1]] != passo:
+                atual[2] = False                                  # buraco dentro do candle: o grupo inteiro fica de fora
+            atual[1].append(pos)
+    out = []
+    for ch, poss, ok in grupos:
+        if not ok:
+            out.append(None)
+            continue
+        if tf != "1d" and idx[poss[0]] != ch and (idx[poss[0]] - ch) >= passo:   # o 1º menor tem que abrir o candle do gráfico
+            out.append(None)
+            continue
+        out.append((ch, poss))
+    return out
+
+
+def _hist_ok(hist, tf: str) -> bool:
+    """Histórico do tempo gráfico da partida: sem buraco dentro do pregão (intraday) e volume quase sempre presente."""
+    from datetime import timedelta as _td
+    idx = list(hist.index)
+    if tf != "1d":
+        passo = _td(minutes=PASSO_MIN[tf])
+        for a, b in zip(idx, idx[1:]):
+            if a.date() == b.date() and b - a != passo:
+                return False
+    vol = hist["Volume"]
+    return (vol.fillna(0) <= 0).mean() <= 0.05
+
+
+def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, max_n: int = 3, ocupados: list[tuple[str, str]] | None = None) -> list[dict]:
+    """Cenários completos de um ativo: replay de n_replay candles do gráfico formados pelos candles menores reais (cada pregão começa um trecho),
+    com os n_analise candles do gráfico imediatamente anteriores como histórico. Do mais recente para trás, sem sobrepor os já guardados."""
+    from datetime import timedelta as _td
     sp = _spec(formato)
-    cfg = TB.TIMEFRAMES[sp["tf"]]
-    n = sp["n_analise"] + sp["n_replay"]
-    passo = timedelta(minutes=cfg["passo_min"])
-    idx = list(df.index)
-    if len(idx) < n:
-        return []
-    intraday = cfg["passo_min"] < 1440
-    bom = [not (intraday and idx[k].date() == idx[k + 1].date() and idx[k + 1] - idx[k] != passo) for k in range(len(idx) - 1)]
-    cand = []
-    for i in range(0, len(idx) - n + 1):
-        if not all(bom[i:i + n - 1]):
+    tf, sub_tf, nr, na = sp["tf"], sp["sub"], sp["n_replay"], sp["n_analise"]
+    grupos = _velas_completas(df_sub, tf, sub_tf)
+    ocup = [(a, b) for a, b in (ocupados or [])]
+    out = []
+    inicios = [k for k, g in enumerate(grupos) if g and (k == 0 or not grupos[k - 1] or grupos[k - 1][0].date() != g[0].date())]
+    for k in reversed(inicios):                                     # cada trecho começa na abertura de um pregão
+        bloco = grupos[k:k + nr]
+        if len(bloco) < nr or any(g is None for g in bloco):
             continue
-        if (idx[i + n - 1] - idx[i]) > timedelta(days=MAX_DIAS_CORRIDA[formato]):
+        if tf != "1d" and any((b[0] - a[0]) != _td(minutes=PASSO_MIN[tf]) and a[0].date() == b[0].date() for a, b in zip(bloco, bloco[1:])):
+            continue                                                # pulou um candle do gráfico dentro do pregão
+        de, ate = bloco[0][0].isoformat(timespec="minutes"), bloco[-1][0].isoformat(timespec="minutes")
+        if any(not (ate < a or de > b) for a, b in ocup):
+            continue                                                # sobrepõe um trecho já guardado (ou já escolhido agora)
+        hist = df_vela[df_vela.index < bloco[0][0]].tail(na)
+        if len(hist) < na or not _hist_ok(hist, tf):
             continue
-        vol = df["Volume"].iloc[i:i + n]
-        if (vol.fillna(0) <= 0).mean() > 0.05:
+        if (bloco[0][0] - hist.index[0]) > _td(days=MAX_DIAS_HIST[formato] + nr * (1 if tf == "1d" else 0)):
             continue
-        cand.append((i, i + n))
-    escolhidas, ult = [], None
-    for i, j in cand[::-1]:                                   # do mais recente para trás, sem sobreposição
-        if ult is None or i + n <= ult:
-            escolhidas.append((i, j))
-            ult = i
-        if len(escolhidas) >= max_n:
+        if (bloco[0][0] - hist.index[-1]) > _td(days=5):            # histórico encostado no replay (no máximo um feriado prolongado)
+            continue
+        poss = [p for _ch, ps in bloco for p in ps]
+        rep = df_sub.iloc[poss]
+        if (rep["Volume"].fillna(0) <= 0).mean() > 0.05:
+            continue
+        def _k(t, r):
+            return {"t": t.isoformat(timespec="minutes"), "o": round(float(r.Open), 4), "h": round(float(r.High), 4), "l": round(float(r.Low), 4),
+                    "c": round(float(r.Close), 4), "v": float(r.Volume if r.Volume == r.Volume else 0.0)}
+        cand = [_k(t, r) for t, r in hist.iterrows()] + [_k(t, r) for t, r in rep.iterrows()]
+        grupo = [n for n, (_ch, ps) in enumerate(bloco) for _ in ps]
+        c = {"id": f"{ticker}-{tf}-{de.replace('-', '').replace(':', '').replace('T', '')}-d{formato}", "ticker": ticker, "nome": ticker, "tf": tf,
+             "corrida": formato, "sub": sub_tf, "fonte": FONTE_REAL, "demo": False, "preparado_em": agora_iso, "n_analise": na, "candles": cand,
+             "grupo": grupo, "velas_t": [g[0].isoformat(timespec="minutes") for g in bloco]}
+        if not TB.validar_cenario(c)[0]:
+            continue
+        out.append(c)
+        ocup.append((de, ate))
+        if len(out) >= max_n:
             break
-    return escolhidas
-
-
-def cenario_corrida_de_df(df, i: int, j: int, ticker: str, formato: str, agora_iso: str) -> dict:
-    sp = _spec(formato)
-    sub = df.iloc[i:j]
-    cand = [{"t": t.isoformat(timespec="minutes"), "o": round(float(r.Open), 4), "h": round(float(r.High), 4), "l": round(float(r.Low), 4),
-             "c": round(float(r.Close), 4), "v": float(r.Volume)} for t, r in sub.iterrows()]
-    return {"id": f"{ticker}-{sp['tf']}-{cand[0]['t'].replace('-', '').replace(':', '').replace('T', '')}-c{formato}", "ticker": ticker, "nome": ticker,
-            "tf": sp["tf"], "corrida": formato, "fonte": FONTE_REAL, "demo": False, "preparado_em": agora_iso, "n_analise": sp["n_analise"], "candles": cand}
+    return out
 
 
 def preparar_corrida(formato: str, baixar, agora_iso: str, ativos=ATIVOS, por_ativo: int = 3, banco=None) -> dict:
-    """Baixa o histórico de cada ativo UMA vez no tempo gráfico do formato, valida e guarda os cenários novos. `baixar(codigo, periodo, intervalo_yahoo)`."""
+    """Baixa, de cada ativo, o tempo gráfico da partida (histórico) e os candles menores (replay), monta os trechos completos e guarda os novos.
+    `baixar(codigo, periodo, intervalo_yahoo)` devolve {'df'} ou {'erro'}. Rodar todo dia faz a biblioteca crescer (os dados antigos ficam guardados)."""
     import analise_tecnica as AT
     sp = _spec(formato)
-    tf = sp["tf"]
-    atuais = {c["id"]: c for c in listar_corrida(formato, banco)}
-    rel = {"novos": 0, "total": 0, "falhas": {}}
-    for cod in ativos:
-        try:
-            r = baixar(cod, PERIODO_CORRIDA[tf], INTERVALO_YAHOO[tf])
-        except Exception as e:
-            rel["falhas"][cod] = f"erro de conexão ({e.__class__.__name__})"
-            continue
+    tf, sub_tf = sp["tf"], sp["sub"]
+    guardados = listar_corrida(formato, banco)
+    rel = {"novos": 0, "total": len(guardados), "falhas": {}}
+    novos = []
+
+    def _df(cod, t):
+        r = baixar(cod, PERIODO_CORRIDA[t], INTERVALO_YAHOO[t])
         if not r or r.get("erro") or r.get("df") is None:
-            rel["falhas"][cod] = str((r or {}).get("erro") or "sem dados")
-            continue
+            raise ValueError(str((r or {}).get("erro") or "sem dados"))
         df, info = AT.limpar_ohlcv(r["df"])
         if not info.get("tem_ohlc") or "Volume" not in df.columns:
-            rel["falhas"][cod] = "histórico sem OHLC/volume completos"
+            raise ValueError("histórico sem OHLC/volume completos")
+        return df
+    for cod in ativos:
+        try:
+            dv, ds = _df(cod, tf), _df(cod, sub_tf)
+        except Exception as e:
+            rel["falhas"][cod] = str(e)[:120] or e.__class__.__name__
             continue
-        achou = 0
-        for i, j in janelas_corrida(df, formato, por_ativo):
-            c = cenario_corrida_de_df(df, i, j, cod, formato, agora_iso)
-            if TB.validar_cenario(c)[0] and c["id"] not in atuais:
-                atuais[c["id"]] = c
-                rel["novos"] += 1
-            achou += 1
-        if not achou:
-            rel["falhas"][cod] = "nenhum trecho completo (faltam candles no período gratuito)"
-    rel["total"] = salvar_corrida(formato, list(atuais.values()), banco)
+        ocup = [(x["de"], x["ate"]) for x in guardados if x.get("ticker") == cod]
+        cs = montar_corridas(dv, ds, formato, cod, agora_iso, por_ativo, ocup)
+        if not cs:
+            rel["falhas"][cod] = "nenhum trecho novo completo (faltam candles menores no período gratuito)"
+        novos += cs
+    rel["novos"] = len(novos)
+    rel["total"] = salvar_corrida(formato, novos, banco) if novos else len(guardados)
     return rel
 
 
 def demo_corrida(formato: str, semente: int) -> dict:
-    """Cenário SIMULADO da partida corrida (sempre rotulado como demonstração)."""
+    """Cenário SIMULADO da partida corrida (sempre rotulado como demonstração). Só para testes e para o administrador: partida de verdade
+    nunca usa gráfico simulado. Mesmo formato dos reais: histórico + passos menores agrupados nos candles do gráfico."""
     sp = _spec(formato)
-    cfg = TB.TIMEFRAMES[sp["tf"]]
+    tf, k = sp["tf"], sp["k"]
     rng = random.Random(semente)
-    n = sp["n_analise"] + sp["n_replay"]
     p = 20.0 + rng.random() * 30
-    base_vol = {"5m": 0.0018, "1h": 0.004, "1d": 0.014}[sp["tf"]]
-    vol = base_vol
-    t = datetime(2024, 3, 4, 10, 0)
-    cand = []
-    for k in range(n):
-        vol = max(base_vol / 2, min(base_vol * 2.5, 0.9 * vol + 0.1 * base_vol + 0.3 * base_vol * rng.random()))
-        drift = 0.15 * base_vol * math.sin(k / 23.0 + semente)
-        o = p
-        c = max(1.0, o * (1 + drift + rng.gauss(0, vol)))
+    base_vol = {"15m": 0.003, "1h": 0.004, "1d": 0.014}[tf]
+
+    def vela(o, vol):
+        c = max(1.0, o * (1 + rng.gauss(0, vol)))
         h = max(o, c) * (1 + abs(rng.gauss(0, vol / 2)))
         l = min(o, c) * (1 - abs(rng.gauss(0, vol / 2)))
-        cand.append({"t": t.isoformat(timespec="minutes"), "o": round(o, 2), "h": round(h, 2), "l": round(l, 2), "c": round(c, 2),
-                     "v": float(int(80000 + rng.random() * 220000))})
-        p = c
-        if cfg["passo_min"] >= 1440:
+        return round(o, 2), round(h, 2), round(l, 2), round(c, 2)
+    t = datetime(2024, 3, 4, 10, 0)
+    passo = timedelta(minutes=TB.TIMEFRAMES[tf]["passo_min"]) if tf != "1d" else timedelta(days=1)
+
+    def prox(t):
+        if tf == "1d":
             t += timedelta(days=1)
-            while t.weekday() >= 5:
-                t += timedelta(days=1)
         else:
-            t += timedelta(minutes=cfg["passo_min"])
-            if t.hour >= 17 and (t.hour > 17 or t.minute > 55):
+            t += passo
+            if t.hour >= 17:
                 t = (t + timedelta(days=1)).replace(hour=10, minute=0)
-                while t.weekday() >= 5:
-                    t += timedelta(days=1)
-    return {"id": f"DEMO-{sp['tf']}-{semente}-c{formato}", "ticker": "DEMO3", "nome": "Cenário simulado", "tf": sp["tf"], "corrida": formato, "demo": True,
-            "fonte": "Dados SIMULADOS (modo demonstração)", "n_analise": sp["n_analise"], "candles": cand}
+        while t.weekday() >= 5:
+            t += timedelta(days=1)
+        return t
+    cand = []
+    for _ in range(sp["n_analise"]):
+        o, h, l, c = vela(p, base_vol)
+        cand.append({"t": t.isoformat(timespec="minutes"), "o": o, "h": h, "l": l, "c": c, "v": float(int(80000 + rng.random() * 220000))})
+        p, t = c, prox(t)
+    grupo, velas_t = [], []
+    sub_min = TB.TIMEFRAMES.get(sp["sub"], {}).get("passo_min", 5 if sp["sub"] == "5m" else 60)
+    for g in range(sp["n_replay"]):
+        velas_t.append(t.isoformat(timespec="minutes"))
+        ts = t.replace(hour=10) if tf == "1d" else t
+        for _ in range(k):
+            o, h, l, c = vela(p, base_vol / math.sqrt(k))
+            cand.append({"t": ts.isoformat(timespec="minutes"), "o": o, "h": h, "l": l, "c": c, "v": float(int(8000 + rng.random() * 22000))})
+            grupo.append(g)
+            p, ts = c, ts + timedelta(minutes=sub_min)
+        t = prox(t)
+    return {"id": f"DEMO-{tf}-{semente}-d{formato}", "ticker": "DEMO3", "nome": "Cenário simulado", "tf": tf, "corrida": formato, "sub": sp["sub"], "demo": True,
+            "fonte": "Dados SIMULADOS (modo demonstração)", "n_analise": sp["n_analise"], "candles": cand, "grupo": grupo, "velas_t": velas_t}
 
 
-def escolher_corrida(formato: str, semente: int, banco=None) -> dict:
-    reais = listar_corrida(formato, banco)
-    return random.Random(semente).choice(reais) if reais else demo_corrida(formato, semente)
+def escolher_corrida(formato: str, semente: int, banco=None, permitir_demo: bool = False) -> dict:
+    """Sorteia um cenário REAL guardado. Sem nenhum, a partida não começa (só testes/administração pedem o simulado com `permitir_demo`)."""
+    itens = listar_corrida(formato, banco)
+    rng = random.Random(semente)
+    for x in rng.sample(itens, len(itens)):
+        c = carregar_corrida(formato, x["id"], banco)
+        if c:
+            return c
+    if permitir_demo:
+        return demo_corrida(formato, semente)
+    raise SemCenarios("Os gráficos reais desta duração ainda estão sendo preparados. Tente outra duração ou volte mais tarde.")
+
+
+class SemCenarios(TB.ErroTrader):
+    """Nenhum gráfico real guardado para a duração escolhida."""
 
 
 def referencia_corrida(c: dict, semente: int) -> dict:

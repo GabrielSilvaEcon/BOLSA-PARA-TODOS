@@ -13,12 +13,14 @@ def partida(formato="rapida", cap=10_000.0, pat=500_000.0):
 
 
 def test_tres_duracoes_com_os_tempos_graficos_pedidos_e_historico_3x():
-    assert {f: s["tf"] for f, s in TB.CORRIDAS.items()} == {"rapida": "5m", "intermediaria": "1h", "longa": "1d"}
+    assert {f: s["tf"] for f, s in TB.CORRIDAS.items()} == {"rapida": "15m", "intermediaria": "1h", "longa": "1d"}
+    assert {f: s["sub"] for f, s in TB.CORRIDAS.items()} == {"rapida": "5m", "intermediaria": "5m", "longa": "1h"}
     assert all(s["n_analise"] >= 300 for s in TB.CORRIDAS.values())          # 3x o histórico de antes (100 a 120 candles)
     for f in TB.CORRIDAS:
         p, cen = partida(f)
         cfg = TB.cfg_de(p)
-        assert cfg["rodadas"] == 1 and cfg["qtd"] and cfg["n_replay"] == TB.CORRIDAS[f]["n_replay"]
+        assert cfg["rodadas"] == 1 and cfg["qtd"] and cfg["n_velas"] == TB.CORRIDAS[f]["n_replay"] and cfg["n_replay"] == len(cen["grupo"])
+        assert cfg["t_replay_s"] == TB.CORRIDAS[f]["n_replay"] * TB.SEG_POR_CANDLE
 
 
 def test_partida_inteira_com_quantidade_e_resultado_em_dinheiro():
@@ -54,9 +56,10 @@ def test_cenario_de_outra_duracao_e_recusado():
         TB.nova_partida(cen, "5m", ["eu@x.com"], 0.0, corrida="rapida")
 
 
-def test_sala_online_corrida_capital_5_por_cento_do_caixa_e_resultado_volta_para_a_carteira():
+def test_sala_online_corrida_capital_5_por_cento_do_caixa_e_resultado_volta_para_a_carteira(monkeypatch):
     import trader_online_dados as OL
     from test_trader_mesa import EMAILS, TS, _contas, banco_isolado, livro
+    monkeypatch.setattr(TD, "escolher_corrida", lambda f, s, banco=None, permitir_demo=False: TD.demo_corrida(f, s))
     with banco_isolado():
         _contas()
         with livro(pat=300_000.0, caixa=200_000.0) as lanc:
@@ -64,7 +67,7 @@ def test_sala_online_corrida_capital_5_por_cento_do_caixa_e_resultado_volta_para
             OL.entrar_na_sala(EMAILS[1], r["codigo"], TS + 1)
             OL.iniciar(r["id"], EMAILS[0], TS + 2)
             v = OL.ler(r["id"], EMAILS[0], TS + 3)["v"]
-            assert (v["motor"], v["formato"], v["rodadas"], v["tf"]) == (2, "rapida", 1, "5m") and v["ticker"] == "Ativo oculto"
+            assert (v["motor"], v["formato"], v["rodadas"], v["tf"]) == (2, "rapida", 1, "15m") and v["ticker"] == "Ativo oculto"
             d = OL._row(r["id"])["dados"]
             assert d["p"]["stakes"]["1:" + EMAILS[0]]["stake"] == 10_000.0            # 5% de T$ 200.000 de caixa livre
     with banco_isolado():
@@ -81,7 +84,7 @@ def test_resultado_da_partida_vira_um_lancamento_na_carteira():
     p["apostas"] = {"eu@x.com": {"stake": 10_000.0, "pat": 500_000.0, "conta": "c1"}}
     TB.salvar_estrategia(p, "eu@x.com", {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, 1001.0)
     TB.iniciar_replay(p, "eu@x.com", 1002.0)
-    TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 300}, 1002.0 + 0.1)
+    TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 200}, 1002.0 + 0.1)
     TB.avancar(p, 1002.0 + TB.cfg_de(p)["t_replay_s"] + 1, TD.por_id([cen]))
     pnl = p["resultados"]["1:eu@x.com"]["fin"]["pnl"]
     with livro() as lanc:
@@ -119,8 +122,7 @@ def test_sem_operar_0_ponto_mas_a_leitura_tem_nota_de_qualidade():
 def test_lucro_pesa_mais_que_a_qualidade():
     # mesma qualidade, resultados opostos: quem lucrou fica à frente mesmo com nota de qualidade menor
     import trader_battle as T
-    rep = TD.demo_corrida("rapida", 11)
-    cen_r = {**rep, "candles": rep["candles"]}
+    cen_r = TB.cenario_em_velas(TD.demo_corrida("rapida", 11))
     est = {"direcao": "alta", "tipo": "continuacao", "confianca": 1}
     ganha = [{"direcao": "alta", "entrada": 10.0, "saida": 10.4, "i_exc": 0, "i_saida": 3, "ret": 0.02, "com_stop": False}]
     perde = [{"direcao": "alta", "entrada": 10.0, "saida": 9.6, "i_exc": 0, "i_saida": 3, "ret": -0.02, "com_stop": True}]

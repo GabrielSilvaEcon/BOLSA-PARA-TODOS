@@ -361,6 +361,9 @@ function aplicaOp(a){const ini=a.inicial||{};
   S.lines={entrada:ini.entrada??null,stop:ini.stop??null,alvo:ini.alvo??null}}
 function cresce(a){   // candles novos já liberados pelo servidor entram no MESMO gráfico, com a animação suave de sempre
   const tem=S.cands.length+S.fila.length;
+  if(tem>0&&a.candles.length>=tem){                                  // o candle que está se formando (o último recebido) cresce no lugar
+    const i=tem-1,nv=a.candles[i],naFila=i>=S.cands.length,lista=naFila?S.fila:S.cands,j=naFila?i-S.cands.length:i,v=lista[j];
+    if(v&&nv&&(v.o!==nv.o||v.h!==nv.h||v.l!==nv.l||v.c!==nv.c||v.v!==nv.v)){lista[j]={...nv};if(!naFila){cache();kick()}}}
   if(a.candles.length>tem){const novos=a.candles.slice(tem);
     if(S.modo!=="analise"&&S.cands.length>0){                       // candles já liberados pelo servidor entram um a um (fila), no ritmo da chegada
       S.fStep=Math.max(70,Math.min(420,950/Math.max(1,S.fila.length+novos.length)));S.fila.push(...novos);S.fT=Math.min(S.fT||0,performance.now());kick()}

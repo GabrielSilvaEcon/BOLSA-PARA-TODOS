@@ -301,11 +301,12 @@ def _corrida() -> str:
 def _iniciar() -> None:
     try:
         fmt = _corrida()
-        cen = TD.escolher_corrida(fmt, int(_agora()) % 100000)
         jog = _jogador()
         if not jog:                                              # o app só abre com conta; sem ela não há partida
             _ss()["tb_erro"] = "Entre na sua conta para jogar."
             return
+        # só gráficos reais; o simulado fica para o administrador testar (sempre com o selo SIMULADO)
+        cen = TD.escolher_corrida(fmt, int(_agora()) % 100000, permitir_demo=_admin())
         try:                                                     # capital da partida: 5% do saldo disponível (caixa livre) da Carteira
             apostas = {jog: TCA.capital_corrida(jog, (_conta() or {}).get("id"))}
         except TCA.SemSaldo as e:
@@ -318,6 +319,14 @@ def _iniciar() -> None:
         _ss()["tb_erro"] = str(e)
     except Exception:
         _ss()["tb_erro"] = "Não consegui carregar os cenários agora. Tente de novo em instantes."
+
+
+def _admin() -> bool:
+    try:
+        import usuarios
+        return bool(usuarios.pode("sistema.dados"))
+    except Exception:
+        return False
 
 
 def _sair() -> None:
@@ -951,9 +960,10 @@ def _central() -> None:
                       type="primary" if f == atual else "secondary", on_click=_escolher_corrida, args=(f,))
     st.markdown("<style>" + "".join(f"{_P} .st-key-tb_fmtb_{f} button p::after{{content:'Gráfico de {TB.TIMEFRAMES[TB.CORRIDAS[f]['tf']]['nome']}\\A~{_min_corrida(f)} min'}}"
                                     for f in TB.CORRIDAS) + "</style>", unsafe_allow_html=True)
-    if _n_reais_corrida(atual) < TB.MIN_CENARIOS_REAIS:
-        st.markdown(f"<div class='tb-demo2'><div><b><span>i</span>Modo Demonstração</b><p>Ainda não há gráficos reais preparados para esta duração. "
-                    f"Os gráficos serão simulados e não são cotações reais.</p></div><img src='{MN.uri('apontando')}' alt=''></div>", unsafe_allow_html=True)
+    if _n_reais_corrida(atual) < 1:
+        extra = " Como administrador, você pode testar com um gráfico simulado (marcado como SIMULADO)." if _admin() else " Tente outra duração ou volte mais tarde."
+        st.markdown(f"<div class='tb-demo2'><div><b><span>i</span>Gráficos em preparação</b><p>Os gráficos reais desta duração ainda estão sendo preparados.{extra}</p></div>"
+                    f"<img src='{MN.uri('apontando')}' alt=''></div>", unsafe_allow_html=True)
     em = _email_online()
     try:
         ativa = TOD.partida_ativa(em) if em else None
@@ -977,20 +987,22 @@ def _central() -> None:
         pass
     st.markdown("<div class='tb-sobre'><div class='h'>⭐ Sobre o Trade Battle</div><div class='g'>"
                 "<div><i>👥</i><b>2-4</b><small>jogadores</small></div>"
-                "<div><i>📊</i><b>5m · 1h · 1D</b><small>gráficos reais</small></div>"
+                "<div><i>📊</i><b>15m · 1h · 1D</b><small>gráficos reais</small></div>"
                 "<div><i>💰</i><b>5%</b><small>do saldo disponível</small></div>"
                 "<div><i>🏆</i><b>XP</b><small>por colocação</small></div></div></div>", unsafe_allow_html=True)
     if _ss().get("tb_erro"):
         st.markdown(f"<div class='tb-er'>{_e(_ss().pop('tb_erro'))}</div>", unsafe_allow_html=True)
     with st.expander("Como funciona", icon=":material/help:"):
         st.markdown("<div class='tb-aviso'>Você recebe o gráfico de uma ação real da B3, parado num ponto do passado, sem o nome do ativo nem a data "
-                    "(eles aparecem só no fim, para ninguém pesquisar o que aconteceu depois). Escolha a duração: <b>Rápida</b> usa candles de 5 minutos, "
-                    "<b>Intermediária</b> de 1 hora e <b>Longa</b> de 1 dia. Você tem 120 s para analisar e registrar a sua leitura (direção, tipo e confiança); "
-                    "depois o gráfico anda candle a candle numa partida corrida, sem rodadas, e você opera ao vivo como num home broker: compra e vende a quantidade "
+                    "(eles aparecem só no fim, para ninguém pesquisar o que aconteceu depois). Escolha a duração: <b>Rápida</b> usa candles de 15 minutos, "
+                    "<b>Intermediária</b> de 1 hora e <b>Longa</b> de 1 dia. Cada candle se forma na sua frente com os candles menores reais daquele dia "
+                    "(5 minutos, ou 1 hora no gráfico diário): dá para entrar no meio do candle, no preço que estava valendo. Você tem 120 s para analisar e registrar a sua leitura (direção, tipo e confiança); "
+                    "depois o gráfico anda numa partida corrida, sem rodadas, e você opera ao vivo como num home broker: compra e vende a quantidade "
                     "de ações que quiser, aumenta ou reduz a posição, usa ordem a mercado, limite ou stop de entrada, e coloca stop e alvo. "
                     "<b>Capital:</b> a partida usa 5% do saldo disponível (caixa livre) da sua Carteira. O valor aplicado ao mesmo tempo nunca passa disso: "
                     "chegou ao teto, encerre ou reduza a posição para entrar de novo. A perda máxima é esse capital. "
-                    "<b>Execução honesta:</b> a ordem a mercado executa na abertura do próximo candle; stop e alvo executam no preço ou, se o preço abrir além dele, na abertura; "
+                    "<b>Execução honesta:</b> a ordem a mercado executa no próximo preço real (a abertura do candle menor seguinte); stop e alvo são conferidos na ordem em que os preços "
+                    "aconteceram e executam no preço ou, se o preço saltar além dele, no preço do salto; "
                     "cada execução paga a taxa da B3 (cerca de 0,03%). No fim, o resultado (lucro ou prejuízo) volta para a sua Carteira. "
                     f"Você ganha XP pela colocação e pela pontuação positiva (até {TB.XP_PARTIDAS_DIA} partidas por dia). Jogo educativo: nenhuma ordem real, nada de recomendação de investimento. "
                     "No modo individual a partida fica só neste navegador; em sala com amigos (2 a 4 jogadores) ela fica guardada no servidor.</div>", unsafe_allow_html=True)
@@ -1005,7 +1017,8 @@ def _central() -> None:
             for f in TB.CORRIDAS:
                 st.button(f"Preparar {TB.ROTULO_CORRIDA[f]} (gráfico de {TB.TIMEFRAMES[TB.CORRIDAS[f]['tf']]['nome']}) · {_n_reais_corrida(f)} guardados",
                           key=f"tb_prep_c_{f}", on_click=_preparar_corrida, args=(f,), width="stretch")
-            st.caption("O de 5 minutos só existe para os últimos 60 dias (limite gratuito): prepare de novo de vez em quando para ter gráficos recentes.")
+            st.caption("Os candles de 5 minutos só existem para os últimos 60 dias (limite gratuito). O workflow diário (trader_cenarios_job.py) prepara sozinho "
+                       "depois do pregão e guarda tudo no banco: a biblioteca cresce todo dia.")
             rel = _ss().get("tb_prep")
             if rel:
                 if rel.get("erro"):

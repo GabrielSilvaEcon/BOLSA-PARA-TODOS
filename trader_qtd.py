@@ -6,7 +6,7 @@ Regras (combinadas com o dono do app, nov/2026):
    capital da partida mais o resultado já realizado. Dá para aumentar a posição várias vezes até o teto; encerrar ou reduzir libera o capital;
  · vender com posição comprada reduz ou zera a posição (não inverte: para virar vendido, encerre e venda de novo). Sem posição, vender abre
    uma venda a descoberto com o mesmo teto (1x, sem alavancagem);
- · execução honesta: a ordem a mercado executa na ABERTURA do próximo candle (nunca num preço que já passou); stop e alvo executam no nível
+ · execução honesta: a ordem a mercado executa na ABERTURA do próximo passo (o próximo candle menor real; nunca num preço que já passou); stop e alvo no nível
    ou, se o candle abrir além dele (gap), na abertura; a ordem limite só executa se o preço chegar nela;
  · taxa da B3 sobre cada execução (compra e venda);
  · a perda da partida nunca passa do capital: se o prejuízo (realizado + aberto) chegar a ele, a posição é encerrada e não há mais entradas.
