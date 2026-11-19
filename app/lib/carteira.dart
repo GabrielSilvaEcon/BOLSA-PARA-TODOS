@@ -38,7 +38,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
     }
   }
 
-  /// 1234.5 vira "R$ 1.234,50". Sem valor, mostra um traço.
+  /// 1234.5 vira "T$ 1.234,50" (dinheiro virtual do jogo). Sem valor, mostra um traço.
   String _moeda(Object? v) {
     if (v is! num) return '—';
     final neg = v < 0;
@@ -50,7 +50,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
       if (i > 0 && (inteiro.length - i) % 3 == 0) buf.write('.');
       buf.write(inteiro[i]);
     }
-    return '${neg ? '-' : ''}R\$ $buf,$centavos';
+    return '${neg ? '-' : ''}T\$ $buf,$centavos';
   }
 
   @override
