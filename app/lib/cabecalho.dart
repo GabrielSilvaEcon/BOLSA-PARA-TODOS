@@ -120,16 +120,22 @@ class _CabecalhoState extends State<Cabecalho> {
   /// Avatar equipado (arquivo em assets/avatares). Sem ele, ou sem arquivo, mostra o mascote.
   Widget _avatar(Object? id) {
     final nome = id is String && id.isNotEmpty ? id : null;
-    return ClipOval(
-      child: SizedBox(
-        width: 34,
-        height: 34,
+    final mascote = Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover);
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFF1A1650),
+        border: Border.all(color: const Color(0xFF6BE58A), width: 2),
+      ),
+      child: ClipOval(
         child: nome == null
-            ? Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover)
+            ? mascote
             : Image.asset(
                 'assets/avatares/$nome.webp',
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover),
+                errorBuilder: (_, __, ___) => mascote,
               ),
       ),
     );
