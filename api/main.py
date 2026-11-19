@@ -201,7 +201,15 @@ def eu(q: Quem = Depends(quem)) -> dict:
     return {"conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
             "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar,
             "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe, "ranking": ranking,
-            "avatar_img": _avatar_img(perfil.get("avatar"))}
+            "avatar_img": _avatar_img(perfil.get("avatar")), "alertas": _alertas_nao_lidos(a)}
+
+
+def _alertas_nao_lidos(a):
+    """Quantos alertas ainda não lidos (o número do sino). None se o banco não responder."""
+    try:
+        return banco.notif_contar(a, lida=False)
+    except Exception:
+        return None
 
 
 def _avatar_img(avatar) -> str:
@@ -393,6 +401,32 @@ def carteira_ordem(body: OrdemIn, q: Quem = Depends(quem)) -> dict:
     verbo = "Compra" if lado == "C" else "Venda"
     return {"ok": True, "msg": f"{verbo} executada: {A.texto_qtd(tk, qtd)} × {A.rotulo(tk)} a R$ {px:,.2f}.".replace(",", "X").replace(".", ",").replace("X", "."),
             "px": px, "caixa": float(novo.get("caixa", 0))}
+
+
+# ------------------------------------------------------------------ alertas (o sino do cabeçalho)
+class LidasIn(BaseModel):
+    ids: list[str] = []
+
+
+@app.get("/alertas")
+def alertas(q: Quem = Depends(quem)) -> dict:
+    """Últimos alertas da pessoa (os mesmos da tela Alertas do app antigo), do mais novo para o mais antigo."""
+    try:
+        itens = banco.notif_listar(q.ator, limite=50)
+    except Exception as e:
+        _erro(e)
+    return {"itens": [{"id": n.get("id"), "titulo": n.get("titulo") or "", "texto": n.get("texto") or "", "quando": str(n.get("quando") or ""),
+                       "lida": bool(n.get("lida")), "importancia": n.get("importancia") or "", "ativo": n.get("ativo") or ""} for n in itens]}
+
+
+@app.post("/alertas/lidas")
+def alertas_lidas(body: LidasIn, q: Quem = Depends(quem)) -> dict:
+    """Marca os alertas como lidos (zera o número do sino para eles)."""
+    try:
+        n = banco.notif_marcar(q.ator, body.ids, True) if body.ids else 0
+    except Exception as e:
+        _erro(e)
+    return {"ok": True, "marcados": n}
 
 
 # ------------------------------------------------------------------ rankings (só partidas online contam)

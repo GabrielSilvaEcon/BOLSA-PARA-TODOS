@@ -119,3 +119,13 @@ def test_comecar_e_comprar_pela_api(cli, monkeypatch):
     assert cart["comecou"] is True
     assert any(p["id"] == "PETR4" and p["qtd"] == 10 for p in cart["posicoes"])
     assert cli.get("/carteira/preco", params={"ativo": "PETR4"}).json()["px"] == 10.0
+
+
+def test_alertas_lista_e_marca_lidas(cli):
+    import banco
+    assert "alertas" in cli.get("/eu").json()
+    r = cli.get("/alertas")
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json()["itens"], list)
+    r = cli.post("/alertas/lidas", json={"ids": []})
+    assert r.status_code == 200 and r.json()["marcados"] == 0

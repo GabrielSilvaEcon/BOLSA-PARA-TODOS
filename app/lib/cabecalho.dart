@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'alertas.dart';
 import 'api.dart';
 
 /// Cabeçalho do jogo, igual em todas as telas: nível (com barra de XP), Ticker Coins e posição no ranking.
@@ -124,11 +125,48 @@ class _CabecalhoState extends State<Cabecalho> {
             ),
           ),
         ),
+        const SizedBox(width: 4),
+        _sino(),
       ],
     );
   }
 
-  /// Avatar equipado (arquivo em assets/avatares). Sem ele, ou sem arquivo, mostra o mascote.
+  /// Sino com o número de alertas não lidos. Abre a tela de alertas; ao voltar, atualiza o número.
+  Widget _sino() {
+    final n = _eu?['alertas'];
+    final qtd = n is num ? n.toInt() : 0;
+    return SizedBox(
+      width: 44,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            tooltip: 'Alertas',
+            icon: const Icon(Icons.notifications, size: 30),
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AlertasTela(api: widget.api)));
+              _carregar();
+            },
+          ),
+          if (qtd > 0)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(color: const Color(0xFFE53950), borderRadius: BorderRadius.circular(10)),
+                  child: Text(qtd > 99 ? '99+' : '$qtd', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Avatar equipado (arquivo do app ou imagem enviada pelo servidor). Sem ele, mostra o mascote.
   Widget _avatar(Object? img) {
     final texto = img is String && img.isNotEmpty ? img : null;
     final mascote = Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover);
