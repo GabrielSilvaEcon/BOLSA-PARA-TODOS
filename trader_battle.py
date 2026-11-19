@@ -35,7 +35,17 @@ T_RESULTADO_S = 4                          # só no multiplayer: tempo do result
 # n_analise = histórico que a pessoa vê (dobrado: 120 e 100 candles). na_aceitos inclui o tamanho antigo (60 e 50) só para que cenários reais já
 # guardados continuem válidos; os novos sempre saem com o tamanho de n_analise, e a escolha prefere esses.
 TIMEFRAMES = {"15m": {"nome": "15 minutos", "n_analise": 120, "na_aceitos": (120, 60), "n_replay": 24, "passo_min": 15, "max_dias": 28},
-              "1h": {"nome": "1 hora", "n_analise": 100, "na_aceitos": (100, 50), "n_replay": 16, "passo_min": 60, "max_dias": 70}}
+              "1h": {"nome": "1 hora", "n_analise": 100, "na_aceitos": (100, 50), "n_replay": 16, "passo_min": 60, "max_dias": 70},
+              # partida corrida (motor 2 com quantidade livre): 5 minutos e 1 dia só existem nela
+              "5m": {"nome": "5 minutos", "n_analise": 360, "na_aceitos": (360,), "n_replay": 84, "passo_min": 5, "max_dias": 20},
+              "1d": {"nome": "1 dia", "n_analise": 300, "na_aceitos": (300,), "n_replay": 120, "passo_min": 1440, "max_dias": 900}}
+# ---- PARTIDA CORRIDA (nov/2026): sem rodadas. Uma leitura no início, histórico 3x maior e um replay longo em que se opera com quantidade livre
+# (regras em trader_qtd.py). Cada duração usa um tempo gráfico: rápida = 5 minutos, intermediária = 1 hora, longa = 1 dia.
+CORRIDAS = {"rapida": {"tf": "5m", "n_analise": 360, "n_replay": 84},           # 84 candles de 5 min = um pregão inteiro
+            "intermediaria": {"tf": "1h", "n_analise": 300, "n_replay": 70},    # 70 candles de 1 h ≈ 10 pregões
+            "longa": {"tf": "1d", "n_analise": 300, "n_replay": 120}}           # 120 candles diários ≈ 6 meses
+ROTULO_CORRIDA = {"rapida": "Rápida", "intermediaria": "Intermediária", "longa": "Longa"}
+SEG_POR_CANDLE = 2.5
 JOGADORES_MIN, JOGADORES_MAX = 1, 4          # nesta etapa joga 1; a estrutura já aceita 2 a 4
 DIRECOES = ("alta", "baixa", "lateral")
 ESTRATEGIAS = ("continuacao", "reversao", "rompimento", "aguardar")
@@ -84,7 +94,11 @@ def validar_cenario(c: dict) -> tuple[bool, str]:
         return False, "cenário incompleto"
     if not c.get("id") or not c.get("ticker"):
         return False, "sem identificação"
-    if na not in cfg["na_aceitos"] or len(cand) not in (na + RODADAS * cfg["n_replay"], na + RODADAS * N_REPLAY_MESA):
+    if c.get("corrida") is not None:
+        sp = CORRIDAS.get(c["corrida"])
+        if not sp or sp["tf"] != tf or na != sp["n_analise"] or len(cand) != na + sp["n_replay"]:
+            return False, "quantidade de candles diferente da prevista"
+    elif na not in cfg["na_aceitos"] or len(cand) not in (na + RODADAS * cfg["n_replay"], na + RODADAS * N_REPLAY_MESA):
         return False, "quantidade de candles diferente da prevista"
     ant = None
     for k in cand:
@@ -180,6 +194,28 @@ def config_mesa(formato: str) -> dict:
     return {"v": 2, "motor": MOTOR_MESA, "formato": formato, "rodadas": FORMATOS[formato], "n_replay": N_REPLAY_MESA, "t_replay_s": float(T_REPLAY_MESA_S)}
 
 
+def config_corrida(formato: str) -> dict:
+    """Partida corrida: UMA rodada longa, quantidade livre (trader_qtd) e capital de 5% do caixa livre da Carteira."""
+    import trader_qtd as TQ
+    sp = CORRIDAS.get(formato)
+    if not sp:
+        raise ErroTrader("formato de partida inválido")
+    return {"v": 3, "motor": MOTOR_MESA, "formato": formato, "rodadas": 1, "n_replay": sp["n_replay"], "t_replay_s": float(sp["n_replay"] * SEG_POR_CANDLE),
+            "qtd": True, "taxa": TQ.TAXA_B3, "pct_capital": TQ.PCT_CAPITAL}
+
+
+def qtd_de(p: dict) -> bool:
+    return bool(cfg_de(p).get("qtd"))
+
+
+CAPITAL_SEM_CONTA = 10_000.0     # partida sem conta/carteira (testes, demonstração): capital simbólico, sem efeito em dinheiro
+
+
+def capital_de(p: dict, jog: str) -> float:
+    ap = _stake(p, 1, jog)
+    return float(ap["stake"]) if ap and float(ap.get("stake") or 0) > 0 else CAPITAL_SEM_CONTA
+
+
 # ------------------------------------------------------------------ partida (estado JSON, sem candles)
 PCT_APOSTA = 0.01              # a pessoa entra com 1% do patrimônio (da Wallet Game); esse valor é o capital de cada operação
 # O limite é medido em "apostas" (retorno acumulado): 3% do patrimônio ÷ 1% por aposta = 3 apostas. Derivado das duas constantes, nunca digitado à parte.
@@ -204,7 +240,7 @@ def financeiro_rodada(r: dict, aposta: dict | None) -> dict | None:
 
 
 def nova_partida(cenario: dict, tf: str, jogadores: list[str], agora: float, pid: str | None = None, multi: bool = False,
-                 apostas: dict | None = None, formato: str | None = None) -> dict:
+                 apostas: dict | None = None, formato: str | None = None, corrida: str | None = None) -> dict:
     """`formato` (rapida/normal/longa) cria uma partida da MESA (motor 2). Sem ele nasce uma partida no motor antigo (usado só por testes e legado)."""
     if tf not in TIMEFRAMES:
         raise ErroTrader("timeframe inválido")
@@ -216,7 +252,15 @@ def nova_partida(cenario: dict, tf: str, jogadores: list[str], agora: float, pid
     p = {"id": pid or uuid.uuid4().hex[:10], "tf": tf, "jogadores": list(jogadores), "cenario": cenario["id"], "cenarios": [cenario["id"]] * RODADAS,
             "demo": bool(cenario.get("demo")), "rodada": 1, "fase": "analise", "t_fase": float(agora), "versao": 1,
             "estrategias": {}, "travadas": {}, "resultados": {}, "pontos": {j: 0.0 for j in jogadores}, "multi": bool(multi), "prontos": {}, "apostas": dict(apostas or {}), "encerradas": {}}
-    if formato is not None:
+    if corrida is not None:
+        cfg = config_corrida(corrida)
+        if cenario.get("corrida") != corrida or CORRIDAS[corrida]["tf"] != tf:
+            raise ErroTrader("o cenário não é desta duração de partida")
+        p["cfg"] = cfg
+        p["cenarios"] = [cenario["id"]]
+        p["acoes"], p["seq_acao"], p["pausas"] = [], 0, []
+        p["stakes"] = {_chave(1, j): {"stake": float(ap["stake"]), "pat": float(ap["pat"])} for j, ap in (apostas or {}).items()}
+    elif formato is not None:
         cfg = config_mesa(formato)
         if capacidade_rodadas(cenario) < cfg["rodadas"]:
             raise ErroTrader(f"o cenário não comporta {cfg['rodadas']} rodadas de {N_REPLAY_MESA} candles")
@@ -647,7 +691,9 @@ def visao(p: dict, cenario: dict, agora: float, jog: str) -> dict:
         visiveis = cand[:ini + nr]
     k = _chave(p["rodada"], jog)
     fim = p["fase"] in ("resultado", "fim")
-    v = {"ticker": cenario["ticker"], "nome": cenario.get("nome") or cenario["ticker"], "tf": cenario["tf"], "demo": bool(cenario.get("demo")),
+    oculto = qtd_de(p) and p["fase"] != "fim"                 # corrida: o ativo e a data só aparecem no fim (ninguém pesquisa o futuro fora do jogo)
+    v = {"ticker": "Ativo oculto" if oculto else cenario["ticker"], "nome": "Ativo oculto" if oculto else (cenario.get("nome") or cenario["ticker"]),
+         "oculto": oculto, "revelado": revelacao(p, cenario) if qtd_de(p) and p["fase"] == "fim" else None, "tf": cenario["tf"], "demo": bool(cenario.get("demo")),
          "fonte": cenario.get("fonte", ""), "rodada": p["rodada"], "rodadas": cfg["rodadas"], "fase": p["fase"], "segundos": segundos_restantes(p, agora),
          "n_analise": ini, "candles": [dict(c) for c in visiveis], "revelados": max(0, len(visiveis) - ini),
          "total_replay": nr, "motor": motor_de(p), "formato": cfg.get("formato"), "pausada": pausada(p),
@@ -674,7 +720,7 @@ def _sim_rodada(p: dict, cenario: dict, agora: float, jog: str):
     nr, r = _nrp(p), p["rodada"]
     ini = inicio_rodada(cenario, r, nr)
     n = n_revelados(p, agora)
-    st = simular_jogador(cenario["candles"][ini:ini + n], acoes_da_rodada(p, r, jog), cenario["candles"][ini - 1]["c"], p["fase"] != "replay")
+    st = _sim_jog(p, jog, cenario["candles"][ini:ini + n], acoes_da_rodada(p, r, jog), cenario["candles"][ini - 1]["c"], p["fase"] != "replay")
     return st, ini, n
 
 
@@ -699,6 +745,9 @@ def _adversarios_mesa(p: dict, cenario: dict, agora: float, jog: str) -> list[di
             st = r[0]
             pos = st["pos"]
             aberto = _lado(pos["direcao"]) * (st["preco_atual"] - pos["entrada"]) / pos["entrada"] if pos else 0.0
+            if qtd_de(p):
+                import trader_qtd as TQ
+                aberto = TQ.aberto(st, st["preco_atual"]) / st["cap"] if st["cap"] else 0.0
             # resultado da rodada (realizado + aberto, em % da aposta), calculado só com o que já é público: entradas e saídas executadas
             out.append({"rotulo": f"Jogador {n}", "ops": _ops_publicas(st, r[1]), "total_pct": round((sum(t["ret"] for t in st["trades"]) + aberto) * 100, 3)})
     return out
@@ -711,6 +760,10 @@ def _visao_mesa(p: dict, cenario: dict, agora: float, jog: str) -> dict | None:
         return None
     st, ini, n = r
     ap = _stake(p, p["rodada"], jog)
+    if qtd_de(p):
+        import trader_qtd as TQ
+        return TQ.visao(st, ini, p["fase"] == "replay" and not pausada(p), n, _nrp(p), len(acoes_da_rodada(p, p["rodada"], jog)), MAX_ACOES_RODADA,
+                        float(ap["pat"]) if ap else None)
     stake = float(ap["stake"]) if ap else None
 
     def val(x):
@@ -742,7 +795,7 @@ def _visao_mesa(p: dict, cenario: dict, agora: float, jog: str) -> dict | None:
             "pode_gerir": bool(ativo and (pos or pend))}
 
 
-_ROT_MOTIVO = {"stop": "no stop", "limite": "no limite de perda da rodada", "alvo": "no alvo", "manual": "encerrada por você", "fim": "no fim da rodada"}
+_ROT_MOTIVO = {"stop": "no stop", "limite": "no limite de perda", "alvo": "no alvo", "manual": "encerrada por você", "fim": "no fim da rodada"}
 
 
 def explicar_mesa(r: dict) -> list[tuple[str, str]]:
@@ -761,8 +814,15 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
         return linhas
     for t in ops:
         lado = "Compra" if t["direcao"] == "alta" else "Venda"
+        if "q" in t:                                        # partida corrida: quantidade e resultado em T$ (com as taxas)
+            val = f"{abs(t['pnl']):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            linhas.append((f"Operação {t['n']}", f"{lado} de {t['q']} ações, preço médio {t['entrada']:.2f} → {t['saida']:.2f} {_ROT_MOTIVO.get(t['motivo'], '')}: "
+                                                 f"{'+' if t['pnl'] >= 0 else '−'}T$ {val} ({t['ret'] * 100:+.2f}% do capital)."))
+            continue
         linhas.append((f"Operação {t['n']}", f"{lado} {t['entrada']:.2f} → {t['saida']:.2f} {_ROT_MOTIVO.get(t['motivo'], '')}: {t['ret'] * 100:+.2f}%."))
-    if r.get("limite_atingido"):
+    if r.get("limite_atingido") and r.get("qtd"):
+        linhas.append(("Limite de perda", "A perda chegou ao capital da partida (5% do saldo disponível): a posição foi encerrada e não houve novas entradas."))
+    elif r.get("limite_atingido"):
         linhas.append(("Limite de perda", f"A perda acumulada chegou a {LIMITE_PERDA_PCT_PAT * 100:.0f}% do patrimônio: posições encerradas, ordens pendentes canceladas e novas entradas bloqueadas até a próxima rodada. O prejuízo real foi mantido."))
     q = pt["q"]
     linhas.append(("Resultado", f"Soma das operações: {pt['x'] * 100:+.2f}% (unidade da rodada: {pt['unidade'] * 100:.2f}%) → {pt['base']:+.1f} pontos."))
@@ -821,6 +881,19 @@ def placar_rodada(p: dict, jog: str) -> list[dict]:
         if res:
             out.append({"rotulo": rot[j], "voce": j == jog, "pts": round(float(res["pontos"]), 1), "ret_pct": retorno_pct(res)})
     return out
+
+
+def revelacao(p: dict, cenario: dict) -> dict:
+    """Fim da partida corrida: qual era o ativo e de quando eram os candles do replay (datas reais)."""
+    nr = _nrp(p)
+    ini = inicio_rodada(cenario, 1, nr)
+    rep = cenario["candles"][ini:ini + nr]
+
+    def br(t):
+        t = str(t)
+        return f"{t[8:10]}/{t[5:7]}/{t[:4]}"
+    return {"ticker": cenario["ticker"], "nome": cenario.get("nome") or cenario["ticker"], "de": br(rep[0]["t"]) if rep else "", "ate": br(rep[-1]["t"]) if rep else "",
+            "tf_nome": TIMEFRAMES[cenario["tf"]]["nome"], "demo": bool(cenario.get("demo"))}
 
 
 def resumo_final(p: dict, jog: str) -> dict:
@@ -1180,6 +1253,14 @@ def simular_jogador(candles: list[dict], acoes: list[dict], preco_ref: float, fi
     return st
 
 
+def _sim_jog(p: dict, jog: str, candles: list[dict], acoes: list[dict], ref: float, final: bool) -> dict:
+    """Simulação de um jogador na partida: quantidade livre (corrida) ou aposta fixa (mesa de rodadas)."""
+    if qtd_de(p):
+        import trader_qtd as TQ
+        return TQ.simular(candles, acoes, ref, capital_de(p, jog), final, float(cfg_de(p).get("taxa", TQ.TAXA_B3)))
+    return simular_jogador(candles, acoes, ref, final)
+
+
 def simular_mesa(candles: list[dict], acoes: list[dict], preco_ref: float | None = None, final: bool = False, jogadores: list[str] | None = None) -> dict:
     """Simulador central da mesa. Os jogadores não interferem uns nos outros: cada um tem a própria posição, ordens e resultado.
     Devolve {jogador: estado}. `preco_ref` = último fechamento do histórico (preço visível antes do 1º candle do replay)."""
@@ -1290,8 +1371,15 @@ def registrar_acao(p: dict, cenario: dict, jog: str, dados: dict, agora: float) 
         raise ErroTrader("limite de ordens da rodada atingido")
     n = n_revelados(p, agora)
     ini = inicio_rodada(cenario, r, nr)
-    sim = simular_jogador(cenario["candles"][ini:ini + n], minhas, cenario["candles"][ini - 1]["c"], False)
-    ac = {**_validar_acao(dados, sim, sim["preco_atual"], n, nr), "aid": aid, "jogador": jog, "rodada": r, "n_rev": n, "ordem": int(p.get("seq_acao", 0)) + 1, "t": float(agora)}
+    sim = _sim_jog(p, jog, cenario["candles"][ini:ini + n], minhas, cenario["candles"][ini - 1]["c"], False)
+    val = None
+    if qtd_de(p):
+        import trader_qtd as TQ
+        try:
+            val = TQ.validar(dados, sim, sim["preco_atual"], n, nr, _preco_obrig)
+        except TQ.ErroQtd as e:
+            raise ErroTrader(str(e))
+    ac = {**(val or _validar_acao(dados, sim, sim["preco_atual"], n, nr)), "aid": aid, "jogador": jog, "rodada": r, "n_rev": n, "ordem": int(p.get("seq_acao", 0)) + 1, "t": float(agora)}
     p["seq_acao"] = ac["ordem"]
     acoes.append(ac)
     p["versao"] += 1
@@ -1410,9 +1498,14 @@ def _fechar_rodada_mesa(p: dict, cenario: dict) -> None:
         k = _chave(r, j)
         if k in p["resultados"]:
             continue
-        sim = simular_jogador(rep, acoes_da_rodada(p, r, j), ref, True)
+        sim = _sim_jog(p, j, rep, acoes_da_rodada(p, r, j), ref, True)
         res = avaliar_mesa(cen_r, p["estrategias"][k], sim["trades"])
-        res["fin"] = financeiro_mesa(sim["trades"], _stake(p, r, j))
+        if qtd_de(p):
+            import trader_qtd as TQ
+            res["fin"] = TQ.financeiro(sim["trades"], _stake(p, r, j))
+            res["qtd"] = True
+        else:
+            res["fin"] = financeiro_mesa(sim["trades"], _stake(p, r, j))
         res["limite_atingido"] = bool(sim["bloq"])
         p["resultados"][k] = res
         p["pontos"][j] = round(p["pontos"][j] + res["pontos"], 1)

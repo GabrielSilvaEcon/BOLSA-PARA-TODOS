@@ -196,7 +196,11 @@ def resolver(ref: dict, banco=None) -> dict:
     chave = (ref.get("id"), ref.get("tf"))
     if chave in _CACHE_CEN:
         return _CACHE_CEN[chave]
-    if ref.get("demo"):
+    if ref.get("corrida"):                                    # partida corrida: cenários próprios por duração
+        c = demo_corrida(ref["corrida"], int(ref["semente"])) if ref.get("demo") else por_id(listar_corrida(ref["corrida"], banco)).get(ref["id"])
+        if c is None:
+            raise TB.ErroTrader("O cenário desta partida não está mais disponível.")
+    elif ref.get("demo"):
         c = demo_cenario(ref["tf"], int(ref["semente"]), b24=str(ref.get("id", "")).endswith(SUFIXO_B24))
     else:
         c = por_id(listar(ref["tf"], banco)).get(ref["id"])
@@ -206,3 +210,149 @@ def resolver(ref: dict, banco=None) -> dict:
         _CACHE_CEN.clear()
     _CACHE_CEN[chave] = c
     return c
+
+
+# ------------------------------------------------------------------ PARTIDA CORRIDA (rápida = 5 min · intermediária = 1 h · longa = 1 dia)
+CHAVE_CORRIDA = "tb_corrida_{formato}"
+PERIODO_CORRIDA = {"5m": "60d", "1h": "2y", "1d": "10y"}          # o máximo gratuito de cada intervalo
+INTERVALO_YAHOO = {"5m": "5m", "1h": "60m", "1d": "1d"}
+MAX_DIAS_CORRIDA = {"rapida": 14, "intermediaria": 120, "longa": 900}   # dias corridos máximos do cenário inteiro (feriados e fins de semana inclusos)
+
+
+def _spec(formato: str) -> dict:
+    sp = TB.CORRIDAS.get(formato)
+    if not sp:
+        raise TB.ErroTrader("formato de partida inválido")
+    return sp
+
+
+def listar_corrida(formato: str, banco=None) -> list[dict]:
+    try:
+        dados = _banco(banco).cfg_ler(CHAVE_CORRIDA.format(formato=formato))
+    except Exception:
+        return []
+    return [c for c in ((dados or {}).get("cenarios") or []) if TB.validar_cenario(c)[0] and not c.get("demo") and c.get("corrida") == formato]
+
+
+def salvar_corrida(formato: str, cenarios: list[dict], banco=None) -> int:
+    ok = [c for c in cenarios if TB.validar_cenario(c)[0] and not c.get("demo") and c.get("corrida") == formato]
+    ok = sorted(ok, key=lambda c: c["candles"][0]["t"])[-MAX_POR_FUSO:]
+    _banco(banco).cfg_gravar(CHAVE_CORRIDA.format(formato=formato), {"v": 1, "formato": formato, "cenarios": ok})
+    return len(ok)
+
+
+def janelas_corrida(df, formato: str, max_n: int = 3) -> list[tuple[int, int]]:
+    """Trechos [i, j) completos para a partida corrida: no intraday, sem candle faltando dentro do pregão; volume quase sempre presente."""
+    sp = _spec(formato)
+    cfg = TB.TIMEFRAMES[sp["tf"]]
+    n = sp["n_analise"] + sp["n_replay"]
+    passo = timedelta(minutes=cfg["passo_min"])
+    idx = list(df.index)
+    if len(idx) < n:
+        return []
+    intraday = cfg["passo_min"] < 1440
+    bom = [not (intraday and idx[k].date() == idx[k + 1].date() and idx[k + 1] - idx[k] != passo) for k in range(len(idx) - 1)]
+    cand = []
+    for i in range(0, len(idx) - n + 1):
+        if not all(bom[i:i + n - 1]):
+            continue
+        if (idx[i + n - 1] - idx[i]) > timedelta(days=MAX_DIAS_CORRIDA[formato]):
+            continue
+        vol = df["Volume"].iloc[i:i + n]
+        if (vol.fillna(0) <= 0).mean() > 0.05:
+            continue
+        cand.append((i, i + n))
+    escolhidas, ult = [], None
+    for i, j in cand[::-1]:                                   # do mais recente para trás, sem sobreposição
+        if ult is None or i + n <= ult:
+            escolhidas.append((i, j))
+            ult = i
+        if len(escolhidas) >= max_n:
+            break
+    return escolhidas
+
+
+def cenario_corrida_de_df(df, i: int, j: int, ticker: str, formato: str, agora_iso: str) -> dict:
+    sp = _spec(formato)
+    sub = df.iloc[i:j]
+    cand = [{"t": t.isoformat(timespec="minutes"), "o": round(float(r.Open), 4), "h": round(float(r.High), 4), "l": round(float(r.Low), 4),
+             "c": round(float(r.Close), 4), "v": float(r.Volume)} for t, r in sub.iterrows()]
+    return {"id": f"{ticker}-{sp['tf']}-{cand[0]['t'].replace('-', '').replace(':', '').replace('T', '')}-c{formato}", "ticker": ticker, "nome": ticker,
+            "tf": sp["tf"], "corrida": formato, "fonte": FONTE_REAL, "demo": False, "preparado_em": agora_iso, "n_analise": sp["n_analise"], "candles": cand}
+
+
+def preparar_corrida(formato: str, baixar, agora_iso: str, ativos=ATIVOS, por_ativo: int = 3, banco=None) -> dict:
+    """Baixa o histórico de cada ativo UMA vez no tempo gráfico do formato, valida e guarda os cenários novos. `baixar(codigo, periodo, intervalo_yahoo)`."""
+    import analise_tecnica as AT
+    sp = _spec(formato)
+    tf = sp["tf"]
+    atuais = {c["id"]: c for c in listar_corrida(formato, banco)}
+    rel = {"novos": 0, "total": 0, "falhas": {}}
+    for cod in ativos:
+        try:
+            r = baixar(cod, PERIODO_CORRIDA[tf], INTERVALO_YAHOO[tf])
+        except Exception as e:
+            rel["falhas"][cod] = f"erro de conexão ({e.__class__.__name__})"
+            continue
+        if not r or r.get("erro") or r.get("df") is None:
+            rel["falhas"][cod] = str((r or {}).get("erro") or "sem dados")
+            continue
+        df, info = AT.limpar_ohlcv(r["df"])
+        if not info.get("tem_ohlc") or "Volume" not in df.columns:
+            rel["falhas"][cod] = "histórico sem OHLC/volume completos"
+            continue
+        achou = 0
+        for i, j in janelas_corrida(df, formato, por_ativo):
+            c = cenario_corrida_de_df(df, i, j, cod, formato, agora_iso)
+            if TB.validar_cenario(c)[0] and c["id"] not in atuais:
+                atuais[c["id"]] = c
+                rel["novos"] += 1
+            achou += 1
+        if not achou:
+            rel["falhas"][cod] = "nenhum trecho completo (faltam candles no período gratuito)"
+    rel["total"] = salvar_corrida(formato, list(atuais.values()), banco)
+    return rel
+
+
+def demo_corrida(formato: str, semente: int) -> dict:
+    """Cenário SIMULADO da partida corrida (sempre rotulado como demonstração)."""
+    sp = _spec(formato)
+    cfg = TB.TIMEFRAMES[sp["tf"]]
+    rng = random.Random(semente)
+    n = sp["n_analise"] + sp["n_replay"]
+    p = 20.0 + rng.random() * 30
+    base_vol = {"5m": 0.0018, "1h": 0.004, "1d": 0.014}[sp["tf"]]
+    vol = base_vol
+    t = datetime(2024, 3, 4, 10, 0)
+    cand = []
+    for k in range(n):
+        vol = max(base_vol / 2, min(base_vol * 2.5, 0.9 * vol + 0.1 * base_vol + 0.3 * base_vol * rng.random()))
+        drift = 0.15 * base_vol * math.sin(k / 23.0 + semente)
+        o = p
+        c = max(1.0, o * (1 + drift + rng.gauss(0, vol)))
+        h = max(o, c) * (1 + abs(rng.gauss(0, vol / 2)))
+        l = min(o, c) * (1 - abs(rng.gauss(0, vol / 2)))
+        cand.append({"t": t.isoformat(timespec="minutes"), "o": round(o, 2), "h": round(h, 2), "l": round(l, 2), "c": round(c, 2),
+                     "v": float(int(80000 + rng.random() * 220000))})
+        p = c
+        if cfg["passo_min"] >= 1440:
+            t += timedelta(days=1)
+            while t.weekday() >= 5:
+                t += timedelta(days=1)
+        else:
+            t += timedelta(minutes=cfg["passo_min"])
+            if t.hour >= 17 and (t.hour > 17 or t.minute > 55):
+                t = (t + timedelta(days=1)).replace(hour=10, minute=0)
+                while t.weekday() >= 5:
+                    t += timedelta(days=1)
+    return {"id": f"DEMO-{sp['tf']}-{semente}-c{formato}", "ticker": "DEMO3", "nome": "Cenário simulado", "tf": sp["tf"], "corrida": formato, "demo": True,
+            "fonte": "Dados SIMULADOS (modo demonstração)", "n_analise": sp["n_analise"], "candles": cand}
+
+
+def escolher_corrida(formato: str, semente: int, banco=None) -> dict:
+    reais = listar_corrida(formato, banco)
+    return random.Random(semente).choice(reais) if reais else demo_corrida(formato, semente)
+
+
+def referencia_corrida(c: dict, semente: int) -> dict:
+    return {**referencia(c, semente), "corrida": c.get("corrida")}
