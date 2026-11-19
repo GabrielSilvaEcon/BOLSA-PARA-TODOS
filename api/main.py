@@ -23,7 +23,12 @@ from pydantic import BaseModel
 
 import banco
 import contas
+import educacao as ED
 import jogos as J
+import jornada as JO
+import nivel as NV
+import passe as PA
+import tickercoins as TC
 import trader_battle as TB
 import trader_carteira as TCA
 import trader_dados as TD
@@ -144,8 +149,27 @@ def eu(q: Quem = Depends(quem)) -> dict:
         placar = J.estatisticas(J.sanear(banco.jogos_placar_ler(a)))
     except Exception:
         placar = None
+    # progresso de estudo (XP, nível, passe) e Ticker Coins: as mesmas regras do app atual, lidas do banco
+    try:
+        dados = banco.ler_dados(a, q.email) or {}
+        prog = ED.normalizar(dados.get("edu_progresso"))
+        xp = int(JO.resumo(prog)["xp"])
+        nivel = NV.estado(xp)
+    except Exception:
+        prog, xp, nivel = None, None, None
+    try:
+        moedas = TC.saldo(q.conta.get("id"))
+    except Exception:
+        moedas = None
+    try:
+        from datetime import datetime, timedelta, timezone
+        hoje = (datetime.now(timezone.utc) - timedelta(hours=3)).date()          # horário de Brasília
+        passe = PA.estado(JO._jor(prog)["xp_dia"], hoje) if prog is not None else None
+    except Exception:
+        passe = None
     return {"conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
-            "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar}
+            "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar,
+            "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe}
 
 
 # ------------------------------------------------------------------ rankings (só partidas online contam)

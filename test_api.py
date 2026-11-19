@@ -82,3 +82,11 @@ def test_login_pelo_supabase_auth_cria_a_conta_do_jogo(monkeypatch):
         assert banco.sis_conta_por_email("nova@x.com")["nome"] == "Nova Jogadora"      # a conta do jogo nasceu no 1º acesso
         assert c.get("/eu", headers={"Authorization": "Bearer ddd.eee.fff"}).status_code == 401
         assert c.get("/eu", headers={"Authorization": "Bearer xxx.yyy.zzz"}).status_code == 401   # token que o Supabase não reconhece
+
+
+def test_eu_traz_nivel_moedas_e_passe(cli):
+    r = cli.get("/eu").json()
+    assert {"xp", "nivel", "moedas", "passe"} <= set(r)                       # chaves sempre presentes (valores podem ser zero/vazios)
+    assert r["moedas"] is None or r["moedas"] >= 0
+    if r["nivel"]:
+        assert r["nivel"]["nivel"] >= 1
