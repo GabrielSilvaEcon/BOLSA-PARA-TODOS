@@ -103,3 +103,19 @@ def test_carteira_traz_caixa_patrimonio_e_posicoes(cli):
     assert {"disponivel", "investido", "valor_atual", "patrimonio", "posicoes"} <= set(r.json())
     assert isinstance(r.json()["posicoes"], list)
     assert r.json()["patrimonio"] >= r.json()["disponivel"]
+
+
+def test_comecar_e_comprar_pela_api(cli, monkeypatch):
+    import cotacoes_jogo as CJ
+    monkeypatch.setattr(CJ, "preco_agora", lambda tk, **k: 10.0)
+    r = cli.get("/carteira").json()
+    assert r["comecou"] is False
+    assert cli.post("/carteira/ordem", json={"ativo": "PETR4", "qtd": 10, "lado": "C"}).status_code == 400   # antes de começar
+    assert cli.post("/carteira/comecar", json={"apelido": "ana_teste", "aceito": False}).status_code == 400   # sem confirmar
+    assert cli.post("/carteira/comecar", json={"apelido": "ana_teste", "aceito": True}).status_code == 200
+    r = cli.post("/carteira/ordem", json={"ativo": "PETR4", "qtd": 10, "lado": "C"})
+    assert r.status_code == 200, r.text
+    cart = cli.get("/carteira").json()
+    assert cart["comecou"] is True
+    assert any(p["id"] == "PETR4" and p["qtd"] == 10 for p in cart["posicoes"])
+    assert cli.get("/carteira/preco", params={"ativo": "PETR4"}).json()["px"] == 10.0
