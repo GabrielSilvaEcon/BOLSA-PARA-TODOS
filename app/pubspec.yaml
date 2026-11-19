@@ -12,6 +12,7 @@ dependencies:
   http: ^1.2.2
   google_fonts: ^6.2.1
   web: ^1.1.0
+  webview_flutter: ^4.10.0
   supabase_flutter: ^2.5.6
 
 dev_dependencies:
@@ -29,6 +30,7 @@ flutter:
     - assets/jogos/
     - assets/nav/
     - assets/cabecalho/
+    - assets/mesa/
     - assets/logos/setores/
     - assets/logos/cripto/
     - assets/avatares/

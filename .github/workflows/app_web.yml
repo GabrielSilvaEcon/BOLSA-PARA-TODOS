@@ -26,13 +26,11 @@ jobs:
       - name: Dependências e análise
         working-directory: app
         run: |
+          mkdir -p assets/mesa && cp ../trader_front/index.html assets/mesa/index.html   # mesa do Trade Battle (a mesma do app antigo)
           flutter create --project-name tickerhunters --platforms web . --no-overwrite || true
           rm -rf test                      # o teste de exemplo do flutter create não combina com o app: removido
           flutter pub get
           flutter analyze --no-fatal-infos
-      - name: Mesa do Trade Battle (a mesma página do app antigo)
-        working-directory: app
-        run: mkdir -p web/mesa && cp ../trader_front/index.html web/mesa/index.html
       - name: Compilar versão web
         working-directory: app
         env:
