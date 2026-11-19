@@ -51,11 +51,19 @@ class _CabecalhoState extends State<Cabecalho> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  nivel == null ? 'Nível —' : 'Nível ${nivel['nivel']}',
-                  style: tema.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
+                Row(
+                  children: [
+                    _avatar(_eu?['perfil']?['avatar']),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        nivel == null ? 'Nível —' : 'Nível ${nivel['nivel']}',
+                        style: tema.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
@@ -106,6 +114,24 @@ class _CabecalhoState extends State<Cabecalho> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Avatar equipado (arquivo em assets/avatares). Sem ele, ou sem arquivo, mostra o mascote.
+  Widget _avatar(Object? id) {
+    final nome = id is String && id.isNotEmpty ? id : null;
+    return ClipOval(
+      child: SizedBox(
+        width: 34,
+        height: 34,
+        child: nome == null
+            ? Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover)
+            : Image.asset(
+                'assets/avatares/$nome.webp',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover),
+              ),
+      ),
     );
   }
 

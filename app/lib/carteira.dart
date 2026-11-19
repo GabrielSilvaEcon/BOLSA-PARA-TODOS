@@ -519,10 +519,16 @@ class _CarteiraTelaState extends State<CarteiraTela> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: cor),
             ),
-            child: Text(
-              sigla.isEmpty ? '?' : sigla.substring(0, sigla.length < 3 ? sigla.length : 3),
-              style: TextStyle(color: cor, fontWeight: FontWeight.w900, fontSize: 12),
-            ),
+            child: (p['logo'] is String)
+                ? Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Image.asset(
+                      'assets/logos/${p['logo']}',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => _sigla(cor, sigla),
+                    ),
+                  )
+                : _sigla(cor, sigla),
           ),
           const SizedBox(height: 6),
           Text(sigla, style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis),
@@ -555,6 +561,11 @@ class _CarteiraTelaState extends State<CarteiraTela> {
       ),
     );
   }
+
+  Widget _sigla(Color cor, String sigla) => Text(
+        sigla.isEmpty ? '?' : sigla.substring(0, sigla.length < 3 ? sigla.length : 3),
+        style: TextStyle(color: cor, fontWeight: FontWeight.w900, fontSize: 12),
+      );
 
   Widget _mini(ThemeData tema, String rotulo, String valor, {Color? cor}) {
     return _cartao(

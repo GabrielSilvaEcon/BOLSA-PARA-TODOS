@@ -24,3 +24,6 @@ flutter:
     - assets/fundo_login.webp
     - assets/home/
     - assets/carteira/
+    - assets/logos/setores/
+    - assets/logos/cripto/
+    - assets/avatares/
