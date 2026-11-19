@@ -527,31 +527,17 @@ def _travar(p: dict) -> None:
 
 
 def validar_plano(p: dict, jog: str, est: dict, preco_ref: float) -> dict:
-    """Boleta do início da partida corrida: comprar ou vender (ou só observar), tipo de ordem, stop loss, take profit e quantidade.
-    Validada aqui com as MESMAS regras das ordens do jogo (capital de 5%, lados do stop e do alvo, preço da limite/stop). Sem confiança."""
-    import trader_qtd as TQ
+    """Estratégia da partida corrida: só a leitura do mercado (Subir, Cair ou Aguardar), confirmada uma vez no início.
+    Nenhuma ordem nasce aqui: comprar e vender só depois que o gráfico começa a andar (campos de ordem enviados junto são ignorados)."""
     if not isinstance(est, dict):
         raise ErroTrader("estratégia inválida")
     dirc = est.get("direcao")
-    if dirc in (None, "", "lateral") or est.get("tipo") == "aguardar":     # só observar: decide depois, já com o gráfico andando
+    if dirc in (None, "", "lateral") or est.get("tipo") == "aguardar":
         return {"direcao": "lateral", "tipo": "aguardar", "confianca": None, "entrada": None, "stop": None, "alvo": None, "plano": None}
     if dirc not in ("alta", "baixa"):
-        raise ErroTrader("escolha comprar ou vender")
-    if est.get("q") in (None, "") and not est.get("ordem"):          # só a direção, sem ordem (a 1ª entrada fica para depois)
-        tipo = est.get("tipo") if est.get("tipo") in ESTRATEGIAS else "continuacao"
-        return {"direcao": dirc, "tipo": tipo, "confianca": None, "entrada": None, "stop": None, "alvo": None, "plano": None}
-    ordem = est.get("ordem") or "mercado"
-    if ordem not in TIPOS_ENTRADA:
-        raise ErroTrader("tipo de ordem inválido")
-    st = TQ._novo(capital_de(p, jog), float(cfg_de(p).get("taxa", TQ.TAXA_B3)))
-    dados = {"tipo": ordem, "direcao": dirc, "q": est.get("q"), "preco": est.get("preco"), "stop": est.get("stop"), "alvo": est.get("alvo")}
-    try:
-        plano = TQ.validar(dados, st, float(preco_ref), 0, _nrp(p), _preco_obrig)
-    except TQ.ErroQtd as e:
-        raise ErroTrader(str(e))
+        raise ErroTrader("escolha Subir, Cair ou Aguardar")
     tipo = est.get("tipo") if est.get("tipo") in ESTRATEGIAS else "continuacao"
-    return {"direcao": dirc, "tipo": tipo, "confianca": None, "entrada": plano.get("preco", float(preco_ref)), "stop": plano.get("stop"),
-            "alvo": plano.get("alvo"), "plano": plano}
+    return {"direcao": dirc, "tipo": tipo, "confianca": None, "entrada": None, "stop": None, "alvo": None, "plano": None}
 
 
 def iniciar_replay(p: dict, jog: str, agora: float) -> None:
@@ -913,10 +899,8 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
         linhas.append(("Sua leitura", "Você não registrou a leitura do gráfico no tempo."))
     else:
         if est.get("confianca") is None:                    # partida corrida: a estratégia é a boleta do início
-            pl = est.get("plano")
-            lado = {"alta": "Comprar", "baixa": "Vender"}.get(est.get("direcao"))
-            linhas.append(("Sua estratégia", f"{lado} {pl['q']} ações" + (f", stop {pl['stop']:.2f}" if pl.get("stop") else ", sem stop")
-                           + (f", alvo {pl['alvo']:.2f}" if pl.get("alvo") else "") + "." if pl and lado else "Você preferiu observar antes de entrar."))
+            leitura = {"alta": "o preço ia subir", "baixa": "o preço ia cair"}.get(est.get("direcao"))
+            linhas.append(("Sua estratégia", f"Você disse que {leitura}." if leitura else "Você preferiu aguardar para ler o mercado."))
         else:
             linhas.append(("Sua leitura", f"Você registrou: {nome.get(est.get('direcao'), '')} ({ROTULO_ESTRATEGIA.get(est.get('tipo'), '').lower()}), confiança {est.get('confianca')}/5."))
     linhas.append(("O mercado", f"O preço foi de {real['ref']:.2f} para {real['fim']:.2f} ({real['mov_pct']:+.1f}%): {nome[real['direcao']]}."))

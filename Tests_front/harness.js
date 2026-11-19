@@ -231,16 +231,13 @@ t("candle se formando: o último candle cresce no lugar (sem duplicar) e o próx
   h.render(args({ motor: 2, mesa: mesaQtd(false), candles: c3 }));
   eq(vm.runInContext('S', h.sb).cands.length + vm.runInContext('S', h.sb).fila.length, 127, "candle novo entra");
 });
-t("corrida: pop-up da estratégia manda a boleta (compra, quantidade, stop e alvo) e depois mostra a espera", () => {
+t("corrida: pop-up da estratégia só tem a leitura (Subir/Cair) e depois mostra a espera", () => {
   const h = carregar();
-  const base = { modo: "analise", fase_key: "1-analise", motor: 2, mesa: null, corrida: true, plano_cfg: { capital: 10000, taxa: 0.0003 }, ref: 11.3 };
+  const base = { modo: "analise", fase_key: "1-analise", motor: 2, mesa: null, corrida: true, ref: 11.3 };
   h.render(args({ ...base, confirmados: { eu: false, n: 0, total: 2 } }));
-  yes(h.els.plano._c.has("on"), "pop-up aberto na análise"); yes(h.els.app._c.has("corrida"));
-  yes(h.els["pl-ok"].disabled, "sem escolher comprar/vender não confirma");
-  h.els["pl-buy"].onclick(); yes(!h.els["pl-ok"].disabled, "com compra escolhida libera");
-  h.els["pl-ok"].onclick();
-  const a = h.acoes(); eq(a.length, 1); eq([a[0].evento, a[0].plano.direcao, a[0].plano.ordem], ["confirmar", "alta", "mercado"]);
-  yes(a[0].plano.q >= 1 && a[0].plano.stop < 11.3 && a[0].plano.alvo > 11.3, "stop abaixo e alvo acima");
+  yes(h.els.plano._c.has("on"), "pop-up aberto na análise"); yes(h.els["pl-ok"].disabled, "sem escolher não confirma");
+  h.els["pl-buy"].onclick(); h.els["pl-ok"].onclick();
+  const a = h.acoes(); eq(a.length, 1); eq([a[0].evento, a[0].plano.direcao, a[0].plano.q, a[0].plano.ordem], ["confirmar", "alta", undefined, undefined]);
   h.render(args({ ...base, confirmados: { eu: true, n: 1, total: 2 } }));
   yes(h.els.plano._c.has("esp")); yes(h.els["pl-esp-t"].textContent.includes("1/2"));
 });
