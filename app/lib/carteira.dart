@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'cabecalho.dart';
 import 'compra.dart';
 
 /// Tela da Carteira no visual do jogo: topo com a ficha do jogador, patrimônio, Comprar/Vender, abas por classe e os ativos em cartões.
@@ -172,7 +173,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
                     const SizedBox(height: 8),
                     OutlinedButton(onPressed: _carregar, child: const Text('Tentar de novo')),
                   ] else ...[
-                    _ficha(tema),
+                    Cabecalho(api: widget.api),
                     const SizedBox(height: 12),
                     _cartao(
                       child: Row(
@@ -314,65 +315,6 @@ class _CarteiraTelaState extends State<CarteiraTela> {
           ),
         ],
       ),
-    );
-  }
-
-  /// Ficha do jogador no topo: apelido, posição no ranking e Ticker Coins.
-  Widget _ficha(ThemeData tema) {
-    final apelido = (_cart?['apelido'] as String?)?.trim();
-    final pos = _cart?['ranking'];
-    final moedas = _cart?['moedas'];
-    return Row(
-      children: [
-        Expanded(
-          child: _cartao(
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF6BE58A), width: 2),
-                  ),
-                  child: ClipOval(child: Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.cover)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        (apelido == null || apelido.isEmpty) ? 'Sem apelido' : apelido,
-                        style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(pos == null ? '🏆 —' : '🏆 #$pos', style: const TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w800)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF16134A),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFFFD76A)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.toll, color: Color(0xFFFFD76A), size: 20),
-              const SizedBox(width: 6),
-              Text(moedas == null ? '—' : '$moedas', style: const TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w900)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
