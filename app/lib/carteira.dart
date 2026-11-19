@@ -93,8 +93,14 @@ class _CarteiraTelaState extends State<CarteiraTela> {
     final temRf = ((_cart?['posicoes'] as List?) ?? const []).any((p) => p is Map && p['classe'] == 'rf');
     final abas = _abas.where((a) => a.$1 != 'rf' || temRf).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Carteira')),
-      body: SafeArea(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(title: const Text('Carteira'), backgroundColor: Colors.transparent, elevation: 0),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/carteira/fundo_carteira.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          Container(color: const Color(0xB30B0930)),
+          SafeArea(
         child: RefreshIndicator(
           onRefresh: _carregar,
           child: ListView(
@@ -177,6 +183,8 @@ class _CarteiraTelaState extends State<CarteiraTela> {
             ],
           ),
         ),
+      ),
+        ],
       ),
     );
   }
