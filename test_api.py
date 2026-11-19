@@ -145,3 +145,19 @@ def test_tela_inicial_do_trade_battle(cli):
     d = r.json()
     assert [c["id"] for c in d["corridas"]] == list(TB.CORRIDAS)
     assert all(c["minutos"] > 0 and c["grafico"] for c in d["corridas"])
+
+
+def test_relatorio_da_partida_solo(cli, monkeypatch):
+    t = {"agora": 2_000_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    pid = cli.post("/trade/solo", json={"corrida": "rapida"}).json()["id"]
+    assert cli.get(f"/trade/solo/{pid}/relatorio").status_code == 400            # ainda não terminou
+    cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta"})
+    t["agora"] += 5
+    cli.post(f"/trade/solo/{pid}/acao", json={"dados": {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 50}})
+    t["agora"] += TB.CORRIDAS["rapida"]["n_replay"] * TB.SEG_POR_CANDLE + 20
+    assert cli.get(f"/trade/solo/{pid}").json()["fase"] == "fim"
+    r = cli.get(f"/trade/solo/{pid}/relatorio")
+    assert r.status_code == 200, r.text
+    h = r.json()["html"]
+    assert "Resumo" in h and "Operações" in h and "Raio-X" in h and "section role='dialog'" in h

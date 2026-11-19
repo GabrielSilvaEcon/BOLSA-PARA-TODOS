@@ -1,0 +1,251 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+
+import 'api.dart';
+import 'mesa/mesa_host.dart';
+
+/// Partida solo do Trade Battle. A mesa (gráfico, boleta, placar) é a MESMA do app antigo; aqui o app só faz a ponte com o servidor:
+/// cria a partida (`POST /trade/solo`), consulta o andamento a cada segundo (`GET /trade/solo/{id}`) e manda as jogadas
+/// (`/estrategia` e `/acao`). No fim, abre o relatório da partida (o mesmo do app antigo).
+class PartidaTela extends StatefulWidget {
+  const PartidaTela({super.key, required this.api, required this.corrida});
+  final Api api;
+  final String corrida;
+
+  @override
+  State<PartidaTela> createState() => _PartidaTelaState();
+}
+
+class _PartidaTelaState extends State<PartidaTela> {
+  late final MesaHost _mesa = MesaHost(aoEvento: _evento, aoPronto: () {});
+  String? _pid;
+  String? _erroInicio;
+  Map<String, dynamic>? _ultima;
+  Timer? _relogio;
+  bool _ocupado = false;
+  bool _fim = false;
+  bool _relatorioAberto = false;
+
+  // o que a mesa precisa saber das jogadas já tratadas (no Streamlit vinha do "estado" da sessão)
+  int _seqTratada = 0;
+  int _seqOk = 0;
+  String _erro = '';
+  int _seqErro = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _iniciar();
+  }
+
+  @override
+  void dispose() {
+    _relogio?.cancel();
+    _mesa.fechar();
+    super.dispose();
+  }
+
+  Future<void> _iniciar() async {
+    try {
+      final r = await widget.api.post('/trade/solo', {'corrida': widget.corrida});
+      if (mounted) setState(() => _pid = r['id']?.toString());
+      _aplicar(r);
+      _relogio = Timer.periodic(const Duration(seconds: 1), (_) => _consultar());
+    } catch (e) {
+      if (mounted) setState(() => _erroInicio = e.toString());
+    }
+  }
+
+  Future<void> _consultar() async {
+    if (_ocupado || _pid == null || _fim) return;
+    _ocupado = true;
+    try {
+      _aplicar(await widget.api.get('/trade/solo/$_pid'));
+    } catch (_) {
+      // falha de rede passageira: tenta de novo no próximo segundo
+    } finally {
+      _ocupado = false;
+    }
+  }
+
+  /// Manda o estado do servidor para a mesa desenhar, com o retorno das jogadas já tratadas.
+  void _aplicar(Map<String, dynamic> r) {
+    final tela = r['tela'];
+    if (tela is Map) {
+      final args = Map<String, dynamic>.from(tela);
+      args['seq0'] = _seqTratada;
+      args['ok_seq'] = _seqOk;
+      args['erro'] = _erro;
+      args['erro_seq'] = _seqErro;
+      _ultima = args;
+      _mesa.desenhar(args);
+    }
+    if (r['fim'] != null && !_fim) {
+      _fim = true;
+      _relogio?.cancel();
+      if (mounted) setState(() {});
+      _abrirRelatorio();
+    }
+  }
+
+  void _redesenhar() {
+    final a = _ultima;
+    if (a == null) return;
+    a['seq0'] = _seqTratada;
+    a['ok_seq'] = _seqOk;
+    a['erro'] = _erro;
+    a['erro_seq'] = _seqErro;
+    _mesa.desenhar(a);
+  }
+
+  /// Jogadas que a mesa manda (mesmos eventos que ela mandava ao Streamlit).
+  Future<void> _evento(Map<String, dynamic> v) async {
+    final seq = (v['seq'] as num?)?.toInt() ?? 0;
+    final ev = v['evento'];
+    if (_pid == null) return;
+    if (ev == 'voltar' || ev == 'ranking') {
+      if (mounted) Navigator.of(context).maybePop();
+      return;
+    }
+    if (ev != 'confirmar' && ev != 'acao') {
+      await _consultar(); // tempo, próxima etc.: o servidor anda sozinho pelo relógio
+      return;
+    }
+    _ocupado = true;
+    try {
+      final Map<String, dynamic> r;
+      if (ev == 'confirmar') {
+        final plano = (v['plano'] as Map?) ?? {'direcao': v['direcao'], 'tipo': v['tipo']};
+        r = await widget.api.post('/trade/solo/$_pid/estrategia', {'direcao': plano['direcao'], 'tipo': plano['tipo']});
+        _seqOk = seq;
+      } else {
+        r = await widget.api.post('/trade/solo/$_pid/acao', {'dados': v['dados'] ?? {}});
+      }
+      _erro = '';
+      _seqTratada = seq;
+      _aplicar(r);
+    } catch (e) {
+      _erro = e.toString();
+      _seqErro = seq;
+      _seqTratada = seq;
+      _redesenhar();
+    } finally {
+      _ocupado = false;
+    }
+  }
+
+  Future<void> _abrirRelatorio() async {
+    if (_pid == null || _relatorioAberto) return;
+    String html;
+    try {
+      html = (await widget.api.get('/trade/solo/$_pid/relatorio'))['html']?.toString() ?? '';
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      return;
+    }
+    if (!mounted || html.isEmpty) return;
+    _relatorioAberto = true;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          children: [
+            Container(
+              height: MediaQuery.of(ctx).size.height * 0.86,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFF7A5CFF), width: 2),
+                gradient: const RadialGradient(
+                  center: Alignment.topCenter,
+                  radius: 1.2,
+                  colors: [Color(0xFF3B2A9E), Color(0xFF1A1258), Color(0xFF0D0A33)],
+                  stops: [0, 0.45, 1],
+                ),
+                boxShadow: const [BoxShadow(color: Color(0x8C7A5CFF), blurRadius: 30)],
+              ),
+              child: ClipRRect(borderRadius: BorderRadius.circular(20), child: RelatorioView(html).widget()),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: const Color(0xFF4B2FD6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFB79CFF), width: 2)),
+                child: IconButton(
+                  tooltip: 'Fechar',
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    _relatorioAberto = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_erroInicio != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF110C2E),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.info_outline, size: 48, color: Color(0xFFFFC93C)),
+                const SizedBox(height: 12),
+                Text(_erroInicio!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, color: Colors.white)),
+                const SizedBox(height: 16),
+                FilledButton(onPressed: () => Navigator.of(context).maybePop(), child: const Text('Voltar')),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0828),
+      body: Stack(
+        children: [
+          Positioned.fill(child: _mesa.widget()),
+          if (_pid == null) const Center(child: CircularProgressIndicator()),
+          if (_fim)
+            Positioned(
+              left: 10,
+              right: 10,
+              bottom: 10,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _abrirRelatorio,
+                      icon: const Icon(Icons.bar_chart),
+                      label: const Text('Ver relatório'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12A83C)),
+                      onPressed: () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: widget.corrida)),
+                      ),
+                      icon: const Icon(Icons.replay),
+                      label: const Text('Jogar de novo'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

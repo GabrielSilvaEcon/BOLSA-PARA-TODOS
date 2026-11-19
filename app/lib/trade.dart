@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'partida.dart';
 
 /// Tela inicial do Trade Battle, igual à do app antigo (trader_battle_app._central + jogos_app.navegacao/faixa_jogo):
 /// abas da Central, arte do jogo, escolha da duração, Jogar Solo / Jogar com Amigos, Entrar em uma Sala,
@@ -111,7 +112,9 @@ class _TradeTelaState extends State<TradeTela> {
                               fundo: const [Color(0xBF146E50), Color(0xF50A1A28)],
                               brilho: const Color(0x7334E85E),
                               seta: _verde,
-                              acao: () => widget.jogarSolo != null ? widget.jogarSolo!(_corrida) : _emBreve('Partida solo'),
+                              acao: () => widget.jogarSolo != null
+                                  ? widget.jogarSolo!(_corrida)
+                                  : Navigator.of(context).push(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida))),
                             ),
                           ),
                           const SizedBox(width: 8),
