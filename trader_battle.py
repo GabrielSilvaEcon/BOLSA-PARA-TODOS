@@ -267,6 +267,18 @@ def config_corrida(formato: str, n_passos: int | None = None) -> dict:
             "t_replay_s": float(sp["n_replay"] * SEG_POR_CANDLE), "qtd": True, "taxa": TQ.TAXA_B3, "pct_capital": TQ.PCT_CAPITAL}
 
 
+PCT_LOTE = 0.10                # partida corrida: 1 lote = 10% do capital (de 1 a 10 lotes, como os contratos do mini índice)
+
+
+def lote_de(p: dict, jog: str, preco_ref: float) -> int:
+    """Ações por lote, fixo na partida: 10% do capital ÷ preço do início (com a taxa), no mínimo 1 ação."""
+    import trader_qtd as TQ
+    if preco_ref <= 0:
+        return 1
+    taxa = float(cfg_de(p).get("taxa", TQ.TAXA_B3))
+    return max(1, int(capital_de(p, jog) * PCT_LOTE // (preco_ref * (1 + taxa))))
+
+
 def qtd_de(p: dict) -> bool:
     return bool(cfg_de(p).get("qtd"))
 

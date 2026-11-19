@@ -203,7 +203,7 @@ t("corrida: COMPRAR manda a quantidade escolhida e o painel mostra quantidade, p
 t("corrida: VENDER comprado com quantidade maior que a posição vira zerar (não inverte)", () => {
   const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(true) }));
   h.els["q-val"].value = "999"; h.els["m-sell"].onclick();
-  const a = h.acoes(); eq([a[0].dados.direcao, a[0].dados.q], ["baixa", 300]); eq(h.els["q-val"].value, "300");
+  const a = h.acoes(); eq([a[0].dados.direcao, a[0].dados.q], ["baixa", 300]);
 });
 t("corrida: com o capital todo aplicado, comprar trava e vender (reduzir) continua liberado", () => {
   const h = carregar(); const m = mesaQtd(true); m.pode_abrir = false; m.max_q = 0; m.poder = 0;
@@ -248,5 +248,14 @@ t("corrida: Aguardar no pop-up confirma sem ordem e a aba Boleta recolhe e expan
   const a = h.acoes(); eq([a[0].evento, a[0].plano.tipo, a[0].plano.direcao], ["confirmar", "aguardar", null]);
   const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true }));
   h2.els["m-tg"].onclick(); yes(h2.els.app._c.has("bmin"), "recolheu"); h2.els["m-tg"].onclick(); yes(!h2.els.app._c.has("bmin"), "expandiu");
+});
+t("corrida em lotes: 3 lotes comprados, vender 2 manda 2 lotes em ações e mostra quanto fica; vender 3 zera", () => {
+  const h = carregar(); const m = mesaQtd(true); m.posicao.q = 300;
+  h.render(args({ motor: 2, mesa: m, corrida: true, lote: 100 }));
+  eq(h.els["q-val"].value, "1", "começa com 1 lote"); yes(h.els.pbar.innerHTML.includes("Comprado 3 lotes"), "posição à vista");
+  h.els["q-val"].value = "2"; h.els["m-sell"].onclick();
+  let a = h.acoes(); eq([a[0].dados.direcao, a[0].dados.q], ["baixa", 200]);
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: m, corrida: true, lote: 100 }));
+  h2.els["q-val"].value = "5"; h2.els["m-sell"].onclick(); a = h2.acoes(); eq(a[0].dados.q, 300, "mais lotes que a posição = zera, nunca inverte");
 });
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);
