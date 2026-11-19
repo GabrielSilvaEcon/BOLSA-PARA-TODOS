@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
 import 'carteira.dart';
+import 'navegacao.dart';
 
 /// Home no estilo de jogo: cabeçalho (nível, Ticker Coins e ranking), banner do Hunter Pass e os três acessos.
 /// Os dados vêm do servidor (`GET /eu`). Ranking e telas de destino entram nas próximas partes.
@@ -149,7 +150,11 @@ class _HomeTelaState extends State<HomeTela> {
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(flex: 2, child: _botao('assets/home/btn_jogar.webp', 'Jogar agora')),
+        Expanded(flex: 2, child: _botao(
+            'assets/home/btn_jogar.webp',
+            'Jogar agora',
+            onTap: () => abrirAba(1),
+          )),
         const SizedBox(width: 8),
         Expanded(child: _botao('assets/home/btn_mercado.webp', 'Mercado')),
       ],
