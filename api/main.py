@@ -1,0 +1,336 @@
+"""Servidor do jogo (etapa 1 do plano de migração): o motor atual do TickerHunters exposto como API para o app novo (Flutter).
+
+Nada de regra nova aqui: cada rota só chama os módulos puros que o app em Streamlit já usa (contas, banco, trader_battle, trader_qtd,
+trader_dados, trader_carteira, trader_online_dados, jogos, perfis) e devolve JSON. Mesmo banco (Supabase), mesmas contas, mesmos testes.
+
+Login: o app novo entra pelo Supabase Auth (e-mail ou Google, pelo plugin do Flutter) e manda o token dele em toda chamada,
+`Authorization: Bearer <token>`. O servidor confirma o token com o próprio Supabase e liga o e-mail à conta do jogo (criada na 1ª vez).
+Também aceita o token de sessão do app atual (`POST /auth/entrar`, e-mail e senha), enquanto os dois apps existem.
+
+Rodar localmente:  uvicorn api.main:app --reload      ·  documentação interativa em /docs
+Ainda não está aqui (próximas partes da etapa 1): login com Google, XP da partida (fica no progresso de estudo) e as telas de Aprender/Analisar.
+"""
+from __future__ import annotations
+
+import os
+import random
+import time
+import uuid
+
+from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+import banco
+import contas
+import jogos as J
+import trader_battle as TB
+import trader_carteira as TCA
+import trader_dados as TD
+import trader_grafico as TG
+import trader_online_dados as OL
+
+app = FastAPI(title="TickerHunters · servidor do jogo", version="0.1.0")
+ORIGENS = [o.strip() for o in os.environ.get("BPT_API_ORIGENS", "*").split(",") if o.strip()]   # link de teste do app (GitHub Pages) etc.
+app.add_middleware(CORSMiddleware, allow_origins=ORIGENS, allow_methods=["*"], allow_headers=["*"])
+
+CHAVE_SOLO = "tb_api|{h}|{pid}"          # partida solo guardada no banco (no Streamlit ela ficava só na sessão do navegador)
+
+
+def _agora() -> float:
+    return time.time()
+
+
+# ------------------------------------------------------------------ quem está chamando
+class Quem(BaseModel):
+    conta: dict
+    email: str
+    token: str
+
+    @property
+    def ator(self) -> banco.Ator:
+        return contas.ator_de(self.conta)
+
+
+_CACHE_AUTH: dict[str, tuple[float, dict | None]] = {}
+CACHE_AUTH_S = 60                       # o token do Supabase é conferido no máximo 1 vez por minuto (o app chama o servidor o tempo todo)
+
+
+def _usuario_supabase(tok: str) -> dict | None:
+    """Usuário do Supabase Auth dono deste token (o próprio Supabase confirma: token falso ou vencido = None)."""
+    sb = banco._supabase()
+    if not sb:
+        return None
+    import requests
+    url, key = sb
+    try:
+        r = requests.get(f"{url}/auth/v1/user", headers={"apikey": key, "Authorization": f"Bearer {tok}"}, timeout=8)
+    except Exception:
+        return None
+    return r.json() if r.status_code == 200 else None
+
+
+def _conta_do_token(tok: str) -> dict | None:
+    if tok.count(".") != 2:                                         # token de sessão do app atual (e-mail e senha)
+        return contas.validar_sessao(tok)
+    c = _CACHE_AUTH.get(tok)
+    if c and time.time() - c[0] < CACHE_AUTH_S:
+        return c[1]
+    u = _usuario_supabase(tok)
+    conta = None
+    if u and u.get("email") and (u.get("email_confirmed_at") or u.get("confirmed_at")):       # só e-mail confirmado entra no jogo
+        meta = u.get("user_metadata") or {}
+        r = contas.login_google(u["email"], meta.get("full_name") or meta.get("name") or "")  # cria ou reativa a conta do jogo
+        conta = r.dado if r.ok else None
+    if len(_CACHE_AUTH) > 5000:
+        _CACHE_AUTH.clear()
+    _CACHE_AUTH[tok] = (time.time(), conta)
+    return conta
+
+
+def quem(authorization: str = Header(default="")) -> Quem:
+    tok = authorization.removeprefix("Bearer ").strip()
+    conta = _conta_do_token(tok) if tok else None
+    if not conta:
+        raise HTTPException(401, "Sessão inválida ou expirada: entre de novo.")
+    return Quem(conta={k: v for k, v in conta.items() if k != "senha_hash"}, email=conta["email"], token=tok)
+
+
+def _erro(e: Exception, status: int = 400):
+    raise HTTPException(status, str(e) or e.__class__.__name__)
+
+
+# ------------------------------------------------------------------ básico
+@app.get("/saude")
+def saude() -> dict:
+    ok, msg = banco.pronto()
+    return {"ok": True, "banco": bool(ok), "detalhe": msg if not ok else ""}
+
+
+class Entrar(BaseModel):
+    email: str
+    senha: str
+    lembrar: bool = True
+
+
+@app.post("/auth/entrar")
+def entrar(d: Entrar) -> dict:
+    r = contas.entrar(d.email, d.senha, cliente="app", lembrar=d.lembrar)
+    if not r.ok:
+        raise HTTPException(401, r.msg)
+    c = r.dado["conta"]
+    return {"token": r.dado["token"], "conta": {"id": c.get("id"), "email": c.get("email"), "nome": c.get("nome")}}
+
+
+@app.post("/auth/sair")
+def sair(q: Quem = Depends(quem)) -> dict:
+    contas.encerrar_sessao(q.token, q.conta.get("id"))
+    return {"ok": True}
+
+
+@app.get("/eu")
+def eu(q: Quem = Depends(quem)) -> dict:
+    """O que o cabeçalho e a Home mostram: conta, perfil de jogador, carteira (caixa e patrimônio) e o placar dos jogos."""
+    a = q.ator
+    try:
+        perfil = banco.perfil_jogador_ler(a) or {}
+    except Exception:
+        perfil = {}
+    try:
+        cart = TCA.situacao(q.email)
+    except Exception:
+        cart = None
+    try:
+        placar = J.estatisticas(J.sanear(banco.jogos_placar_ler(a)))
+    except Exception:
+        placar = None
+    return {"conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
+            "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar}
+
+
+# ------------------------------------------------------------------ rankings (só partidas online contam)
+@app.get("/ranking/{jogo}")
+def ranking(jogo: str, metrica: str = "pts", q: Quem = Depends(quem)) -> dict:
+    if jogo not in J.JOGOS:
+        raise HTTPException(404, "jogo desconhecido")
+    try:
+        return J.montar_ranking(jogo, banco.sis_comp_todos(J.CH_PLACAR), q.email, metrica=metrica)
+    except ValueError as e:
+        _erro(e)
+
+
+def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -> None:
+    """Partida terminada no placar dos jogos (a regra de só contar partida online fica em jogos.registrar_trade)."""
+    try:
+        meu = next(x for x in fz["placar"] if x["voce"])
+        n = len(fz["placar"])
+        fin = (res or {}).get("fin") or {}
+        doc = banco.jogos_placar_ler(q.ator)
+        doc, mudou = J.registrar_trade(doc, pid, meu["pontos"], len(fz["rodadas"]), TB.cfg_de(p).get("formato") or "",
+                                       meu["pos"] if n > 1 else None, n, time.strftime("%Y-%m-%d %H:%M"),
+                                       lucro=fin.get("pnl"), retorno=fin.get("pct_aposta"), qualidade=(res or {}).get("qualidade_nota"))
+        if mudou:
+            banco.jogos_placar_gravar(q.ator, doc)
+    except Exception as e:
+        banco.registrar_erro("api.registrar_ranking", e)
+
+
+# ------------------------------------------------------------------ Trade Battle · solo
+def _chave_solo(q: Quem, pid: str) -> str:
+    return CHAVE_SOLO.format(h=banco._h_conta(q.email), pid=pid)
+
+
+def _ler_solo(q: Quem, pid: str) -> tuple[dict, dict, dict]:
+    d = banco.cfg_ler(_chave_solo(q, pid))
+    if not d or not d.get("p"):
+        raise HTTPException(404, "partida não encontrada")
+    cen = TD.resolver(d["cen"])
+    return d, d["p"], cen
+
+
+def _gravar_solo(q: Quem, pid: str, d: dict) -> None:
+    banco.cfg_gravar(_chave_solo(q, pid), d)
+
+
+def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
+    """Avança pelo relógio do servidor e devolve o que a tela desenha. No fim: lança o resultado na Carteira e no placar (uma vez)."""
+    agora = _agora()
+    TB.avancar(p, agora, TD.por_id([cen]))
+    if p["fase"] == "resultado":
+        TB.proxima_rodada(p, agora)
+    v = TB.visao(p, cen, agora, q.email)
+    fim = p["fase"] == "fim"
+    if fim and not d.get("fechada"):
+        TCA.liquidar_seguro(p)
+        fz = TB.resumo_final(p, q.email)
+        _registrar_ranking(q, pid, p, fz, (p.get("resultados") or {}).get(TB._chave(1, q.email)))
+        d["fechada"] = True
+    d["p"] = p
+    _gravar_solo(q, pid, d)
+    args = TG.args_mesa(v, p, d.get("estado") or {}, agora)
+    out = {"id": pid, "fase": p["fase"], "tela": args}
+    if fim:
+        res = (p.get("resultados") or {}).get(TB._chave(1, q.email))
+        out["fim"] = {"resultado": res, "revelado": TB.revelacao(p, cen), "final": TB.resumo_final(p, q.email)}
+    return out
+
+
+class NovaPartida(BaseModel):
+    corrida: str = "intermediaria"
+
+
+@app.post("/trade/solo")
+def trade_solo_nova(d: NovaPartida, q: Quem = Depends(quem)) -> dict:
+    if d.corrida not in TB.CORRIDAS:
+        raise HTTPException(400, "duração inválida")
+    semente = random.randrange(100000)
+    try:
+        cen = TD.escolher_corrida(d.corrida, semente)                  # só gráficos reais (sem nenhum guardado: erro claro)
+        apostas = {q.email: TCA.capital_corrida(q.email, q.conta.get("id"))}
+        pid = uuid.uuid4().hex[:10]
+        p = TB.nova_partida(cen, cen["tf"], [q.email], _agora(), pid=pid, apostas=apostas, corrida=d.corrida)
+    except TCA.SemSaldo as e:
+        _erro(e, 409)
+    except TB.ErroTrader as e:
+        _erro(e, 409)
+    reg = {"p": p, "cen": TD.referencia_corrida(cen, semente), "estado": {}}
+    return _estado_solo(q, pid, reg, p, cen)
+
+
+@app.get("/trade/solo/{pid}")
+def trade_solo_ver(pid: str, q: Quem = Depends(quem)) -> dict:
+    d, p, cen = _ler_solo(q, pid)
+    return _estado_solo(q, pid, d, p, cen)
+
+
+class Estrategia(BaseModel):
+    direcao: str | None = None          # "alta" (Subir), "baixa" (Cair) ou vazio (Aguardar)
+    tipo: str | None = None
+
+
+@app.post("/trade/solo/{pid}/estrategia")
+def trade_solo_estrategia(pid: str, e: Estrategia, q: Quem = Depends(quem)) -> dict:
+    d, p, cen = _ler_solo(q, pid)
+    ref = cen["candles"][cen["n_analise"] - 1]["c"]
+    est = {"direcao": None, "tipo": "aguardar"} if e.direcao in (None, "", "lateral") else {"direcao": e.direcao, "tipo": e.tipo or "continuacao"}
+    try:
+        TB.salvar_estrategia(p, q.email, est, None, ref, _agora())     # solo: confirmar já começa o gráfico
+    except TB.ErroTrader as x:
+        _erro(x)
+    return _estado_solo(q, pid, d, p, cen)
+
+
+class Acao(BaseModel):
+    dados: dict                          # mesmo formato da tela atual: {aid, tipo, direcao, q, preco, stop, alvo, dist, qual}
+
+
+@app.post("/trade/solo/{pid}/acao")
+def trade_solo_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
+    d, p, cen = _ler_solo(q, pid)
+    try:
+        TB.registrar_acao(p, cen, q.email, TG.acao_de(a.dados), _agora())
+    except TB.ErroTrader as x:
+        _erro(x)
+    return _estado_solo(q, pid, d, p, cen)
+
+
+# ------------------------------------------------------------------ Trade Battle · salas online (2 a 4 jogadores)
+def _sala(fn, *args):
+    try:
+        return fn(*args)
+    except (OL.ErroSala, TB.ErroTrader) as e:
+        _erro(e)
+
+
+class NovaSala(BaseModel):
+    corrida: str = "intermediaria"
+
+
+@app.post("/trade/salas")
+def sala_criar(d: NovaSala, q: Quem = Depends(quem)) -> dict:
+    if d.corrida not in TB.CORRIDAS:
+        raise HTTPException(400, "duração inválida")
+    return _sala(OL.criar_sala, q.email, TB.CORRIDAS[d.corrida]["tf"], _agora(), TB.FORMATO_PADRAO, d.corrida)
+
+
+class Codigo(BaseModel):
+    codigo: str
+
+
+@app.post("/trade/salas/entrar")
+def sala_entrar(d: Codigo, q: Quem = Depends(quem)) -> dict:
+    return _sala(OL.entrar_na_sala, q.email, d.codigo, _agora())
+
+
+@app.post("/trade/salas/{pid}/iniciar")
+def sala_iniciar(pid: str, q: Quem = Depends(quem)) -> dict:
+    _sala(OL.iniciar, pid, q.email, _agora())
+    return sala_ver(pid, q)
+
+
+@app.get("/trade/salas/{pid}")
+def sala_ver(pid: str, q: Quem = Depends(quem)) -> dict:
+    b = _sala(OL.ler, pid, q.email, _agora())
+    v = b.get("v")
+    if v and v.get("fase") == "fim" and v.get("final"):
+        _registrar_ranking(q, pid, b["p"], v["final"], v.get("resultado"))
+    return b
+
+
+@app.post("/trade/salas/{pid}/estrategia")
+def sala_estrategia(pid: str, e: Estrategia, q: Quem = Depends(quem)) -> dict:
+    est = {"direcao": None, "tipo": "aguardar"} if e.direcao in (None, "", "lateral") else {"direcao": e.direcao, "tipo": e.tipo or "continuacao"}
+    _sala(OL.salvar, pid, q.email, est, None, _agora())
+    return sala_ver(pid, q)
+
+
+@app.post("/trade/salas/{pid}/acao")
+def sala_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
+    _sala(OL.agir, pid, q.email, TG.acao_de(a.dados), _agora())
+    return sala_ver(pid, q)
+
+
+@app.post("/trade/salas/{pid}/sair")
+def sala_sair(pid: str, q: Quem = Depends(quem)) -> dict:
+    _sala(OL.sair, pid, q.email, _agora())
+    return {"ok": True}

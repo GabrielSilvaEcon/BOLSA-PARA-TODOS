@@ -17,3 +17,5 @@ cryptography
 googlenewsdecoder
 mercadopago
 streamlit-keyup
+fastapi>=0.115            # servidor do jogo para o app novo (api/main.py)
+uvicorn>=0.30
