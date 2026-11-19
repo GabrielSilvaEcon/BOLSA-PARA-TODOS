@@ -150,18 +150,18 @@ _CSS_CENTRAL = "<style>" + "".join(l.strip() for l in f"""
 {_P} .st-key-tb_fmts > div:only-child{{grid-column:1/-1;display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem !important}}
 {_P} :is(.st-key-tb_fmts,.st-key-tb_modos) [data-testid="stHorizontalBlock"]{{flex-wrap:nowrap !important;gap:.5rem !important;overflow:visible !important}}
 {_P} :is(.st-key-tb_fmts,.st-key-tb_modos) [data-testid="stColumn"]{{flex:1 1 0 !important;width:auto !important;min-width:0 !important;overflow:visible !important}}
-{_bt('tb_fmtb_rapida')},{_bt('tb_fmtb_normal')},{_bt('tb_fmtb_longa')}{{position:relative;min-height:62px !important;padding:6px 6px !important;border-radius:18px !important;
+{_bt('tb_fmtb_rapida')},{_bt('tb_fmtb_intermediaria')},{_bt('tb_fmtb_longa')}{{position:relative;min-height:62px !important;padding:6px 6px !important;border-radius:18px !important;
   border:2px solid #5B4BD6 !important;background:linear-gradient(160deg,#241A86,#150F55) !important;box-shadow:0 0 10px rgba(91,75,214,.4) !important;overflow:visible !important}}
-{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button > div > span{{flex-direction:column !important;gap:2px !important;align-items:center !important}}
-{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa,.st-key-tb_jogar,.st-key-tb_amigos) button [data-testid="stMarkdownContainer"]{{width:100% !important}}
-{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button p{{text-align:center !important}}
-{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button [data-testid="stIconMaterial"]{{font-size:1.6rem !important;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}
-{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button p{{font-weight:900 !important;font-size:.95rem !important;line-height:1.1 !important;text-align:left !important;color:#fff !important;-webkit-text-fill-color:#fff !important}}
-{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) button p::after{{display:block;margin-top:2px;font-weight:600;font-size:.68rem;line-height:1.25;white-space:pre;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
-{_Q} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) .stButton > button[data-testid="stBaseButton-primary"]{{border-color:#34E85E !important;
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_intermediaria,.st-key-tb_fmtb_longa) button > div > span{{flex-direction:column !important;gap:2px !important;align-items:center !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_intermediaria,.st-key-tb_fmtb_longa,.st-key-tb_jogar,.st-key-tb_amigos) button [data-testid="stMarkdownContainer"]{{width:100% !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_intermediaria,.st-key-tb_fmtb_longa) button p{{text-align:center !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_intermediaria,.st-key-tb_fmtb_longa) button [data-testid="stIconMaterial"]{{font-size:1.6rem !important;color:#FFC93C !important;-webkit-text-fill-color:#FFC93C !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_intermediaria,.st-key-tb_fmtb_longa) button p{{font-weight:900 !important;font-size:.95rem !important;line-height:1.1 !important;text-align:left !important;color:#fff !important;-webkit-text-fill-color:#fff !important}}
+{_P} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_intermediaria,.st-key-tb_fmtb_longa) button p::after{{display:block;margin-top:2px;font-weight:600;font-size:.68rem;line-height:1.25;white-space:pre;color:#C9C2FF !important;-webkit-text-fill-color:#C9C2FF !important}}
+{_Q} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_intermediaria,.st-key-tb_fmtb_longa) .stButton > button[data-testid="stBaseButton-primary"]{{border-color:#34E85E !important;
   background:linear-gradient(160deg,rgba(52,232,94,.22),#150F55 80%) !important;box-shadow:0 0 16px rgba(52,232,94,.5) !important}}
-{_Q} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_normal,.st-key-tb_fmtb_longa) .stButton > button[data-testid="stBaseButton-primary"] p::after{{color:#8DF5C1 !important;-webkit-text-fill-color:#8DF5C1 !important}}
-{_P} .st-key-tb_fmtb_normal button::before{{content:"Recomendado";position:absolute;top:-10px;left:50%;transform:translateX(-50%);padding:1px 8px;border-radius:999px;background:#34E85E;
+{_Q} :is(.st-key-tb_fmtb_rapida,.st-key-tb_fmtb_intermediaria,.st-key-tb_fmtb_longa) .stButton > button[data-testid="stBaseButton-primary"] p::after{{color:#8DF5C1 !important;-webkit-text-fill-color:#8DF5C1 !important}}
+{_P} .st-key-tb_fmtb_intermediaria button::before{{content:"Recomendado";position:absolute;top:-10px;left:50%;transform:translateX(-50%);padding:1px 8px;border-radius:999px;background:#34E85E;
   font-size:.62rem;font-weight:900;white-space:nowrap;color:#06240F;-webkit-text-fill-color:#06240F;box-shadow:0 0 8px rgba(52,232,94,.6)}}
 {_P} .st-key-tb_fmts{{padding-top:8px}}
 {_bt('tb_jogar')},{_bt('tb_amigos')}{{position:relative;min-height:150px !important;padding:12px 10px 34px !important;border-radius:22px !important;overflow:visible !important}}
@@ -292,22 +292,26 @@ def _formato(tf: str) -> str:
     return f if f in ok else (TB.FORMATO_PADRAO if TB.FORMATO_PADRAO in ok else (ok[0] if ok else TB.FORMATO_PADRAO))
 
 
+def _corrida() -> str:
+    f = _ss().get("tb_corrida")
+    return f if f in TB.CORRIDAS else "intermediaria"
+
+
 def _iniciar() -> None:
-    tf = _ss().get("tb_tf") or "15m"
     try:
-        fmt = _formato(tf)
-        cen = TD.escolher(tf, int(_agora()) % 100000, rodadas=TB.FORMATOS[fmt])
+        fmt = _corrida()
+        cen = TD.escolher_corrida(fmt, int(_agora()) % 100000)
         jog = _jogador()
         if not jog:                                              # o app só abre com conta; sem ela não há partida
             _ss()["tb_erro"] = "Entre na sua conta para jogar."
             return
-        try:                                                     # cada partida vale 1% do patrimônio da Wallet Game
-            apostas = {jog: TCA.aposta_de(jog, (_conta() or {}).get("id"), mesa=True)}
+        try:                                                     # capital da partida: 5% do saldo disponível (caixa livre) da Carteira
+            apostas = {jog: TCA.capital_corrida(jog, (_conta() or {}).get("id"))}
         except TCA.SemSaldo as e:
             _ss()["tb_erro"] = str(e)
             return
         _ss()["tb_cen"] = TD.por_id([cen])
-        _ss()["tb_p"] = TB.nova_partida(cen, tf, [jog], _agora(), apostas=apostas, formato=fmt)
+        _ss()["tb_p"] = TB.nova_partida(cen, cen["tf"], [jog], _agora(), apostas=apostas, corrida=fmt)
         _zerar_rascunho()
     except TB.ErroTrader as e:
         _ss()["tb_erro"] = str(e)
@@ -448,8 +452,7 @@ def _msg_online(e: Exception) -> str:
 def _on_criar() -> None:
     em = _email_online()
     try:
-        tf = _ss().get("tb_tf") or "15m"
-        _ss()["tb_on_pid"] = TOD.criar_sala(em, tf, _agora(), _formato(tf))["id"]
+        _ss()["tb_on_pid"] = TOD.criar_sala(em, TB.CORRIDAS[_corrida()]["tf"], _agora(), corrida=_corrida())["id"]
     except Exception as e:
         _ss()["tb_erro"] = _msg_online(e)
 
@@ -485,7 +488,9 @@ def _on_iniciar(pid: str) -> None:
         _ss()["tb_erro"] = _msg_online(e)
 
 
-def _rot_formato(f: str | None) -> str:
+def _rot_formato(f: str | None, corrida: str | None = None) -> str:
+    if corrida in TB.CORRIDAS:
+        return f"{TB.ROTULO_CORRIDA[corrida]} · partida corrida"
     return f"{TB.ROTULO_FORMATO[f]} · {TB.FORMATOS[f]} rodadas" if f in TB.FORMATOS else "regras anteriores · 10 rodadas"
 
 
@@ -532,7 +537,7 @@ def _frag_sala(pid: str) -> None:
             return ""
     cards = "".join(f"<div class='tb-lin'><span class='tb-lin-n'>{_av_sala(j)}{_e(AMA.nome_exibicao(j['nick']) if not j['voce'] else (PA.meu_perfil() or {}).get('nome') or j['nick'])}{' (você)' if j['voce'] else ''}</span>"
                     f"<span>{'criador' if j['criador'] else 'jogador'}</span></div>" for j in sa["jogadores"])
-    st.markdown(f"<div class='tb-pts'><div class='n'>{_e(sa['codigo'])}</div><small>código da sala · {_e(TB.TIMEFRAMES[sa['tf']]['nome'])} · {_e(_rot_formato(sa.get('formato')))}</small></div>"
+    st.markdown(f"<div class='tb-pts'><div class='n'>{_e(sa['codigo'])}</div><small>código da sala · {_e(TB.TIMEFRAMES[sa['tf']]['nome'])} · {_e(_rot_formato(sa.get('formato'), sa.get('corrida')))}</small></div>"
                 f"<div class='tb-card'><b>Jogadores {sa['n']}/{sa['max']}</b>{cards}</div>", unsafe_allow_html=True)
     import amigos_app as AMA
     for i, j in enumerate(x for x in sa["jogadores"] if not x["voce"]):
@@ -570,7 +575,7 @@ def _frag_mesa_online(pid: str) -> None:
         return st.rerun(scope="fragment")
 
 
-def _cartao_fin(fin: dict | None) -> str:
+def _cartao_fin(fin: dict | None, corrida_fin: bool = False) -> str:
     """Cartão do dinheiro da partida: quanto os trades renderam (ou custaram) em T$ e em %, somando as rodadas. Vazio para quem jogou sem aposta."""
     if not fin:
         return ""
@@ -578,10 +583,12 @@ def _cartao_fin(fin: dict | None) -> str:
     pnl = fin["pnl"]
     cor = "up" if pnl > 0 else ("down" if pnl < 0 else "zero")
     sg = TG._sinal(pnl)
-    por_rod = "".join(f"<div class='tb-lin'>Rodada {k + 1}<span class='{'up' if x > 0 else ('down' if x < 0 else '')}'>{TG._sinal(x)}{_e(WG.moeda(abs(x)))}</span></div>" for k, x in enumerate(fin["rodadas"]))
+    corrida = len(fin["rodadas"]) <= 1 and corrida_fin
+    por_rod = "" if corrida else "".join(f"<div class='tb-lin'>Rodada {k + 1}<span class='{'up' if x > 0 else ('down' if x < 0 else '')}'>{TG._sinal(x)}{_e(WG.moeda(abs(x)))}</span></div>" for k, x in enumerate(fin["rodadas"]))
+    base = f"sobre o capital de {_e(WG.moeda(fin['aposta']))} (5% do saldo disponível)" if corrida else f"sobre a aposta de {_e(WG.moeda(fin['aposta']))}"
     return (f"<div class='tb-card tb-fin {cor}'><div class='t'>Quanto seus trades renderam</div>"
             f"<div class='v'>{sg}{_e(WG.moeda(abs(pnl)))}</div>"
-            f"<div class='s'>{sg}{TG._pc(fin['pct_aposta'])}% sobre a aposta de {_e(WG.moeda(fin['aposta']))} · {sg}{TG._pc(fin['pct_pat'], 3)}% do patrimônio</div>"
+            f"<div class='s'>{sg}{TG._pc(fin['pct_aposta'])}% {base} · {sg}{TG._pc(fin['pct_pat'], 3)}% do patrimônio</div>"
             f"{por_rod}<small>Já somado ao seu patrimônio na carteira.</small></div>")
 
 
@@ -706,7 +713,16 @@ def _avatar_placar(x: dict) -> str:
     return f"<span class='tb-av'><img src='{AC.uri('avatar')}' alt='' style='filter:{_AV_COR.get(n, _AV_COR[1])}'></span>"
 
 
-def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago: dict | None = None) -> None:
+def _html_revelacao(rv: dict | None) -> str:
+    """Partida corrida: qual era o ativo escondido e de quando eram os candles."""
+    if not rv:
+        return ""
+    sim = " (cenário simulado)" if rv.get("demo") else ""
+    return (f"<div class='tb-rev'><small>🔎 O ativo da partida era</small><b>{_e(rv['ticker'])}</b>"
+            f"<span>{_e(rv['tf_nome'])} · de {_e(rv['de'])} a {_e(rv['ate'])}{sim}</span></div>")
+
+
+def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago: dict | None = None, revelado: dict | None = None) -> None:
     """Fim da partida (visual de 'fim de rodada' da referência, nas cores do app): lugar, pontuação e retorno, placar da batalha,
     pontos por rodada, dinheiro da partida e a análise completa (Raio-X de cada rodada). `fz` = TB.resumo_final (já rotulado, sem e-mail)."""
     import wallet_game as WG
@@ -728,8 +744,11 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago
     cor_r = "zero" if not ret else ("up" if ret > 0 else "down")
     ret_html = (f"<div class='bx rt {cor_r}'><small>📈 Retorno</small><b>{_sg(ret)}{TG._pc(ret)}%</b>"
                 f"<i>{(_sg(fin['pnl']) + _e(WG.moeda(abs(fin['pnl']))) + ' · ') if fin else ''}da aposta</i></div>") if ret is not None else ""
+    em_rod = "na partida" if revelado else f"em {n_rod} rodadas"
+    if revelado:
+        ret_html = ret_html.replace("da aposta</i>", "do capital</i>")
     stats = (f"<div class='tb-st'><div class='bx {'pos' if pts > 0 else ('neg' if pts < 0 else '')}'><small>⭐ Pontuação</small><b>{_sg(pts)}{TG._pc(pts, 1)}</b>"
-             f"<i>em {n_rod} rodadas{' · simulado' if demo else ''}</i></div>{ret_html}</div>")
+             f"<i>{em_rod}{' · simulado' if demo else ''}</i></div>{ret_html}</div>")
     placar = ""
     if multi:
         lin = "".join(f"<div class='tb-pr p{x['pos']}{' eu' if x['voce'] else ''}'><span class='rk'>{x['pos']}º</span><span class='nm'>{_avatar_placar(x)}{_e(x['rotulo'])}</span>"
@@ -740,10 +759,15 @@ def _tela_final(fz: dict, fin: dict | None, demo: bool, tickers: list[str], pago
     rods = "".join(f"<div class='tb-lin'>Rodada {k} · {_e(tickers[k - 1] if k - 1 < len(tickers) else '')}<span class='{'down' if r < 0 else ''}'>{_sg(r)}{TG._pc(r, 1)}</span></div>"
                    for k, r in enumerate(fz["rodadas"], 1))
     xp = _linha_xp(fz.get("xp") or {}, pago or {})
-    st.markdown(f"<div class='tb-fim-t'>FIM DE PARTIDA!</div>{topo}{stats}{xp}{placar}<div class='tb-card'>{rods}</div>{_cartao_fin(fin)}", unsafe_allow_html=True)
+    rods_html = "" if revelado else f"<div class='tb-card'>{rods}</div>"
+    st.markdown(f"<div class='tb-fim-t'>FIM DE PARTIDA!</div>{topo}{_html_revelacao(revelado)}{stats}{xp}{placar}{rods_html}{_cartao_fin(fin, bool(revelado))}"
+                "<style>html body .stApp .tb-rev{display:flex;flex-direction:column;align-items:center;gap:2px;margin:6px 0;padding:10px;border-radius:16px;"
+                "border:1.5px solid #F2B84B;background:linear-gradient(160deg,rgba(242,184,75,.18),#150F55)}"
+                "html body .stApp .tb-rev small{color:#FFE3A3 !important;font-weight:800}html body .stApp .tb-rev b{font-size:1.6rem;font-weight:900;color:#fff !important}"
+                "html body .stApp .tb-rev span{color:#D9D4F7 !important;font-size:.82rem;font-weight:700}</style>", unsafe_allow_html=True)
     with st.expander("Ver análise completa", icon=":material/insights:"):
         for k, linhas in fz["raiox"]:
-            st.markdown(f"<div class='tb-rx-r'>Rodada {k}</div>{_raiox_html(linhas)}", unsafe_allow_html=True)
+            st.markdown(("" if revelado else f"<div class='tb-rx-r'>Rodada {k}</div>") + _raiox_html(linhas), unsafe_allow_html=True)
 
 
 def _registrar_ranking(pid: str, fz: dict, p: dict) -> None:
@@ -761,7 +785,7 @@ def _fim_online(b: dict) -> None:
     v = b["v"]
     _ss()["tb_av_assentos"] = _avatares_assentos(b["p"])
     _registrar_ranking(b["p"]["id"], v["final"], b["p"])
-    _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]))
+    _tela_final(v["final"], v.get("fin_total"), v["demo"], [v["ticker"]] * v["rodadas"], _pagar_xp(b["p"]["id"], v["final"]["xp"]), v.get("revelado"))
     st.markdown("<div class='tb-fim-rod'>Continue evoluindo e conquiste novas vitórias!</div>", unsafe_allow_html=True)
     try:                                          # quem jogou na sala: botão para o perfil de cada um (o placar mostra "Jogador N")
         import amigos_app as AMA
@@ -824,6 +848,36 @@ def _preparar_reais(tf: str, b24: bool = False) -> None:
 
 
 _ICONE_FMT = {"rapida": ":material/bolt:", "normal": ":material/timer:", "longa": ":material/emoji_events:"}
+_ICONE_CORRIDA = {"rapida": ":material/bolt:", "intermediaria": ":material/timer:", "longa": ":material/emoji_events:"}
+
+
+def _min_corrida(f: str) -> int:
+    """Duração aproximada da partida corrida (análise + replay), para o cartão não prometer menos do que o jogo dura."""
+    return round((TB.T_ANALISE_S + TB.CORRIDAS[f]["n_replay"] * TB.SEG_POR_CANDLE) / 60)
+
+
+def _escolher_corrida(f: str) -> None:
+    _ss()["tb_corrida"] = f
+
+
+def _n_reais_corrida(f: str) -> int:
+    k = f"tb_nreais_c_{f}"
+    if k not in _ss():
+        try:
+            _ss()[k] = len(TD.listar_corrida(f))
+        except Exception:
+            _ss()[k] = 0
+    return _ss()[k]
+
+
+def _preparar_corrida(f: str) -> None:
+    import analise_tecnica_app as ATA
+    from datetime import datetime
+    try:
+        _ss()["tb_prep"] = TD.preparar_corrida(f, lambda cod, per, iv: ATA._baixar(cod, per, iv), datetime.now().isoformat(timespec="minutes"))
+        _ss().pop(f"tb_nreais_c_{f}", None)
+    except Exception as e:
+        _ss()["tb_prep"] = {"erro": f"{e.__class__.__name__}"}
 
 
 def _min_formato(f: str) -> int:
@@ -843,19 +897,17 @@ def _central() -> None:
     except Exception:
         pass
     st.markdown(f"<div class='tb-hero'><img src='{ART.uri('hero')}' alt='Trade Battle'></div>", unsafe_allow_html=True)
-    tf = st.segmented_control("Timeframe", list(TB.TIMEFRAMES), default="15m", key="tb_tf",
-                              format_func=lambda k: TB.TIMEFRAMES[k]["nome"], label_visibility="collapsed") or "15m"
-    if _n_reais(tf) < TB.MIN_CENARIOS_REAIS:
-        st.markdown(f"<div class='tb-demo2'><div><b><span>i</span>Modo Demonstração</b><p>Ainda não há cenários históricos reais preparados para este timeframe. "
-                    f"Os gráficos serão simulados e não são cotações reais.</p></div><img src='{CT.uri('raposa_confiante')}' alt=''></div>", unsafe_allow_html=True)
+    atual = _corrida()
     st.markdown("<div class='tb-sec'><span>🕒</span>Escolha a duração da partida</div>", unsafe_allow_html=True)
-    ok_f, atual = _formatos(tf), _formato(tf)
     with st.container(key="tb_fmts"):                               # grade própria (3 lado a lado no celular): a regra global quebra linhas de 3 colunas
-        for f in TB.FORMATOS:
-            st.button(TB.ROTULO_FORMATO[f], key=f"tb_fmtb_{f}", icon=_ICONE_FMT[f], width="stretch", disabled=f not in ok_f,
-                      type="primary" if f == atual else "secondary", on_click=_escolher_formato, args=(tf, f))
-    st.markdown("<style>" + "".join(f"{_P} .st-key-tb_fmtb_{f} button p::after{{content:'{TB.FORMATOS[f]} rodadas\\A~{_min_formato(f)} min'}}" for f in TB.FORMATOS) + "</style>",
-                unsafe_allow_html=True)
+        for f in TB.CORRIDAS:
+            st.button(TB.ROTULO_CORRIDA[f], key=f"tb_fmtb_{f}", icon=_ICONE_CORRIDA[f], width="stretch",
+                      type="primary" if f == atual else "secondary", on_click=_escolher_corrida, args=(f,))
+    st.markdown("<style>" + "".join(f"{_P} .st-key-tb_fmtb_{f} button p::after{{content:'Gráfico de {TB.TIMEFRAMES[TB.CORRIDAS[f]['tf']]['nome']}\\A~{_min_corrida(f)} min'}}"
+                                    for f in TB.CORRIDAS) + "</style>", unsafe_allow_html=True)
+    if _n_reais_corrida(atual) < TB.MIN_CENARIOS_REAIS:
+        st.markdown(f"<div class='tb-demo2'><div><b><span>i</span>Modo Demonstração</b><p>Ainda não há gráficos reais preparados para esta duração. "
+                    f"Os gráficos serão simulados e não são cotações reais.</p></div><img src='{CT.uri('raposa_confiante')}' alt=''></div>", unsafe_allow_html=True)
     em = _email_online()
     try:
         ativa = TOD.partida_ativa(em) if em else None
@@ -879,18 +931,23 @@ def _central() -> None:
         pass
     st.markdown("<div class='tb-sobre'><div class='h'>⭐ Sobre o Trade Battle</div><div class='g'>"
                 "<div><i>👥</i><b>2-4</b><small>jogadores</small></div>"
-                f"<div><i>📅</i><b>{' · '.join(str(n) for n in TB.FORMATOS.values())}</b><small>rodadas</small></div>"
-                f"<div><i>📊</i><b>{TB.T_ANALISE_S}s/{int(TB.T_REPLAY_MESA_S)}s</b><small>análise e replay</small></div>"
+                "<div><i>📊</i><b>5m · 1h · 1D</b><small>gráficos reais</small></div>"
+                "<div><i>💰</i><b>5%</b><small>do saldo disponível</small></div>"
                 "<div><i>🏆</i><b>XP</b><small>por colocação</small></div></div></div>", unsafe_allow_html=True)
     if _ss().get("tb_erro"):
         st.markdown(f"<div class='tb-er'>{_e(_ss().pop('tb_erro'))}</div>", unsafe_allow_html=True)
     with st.expander("Como funciona", icon=":material/help:"):
-        st.markdown("<div class='tb-aviso'>Você recebe o gráfico de uma ação da B3 parado num ponto do passado e tem 120 s para analisar, registrar a leitura "
-                    "(direção, tipo e confiança) e fazer suas marcações. No replay (24 candles em 60 s) você opera ao vivo: compra, vende, encerra e ajusta stop e alvo, com uma posição por vez; "
-                    "o adversário vê só as entradas e saídas que você executou. Lucro soma e prejuízo tira, tanto no patrimônio quanto nos pontos. Jogo educativo: nenhuma ordem real, nada de recomendação de investimento. "
-                    f"No fim da partida você ganha XP pela colocação (mais jogadores na sala, mais XP) e pela pontuação positiva; XP nunca é negativo (até {TB.XP_PARTIDAS_DIA} partidas por dia, só com conta); o Trade Battle não dá TickerCoins: o dinheiro é só o lucro ou prejuízo das suas operações. "
-                    "No modo individual a partida fica só neste navegador; se você atualizar a página, ela é perdida. Em sala com amigos (2 a 4 jogadores) a partida fica "
-                    "guardada no servidor: dá para voltar a ela depois de atualizar a página.</div>", unsafe_allow_html=True)
+        st.markdown("<div class='tb-aviso'>Você recebe o gráfico de uma ação real da B3, parado num ponto do passado, sem o nome do ativo nem a data "
+                    "(eles aparecem só no fim, para ninguém pesquisar o que aconteceu depois). Escolha a duração: <b>Rápida</b> usa candles de 5 minutos, "
+                    "<b>Intermediária</b> de 1 hora e <b>Longa</b> de 1 dia. Você tem 120 s para analisar e registrar a sua leitura (direção, tipo e confiança); "
+                    "depois o gráfico anda candle a candle numa partida corrida, sem rodadas, e você opera ao vivo como num home broker: compra e vende a quantidade "
+                    "de ações que quiser, aumenta ou reduz a posição, usa ordem a mercado, limite ou stop de entrada, e coloca stop e alvo. "
+                    "<b>Capital:</b> a partida usa 5% do saldo disponível (caixa livre) da sua Carteira. O valor aplicado ao mesmo tempo nunca passa disso: "
+                    "chegou ao teto, encerre ou reduza a posição para entrar de novo. A perda máxima é esse capital. "
+                    "<b>Execução honesta:</b> a ordem a mercado executa na abertura do próximo candle; stop e alvo executam no preço ou, se o preço abrir além dele, na abertura; "
+                    "cada execução paga a taxa da B3 (cerca de 0,03%). No fim, o resultado (lucro ou prejuízo) volta para a sua Carteira. "
+                    f"Você ganha XP pela colocação e pela pontuação positiva (até {TB.XP_PARTIDAS_DIA} partidas por dia). Jogo educativo: nenhuma ordem real, nada de recomendação de investimento. "
+                    "No modo individual a partida fica só neste navegador; em sala com amigos (2 a 4 jogadores) ela fica guardada no servidor.</div>", unsafe_allow_html=True)
     try:
         import usuarios
         admin = usuarios.pode("sistema.dados")
@@ -899,11 +956,10 @@ def _central() -> None:
     if admin:
         with st.expander("Preparar cenários reais (administração)", icon=":material/database:"):
             st.caption("Baixa o histórico gratuito UMA vez, valida candle a candle e guarda no banco. As partidas só leem o que já está guardado.")
-            if st.button("Preparar agora", key="tb_preparar", on_click=_preparar_reais, args=(tf,)):
-                pass
-            if tf == "1h":
-                st.caption("Formato Longa (10 rodadas de 24 candles) no 1h: precisa de cenários novos de 340 candles. Esta ação só ACRESCENTA cenários (ids com -b24); os antigos nunca são alterados nem apagados.")
-                st.button("Preparar cenários 1h de 24 candles (Longa)", key="tb_preparar_b24", on_click=_preparar_reais, args=(tf, True))
+            for f in TB.CORRIDAS:
+                st.button(f"Preparar {TB.ROTULO_CORRIDA[f]} (gráfico de {TB.TIMEFRAMES[TB.CORRIDAS[f]['tf']]['nome']}) · {_n_reais_corrida(f)} guardados",
+                          key=f"tb_prep_c_{f}", on_click=_preparar_corrida, args=(f,), width="stretch")
+            st.caption("O de 5 minutos só existe para os últimos 60 dias (limite gratuito): prepare de novo de vez em quando para ter gráficos recentes.")
             rel = _ss().get("tb_prep")
             if rel:
                 if rel.get("erro"):
@@ -1257,7 +1313,8 @@ def _fim(p: dict) -> None:
     fz = TB.resumo_final(p, j)
     _ss()["tb_av_assentos"] = _avatares_assentos(p)
     _registrar_ranking(p["id"], fz, p)
-    _tela_final(fz, TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]], _pagar_xp(p["id"], fz["xp"]))
+    rv = TB.revelacao(p, _cen()[p["cenarios"][0]]) if TB.qtd_de(p) else None
+    _tela_final(fz, TB.resumo_financeiro(p, j), bool(p["demo"]), [_cen()[cid]["ticker"] for cid in p["cenarios"]], _pagar_xp(p["id"], fz["xp"]), rv)
     st.button("Jogar novamente", key="tb_de_novo", icon=":material/replay:", width="stretch", on_click=_de_novo)
     st.button("Voltar ao início do Trade Battle", key="tb_voltar", icon=":material/home:", width="stretch", on_click=_sair)
 

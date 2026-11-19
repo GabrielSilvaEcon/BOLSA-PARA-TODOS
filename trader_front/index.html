@@ -135,6 +135,11 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #adv{position:relative;flex:0 1 auto;max-height:46%;min-height:0;overflow:auto;display:none;flex-direction:column;gap:4px;padding:7px 8px;border-radius:14px;
   border:1.5px solid #8B6CFF;background:linear-gradient(180deg,rgba(36,26,110,.97),rgba(16,11,52,.98));box-shadow:0 0 14px rgba(139,108,255,.3)}
 #app.adv #mb1{display:none}
+#qrow{display:none;align-items:center;gap:4px}#app.qtd.mesa.replay #qrow{display:flex}
+#qrow .ql{flex:none;font-size:11px;font-weight:900;color:#C9C2F2;padding:0 2px}
+#qrow button{flex:none;min-height:32px;padding:0 9px;font-size:13px;font-weight:900}
+#qrow #q-val{flex:1 1 auto;min-width:0;width:60px;text-align:center;border-radius:10px;border:1.5px solid #8B6CFF;background:#120C38;color:#fff;min-height:32px;font-size:16px;font-weight:900;-webkit-user-select:text;user-select:text}
+#qrow .qp{font-size:11px;padding:0 7px;border-color:rgba(242,184,75,.6);color:#FFE3A3}
 #app.short #adv{max-height:58%}
 #adv .g{font-size:10px;color:#BDB5E6;font-weight:800;margin-top:2px}
 #adv input,#adv select{min-width:0;border-radius:10px;border:1px solid #8B6CFF;background:#120C38;color:#fff;padding:0 8px;min-height:38px;font-size:16px;-webkit-user-select:text;user-select:text}
@@ -278,7 +283,9 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
         <div class="row"><input id="g-alvo" inputmode="decimal" placeholder="Alvo" autocomplete="off"><button id="g-alvo-b">Definir alvo</button></div></div>
       <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
       <details id="o-regras"><summary>ⓘ Regras da aposta</summary><small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></details></div>
-  <div id="mesa"><div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ VENDER</span></button></div>
+  <div id="mesa"><div class="row" id="qrow"><span class="ql">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
+    <button class="qp" data-qp="25">25%</button><button class="qp" data-qp="50">50%</button><button class="qp" data-qp="100">Máx</button></div>
+    <div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ VENDER</span></button></div>
     <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar ordem</button><button id="m-adv">⚙ Opções ▾</button><button id="m-ind" title="Indicadores">⋯</button></div></div>
   <div id="rkb"><span>ⓘ Você está no modo Trade Battle. Suas operações contam para o ranking!</span><span id="ap"></span><button id="b-rank">🏆 Ranking</button></div>
   <div id="bt"><button id="conf">Confirmar estratégia</button><button id="rep">Iniciar replay</button><button id="enc">⏹ Encerrar operação</button></div>
@@ -659,9 +666,9 @@ function avatarHTML(j,cls){   // avatar equipado de cada assento (Coleção de A
 }
 function placarUI(){   // placar da rodada (o servidor já manda ordenado e formatado): você em destaque, medalhas de 1º a 3º
   const P=A&&A.placar,el=$("placar");if(!P||!mesaOn()){el.classList.remove("on");return}
-  const sg=JSON.stringify([P,A.moldura||"",A.avatares||{}]);if(el.dataset.sg===sg&&el.classList.contains("on"))return;el.dataset.sg=sg;   // só redesenha quando muda (avatares são imagens)
+  const sg=JSON.stringify([P,A.moldura||"",A.avatares||{},A.mesa&&A.mesa.qtd?A.revelados:0]);if(el.dataset.sg===sg&&el.classList.contains("on"))return;el.dataset.sg=sg;   // só redesenha quando muda (avatares são imagens)
   const solo=P.jogadores.length===1;el.classList.toggle("solo",solo);el.classList.toggle("c",P.jogadores.length>=3);const curto=P.jogadores.length>=3,nome=j=>curto&&!j.voce?j.rotulo.replace(/^Jogador /,"J"):j.rotulo;
-  el.innerHTML=`<div class="rd">Rodada<b>${esc(P.rodada)}</b></div>`+P.jogadores.map(j=>`<div class="pj p${j.pos}${j.voce?" eu":""}"><span class="avw">${avatarHTML(j,"av")}<span class="rk">${j.pos}º</span></span><span class="nm">${esc(nome(j))}${j.voce&&solo&&P.pat_txt?` <small>· ${esc(P.pat_txt)}</small>`:""}</span><b class="${j.cor}">${esc(j.txt)}</b></div>`).join("");
+  el.innerHTML=(A.mesa&&A.mesa.qtd?`<div class="rd">Candle<b>${A.revelados}/${A.total_replay}</b></div>`:`<div class="rd">Rodada<b>${esc(P.rodada)}</b></div>`)+P.jogadores.map(j=>`<div class="pj p${j.pos}${j.voce?" eu":""}"><span class="avw">${avatarHTML(j,"av")}<span class="rk">${j.pos}º</span></span><span class="nm">${esc(nome(j))}${j.voce&&solo&&P.pat_txt?` <small>· ${esc(P.pat_txt)}</small>`:""}</span><b class="${j.cor}">${esc(j.txt)}</b></div>`).join("");
   el.classList.add("on");
 }
 function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)
@@ -678,10 +685,23 @@ function uiMesa(){   // atualiza só textos e estados dos botões (a tela não �
   if(lm)l2+=` · Risco ${fmt(lm.usado_pct_pat)}% de ${lm.pct_pat}%`;
   if(pz)l2+=` · <span class="pz">⏸ pausa técnica</span>`;
   if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
+  if(m&&m.qtd){   // partida corrida: quantidade, preço médio, poder de compra e exposição
+    const p=m.posicao,fila=(m.fila||[]).length?` · <span class="pz">⏳ ordem a mercado: executa na abertura do próximo candle</span>`:"";
+    if(p)l1=`<span class="e">${p.direcao==="alta"?"Comprado":"Vendido"} ${p.q} · PM ${fmt(p.preco_entrada)}</span>${sa}`;
+    else if(o.pend)l1=`<span class="e">Ordem ${o.pend.tipo==="limite"?"limite":"stop"} ${o.pend.direcao==="alta"?"compra":"venda"} ${o.pend.q||""} em ${fmt(o.pend.preco)}</span>${sa}`;
+    else l1=`<span class="e">Sem posição</span><span class="pz">pronto para operar</span>`;
+    if(lm&&lm.bloqueado)l1=`<span class="s">🛑 a perda chegou ao capital da partida: sem novas entradas</span>`;
+    l2=`Aberto <b class="op ${m.cor_aberto}">${esc(m.aberto_txt)}</b> · Partida <b class="op ${m.cor_acum}">${esc(m.acum_txt)}</b> · Poder T$ ${fmt(m.poder)}<span class="opc"> · exposição ${fmt(m.exposicao_pct)}% · candle ${A.revelados}/${A.total_replay}</span>${fila}`;
+    if(pz)l2+=` · <span class="pz">⏸ pausa técnica</span>`;
+    if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
+  }
+  $("app").classList.toggle("qtd",!!(m&&m.qtd));
   $("sm").innerHTML=`<div class="l1">${l1}</div><div class="l2">${l2}</div>`;
   $("pg").style.width=(100*(A.revelados||0)/(A.total_replay||1))+"%";
   const abre=!!(at&&m.pode_abrir&&liv),ger=!!(at&&m.pode_gerir);
-  $("m-buy").disabled=!abre;$("m-sell").disabled=!abre;$("m-enc").disabled=!(at&&m.pode_encerrar&&liv);
+  if(m&&m.qtd){const p=m.posicao,red=!!(at&&m.pode_reduzir&&liv);   // com posição, o lado contrário reduz mesmo com o capital todo aplicado
+    $("m-buy").disabled=!(abre&&(!p||p.direcao==="alta")||(red&&p&&p.direcao==="baixa"));$("m-sell").disabled=!(abre&&(!p||p.direcao==="baixa")||(red&&p&&p.direcao==="alta"))}
+  else{$("m-buy").disabled=!abre;$("m-sell").disabled=!abre}$("m-enc").disabled=!(at&&m.pode_encerrar&&liv);
   $("m-stop").disabled=!ger;$("m-alvo").disabled=!ger;$("m-stop").classList.toggle("on",S.tool==="mstop");$("m-alvo").classList.toggle("on",S.tool==="malvo");
   $("m-can").style.display=(at&&m.pode_cancelar)?"block":"none";$("m-can").disabled=!liv;$("m-adv").classList.toggle("on",advAberto());
   $("o-nova").style.display=(m&&m.pode_abrir)?"":"none";$("o-gerir").style.display=(m&&m.pode_gerir)?"":"none";
@@ -700,6 +720,7 @@ function enviarOrdem(dir){
   if([p,st,al].some(x=>Number.isNaN(x)))return flash("Número inválido");
   if(tipo!=="mercado"&&p==null)return flash("Informe o preço de entrada");
   const d={tipo,direcao:dir};if(tipo!=="mercado")d.preco=p;if(st!=null)d.stop=st;if(al!=null)d.alvo=al;
+  if(qtdOn()){const q=qVal();if(!q)return flash("Informe a quantidade de ações");d.q=q}
   if(!sendAcao(d))flash("Aguarde a ordem anterior")}
 function soltaLinha(k){   // largou a linha de stop/alvo: manda o novo preço (o servidor valida e confirma)
   const m=mz(),ov=S.ovr;if(!m||!ov||ov.k!==k){S.ovr=null;return}
@@ -825,8 +846,21 @@ function loop(){
   if(S.modo==="resultado"&&!S.fila.length&&!S.anim)resultado(A);          // o cartão de resultado entra quando o último candle terminou de aparecer
   draw();if(mexe)kick();
 }
-$("m-buy").onclick=()=>{if(!sendAcao({tipo:"mercado",direcao:"alta"}))flash("Aguarde a ordem anterior")};
-$("m-sell").onclick=()=>{if(!sendAcao({tipo:"mercado",direcao:"baixa"}))flash("Aguarde a ordem anterior")};
+function qtdOn(){const m=mz();return !!(m&&m.qtd)}
+function qVal(){const v=parseInt(String($("q-val").value||"").replace(/\D/g,""),10);return Number.isFinite(v)&&v>0?v:0}
+function qSet(v){$("q-val").value=String(Math.max(1,Math.floor(v||1)))}
+function ordemRapida(dir){   // partida corrida: a quantidade vai junto; vender comprado (ou comprar vendido) reduz a posição, no máximo até zerar
+  const d={tipo:"mercado",direcao:dir};
+  if(qtdOn()){let q=qVal();if(!q)return flash("Informe a quantidade de ações");const p=mz().posicao;
+    if(p&&p.direcao!==dir&&q>p.q){q=p.q;qSet(q);flash(`Zerando a posição: ${q} ações`)}d.q=q}
+  if(!sendAcao(d))flash("Aguarde a ordem anterior")}
+$("m-buy").onclick=()=>ordemRapida("alta");
+$("m-sell").onclick=()=>ordemRapida("baixa");
+$("q-menos").onclick=()=>qSet(qVal()-Math.max(1,Math.round(qVal()/10)));
+$("q-mais").onclick=()=>qSet(qVal()+Math.max(1,Math.round(qVal()/10)));
+document.querySelectorAll("#qrow .qp").forEach(b=>b.onclick=()=>{const m=mz();if(!m)return;const mx=m.max_q||0;
+  if(!mx){const p=m.posicao;if(p){qSet(p.q);return flash("Capital todo aplicado: a quantidade da posição serve para reduzir/zerar")}return flash("Sem capital livre para comprar")}
+  qSet(Math.max(1,Math.floor(mx*(+b.dataset.qp)/100)))});
 $("m-enc").onclick=()=>{if(!sendAcao({tipo:"encerrar"}))flash("Aguarde a ordem anterior")};
 $("m-can").onclick=()=>{sendAcao({tipo:"cancelar",qual:"todas"})};
 $("m-stop").onclick=()=>{S.tool=S.tool==="mstop"?null:"mstop";ui()};

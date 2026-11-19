@@ -97,6 +97,14 @@ def _mutar(pid: str, fn, agora: float) -> dict:
     raise ErroSala("A partida está muito movimentada agora. Tente de novo.")
 
 
+def _capital(email: str, nome: str = "") -> dict:
+    """Partida corrida: 5% do caixa livre de cada jogador (calculado aqui, no servidor)."""
+    try:
+        return TCA.capital_corrida(email)
+    except TCA.SemSaldo as e:
+        raise ErroSala((f"{nome}: " if nome else "") + str(e))
+
+
 def _aposta(email: str, nome: str = "", mesa: bool = False) -> dict:
     """1% do patrimônio de quem vai jogar (calculado aqui, no servidor). Sem caixa livre para isso (mesa: 3% do patrimônio), a pessoa não entra."""
     try:
@@ -153,23 +161,28 @@ def partida_ativa(email: str) -> str | None:
     return r[0]["partida_id"] if r else None
 
 
-def criar_sala(email: str, tf: str, agora: float | None = None, formato: str = TB.FORMATO_PADRAO) -> dict:
-    """`formato` = rapida (3 rodadas) / normal (5) / longa (10); o servidor só aceita estes. Fica gravado na sala e vira a configuração da partida."""
+def criar_sala(email: str, tf: str, agora: float | None = None, formato: str = TB.FORMATO_PADRAO, corrida: str | None = None) -> dict:
+    """`corrida` = rapida / intermediaria / longa (partida corrida, sem rodadas; o tempo gráfico vem da duração).
+    `formato` = rapida (3 rodadas) / normal (5) / longa (10): salas da mesa por rodadas, mantidas para compatibilidade."""
     agora = time.time() if agora is None else agora
-    if tf not in TB.TIMEFRAMES:
+    if corrida is not None:
+        if corrida not in TB.CORRIDAS:
+            raise ErroSala("Duração de partida inválida.")
+        tf, formato = TB.CORRIDAS[corrida]["tf"], None
+    elif tf not in TB.TIMEFRAMES:
         raise ErroSala("Timeframe inválido.")
-    if formato not in TB.FORMATOS:
+    elif formato not in TB.FORMATOS:
         raise ErroSala("Formato de partida inválido.")
-    if formato not in TD.formatos_disponiveis(tf):
+    elif formato not in TD.formatos_disponiveis(tf):
         raise ErroSala("Ainda não há cenários reais deste timeframe para esse formato. Escolha um formato menor ou outro timeframe.")
     limpar(agora)
     pid = partida_ativa(email)
     if pid:
         return {"id": pid, "codigo": ((_row(pid) or {}).get("dados") or {}).get("sala", {}).get("codigo", "")}
-    _aposta(email)
+    _capital(email) if corrida else _aposta(email)
     for _ in range(8):
         codigo, novo = gerar_codigo(), secrets.token_hex(8)
-        d = {"sala": {"codigo": codigo, "criador": email, "tf": tf, "formato": formato, "criada": agora, "jogadores": [{"email": email, "nick": nick_de(email), "em": agora}]},
+        d = {"sala": {"codigo": codigo, "criador": email, "tf": tf, "formato": formato, "corrida": corrida, "criada": agora, "jogadores": [{"email": email, "nick": nick_de(email), "em": agora}]},
              "cen": None, "p": None}
         try:
             banco._inserir("tb_partidas", {"id": novo, "codigo": codigo, "status": "aguardando", "criador": email, "versao": 1, "criado_em": _iso(agora),
@@ -201,7 +214,8 @@ def entrar_na_sala(email: str, codigo: str, agora: float | None = None) -> dict:
     ja = partida_ativa(email)
     if ja == pid:
         return {"id": pid}
-    _aposta(email)
+    sala = (((_row(pid) or {}).get("dados")) or {}).get("sala") or {}
+    _capital(email) if sala.get("corrida") else _aposta(email)
     if ja:
         raise ErroSala("Você já está em outra partida. Termine ou saia dela antes.")
     try:                                                               # reserva a "vaga ativa" da pessoa primeiro (índice único)
@@ -265,6 +279,14 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
         tf = d["sala"]["tf"]
         formato = d["sala"].get("formato")                              # sala criada antes da mesa não tem formato: começa com as regras antigas
         semente = int(agora) % 100000
+        corrida = d["sala"].get("corrida")
+        if corrida in TB.CORRIDAS:                                      # partida corrida: cenário da duração e capital de 5% do caixa de cada um
+            cen = TD.escolher_corrida(corrida, semente)
+            n = copy.deepcopy(d)
+            n["cen"] = TD.referencia_corrida(cen, semente)
+            apostas = {j["email"]: _capital(j["email"], j["nick"]) for j in d["sala"]["jogadores"]}
+            n["p"] = TB.nova_partida(cen, cen["tf"], jogs, agora, pid=pid, multi=True, apostas=apostas, corrida=corrida)
+            return n
         cen = TD.escolher(tf, semente, rodadas=TB.FORMATOS[formato]) if formato in TB.FORMATOS else TD.escolher(tf, semente)
         n = copy.deepcopy(d)
         n["cen"] = TD.referencia(cen, semente)
@@ -312,7 +334,7 @@ def ler(pid: str, email: str, agora: float | None = None) -> dict:
         if agora - d["sala"]["criada"] > SALA_VALIDADE_S:
             limpar(agora)
         s = d["sala"]
-        return {"estado": "sala", "sala": {"codigo": s["codigo"], "tf": s["tf"], "formato": s.get("formato"), "n": len(s["jogadores"]), "max": MAX_JOG, "min": MIN_JOG,
+        return {"estado": "sala", "sala": {"codigo": s["codigo"], "tf": s["tf"], "formato": s.get("formato"), "corrida": s.get("corrida"), "n": len(s["jogadores"]), "max": MAX_JOG, "min": MIN_JOG,
                                            "criador": s["criador"] == email,
                                            "jogadores": [{"nick": j["nick"], "voce": j["email"] == email, "criador": j["email"] == s["criador"]} for j in s["jogadores"]]}}
     d = _sincronizar(pid, agora)

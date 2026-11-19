@@ -190,4 +190,28 @@ t("boleta recolhida: COMPRAR rápido manda ordem a mercado num toque", () => {
   h.els["m-sell"].onclick();
   const a = h.acoes(); eq(a.length, 1); eq([a[0].dados.tipo, a[0].dados.direcao], ["mercado", "baixa"]);
 });
+const mesaQtd = (pos) => Object.assign(mesaSem(), { qtd: true, capital: 10000, poder: pos ? 6610 : 10000, max_q: pos ? 584 : 884, exposicao: pos ? 3390 : 0, exposicao_pct: pos ? 33.9 : 0,
+  posicao: pos ? { direcao: "alta", preco_entrada: 11.2, indice_entrada: 123, stop: null, alvo: null, q: 300 } : null, fila: [], pode_reduzir: !!pos, pode_encerrar: !!pos,
+  aberto_txt: "+T$ 30,00", acum_txt: "+T$ 30,00", cor_aberto: "up", cor_acum: "up", limite: { bloqueado: false, usado_pct_cap: 0 } });
+t("corrida: COMPRAR manda a quantidade escolhida e o painel mostra quantidade, preço médio e poder de compra", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(true) }));
+  yes(h.els.app._c.has("qtd"), "app marca a partida com quantidade");
+  yes(h.els.sm.innerHTML.includes("Comprado 300") && h.els.sm.innerHTML.includes("PM 11,20") && h.els.sm.innerHTML.includes("Poder T$"), "painel da posição");
+  h.els["q-val"].value = "250"; h.els["m-buy"].onclick();
+  const a = h.acoes(); eq(a.length, 1); eq([a[0].dados.tipo, a[0].dados.direcao, a[0].dados.q], ["mercado", "alta", 250]);
+});
+t("corrida: VENDER comprado com quantidade maior que a posição vira zerar (não inverte)", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(true) }));
+  h.els["q-val"].value = "999"; h.els["m-sell"].onclick();
+  const a = h.acoes(); eq([a[0].dados.direcao, a[0].dados.q], ["baixa", 300]); eq(h.els["q-val"].value, "300");
+});
+t("corrida: com o capital todo aplicado, comprar trava e vender (reduzir) continua liberado", () => {
+  const h = carregar(); const m = mesaQtd(true); m.pode_abrir = false; m.max_q = 0; m.poder = 0;
+  h.render(args({ motor: 2, mesa: m }));
+  yes(h.els["m-buy"].disabled && !h.els["m-sell"].disabled);
+});
+t("corrida: sem quantidade, a ordem não sai", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(false) }));
+  h.els["q-val"].value = ""; h.els["m-buy"].onclick(); eq(h.acoes().length, 0);
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

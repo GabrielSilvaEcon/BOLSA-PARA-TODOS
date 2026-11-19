@@ -52,6 +52,21 @@ def aposta_de(email: str, conta: str | None = None, mesa: bool = False) -> dict:
     return {"stake": stake, "pat": s["pat"], "conta": conta or conta_id(email) or ""}
 
 
+CAPITAL_MIN = 100.0          # abaixo disso não dá nem para uma ação: a partida corrida pede pelo menos T$ 2.000 de caixa livre
+
+
+def capital_corrida(email: str, conta: str | None = None) -> dict:
+    """Partida corrida: o capital é 5% do saldo disponível (caixa livre) da Carteira AGORA. Fica gravado na partida e não muda durante ela.
+    O resultado (lucro ou prejuízo, que nunca passa do capital) volta para a Carteira no fim, num único lançamento."""
+    import trader_qtd as TQ
+    s = situacao(email)
+    cap = TQ.capital_da_partida(s["caixa"])
+    if cap < CAPITAL_MIN:
+        raise SemSaldo(f"Para jogar você precisa de pelo menos {WG.moeda(CAPITAL_MIN / TQ.PCT_CAPITAL)} livres no caixa da Carteira "
+                       f"(a partida usa 5% do saldo disponível). Hoje o caixa livre é {WG.moeda(s['caixa'])}.")
+    return {"stake": cap, "pat": s["pat"], "conta": conta or conta_id(email) or ""}
+
+
 def aposta_rodada(email: str, conta: str | None = None) -> dict:
     """Aposta de referência da PRÓXIMA rodada da mesa: 1% do patrimônio de agora (já com os resultados anteriores lançados). Diferente de `aposta_de`, não
     barra a partida no meio: se o caixa não cobre, a aposta fica em 0 (a pessoa continua jogando pelos pontos, sem efeito em dinheiro nessa rodada)."""
@@ -81,7 +96,8 @@ def liquidar(p: dict, agora: datetime | None = None) -> int:
                 continue
             sinal = "lucro" if fin["pnl"] > 0 else "prejuízo"
             nops = f" em {fin['n_ops']} operações" if fin.get("n_ops", 0) > 1 else ""
-            desc = f"Trade Battle · rodada {rod}: {sinal} de {WG.moeda(abs(fin['pnl']))}{nops} ({fin['pct_aposta']:+.2f}% da aposta)"
+            desc = (f"Trade Battle · partida: {sinal} de {WG.moeda(abs(fin['pnl']))}{nops} ({fin['pct_aposta']:+.2f}% do capital da partida)" if TB.qtd_de(p)
+                    else f"Trade Battle · rodada {rod}: {sinal} de {WG.moeda(abs(fin['pnl']))}{nops} ({fin['pct_aposta']:+.2f}% da aposta)")
             try:
                 if WG._inserir_credito(j, conta, f"trader:{p['id']}:{rod}:{j}", "trader", fin["pnl"], WG.hoje_brt(agora).isoformat(), desc,
                                        {"partida": p["id"], "rodada": rod, "aposta": fin["aposta"], "pct_aposta": fin["pct_aposta"], "n_ops": fin.get("n_ops", 1)}, agora):

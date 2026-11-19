@@ -1154,19 +1154,18 @@ def app_falso(jog="ana@x.com", pat=100000.0, caixa=100000.0):
                 sys.modules[n] = m
 
 
-def test_app_individual_inicia_a_mesa_no_formato_escolhido_com_aposta_de_1_por_cento():
-    with app_falso() as (APP, _):
-        for fmt, n in TB.FORMATOS.items():
+def test_app_individual_inicia_a_partida_corrida_na_duracao_escolhida_com_5_por_cento_do_caixa():
+    with app_falso(pat=300000.0, caixa=200000.0) as (APP, _):
+        for f, sp in TB.CORRIDAS.items():
             APP._ss().clear()
-            APP._ss()["tb_tf"] = "15m"
-            APP._ss()["tb_fmt_15m"] = fmt
+            APP._ss()["tb_corrida"] = f
             APP._iniciar()
             p = APP._partida()
-            assert p is not None and TB.motor_de(p) == 2 and TB.cfg_de(p)["rodadas"] == n and p["stakes"]["1:ana@x.com"] == {"stake": 1000.0, "pat": 100000.0}
+            assert p is not None and TB.qtd_de(p) and p["tf"] == sp["tf"] and TB.cfg_de(p)["rodadas"] == 1
+            assert p["stakes"]["1:ana@x.com"] == {"stake": 10000.0, "pat": 300000.0}             # 5% de T$ 200.000 de caixa livre
         APP._ss().clear()
-        APP._ss()["tb_tf"] = "15m"
         APP._iniciar()
-        assert TB.cfg_de(APP._partida())["formato"] == "normal"                           # padrão
+        assert TB.cfg_de(APP._partida())["formato"] == "intermediaria"                       # padrão (o recomendado)
 
 
 def test_app_sem_conta_nao_inicia_partida():
@@ -1183,29 +1182,20 @@ def test_app_sem_caixa_nao_inicia_e_mostra_a_mensagem():
         assert APP._partida() is None and "livres no caixa" in APP._ss()["tb_erro"]
 
 
-def test_app_individual_aposta_da_rodada_2_usa_o_patrimonio_apos_lancar_a_rodada_1():
-    with app_falso() as (APP, lanc):
-        APP._ss()["tb_tf"] = "15m"
-        APP._ss()["tb_fmt_15m"] = "rapida"
+def test_app_individual_resultado_da_partida_corrida_volta_para_a_carteira_uma_vez():
+    with app_falso(pat=300000.0, caixa=200000.0) as (APP, lanc):
+        APP._ss()["tb_corrida"] = "rapida"
         APP._iniciar()
-        p, cen = APP._partida(), None
+        p = APP._partida()
         cen = APP._cen()[p["cenarios"][0]]
         TB.salvar_estrategia(p, "ana@x.com", dict(EST), None, 10.0, T0 + 1)
         TB.iniciar_replay(p, "ana@x.com", T0 + 2)
-        TB.registrar_acao(p, cen, "ana@x.com", {"tipo": "mercado", "direcao": "alta", "aid": "1"}, ag(p, 3))
-        APP._ss()["tb_cen"] = {cen["id"]: cen}
-        TB.avancar(p, p["t_fase"] + 61, {cen["id"]: cen})                                 # fecha a rodada 1
+        TB.registrar_acao(p, cen, "ana@x.com", {"tipo": "mercado", "direcao": "alta", "q": 100, "aid": "1"}, ag(p, 3))
+        TB.avancar(p, p["t_fase"] + TB.cfg_de(p)["t_replay_s"] + 1, {cen["id"]: cen})     # fim da partida
         APP._liquidar(p)
-        assert len(lanc) == 1
-        pnl = list(lanc.values())[0]["valor"]
-        TB.proxima_rodada(p, p["t_fase"] + 70)                                            # o jogador pede a próxima rodada
-        assert p["rodada"] == 2 and "2:ana@x.com" not in p["stakes"]
-        APP._avancar(p, p["t_fase"] + 1)                                                  # a tela passa por aqui em cada ciclo
-        s2 = p["stakes"]["2:ana@x.com"]
-        assert s2["pat"] == pytest.approx(100000.0 + pnl) and s2["stake"] == pytest.approx(round((100000.0 + pnl) * 0.01, 2))
-        v = dict(p["stakes"])
-        APP._avancar(p, p["t_fase"] + 2)
-        assert p["stakes"] == v                                                           # gravada uma vez só
+        APP._liquidar(p)
+        pnl = p["resultados"]["1:ana@x.com"]["fin"]["pnl"]
+        assert len(lanc) == (1 if pnl else 0)
 
 
 def test_app_formatos_so_oferece_o_que_existe_e_rotulos():
@@ -1548,12 +1538,11 @@ def test_online_sala_da_mesa_recusa_quem_tem_menos_de_3_por_cento_e_sala_antiga_
             assert OL.ler(r["id"], EMAILS[0], TS + 3)["v"]["motor"] == 1
 
 
-def test_app_individual_com_caixa_entre_1_e_3_por_cento_nao_inicia_a_mesa():
-    with app_falso(pat=100000.0, caixa=2000.0) as (APP, _):
+def test_app_individual_sem_caixa_livre_suficiente_nao_inicia_a_partida():
+    with app_falso(pat=100000.0, caixa=1000.0) as (APP, _):
         APP._ss().clear()
-        APP._ss()["tb_tf"] = "15m"
         APP._iniciar()
-        assert "3%" in APP._ss().get("tb_erro", "") and "tb_p" not in APP._ss()
+        assert "pelo menos" in APP._ss().get("tb_erro", "") and "tb_p" not in APP._ss()
 
 
 def test_caixa_com_gap_o_prejuizo_real_e_lancado_inteiro_sem_ajuste_artificial():
