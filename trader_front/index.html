@@ -303,7 +303,12 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #app.corrida #m-stop,#app.corrida #m-alvo{display:none !important}
 #m-tg{display:none}
 #app.corrida.mesa.replay #mesa{border:1.5px solid rgba(139,108,255,.6);border-radius:16px;padding:0 6px 6px;background:linear-gradient(180deg,rgba(28,18,84,.55),rgba(10,6,36,.75));box-shadow:0 0 12px rgba(122,92,255,.25)}
-#app.corrida.multi #hd .px{display:none}
+#app.corrida.multi #placar.on{display:flex !important;gap:5px}#app.corrida #placar .rd,#app.corrida.multi #eu{display:none !important}
+#app.corrida.multi #placar .pj{padding:3px 8px 3px 4px;column-gap:7px}
+#app.corrida.multi #placar .avw,#app.corrida.multi #placar .av{width:36px;height:36px}
+#app.corrida.multi #placar .avw .rk{width:17px;height:17px;font-size:9px;right:-5px;bottom:-4px}
+#app.corrida.multi #placar .nm{font-size:11.5px}#app.corrida.multi #placar .pj b{font-size:13.5px}
+#app.corrida.multi #placar.c .avw,#app.corrida.multi #placar.c .av{grid-row:1/3;width:30px;height:30px}#app.corrida.multi #placar.c .pj b{grid-column:2;grid-row:2}
 #app.corrida #eu .pj2{position:relative;display:block;width:24px;height:24px;flex:none}
 #app.corrida #eu .pj2 .av{width:24px;height:24px;border-radius:50%;overflow:hidden;display:block;box-shadow:0 0 0 1.5px rgba(255,255,255,.35)}
 #app.corrida #eu .pj2 .av img{width:100%;height:100%;object-fit:cover}
@@ -823,7 +828,9 @@ function uiLotes(m){   // partida corrida: quantidade em lotes (1 lote = 10% do 
   const e=$("m-enc");if(e&&e.lastChild&&e.lastChild.nodeType===3)e.lastChild.textContent="Zerar"}
 function rankAviso(){const t=$("rkb-t");if(!t||!A)return;const multi=!!(A.multi||(A.placar&&A.placar.jogadores.length>1));
   t.textContent=multi?"ⓘ Partida online: conta para o ranking!":"ⓘ Partida solo: treino, não conta para o ranking (só partidas online contam)."}
-function topoCorrida(){rankAviso();const hd=$("hd"),vt=$("vt");if(!corrida()||!hd||!vt||typeof hd.insertBefore!=="function"||vt.parentNode===hd)return;hd.insertBefore(vt,hd.firstChild)}
+function topoCorrida(){rankAviso();const pc=$("placar"),hd0=$("hd");
+  if(corrida()&&pc&&hd0&&hd0.parentNode&&typeof hd0.parentNode.insertBefore==="function"&&hd0.nextSibling!==pc)hd0.parentNode.insertBefore(pc,hd0.nextSibling);   // sala: cards dos jogadores logo abaixo da faixa do topo
+  const hd=$("hd"),vt=$("vt");if(!corrida()||!hd||!vt||typeof hd.insertBefore!=="function"||vt.parentNode===hd)return;hd.insertBefore(vt,hd.firstChild)}
 function placarUI(){   // placar da rodada (o servidor já manda ordenado e formatado): você em destaque, medalhas de 1º a 3º
   const P=A&&A.placar,el=$("placar");
   if(corrida()){const eu=P&&P.jogadores.find(j=>j.voce),multi=!!(P&&P.jogadores.length>1);$("app").classList.toggle("multi",multi);
@@ -831,9 +838,9 @@ function placarUI(){   // placar da rodada (o servidor já manda ordenado e form
     $("eu").innerHTML=!eu?"":multi?P.jogadores.map(j=>`<span class="pj2${j.voce?" eu":""}" title="${esc(j.rotulo)} ${esc(j.txt||"")}">${avatarHTML(j,"av")}<i>${j.pos}º</i></span>`).join("")+val
       :`<span class="av">${avatarHTML(eu,"av")}</span>${val}`}
   if(!P||!mesaOn()){el.classList.remove("on");return}
-  const sg=JSON.stringify([P,A.moldura||"",A.avatares||{},A.mesa&&A.mesa.qtd?A.revelados:0]);if(el.dataset.sg===sg&&el.classList.contains("on"))return;el.dataset.sg=sg;   // só redesenha quando muda (avatares são imagens)
+  const sg=JSON.stringify([P,A.moldura||"",A.avatares||{},A.mesa&&A.mesa.qtd?A.revelados:0,A.mesa&&A.mesa.acum_txt||""]);if(el.dataset.sg===sg&&el.classList.contains("on"))return;el.dataset.sg=sg;   // só redesenha quando muda (avatares são imagens)
   const solo=P.jogadores.length===1;el.classList.toggle("solo",solo);el.classList.toggle("c",P.jogadores.length>=3);const curto=P.jogadores.length>=3,nome=j=>curto&&!j.voce?j.rotulo.replace(/^Jogador /,"J"):j.rotulo;
-  el.innerHTML=(A.mesa&&A.mesa.qtd?`<div class="rd">Candle<b>${A.revelados}/${A.total_replay}</b></div>`:`<div class="rd">Rodada<b>${esc(P.rodada)}</b></div>`)+P.jogadores.map(j=>`<div class="pj p${j.pos}${j.voce?" eu":""}"><span class="avw">${avatarHTML(j,"av")}<span class="rk">${j.pos}º</span></span><span class="nm">${esc(nome(j))}${j.voce&&solo&&P.pat_txt?` <small>· ${esc(P.pat_txt)}</small>`:""}</span><b class="${j.cor}">${esc(j.txt)}</b></div>`).join("");
+  el.innerHTML=(A.mesa&&A.mesa.qtd?`<div class="rd">Candle<b>${A.revelados}/${A.total_replay}</b></div>`:`<div class="rd">Rodada<b>${esc(P.rodada)}</b></div>`)+P.jogadores.map(j=>`<div class="pj p${j.pos}${j.voce?" eu":""}"><span class="avw">${avatarHTML(j,"av")}<span class="rk">${j.pos}º</span></span><span class="nm">${esc(nome(j))}${j.voce&&solo&&P.pat_txt?` <small>· ${esc(P.pat_txt)}</small>`:""}</span><b class="${corrida()&&j.voce&&A.mesa?(A.mesa.cor_acum||j.cor):j.cor}">${esc(corrida()&&j.voce&&A.mesa&&A.mesa.acum_txt?curtoT(A.mesa.acum_txt):j.txt)}</b></div>`).join("");
   el.classList.add("on");
 }
 function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)
