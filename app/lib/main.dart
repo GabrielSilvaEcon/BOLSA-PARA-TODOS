@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
@@ -31,6 +32,8 @@ class TickerHuntersApp extends StatelessWidget {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: fundo,
         colorScheme: ColorScheme.fromSeed(seedColor: roxo, brightness: Brightness.dark, surface: fundo),
+        // mesma letra do app antigo (Source Sans, a fonte padrão do Streamlit)
+        textTheme: GoogleFonts.sourceSans3TextTheme(ThemeData(brightness: Brightness.dark).textTheme),
       ),
       home: configurado ? const PortaDeEntrada() : const _SemConfiguracao(),
     );
