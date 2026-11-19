@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'config.dart';
+
 /// Servidor do jogo (api/main.py, já no ar no Render). Mesmo motor do app atual.
 const String apiBase = 'https://tickerhunters-api.onrender.com';
 
@@ -12,15 +14,18 @@ class ApiErro implements Exception {
   String toString() => mensagem;
 }
 
-/// Chamadas ao servidor. O token é o do Supabase Auth (o servidor confere com o próprio Supabase).
+/// Chamadas ao servidor. O token é lido a cada chamada (o Supabase renova o token sozinho).
 class Api {
-  Api({this.token});
-  String? token;
+  Api({this.tokenAtual});
+  final String? Function()? tokenAtual;
 
-  Map<String, String> get _cabecalhos => {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
+  Map<String, String> get _cabecalhos {
+    final t = tokenAtual?.call();
+    return {
+      'Content-Type': 'application/json',
+      if (t != null && t.isNotEmpty) 'Authorization': 'Bearer $t',
+    };
+  }
 
   Future<Map<String, dynamic>> get(String caminho) async {
     final r = await http.get(Uri.parse('$apiBase$caminho'), headers: _cabecalhos).timeout(const Duration(seconds: 60));
