@@ -293,6 +293,11 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #plano #pl-esp span{font-size:13px;font-weight:800;color:#d9d4f7}
 #plano.esp .pb,#plano.esp .pf{display:none}#plano.esp #pl-esp{display:flex}
 #app.corrida #bt,#app.corrida #b-buy,#app.corrida #b-sell,#app.corrida #b-entrada,#app.corrida #b-stop,#app.corrida #b-alvo,#app.corrida #mais .an:not([data-t]){display:none !important}
+#app.corrida #pos{display:none !important}#app.corrida #m-adv,#app.corrida #adv{display:none !important}
+#app.corrida.mesa.replay:not(.rs) #mb2 #m-enc{display:flex;flex:1;flex-direction:row;gap:4px;min-height:34px;border-radius:12px;border:1.5px solid #F2B84B;
+  background:linear-gradient(180deg,#5A3A12,#2E1C08);color:#FFE3A3;font-size:11px;font-weight:900;box-shadow:0 0 10px rgba(242,184,75,.35)}
+#app.corrida #mb2 #m-enc .ic{font-size:13px}
+#app.corrida #mb2{gap:4px}#app.corrida #mb2 button{min-width:0;padding:0 4px;font-size:11px;white-space:nowrap}#app.corrida #mb2 #m-ind{flex:1.15}
 @media (min-width:700px){#plano .pb{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) auto;grid-template-areas:"lado risco qtd ok"}#plano #pl-ok{min-width:150px}}
 </style></head><body>
 <div id="app">
@@ -327,7 +332,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
   <div id="mesa"><div class="row" id="qrow"><span class="ql">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
     <button class="qp" data-qp="25">25%</button><button class="qp" data-qp="50">50%</button><button class="qp" data-qp="100">Máx</button></div>
     <div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ VENDER</span></button></div>
-    <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar ordem</button><button id="m-adv">⚙ Opções ▾</button><button id="m-ind" title="Indicadores">⋯</button></div></div>
+    <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar</button><button id="m-adv">⚙ Opções ▾</button><button id="m-ind" title="Indicadores">Indicadores</button></div></div>
 <div id="plano"><div class="ph"><b>🎯 Monte sua estratégia</b><span id="pl-tm"></span><button id="pl-min">▾ Ver gráfico</button></div>
     <div class="pb">
       <div class="pc lado"><div class="row"><button id="pl-buy">⬆ Comprar</button><button id="pl-sell">⬇ Vender</button></div>
@@ -796,6 +801,7 @@ function placarUI(){   // placar da rodada (o servidor já manda ordenado e form
   el.classList.add("on");
 }
 function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)
+  moveEnc();if(corrida()&&S.erroLocal&&S.erroLocal!==S.erroMostrado){S.erroMostrado=S.erroLocal;flash(S.erroLocal)}else if(!S.erroLocal)S.erroMostrado="";
   const m=mz(),pz=!!A.pausada,liv=livreEnvio(),at=!!m&&!pz,o=linhasMesa();
   const dt=o.dir==="alta"?"COMPRA ▲":(o.dir==="baixa"?"VENDA ▼":"");
   let l1;
@@ -1000,6 +1006,7 @@ $("m-stop").onclick=()=>{S.tool=S.tool==="mstop"?null:"mstop";ui()};
 $("m-alvo").onclick=()=>{S.tool=S.tool==="malvo"?null:"malvo";ui()};
 $("m-adv").onclick=()=>{const a=$("adv");a.style.display=a.style.display==="flex"?"none":"flex";boletaUI();ui()};
 function boletaUI(){const ab=advAberto();$("app").classList.toggle("adv",ab);$("m-adv").textContent=ab?"▴ Recolher":"⚙ Opções ▾"}
+function moveEnc(){const e=$("m-enc"),l=corrida()?$("mb2"):$("pos");if(e&&l&&typeof l.insertBefore==="function"&&e.parentNode!==l){if(corrida())l.insertBefore(e,$("m-ind"));else l.appendChild(e)}}
 $("m-ind").onclick=()=>{const m=$("mais");m.style.display=m.style.display==="flex"?"none":"flex"};
 $("o-tipo").onchange=()=>ui();$("o-buy").onclick=()=>enviarOrdem("alta");$("o-sell").onclick=()=>enviarOrdem("baixa");
 ["o-preco","o-stop","o-alvo","g-stop","g-alvo"].forEach(id=>$(id).addEventListener("focus",()=>{S.campo=id}));
