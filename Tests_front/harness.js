@@ -244,4 +244,12 @@ t("corrida: pop-up da estratégia manda a boleta (compra, quantidade, stop e alv
   h.render(args({ ...base, confirmados: { eu: true, n: 1, total: 2 } }));
   yes(h.els.plano._c.has("esp")); yes(h.els["pl-esp-t"].textContent.includes("1/2"));
 });
+t("corrida: Aguardar no pop-up confirma sem ordem e a aba Boleta recolhe e expande", () => {
+  const h = carregar();
+  h.render(args({ modo: "analise", fase_key: "1-analise", motor: 2, mesa: null, corrida: true, plano_cfg: { capital: 10000, taxa: 0.0003 }, ref: 11.3, confirmados: { eu: false, n: 0, total: 1 } }));
+  h.els["pl-wait"].onclick(); yes(!h.els["pl-ok"].disabled, "aguardar libera o confirmar"); h.els["pl-ok"].onclick();
+  const a = h.acoes(); eq([a[0].evento, a[0].plano.tipo, a[0].plano.direcao], ["confirmar", "aguardar", null]);
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true }));
+  h2.els["m-tg"].onclick(); yes(h2.els.app._c.has("bmin"), "recolheu"); h2.els["m-tg"].onclick(); yes(!h2.els.app._c.has("bmin"), "expandiu");
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

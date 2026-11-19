@@ -270,6 +270,9 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #plano .pc{min-width:0;display:flex;flex-direction:column;gap:5px;padding:7px;border-radius:14px;background:rgba(10,6,36,.7);border:1px solid rgba(139,108,255,.35)}
 #plano .lado{grid-area:lado}#plano .risco{grid-area:risco}#plano .qtd{grid-area:qtd}
 #plano .row{display:flex;gap:6px}#plano .row>button{flex:1;min-width:0}
+#plano #pl-wait{flex:.8;min-height:42px;font-size:13px;font-weight:900;border-radius:13px;color:#fff;opacity:.55;background:linear-gradient(180deg,#3B3570,#211C4A);border:2px solid #9A92D6}
+#plano #pl-wait.sel{opacity:1;box-shadow:0 0 16px rgba(154,146,214,.7)}
+#plano.agu .tipos,#plano.agu #pl-precow,#plano.agu .risco,#plano.agu .qtd{opacity:.35;pointer-events:none}
 #plano #pl-buy,#plano #pl-sell{min-height:42px;font-size:15px;font-weight:900;border-radius:13px;color:#fff;opacity:.55}
 #plano #pl-buy{background:linear-gradient(180deg,#1E7A4A,#0F4A2C);border:2px solid #2EE86B}
 #plano #pl-sell{background:linear-gradient(180deg,#7A1E33,#4A0F1E);border:2px solid #FF4D6D}
@@ -297,7 +300,11 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #app.corrida.mesa.replay:not(.rs) #mb2 #m-enc{display:flex;flex:1;flex-direction:row;gap:4px;min-height:34px;border-radius:12px;border:1.5px solid #F2B84B;
   background:linear-gradient(180deg,#5A3A12,#2E1C08);color:#FFE3A3;font-size:11px;font-weight:900;box-shadow:0 0 10px rgba(242,184,75,.35)}
 #app.corrida #mb2 #m-enc .ic{font-size:13px}
-#app.corrida #m-stop,#app.corrida #m-alvo{display:none !important}#app.corrida #mb2{gap:4px}#app.corrida #mb2 button{min-width:0;padding:0 4px;font-size:11px;white-space:nowrap}#app.corrida #mb2 #m-ind{flex:1.15}
+#app.corrida #m-stop,#app.corrida #m-alvo{display:none !important}
+#m-tg{display:none}
+#app.corrida.mesa.replay #m-tg{display:block;align-self:center;min-height:22px;padding:0 16px;margin-bottom:2px;border-radius:0 0 12px 12px;font-size:11px;font-weight:900;
+  border:1.5px solid #7A5CFF;border-top:0;background:linear-gradient(180deg,#2A1F8E,#150F55);color:#D9D4F7}
+#app.corrida.bmin #qrow,#app.corrida.bmin #mb1,#app.corrida.bmin #mb2{display:none !important}#app.corrida #mb2{gap:4px}#app.corrida #mb2 button{min-width:0;padding:0 4px;font-size:11px;white-space:nowrap}#app.corrida #mb2 #m-ind{flex:1.15}
 /* partida corrida: as três faixas do topo viram UMA (voltar · ativo · preço · você · tempo · tela cheia) */
 #eu{display:none}
 #app.corrida #ban,#app.corrida #placar,#app.corrida #rod,#app.corrida #hd .lg{display:none !important}
@@ -346,13 +353,13 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
         <small class="oco">Stop e alvo são ligados (OCO): quando um executa, a posição fecha e o outro é cancelado. O stop móvel sobe junto com o preço (na venda, desce) e nunca recua.</small></div>
       <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
       <details id="o-regras"><summary>ⓘ Regras da aposta</summary><small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></details></div>
-  <div id="mesa"><div class="row" id="qrow"><span class="ql">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
+  <div id="mesa"><button id="m-tg" aria-label="Recolher ou expandir a boleta">▾ Boleta</button><div class="row" id="qrow"><span class="ql">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
     <button class="qp" data-qp="25">25%</button><button class="qp" data-qp="50">50%</button><button class="qp" data-qp="100">Máx</button></div>
     <div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ VENDER</span></button></div>
     <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar</button><button id="m-adv">⚙ Opções ▾</button><button id="m-ind" title="Indicadores">Indicadores</button></div></div>
 <div id="plano"><div class="ph"><b>🎯 Monte sua estratégia</b><span id="pl-tm"></span><button id="pl-min">▾ Ver gráfico</button></div>
     <div class="pb">
-      <div class="pc lado"><div class="row"><button id="pl-buy">⬆ Comprar</button><button id="pl-sell">⬇ Vender</button></div>
+      <div class="pc lado"><div class="row"><button id="pl-buy">⬆ Subir</button><button id="pl-wait">⏳ Aguardar</button><button id="pl-sell">⬇ Cair</button></div>
         <small>Tipo de ordem</small>
         <div class="row tipos"><button data-ot="mercado"><i>⚡</i>A Mercado</button><button data-ot="limite"><i>⌖</i>Limitada</button><button data-ot="stop_entrada"><i>↗</i>Stop</button></div>
         <div class="campo" id="pl-precow"><small id="pl-preco-l">Preço da ordem</small><div class="stp"><button data-pd="preco" data-ps="-1">−</button><input id="pl-preco" inputmode="decimal" autocomplete="off"><button data-pd="preco" data-ps="1">+</button></div></div></div>
@@ -361,7 +368,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
       <div class="pc qtd"><div class="campo"><small>🪙 Quantidade</small><div class="stp"><button data-pd="q" data-ps="-1">−</button><input id="pl-q" inputmode="numeric" autocomplete="off"><button data-pd="q" data-ps="1">+</button></div></div>
         <div class="rr"><small>Risco / Retorno</small><b id="pl-rr">—</b><span id="pl-rrt"></span></div></div>
       <button id="pl-ok">✔ Confirmar Estratégia</button></div>
-    <div class="pf"><button id="pl-obs">Só observar no início</button><span id="pl-msg"></span></div>
+    <div class="pf"><span id="pl-msg"></span></div>
     <div id="pl-esp">✔ Estratégia confirmada<span id="pl-esp-t">Aguardando os outros jogadores…</span></div></div>
   <div id="rkb"><span>ⓘ Você está no modo Trade Battle. Suas operações contam para o ranking!</span><span id="ap"></span><button id="b-rank">🏆 Ranking</button></div>
   <div id="bt"><button id="conf">Confirmar estratégia</button><button id="rep">Iniciar replay</button><button id="enc">⏹ Encerrar operação</button></div>
@@ -711,7 +718,7 @@ function padraoPl(){const a=atrPl(),e=A.ref,s=PL.dir==="baixa"?-1:1;
 function iniPl(){if(PL.ini&&PL.tok===A.token)return;PL.ini=true;PL.tok=A.token;PL.dir=null;PL.ordem="mercado";PL.min=false;PL.q=null;
   PL.q=Math.max(1,Math.floor(maxQPl()*0.25));padraoPl()}
 function validaPl(){const e=entPl(),s=PL.dir==="baixa"?-1:1;
-  if(!PL.dir)return "Escolha Comprar ou Vender";
+  if(!PL.dir)return "Escolha Subir, Aguardar ou Cair";if(PL.dir==="aguardar")return "";
   if(!(PL.q>=1))return "Informe a quantidade";if(PL.q>maxQPl())return `Cabem no máximo ${maxQPl()} ações (5% do saldo)`;
   if(PL.ordem!=="mercado"){if(!(PL.preco>0))return "Informe o preço da ordem";
     const lim=PL.ordem==="limite";if(lim?(s*(PL.preco-A.ref)>=0):(s*(PL.preco-A.ref)<=0))return lim?(s>0?"A compra limitada fica abaixo do preço atual":"A venda limitada fica acima do preço atual"):(s>0?"A compra stop fica acima do preço atual":"A venda stop fica abaixo do preço atual")}
@@ -723,12 +730,15 @@ function uiPlano(){const el=$("plano");if(!el||!S||!A)return;
   iniPl();const cf=A.confirmados||{},esp=!!cf.eu;el.classList.toggle("esp",esp);el.classList.toggle("min",PL.min&&!esp);
   $("pl-min").textContent=PL.min?"▴ Abrir boleta":"▾ Ver gráfico";$("pl-min").style.display=esp?"none":"";
   if(esp){$("pl-esp-t").textContent=cf.total>1&&cf.n<cf.total?`Aguardando os outros jogadores (${cf.n}/${cf.total})…`:"A partida vai começar!";return}
-  $("pl-buy").classList.toggle("sel",PL.dir==="alta");$("pl-sell").classList.toggle("sel",PL.dir==="baixa");
+  $("pl-buy").classList.toggle("sel",PL.dir==="alta");$("pl-sell").classList.toggle("sel",PL.dir==="baixa");$("pl-wait").classList.toggle("sel",PL.dir==="aguardar");
+  el.classList.toggle("agu",PL.dir==="aguardar");
   document.querySelectorAll("#plano [data-ot]").forEach(b=>b.classList.toggle("sel",b.dataset.ot===PL.ordem));
   $("pl-precow").style.display=PL.ordem==="mercado"?"none":"";$("pl-preco-l").textContent=PL.ordem==="limite"?"Preço limite":"Preço de disparo (stop)";
   const fx=v=>v==null?"":v.toFixed(2).replace(".",",");
   for(const k of ["preco","stop","alvo"])if(document.activeElement!==$("pl-"+k))$("pl-"+k).value=fx(PL[k]);
   if(document.activeElement!==$("pl-q"))$("pl-q").value=PL.q==null?"":String(PL.q);
+  if(PL.dir==="aguardar"){$("pl-rr").textContent="—";$("pl-rrt").textContent="Você entra depois, com o gráfico andando";$("pl-msg").textContent=S.erroLocal||"";
+    $("pl-ok").disabled=S.sentSeq>0&&S.sentSeq===S.seq&&!S.erroLocal;S.lines={entrada:null,stop:null,alvo:null};S.dir=null;return}
   const e=entPl(),risco=PL.stop!=null&&e?Math.abs(e-PL.stop):null,ret=PL.alvo!=null&&e?Math.abs(PL.alvo-e):null;
   const rr=$("pl-rr");rr.textContent=risco&&ret?`1 : ${(ret/risco).toFixed(1).replace(".",",")}`:"—";rr.classList.toggle("ruim",!!(risco&&ret&&ret/risco<1));
   const tq=v=>"T$ "+(v*(PL.q||0)).toFixed(2).replace(".",",");
@@ -744,13 +754,13 @@ function passoPl(k,d){const t=Math.max(0.01,r2(atrPl()*0.1));
   else{const base=PL[k]!=null?PL[k]:entPl();PL[k]=r2(Math.max(0.01,base+d*t))}uiPlano();draw()}
 $("pl-buy").onclick=()=>{const m=PL.dir!=="alta";PL.dir="alta";if(m)padraoPl();uiPlano();draw()};
 $("pl-sell").onclick=()=>{const m=PL.dir!=="baixa";PL.dir="baixa";if(m)padraoPl();uiPlano();draw()};
-document.querySelectorAll("#plano [data-ot]").forEach(b=>b.onclick=()=>{PL.ordem=b.dataset.ot;if(!PL.dir)PL.dir="alta";padraoPl();uiPlano();draw()});
+document.querySelectorAll("#plano [data-ot]").forEach(b=>b.onclick=()=>{PL.ordem=b.dataset.ot;if(!PL.dir||PL.dir==="aguardar")PL.dir="alta";padraoPl();uiPlano();draw()});
 document.querySelectorAll("#plano [data-pd]").forEach(b=>b.onclick=()=>passoPl(b.dataset.pd,+b.dataset.ps));
 for(const k of ["preco","stop","alvo","q"])$("pl-"+k).addEventListener("change",e=>{const v=parseFloat(String(e.target.value).replace(/\./g,"").replace(",","."));
   PL[k]=k==="q"?(isFinite(v)?Math.floor(v):null):(isFinite(v)&&v>0?r2(v):null);uiPlano();draw()});
 $("pl-min").onclick=()=>{PL.min=!PL.min;uiPlano()};
-$("pl-ok").onclick=()=>{if(!validaPl())confirmaPl(false)};
-$("pl-obs").onclick=()=>confirmaPl(true);
+$("pl-ok").onclick=()=>{if(!validaPl())confirmaPl(PL.dir==="aguardar")};
+$("pl-wait").onclick=()=>{PL.dir="aguardar";uiPlano();draw()};
 /* ===== Mesa de operações (motor 2): ordens ao vivo, linhas próprias e entradas/saídas dos adversários ===== */
 const mz=()=>A&&A.mesa;
 const advAberto=()=>$("adv").style.display==="flex";
@@ -1031,6 +1041,8 @@ $("m-alvo").onclick=()=>{S.tool=S.tool==="malvo"?null:"malvo";ui()};
 $("m-adv").onclick=()=>{const a=$("adv");a.style.display=a.style.display==="flex"?"none":"flex";boletaUI();ui()};
 function boletaUI(){const ab=advAberto();$("app").classList.toggle("adv",ab);$("m-adv").textContent=ab?"▴ Recolher":"⚙ Opções ▾"}
 function moveEnc(){const e=$("m-enc"),l=corrida()?$("mb2"):$("pos");if(e&&l&&typeof l.insertBefore==="function"&&e.parentNode!==l){if(corrida())l.insertBefore(e,$("m-ind"));else l.appendChild(e)}}
+$("m-tg").onclick=()=>{const a=$("app"),min=!a.classList.contains("bmin");a.classList.toggle("bmin",min);$("m-tg").textContent=min?"▴ Boleta":"▾ Boleta";
+  setTimeout(()=>{if(typeof layout==="function"){layout();draw()}},30)};
 $("m-ind").onclick=()=>{const m=$("mais");m.style.display=m.style.display==="flex"?"none":"flex"};
 $("o-tipo").onchange=()=>ui();$("o-buy").onclick=()=>enviarOrdem("alta");$("o-sell").onclick=()=>enviarOrdem("baixa");
 ["o-preco","o-stop","o-alvo","g-stop","g-alvo"].forEach(id=>$(id).addEventListener("focus",()=>{S.campo=id}));
