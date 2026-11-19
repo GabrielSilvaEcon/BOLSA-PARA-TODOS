@@ -387,7 +387,7 @@ def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, 
             _n("historico_curto")
             continue
         if not _hist_ok(hist, tf):
-            _n("historico_com_buraco_ou_sem_volume")
+            _n("historico_sem_volume" if _hist_ok(hist.assign(Volume=1.0), tf) else "historico_com_buraco")
             continue
         if (bloco[0][0] - hist.index[0]) > _td(days=MAX_DIAS_HIST[formato] + nr * (1 if tf == "1d" else 0)):
             _n("historico_longo_demais")

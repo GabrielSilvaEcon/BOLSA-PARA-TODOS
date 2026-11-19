@@ -45,8 +45,10 @@ def _perfil(df) -> str:
     por_dia = pd.Series(df.index.date).value_counts().sort_index()
     ini = pd.Series(df.index).groupby(df.index.date).min().dt.strftime("%H:%M").value_counts().head(3).to_dict()
     fim = pd.Series(df.index).groupby(df.index.date).max().dt.strftime("%H:%M").value_counts().head(3).to_dict()
+    zero = (df["Volume"].fillna(0) <= 0)
+    zh = pd.Series(zero.values, index=df.index.strftime("%H:%M")).groupby(level=0).mean().round(2)
     return (f"{len(por_dia)} dias · candles/dia min {por_dia.min()} med {int(por_dia.median())} max {por_dia.max()} · "
-            f"abre {ini} · fecha {fim} · de {df.index[0]} até {df.index[-1]}")
+            f"abre {ini} · fecha {fim} · de {df.index[0]} até {df.index[-1]} · volume zero {zero.mean():.1%} {zh[zh > 0].to_dict()}")
 
 
 def diagnostico(formatos: list[str], ativos: list[str], candidatos: list[str]) -> int:
