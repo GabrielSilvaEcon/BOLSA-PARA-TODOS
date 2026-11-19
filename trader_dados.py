@@ -16,7 +16,7 @@ import trader_battle as TB
 
 CHAVE = "tb_cenarios_{tf}"
 MAX_POR_FUSO = 80                      # teto de cenários guardados por timeframe
-ATIVOS = ("PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "BBAS3", "B3SA3", "RENT3", "SUZB3", "GGBR4", "PRIO3", "LREN3", "ELET3", "RADL3", "JBSS3")
+ATIVOS = ("PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "BBAS3", "ITSA4", "RENT3", "SUZB3", "GGBR4", "PRIO3", "LREN3", "AXIA3", "RADL3", "EQTL3")
 SUFIXO_B24 = "-b24"                    # cenários de 24 candles por bloco no 1h: id próprio, para nunca colidir com os antigos (16 por bloco)
 MAX_DIAS_B24 = {"1h": 90}              # 340 candles de 1h passam de 60 dias corridos: o limite de 70 do formato antigo reprovaria quase tudo
 PERIODO_YAHOO = {"15m": "60d", "1h": "2y"}           # limite gratuito de cada intervalo
@@ -292,7 +292,7 @@ def _chave_vela(t, tf: str):
     return t.floor(f"{m}min")
 
 
-def _velas_completas(sub, tf: str, sub_tf: str) -> list[tuple]:
+def _velas_completas(sub, tf: str, sub_tf: str, vela=None) -> list[tuple]:
     """Agrupa os candles menores (DataFrame) por candle do gráfico. Devolve [(início, posições dos menores)] só com grupos sem buraco: dentro de cada
     pregão os menores vêm em sequência exata (5 min a 5 min, ou 1 h a 1 h), e no intraday o grupo não pode pular um horário do candle do gráfico."""
     from datetime import timedelta as _td
@@ -311,14 +311,30 @@ def _velas_completas(sub, tf: str, sub_tf: str) -> list[tuple]:
             atual[1].append(pos)
     out = []
     for ch, poss, ok in grupos:
-        if not ok:
-            out.append(None)
-            continue
         if tf != "1d" and idx[poss[0]] != ch and (idx[poss[0]] - ch) >= passo:   # o 1º menor tem que abrir o candle do gráfico
+            ok = False
+        if not ok and not _igual_ao_real(sub, poss, vela, ch):
             out.append(None)
             continue
         out.append((ch, poss))
     return out
+
+
+TOL_REAL = 0.0005          # 0,05% (≈ 1 centavo numa ação de R$ 20-30): diferença de arredondamento entre as séries do Yahoo
+
+
+def _igual_ao_real(sub, poss: list[int], vela, ch) -> bool:
+    """Grupo com candle menor faltando só vale se a soma dos menores que vieram for IGUAL ao candle real do gráfico (abertura, máxima, mínima e
+    fechamento do Yahoo): aí o candle mostrado é exatamente o real e só a formação pula aqueles minutos. Nada é inventado."""
+    if vela is None or ch not in vela.index:
+        return False
+    r = vela.loc[ch]
+    if hasattr(r, "ndim") and r.ndim > 1:
+        r = r.iloc[-1]
+    g = sub.iloc[poss]
+    agg = (float(g["Open"].iloc[0]), float(g["High"].max()), float(g["Low"].min()), float(g["Close"].iloc[-1]))
+    real = (float(r["Open"]), float(r["High"]), float(r["Low"]), float(r["Close"]))
+    return all(abs(a - b) <= TOL_REAL * b for a, b in zip(agg, real))
 
 
 def _hist_ok(hist, tf: str) -> bool:
@@ -331,38 +347,59 @@ def _hist_ok(hist, tf: str) -> bool:
             if a.date() == b.date() and b - a != passo:
                 return False
     vol = hist["Volume"]
-    return (vol.fillna(0) <= 0).mean() <= 0.05
+    # o Yahoo zera o volume do candle de 1 h das 10:00 em boa parte dos dias (o preço vem certo): no histórico intraday aceita até 15%
+    return (vol.fillna(0) <= 0).mean() <= (0.15 if tf != "1d" else 0.05)
 
 
-def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, max_n: int = 3, ocupados: list[tuple[str, str]] | None = None) -> list[dict]:
+def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, max_n: int = 3, ocupados: list[tuple[str, str]] | None = None,
+                    motivos: dict | None = None) -> list[dict]:
     """Cenários completos de um ativo: replay de n_replay candles do gráfico formados pelos candles menores reais (cada pregão começa um trecho),
     com os n_analise candles do gráfico imediatamente anteriores como histórico. Do mais recente para trás, sem sobrepor os já guardados."""
     from datetime import timedelta as _td
     sp = _spec(formato)
     tf, sub_tf, nr, na = sp["tf"], sp["sub"], sp["n_replay"], sp["n_analise"]
-    grupos = _velas_completas(df_sub, tf, sub_tf)
+    grupos = _velas_completas(df_sub, tf, sub_tf, df_vela)
     ocup = [(a, b) for a, b in (ocupados or [])]
     out = []
+    mot = motivos if motivos is not None else {}
+
+    def _n(m):
+        mot[m] = mot.get(m, 0) + 1
+    mot["candles_menores_incompletos"] = sum(1 for g in grupos if g is None)
+    mot["candles_do_grafico"] = len(grupos)
     inicios = [k for k, g in enumerate(grupos) if g and (k == 0 or not grupos[k - 1] or grupos[k - 1][0].date() != g[0].date())]
     for k in reversed(inicios):                                     # cada trecho começa na abertura de um pregão
         bloco = grupos[k:k + nr]
-        if len(bloco) < nr or any(g is None for g in bloco):
+        if len(bloco) < nr:
+            _n("pouco_replay")
+            continue
+        if any(g is None for g in bloco):
+            _n("candle_menor_faltando")
             continue
         if tf != "1d" and any((b[0] - a[0]) != _td(minutes=PASSO_MIN[tf]) and a[0].date() == b[0].date() for a, b in zip(bloco, bloco[1:])):
+            _n("pulou_hora_no_pregao")
             continue                                                # pulou um candle do gráfico dentro do pregão
         de, ate = bloco[0][0].isoformat(timespec="minutes"), bloco[-1][0].isoformat(timespec="minutes")
         if any(not (ate < a or de > b) for a, b in ocup):
+            _n("sobrepoe")
             continue                                                # sobrepõe um trecho já guardado (ou já escolhido agora)
         hist = df_vela[df_vela.index < bloco[0][0]].tail(na)
-        if len(hist) < na or not _hist_ok(hist, tf):
+        if len(hist) < na:
+            _n("historico_curto")
+            continue
+        if not _hist_ok(hist, tf):
+            _n("historico_sem_volume" if _hist_ok(hist.assign(Volume=1.0), tf) else "historico_com_buraco")
             continue
         if (bloco[0][0] - hist.index[0]) > _td(days=MAX_DIAS_HIST[formato] + nr * (1 if tf == "1d" else 0)):
+            _n("historico_longo_demais")
             continue
         if (bloco[0][0] - hist.index[-1]) > _td(days=5):            # histórico encostado no replay (no máximo um feriado prolongado)
+            _n("historico_longe_do_replay")
             continue
         poss = [p for _ch, ps in bloco for p in ps]
         rep = df_sub.iloc[poss]
         if (rep["Volume"].fillna(0) <= 0).mean() > 0.05:
+            _n("replay_sem_volume")
             continue
         def _k(t, r):
             return {"t": t.isoformat(timespec="minutes"), "o": round(float(r.Open), 4), "h": round(float(r.High), 4), "l": round(float(r.Low), 4),
@@ -372,7 +409,9 @@ def montar_corridas(df_vela, df_sub, formato: str, ticker: str, agora_iso: str, 
         c = {"id": f"{ticker}-{tf}-{de.replace('-', '').replace(':', '').replace('T', '')}-d{formato}", "ticker": ticker, "nome": ticker, "tf": tf,
              "corrida": formato, "sub": sub_tf, "fonte": FONTE_REAL, "demo": False, "preparado_em": agora_iso, "n_analise": na, "candles": cand,
              "grupo": grupo, "velas_t": [g[0].isoformat(timespec="minutes") for g in bloco]}
-        if not TB.validar_cenario(c)[0]:
+        ok, why = TB.validar_cenario(c)
+        if not ok:
+            _n("invalido: " + why)
             continue
         out.append(c)
         ocup.append((de, ate))

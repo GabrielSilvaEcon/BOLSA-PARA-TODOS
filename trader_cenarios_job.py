@@ -37,10 +37,55 @@ def baixador(dormir=time.sleep):
     return baixar
 
 
+def _perfil(df) -> str:
+    """Resumo do que veio do Yahoo: dias, candles por dia (mín/mediana/máx), horário do 1º e do último, e dias com buraco."""
+    if df is None or not len(df):
+        return "vazio"
+    import pandas as pd
+    por_dia = pd.Series(df.index.date).value_counts().sort_index()
+    ini = pd.Series(df.index).groupby(df.index.date).min().dt.strftime("%H:%M").value_counts().head(3).to_dict()
+    fim = pd.Series(df.index).groupby(df.index.date).max().dt.strftime("%H:%M").value_counts().head(3).to_dict()
+    zero = (df["Volume"].fillna(0) <= 0)
+    zh = pd.Series(zero.values, index=df.index.strftime("%H:%M")).groupby(level=0).mean().round(2)
+    return (f"{len(por_dia)} dias · candles/dia min {por_dia.min()} med {int(por_dia.median())} max {por_dia.max()} · "
+            f"abre {ini} · fecha {fim} · de {df.index[0]} até {df.index[-1]} · volume zero {zero.mean():.1%} {zh[zh > 0].to_dict()}")
+
+
+def diagnostico(formatos: list[str], ativos: list[str], candidatos: list[str]) -> int:
+    """Só olha (não grava nada): por que cada ativo gerou ou não gerou trechos, e o formato dos dados do Yahoo."""
+    import analise_tecnica as AT
+    import trader_battle as TB
+    import trader_dados as TD
+    baixar = baixador()
+    agora = datetime.now(BRT).replace(tzinfo=None).isoformat(timespec="minutes")
+    for f in formatos:
+        sp = TB.CORRIDAS[f]
+        print(f"===== {f}: gráfico {sp['tf']} formado por {sp['sub']} · {sp['n_replay']} candles no replay")
+        for cod in ativos:
+            dfs = {}
+            for t in (sp["tf"], sp["sub"]):
+                r = baixar(cod, TD.PERIODO_CORRIDA[t], TD.INTERVALO_YAHOO[t])
+                dfs[t] = None if r.get("erro") else AT.limpar_ohlcv(r["df"])[0]
+                print(f"  {cod} {t}: {r.get('erro') or _perfil(dfs[t])}")
+            if all(d is not None for d in dfs.values()):
+                mot: dict = {}
+                cs = TD.montar_corridas(dfs[sp["tf"]], dfs[sp["sub"]], f, cod, agora, 3, [], mot)
+                print(f"  {cod} -> {len(cs)} trechos · motivos {mot}")
+    for cod in candidatos:
+        r = baixar(cod, "5d", "1d")
+        print(f"  candidato {cod}: {r.get('erro') or 'ok'}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     import trader_battle as TB
     import trader_dados as TD
-    formatos = [f for f in (argv or []) if f in TB.CORRIDAS] or list(TB.CORRIDAS)
+    argv = list(argv or [])
+    formatos = [f for f in argv if f in TB.CORRIDAS] or list(TB.CORRIDAS)
+    if "--diagnostico" in argv:
+        ativos = [a for a in argv if a.isupper() and not a.startswith(("+", "-"))] or list(TD.ATIVOS[:4])
+        cand = [a[1:] for a in argv if a.startswith("+")]
+        return diagnostico(formatos, ativos, cand)
     agora = datetime.now(BRT).replace(tzinfo=None).isoformat(timespec="minutes")
     baixar = baixador()
     falhou = 0

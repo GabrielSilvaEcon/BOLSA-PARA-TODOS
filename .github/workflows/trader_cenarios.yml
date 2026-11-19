@@ -5,6 +5,11 @@ on:
   schedule:
     - cron: "10 22 * * 1-5"
   workflow_dispatch:
+    inputs:
+      args:
+        description: "Opcional: --diagnostico (só olha, não grava), formatos e ativos. Ex.: --diagnostico intermediaria PETR4 +AXIA3"
+        required: false
+        default: ""
 concurrency:
   group: trader_cenarios
   cancel-in-progress: false
@@ -21,7 +26,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - run: python trader_cenarios_job.py
+      - run: python trader_cenarios_job.py $ARGS
         env:
+          ARGS: ${{ github.event.inputs.args }}
           BPT_SUPABASE_URL: ${{ secrets.BPT_SUPABASE_URL }}
           BPT_SUPABASE_KEY: ${{ secrets.BPT_SUPABASE_KEY }}

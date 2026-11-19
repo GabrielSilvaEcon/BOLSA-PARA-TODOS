@@ -495,9 +495,14 @@ def salvar_estrategia(p: dict, jog: str, est: dict, marcas: dict | None, preco_r
     k = _chave(p["rodada"], jog)
     if p["travadas"].get(k):
         raise ErroTrader("a estratégia já foi travada")
-    p["estrategias"][k] = {**(validar_leitura(est) if motor_de(p) == MOTOR_MESA else validar_estrategia(est, preco_ref)), "marcas": validar_marcas(marcas), "salva_em": float(agora)}
+    if qtd_de(p):                                          # partida corrida: a estratégia é a boleta do início, confirmada UMA vez
+        if k in p["estrategias"]:
+            raise ErroTrader("a estratégia já foi confirmada")
+        p["estrategias"][k] = {**validar_plano(p, jog, est, preco_ref), "marcas": validar_marcas(marcas), "salva_em": float(agora)}
+    else:
+        p["estrategias"][k] = {**(validar_leitura(est) if motor_de(p) == MOTOR_MESA else validar_estrategia(est, preco_ref)), "marcas": validar_marcas(marcas), "salva_em": float(agora)}
     p["versao"] += 1
-    if p.get("multi") and all(_chave(p["rodada"], j) in p["estrategias"] for j in p["jogadores"]):
+    if (p.get("multi") or qtd_de(p)) and all(_chave(p["rodada"], j) in p["estrategias"] for j in p["jogadores"]):
         _travar(p)                                         # multiplayer: quando TODOS confirmaram, o replay começa sozinho (sem botão 'pronto')
         p["fase"], p["t_fase"] = "replay", float(agora)
         p["versao"] += 1
@@ -505,12 +510,48 @@ def salvar_estrategia(p: dict, jog: str, est: dict, marcas: dict | None, preco_r
 
 
 def _travar(p: dict) -> None:
-    """Fecha a análise: quem não registrou nada fica com 'Aguardar' sem estratégia (também é uma decisão válida)."""
+    """Fecha a análise: quem não registrou nada fica com 'Aguardar' sem estratégia (também é uma decisão válida).
+    Na partida corrida, a ordem planejada na boleta do início entra sozinha como a 1ª ação de cada jogador, no 1º preço do replay."""
     for j in p["jogadores"]:
         k = _chave(p["rodada"], j)
+        if p["travadas"].get(k):
+            continue
         p["travadas"][k] = True
         p["estrategias"].setdefault(k, {"direcao": None, "tipo": "aguardar", "confianca": None, "entrada": None, "stop": None, "alvo": None,
                                         "marcas": {"niveis": [], "tendencias": [], "notas": []}, "sem_registro": True})
+        plano = p["estrategias"][k].get("plano")
+        if qtd_de(p) and plano and not any(a["jogador"] == j and a.get("aid") == "plano" for a in p.get("acoes") or []):
+            p["seq_acao"] = int(p.get("seq_acao", 0)) + 1
+            p.setdefault("acoes", []).append({**plano, "aid": "plano", "jogador": j, "rodada": p["rodada"], "n_rev": 0, "ordem": p["seq_acao"],
+                                              "t": float(p.get("t_fase", 0.0))})
+
+
+def validar_plano(p: dict, jog: str, est: dict, preco_ref: float) -> dict:
+    """Boleta do início da partida corrida: comprar ou vender (ou só observar), tipo de ordem, stop loss, take profit e quantidade.
+    Validada aqui com as MESMAS regras das ordens do jogo (capital de 5%, lados do stop e do alvo, preço da limite/stop). Sem confiança."""
+    import trader_qtd as TQ
+    if not isinstance(est, dict):
+        raise ErroTrader("estratégia inválida")
+    dirc = est.get("direcao")
+    if dirc in (None, "", "lateral") or est.get("tipo") == "aguardar":     # só observar: decide depois, já com o gráfico andando
+        return {"direcao": "lateral", "tipo": "aguardar", "confianca": None, "entrada": None, "stop": None, "alvo": None, "plano": None}
+    if dirc not in ("alta", "baixa"):
+        raise ErroTrader("escolha comprar ou vender")
+    if est.get("q") in (None, "") and not est.get("ordem"):          # só a direção, sem ordem (a 1ª entrada fica para depois)
+        tipo = est.get("tipo") if est.get("tipo") in ESTRATEGIAS else "continuacao"
+        return {"direcao": dirc, "tipo": tipo, "confianca": None, "entrada": None, "stop": None, "alvo": None, "plano": None}
+    ordem = est.get("ordem") or "mercado"
+    if ordem not in TIPOS_ENTRADA:
+        raise ErroTrader("tipo de ordem inválido")
+    st = TQ._novo(capital_de(p, jog), float(cfg_de(p).get("taxa", TQ.TAXA_B3)))
+    dados = {"tipo": ordem, "direcao": dirc, "q": est.get("q"), "preco": est.get("preco"), "stop": est.get("stop"), "alvo": est.get("alvo")}
+    try:
+        plano = TQ.validar(dados, st, float(preco_ref), 0, _nrp(p), _preco_obrig)
+    except TQ.ErroQtd as e:
+        raise ErroTrader(str(e))
+    tipo = est.get("tipo") if est.get("tipo") in ESTRATEGIAS else "continuacao"
+    return {"direcao": dirc, "tipo": tipo, "confianca": None, "entrada": plano.get("preco", float(preco_ref)), "stop": plano.get("stop"),
+            "alvo": plano.get("alvo"), "plano": plano}
 
 
 def iniciar_replay(p: dict, jog: str, agora: float) -> None:
@@ -764,6 +805,8 @@ def visao(p: dict, cenario: dict, agora: float, jog: str) -> dict:
          "resultado": p["resultados"].get(k) if fim else None,
          "adversarios": [] if mesa else entradas_adversarios(p, cenario, agora, jog), "jogador": jog, "marcas_ant": _marcas_anteriores(p, jog),
          "multi": bool(p.get("multi")), "prontos": prontos_da_fase(p, jog) if p["fase"] in ("analise", "resultado") else None,
+         "confirmados": {"eu": k in p["estrategias"], "n": sum(1 for j in p["jogadores"] if _chave(p["rodada"], j) in p["estrategias"]),
+                         "total": len(p["jogadores"])} if p["fase"] == "analise" else None,
          "pontos_rodadas": [round(p["resultados"][_chave(r, jog)]["pontos"], 1) for r in range(1, cfg["rodadas"] + 1) if _chave(r, jog) in p["resultados"]],
          "propria": None if mesa else entrada_executada(p, cenario, agora, p["rodada"], jog),
          "operacao": None if mesa or p["fase"] not in ("replay", "resultado", "fim") else operacao_viva(p, cenario, agora, p["rodada"], jog),
@@ -869,13 +912,19 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
     if est.get("sem_registro"):
         linhas.append(("Sua leitura", "Você não registrou a leitura do gráfico no tempo."))
     else:
-        linhas.append(("Sua leitura", f"Você registrou: {nome.get(est.get('direcao'), '')} ({ROTULO_ESTRATEGIA.get(est.get('tipo'), '').lower()}), confiança {est.get('confianca')}/5."))
+        if est.get("confianca") is None:                    # partida corrida: a estratégia é a boleta do início
+            pl = est.get("plano")
+            lado = {"alta": "Comprar", "baixa": "Vender"}.get(est.get("direcao"))
+            linhas.append(("Sua estratégia", f"{lado} {pl['q']} ações" + (f", stop {pl['stop']:.2f}" if pl.get("stop") else ", sem stop")
+                           + (f", alvo {pl['alvo']:.2f}" if pl.get("alvo") else "") + "." if pl and lado else "Você preferiu observar antes de entrar."))
+        else:
+            linhas.append(("Sua leitura", f"Você registrou: {nome.get(est.get('direcao'), '')} ({ROTULO_ESTRATEGIA.get(est.get('tipo'), '').lower()}), confiança {est.get('confianca')}/5."))
     linhas.append(("O mercado", f"O preço foi de {real['ref']:.2f} para {real['fim']:.2f} ({real['mov_pct']:+.1f}%): {nome[real['direcao']]}."))
     ops = r.get("operacoes") or []
     if not ops:
         if r.get("qualidade_nota") is not None:          # partida corrida: a leitura ainda vale para o ranking de Qualidade
             linhas.append(("Operações", "Você não operou: sem lucro, sem prejuízo e 0 ponto na partida."))
-            linhas.append(("Qualidade", f"Sua leitura (direção e confiança) vale nota {r['qualidade_nota']:.0f}/100 no ranking de Qualidade."))
+            linhas.append(("Qualidade", f"Sua leitura vale nota {r['qualidade_nota']:.0f}/100 no ranking de Qualidade."))
             return linhas
         linhas.append(("Operações", "Você não operou nesta rodada: sem lucro, sem prejuízo e 0 ponto."))
         return linhas
@@ -894,7 +943,8 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
     q = pt["q"]
     if "peso_res" in pt:                                    # partida corrida: 70% resultado + 30% qualidade
         linhas.append(("Resultado", f"Lucro de {pt['x'] * 100:+.2f}% do capital (movimento típico do ativo: {pt['unidade'] * 100:.2f}%) → {pt['res']:+.1f} de 100."))
-        linhas.append(("Qualidade", f"Direção {q['direcao']:+.0f} · entrada {q['entrada']:+.2f} · risco {q['risco']:+.2f} · confiança {q['confianca']:+.2f} → nota {r['qualidade_nota']:.0f}/100."))
+        conf = f" · confiança {q['confianca']:+.2f}" if est.get("confianca") else ""
+        linhas.append(("Qualidade", f"Direção {q['direcao']:+.0f} · entrada {q['entrada']:+.2f} · risco {q['risco']:+.2f}{conf} → nota {r['qualidade_nota']:.0f}/100."))
         linhas.append(("Pontos", f"70% × {pt['res']:+.1f} + 30% × {pt['qual'] * 100:+.0f} = {r['pontos']:+.1f}. O lucro pesa mais; a qualidade da análise completa."))
         return linhas
     linhas.append(("Resultado", f"Soma das operações: {pt['x'] * 100:+.2f}% (unidade da rodada: {pt['unidade'] * 100:.2f}%) → {pt['base']:+.1f} pontos."))
@@ -1556,9 +1606,9 @@ def avaliar_corrida(cen_r: dict, est: dict, trades: list[dict]) -> dict:
     base = avaliar_mesa(cen_r, est, trades)
     pt = base["partes"]
     q = pt["q"]
-    if trades:
-        qual = q["total"]
-    else:                                                   # sem operação: só a leitura conta (direção e confiança)
+    if trades:                                              # sem confiança (saiu da boleta): direção, entrada e risco
+        qual = q["total"] if est.get("confianca") else (q["direcao"] + q["entrada"] + q["risco"]) / 3.0
+    else:                                                   # sem operação: só a leitura conta
         qual = (q["direcao"] + q["confianca"]) / 2.0 if est.get("confianca") else q["direcao"] / 2.0
     res = PONTOS_MAX * math.tanh(pt["x"] / pt["unidade"]) if trades else 0.0
     pts = PESO_RESULTADO * res + (1 - PESO_RESULTADO) * qual * PONTOS_MAX if trades else 0.0
