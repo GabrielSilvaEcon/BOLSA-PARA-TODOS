@@ -27,6 +27,7 @@ jobs:
         working-directory: app
         run: |
           flutter create --project-name tickerhunters --platforms web . --no-overwrite || true
+          rm -rf test                      # o teste de exemplo do flutter create não combina com o app: removido
           flutter pub get
           flutter analyze --no-fatal-infos
       - name: Compilar versão web
