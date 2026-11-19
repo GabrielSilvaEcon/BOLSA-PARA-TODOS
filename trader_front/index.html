@@ -270,6 +270,9 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #plano .pc{min-width:0;display:flex;flex-direction:column;gap:5px;padding:7px;border-radius:14px;background:rgba(10,6,36,.7);border:1px solid rgba(139,108,255,.35)}
 #plano .lado{grid-area:lado}#plano .risco{grid-area:risco}#plano .qtd{grid-area:qtd}
 #plano .row{display:flex;gap:6px}#plano .row>button{flex:1;min-width:0}
+#plano #pl-wait{flex:.8;min-height:42px;font-size:13px;font-weight:900;border-radius:13px;color:#fff;opacity:.55;background:linear-gradient(180deg,#3B3570,#211C4A);border:2px solid #9A92D6}
+#plano #pl-wait.sel{opacity:1;box-shadow:0 0 16px rgba(154,146,214,.7)}
+#plano.agu .tipos,#plano.agu #pl-precow,#plano.agu .risco,#plano.agu .qtd{opacity:.35;pointer-events:none}
 #plano #pl-buy,#plano #pl-sell{min-height:42px;font-size:15px;font-weight:900;border-radius:13px;color:#fff;opacity:.55}
 #plano #pl-buy{background:linear-gradient(180deg,#1E7A4A,#0F4A2C);border:2px solid #2EE86B}
 #plano #pl-sell{background:linear-gradient(180deg,#7A1E33,#4A0F1E);border:2px solid #FF4D6D}
@@ -297,7 +300,11 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
 #app.corrida.mesa.replay:not(.rs) #mb2 #m-enc{display:flex;flex:1;flex-direction:row;gap:4px;min-height:34px;border-radius:12px;border:1.5px solid #F2B84B;
   background:linear-gradient(180deg,#5A3A12,#2E1C08);color:#FFE3A3;font-size:11px;font-weight:900;box-shadow:0 0 10px rgba(242,184,75,.35)}
 #app.corrida #mb2 #m-enc .ic{font-size:13px}
-#app.corrida #mb2{gap:4px}#app.corrida #mb2 button{min-width:0;padding:0 4px;font-size:11px;white-space:nowrap}#app.corrida #mb2 #m-ind{flex:1.15}
+#app.corrida #m-stop,#app.corrida #m-alvo{display:none !important}
+#m-tg{display:none}
+#app.corrida.mesa.replay #m-tg{display:block;align-self:center;min-height:22px;padding:0 16px;margin-bottom:2px;border-radius:0 0 12px 12px;font-size:11px;font-weight:900;
+  border:1.5px solid #7A5CFF;border-top:0;background:linear-gradient(180deg,#2A1F8E,#150F55);color:#D9D4F7}
+#app.corrida.bmin #qrow,#app.corrida.bmin #mb1,#app.corrida.bmin #mb2{display:none !important}#app.corrida #mb2{gap:4px}#app.corrida #mb2 button{min-width:0;padding:0 4px;font-size:11px;white-space:nowrap}#app.corrida #mb2 #m-ind{flex:1.15}
 /* partida corrida: as três faixas do topo viram UMA (voltar · ativo · preço · você · tempo · tela cheia) */
 #eu{display:none}
 #app.corrida #ban,#app.corrida #placar,#app.corrida #rod,#app.corrida #hd .lg{display:none !important}
@@ -346,13 +353,13 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
         <small class="oco">Stop e alvo são ligados (OCO): quando um executa, a posição fecha e o outro é cancelado. O stop móvel sobe junto com o preço (na venda, desce) e nunca recua.</small></div>
       <div class="g">ORDENS PENDENTES</div><div id="o-lista"></div>
       <details id="o-regras"><summary>ⓘ Regras da aposta</summary><small id="o-nota">Toque no gráfico para preencher o campo selecionado. Arraste as linhas de stop e alvo para movê-las. Cada operação usa a mesma aposta de referência (1% do patrimônio no início da rodada) e os resultados se somam: a perda da rodada pode passar de 1%. Ao chegar a 3% do patrimônio de perda acumulada (realizada + aberta), a posição é encerrada, as ordens pendentes são canceladas e novas entradas ficam bloqueadas até a próxima rodada.</small></details></div>
-  <div id="mesa"><div class="row" id="qrow"><span class="ql">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
+  <div id="mesa"><button id="m-tg" aria-label="Recolher ou expandir a boleta">▾ Boleta</button><div class="row" id="qrow"><span class="ql">Qtd</span><button id="q-menos" aria-label="Menos">−</button><input id="q-val" inputmode="numeric" value="100" autocomplete="off" aria-label="Quantidade de ações"><button id="q-mais" aria-label="Mais">+</button>
     <button class="qp" data-qp="25">25%</button><button class="qp" data-qp="50">50%</button><button class="qp" data-qp="100">Máx</button></div>
     <div class="row" id="mb1"><button id="m-buy" class="buy"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ COMPRAR</span></button><button id="m-sell" class="sell"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>⚡ VENDER</span></button></div>
     <div class="row" id="mb2"><button id="m-stop">🛡 Stop</button><button id="m-alvo">🎯 Alvo</button><button id="m-can">✕ Cancelar</button><button id="m-adv">⚙ Opções ▾</button><button id="m-ind" title="Indicadores">Indicadores</button></div></div>
 <div id="plano"><div class="ph"><b>🎯 Monte sua estratégia</b><span id="pl-tm"></span><button id="pl-min">▾ Ver gráfico</button></div>
     <div class="pb">
-      <div class="pc lado"><div class="row"><button id="pl-buy">⬆ Comprar</button><button id="pl-sell">⬇ Vender</button></div>
+      <div class="pc lado"><div class="row"><button id="pl-buy">⬆ Subir</button><button id="pl-wait">⏳ Aguardar</button><button id="pl-sell">⬇ Cair</button></div>
         <small>Tipo de ordem</small>
         <div class="row tipos"><button data-ot="mercado"><i>⚡</i>A Mercado</button><button data-ot="limite"><i>⌖</i>Limitada</button><button data-ot="stop_entrada"><i>↗</i>Stop</button></div>
         <div class="campo" id="pl-precow"><small id="pl-preco-l">Preço da ordem</small><div class="stp"><button data-pd="preco" data-ps="-1">−</button><input id="pl-preco" inputmode="decimal" autocomplete="off"><button data-pd="preco" data-ps="1">+</button></div></div></div>
@@ -361,7 +368,7 @@ button.sell.on{background:linear-gradient(180deg,#FF6B87,#FF3D63);color:#2B0510}
       <div class="pc qtd"><div class="campo"><small>🪙 Quantidade</small><div class="stp"><button data-pd="q" data-ps="-1">−</button><input id="pl-q" inputmode="numeric" autocomplete="off"><button data-pd="q" data-ps="1">+</button></div></div>
         <div class="rr"><small>Risco / Retorno</small><b id="pl-rr">—</b><span id="pl-rrt"></span></div></div>
       <button id="pl-ok">✔ Confirmar Estratégia</button></div>
-    <div class="pf"><button id="pl-obs">Só observar no início</button><span id="pl-msg"></span></div>
+    <div class="pf"><span id="pl-msg"></span></div>
     <div id="pl-esp">✔ Estratégia confirmada<span id="pl-esp-t">Aguardando os outros jogadores…</span></div></div>
   <div id="rkb"><span>ⓘ Você está no modo Trade Battle. Suas operações contam para o ranking!</span><span id="ap"></span><button id="b-rank">🏆 Ranking</button></div>
   <div id="bt"><button id="conf">Confirmar estratégia</button><button id="rep">Iniciar replay</button><button id="enc">⏹ Encerrar operação</button></div>
@@ -553,6 +560,9 @@ function passo(r){const e=Math.pow(10,Math.floor(Math.log10(r))),f=r/e;return (f
 function draw(){
   if(!ctx||!S||!W)return;layout();usL=[];usT=[];
   ctx.clearRect(0,0,W,H);
+  {const fz=Math.max(18,Math.min(54,L.pw*0.1));ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle="rgba(190,170,255,.07)";   // marca d'água do jogo
+    ctx.font=`900 ${fz}px system-ui`;ctx.fillText("TICKER HUNTER",L.pw/2,L.mTop+L.mH*0.46);
+    ctx.font=`800 ${Math.round(fz*0.36)}px system-ui`;ctx.fillText((A&&A.tf_nome)||"",L.pw/2,L.mTop+L.mH*0.46+fz*0.75);ctx.restore()}
   const {i0,i1}=visiveis(),cw=S.cw,bw=Math.max(1,Math.min(cw*0.7,14));
   ctx.font="10px system-ui";ctx.textBaseline="middle";
   const st=passo((L.hi-L.lo)/5);ctx.strokeStyle="rgba(255,255,255,.06)";ctx.fillStyle="#CFC8EE";ctx.lineWidth=1;ctx.textAlign="left";
@@ -588,15 +598,7 @@ function draw(){
     const ry=v=>t+(100-v)/100*h;ctx.strokeStyle="rgba(255,255,255,.2)";ctx.setLineDash([3,3]);for(const v of [30,70]){ctx.beginPath();ctx.moveTo(0,ry(v));ctx.lineTo(L.pw,ry(v));ctx.stroke()}ctx.setLineDash([]);
     ctx.strokeStyle=COR.rsi;ctx.lineWidth=1.4;ctx.beginPath();let m=false;for(let i=Math.max(0,i0-1);i<=i1;i++){const v=S.rsiV[i];if(v==null){m=false;continue}const x=L.x(i),y=ry(v);if(!m){ctx.moveTo(x,y);m=true}else ctx.lineTo(x,y)}ctx.stroke();
     ctx.fillStyle="#C4B5FF";ctx.textAlign="left";ctx.fillText("RSI",3,t+8)}
-  // pregão: no intraday, uma linha na abertura de cada dia (o dia é contado a partir do gráfico: D1, D2..., nunca a data real)
   const diario=A&&A.tf_nome==="1 dia";
-  if(!diario){ctx.save();ctx.strokeStyle="rgba(242,184,75,.28)";ctx.setLineDash([4,4]);ctx.fillStyle="rgba(242,184,75,.75)";ctx.font="bold 9px system-ui";ctx.textAlign="left";
-    const xs=[];for(let i=Math.max(1,i0);i<=i1;i++){const c=S.cands[i],ant=S.cands[i-1];if(!c||!ant||c.d===ant.d)continue;const x=L.x(i)-cw/2;if(x>=2&&x<=L.pw-2)xs.push([x,c.d])}
-    let ultT=-1e9;                                                  // sem sobrepor: "Abertura D7" se couber até a próxima linha; senão "D7"; senão nada
-    xs.forEach(([x,d],k)=>{ctx.beginPath();ctx.moveTo(x,L.mTop);ctx.lineTo(x,L.mTop+L.mH);ctx.stroke();
-      const prox=k+1<xs.length?xs[k+1][0]:L.pw,cheio="Abertura D"+d,rot=ctx.measureText(cheio).width+8<prox-x?cheio:"D"+d;
-      if(x+3>ultT+4){ctx.fillText(rot,x+3,L.mTop+10);ultT=x+3+ctx.measureText(rot).width}});
-    ctx.restore()}
   // eixo de tempo (gráfico diário: só o número do pregão)
   ctx.fillStyle="#9E96CE";ctx.textAlign="center";ctx.font="9px system-ui";const gap=Math.max(1,Math.round(70/cw));
   for(let i=Math.ceil(S.off/gap)*gap;i<=i1;i+=gap){if(i<0)continue;const c=S.cands[i],x=L.x(i);if(x<14||x>L.pw-14)continue;ctx.fillText(diario?"Pregão "+(c.d||i+1):(c.d?"D"+c.d+" ":"")+c.t,x,H-6)}
@@ -716,7 +718,7 @@ function padraoPl(){const a=atrPl(),e=A.ref,s=PL.dir==="baixa"?-1:1;
 function iniPl(){if(PL.ini&&PL.tok===A.token)return;PL.ini=true;PL.tok=A.token;PL.dir=null;PL.ordem="mercado";PL.min=false;PL.q=null;
   PL.q=Math.max(1,Math.floor(maxQPl()*0.25));padraoPl()}
 function validaPl(){const e=entPl(),s=PL.dir==="baixa"?-1:1;
-  if(!PL.dir)return "Escolha Comprar ou Vender";
+  if(!PL.dir)return "Escolha Subir, Aguardar ou Cair";if(PL.dir==="aguardar")return "";
   if(!(PL.q>=1))return "Informe a quantidade";if(PL.q>maxQPl())return `Cabem no máximo ${maxQPl()} ações (5% do saldo)`;
   if(PL.ordem!=="mercado"){if(!(PL.preco>0))return "Informe o preço da ordem";
     const lim=PL.ordem==="limite";if(lim?(s*(PL.preco-A.ref)>=0):(s*(PL.preco-A.ref)<=0))return lim?(s>0?"A compra limitada fica abaixo do preço atual":"A venda limitada fica acima do preço atual"):(s>0?"A compra stop fica acima do preço atual":"A venda stop fica abaixo do preço atual")}
@@ -728,12 +730,15 @@ function uiPlano(){const el=$("plano");if(!el||!S||!A)return;
   iniPl();const cf=A.confirmados||{},esp=!!cf.eu;el.classList.toggle("esp",esp);el.classList.toggle("min",PL.min&&!esp);
   $("pl-min").textContent=PL.min?"▴ Abrir boleta":"▾ Ver gráfico";$("pl-min").style.display=esp?"none":"";
   if(esp){$("pl-esp-t").textContent=cf.total>1&&cf.n<cf.total?`Aguardando os outros jogadores (${cf.n}/${cf.total})…`:"A partida vai começar!";return}
-  $("pl-buy").classList.toggle("sel",PL.dir==="alta");$("pl-sell").classList.toggle("sel",PL.dir==="baixa");
+  $("pl-buy").classList.toggle("sel",PL.dir==="alta");$("pl-sell").classList.toggle("sel",PL.dir==="baixa");$("pl-wait").classList.toggle("sel",PL.dir==="aguardar");
+  el.classList.toggle("agu",PL.dir==="aguardar");
   document.querySelectorAll("#plano [data-ot]").forEach(b=>b.classList.toggle("sel",b.dataset.ot===PL.ordem));
   $("pl-precow").style.display=PL.ordem==="mercado"?"none":"";$("pl-preco-l").textContent=PL.ordem==="limite"?"Preço limite":"Preço de disparo (stop)";
   const fx=v=>v==null?"":v.toFixed(2).replace(".",",");
   for(const k of ["preco","stop","alvo"])if(document.activeElement!==$("pl-"+k))$("pl-"+k).value=fx(PL[k]);
   if(document.activeElement!==$("pl-q"))$("pl-q").value=PL.q==null?"":String(PL.q);
+  if(PL.dir==="aguardar"){$("pl-rr").textContent="—";$("pl-rrt").textContent="Você entra depois, com o gráfico andando";$("pl-msg").textContent=S.erroLocal||"";
+    $("pl-ok").disabled=S.sentSeq>0&&S.sentSeq===S.seq&&!S.erroLocal;S.lines={entrada:null,stop:null,alvo:null};S.dir=null;return}
   const e=entPl(),risco=PL.stop!=null&&e?Math.abs(e-PL.stop):null,ret=PL.alvo!=null&&e?Math.abs(PL.alvo-e):null;
   const rr=$("pl-rr");rr.textContent=risco&&ret?`1 : ${(ret/risco).toFixed(1).replace(".",",")}`:"—";rr.classList.toggle("ruim",!!(risco&&ret&&ret/risco<1));
   const tq=v=>"T$ "+(v*(PL.q||0)).toFixed(2).replace(".",",");
@@ -749,13 +754,13 @@ function passoPl(k,d){const t=Math.max(0.01,r2(atrPl()*0.1));
   else{const base=PL[k]!=null?PL[k]:entPl();PL[k]=r2(Math.max(0.01,base+d*t))}uiPlano();draw()}
 $("pl-buy").onclick=()=>{const m=PL.dir!=="alta";PL.dir="alta";if(m)padraoPl();uiPlano();draw()};
 $("pl-sell").onclick=()=>{const m=PL.dir!=="baixa";PL.dir="baixa";if(m)padraoPl();uiPlano();draw()};
-document.querySelectorAll("#plano [data-ot]").forEach(b=>b.onclick=()=>{PL.ordem=b.dataset.ot;if(!PL.dir)PL.dir="alta";padraoPl();uiPlano();draw()});
+document.querySelectorAll("#plano [data-ot]").forEach(b=>b.onclick=()=>{PL.ordem=b.dataset.ot;if(!PL.dir||PL.dir==="aguardar")PL.dir="alta";padraoPl();uiPlano();draw()});
 document.querySelectorAll("#plano [data-pd]").forEach(b=>b.onclick=()=>passoPl(b.dataset.pd,+b.dataset.ps));
 for(const k of ["preco","stop","alvo","q"])$("pl-"+k).addEventListener("change",e=>{const v=parseFloat(String(e.target.value).replace(/\./g,"").replace(",","."));
   PL[k]=k==="q"?(isFinite(v)?Math.floor(v):null):(isFinite(v)&&v>0?r2(v):null);uiPlano();draw()});
 $("pl-min").onclick=()=>{PL.min=!PL.min;uiPlano()};
-$("pl-ok").onclick=()=>{if(!validaPl())confirmaPl(false)};
-$("pl-obs").onclick=()=>confirmaPl(true);
+$("pl-ok").onclick=()=>{if(!validaPl())confirmaPl(PL.dir==="aguardar")};
+$("pl-wait").onclick=()=>{PL.dir="aguardar";uiPlano();draw()};
 /* ===== Mesa de operações (motor 2): ordens ao vivo, linhas próprias e entradas/saídas dos adversários ===== */
 const mz=()=>A&&A.mesa;
 const advAberto=()=>$("adv").style.display==="flex";
@@ -824,7 +829,9 @@ function placarUI(){   // placar da rodada (o servidor já manda ordenado e form
   el.classList.add("on");
 }
 function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)
-  moveEnc();if(corrida()&&S.erroLocal&&S.erroLocal!==S.erroMostrado){S.erroMostrado=S.erroLocal;flash(S.erroLocal)}else if(!S.erroLocal)S.erroMostrado="";
+  moveEnc();if(corrida()&&mz()&&mz().posicao&&!S.dicaPuxa){S.dicaPuxa=true;const c=mz().posicao.direcao==="alta";
+    flash(c?"Arraste a linha da entrada: para baixo põe o stop, para cima põe o alvo":"Arraste a linha da entrada: para cima põe o stop, para baixo põe o alvo",5000)}
+  else if(corrida()&&S.erroLocal&&S.erroLocal!==S.erroMostrado){S.erroMostrado=S.erroLocal;flash(S.erroLocal)}else if(!S.erroLocal)S.erroMostrado="";
   const m=mz(),pz=!!A.pausada,liv=livreEnvio(),at=!!m&&!pz,o=linhasMesa();
   const dt=o.dir==="alta"?"COMPRA ▲":(o.dir==="baixa"?"VENDA ▼":"");
   let l1;
@@ -881,7 +888,8 @@ function soltaLinha(k){   // largou a linha de stop/alvo: manda o novo preço (o
   const o=linhasMesa(),pr=ov.p,px=o.pend?o.pend.preco:m.preco_atual;
   const ok=k==="stop"?(o.dir==="alta"?pr<px:pr>px):(o.dir==="alta"?pr>px:pr<px);
   if(!ok){S.ovr=null;flash(k==="stop"?"O stop precisa ficar do lado perdedor do preço":"O alvo precisa ficar do lado ganhador do preço");return}
-  if(sendAcao({tipo:k==="stop"?"mover_stop":"mover_alvo",preco:pr}))S.ovr.ate=performance.now()+3000;else{S.ovr=null;flash("Aguarde a ordem anterior")}}
+  const existe=m.posicao?m.posicao[k]!=null:(m.ordens||[]).some(x=>x.id===k);
+  if(sendAcao({tipo:(existe?"mover_":"definir_")+k,preco:pr}))S.ovr.ate=performance.now()+3000;else{S.ovr=null;flash("Aguarde a ordem anterior")}}
 function toqueMesa(p,pr){
   const t=S.tool;
   if(t==="mstop"||t==="malvo"){const k=t==="mstop"?"stop":"alvo",o=linhasMesa();S.tool=null;
@@ -893,7 +901,8 @@ function toqueMesa(p,pr){
 const ptrs=new Map();let modo=null,t0=null,pinch=null;
 function pos(e){const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
 function objetos(){
-  if(mesaOn()&&S.modo==="replay"){const l=linhasMesa(),r=[];for(const k of ["stop","alvo"])if(l[k]!=null)r.push({tipo:"linha",k,p:l[k]});return r}
+  if(mesaOn()&&S.modo==="replay"){const l=linhasMesa(),r=[],m=mz();for(const k of ["stop","alvo"])if(l[k]!=null)r.push({tipo:"linha",k,p:l[k]});
+    if(m&&m.posicao)r.push({tipo:"linha",k:"entrada",p:m.posicao.preco_entrada,puxa:true});return r}
   const o=[];for(const k of ["entrada","stop","alvo"])if(S.lines[k]!=null)o.push({tipo:"linha",k,p:S.lines[k]});
   S.marcas.niveis.forEach((n,i)=>o.push({tipo:"nivel",i,p:n.preco}));return o;
 }
@@ -928,7 +937,9 @@ cv.addEventListener("pointermove",e=>{
   if(modo==="drag"&&t0.moved){
     let pr=Geo.r2(Math.max(L.lo,Math.min(L.hi,L.price(p.y))));
     if(pr<=0)return;const h=t0.hit;
-    if(h.tipo==="linha"){if(mesaOn())S.ovr={k:h.k,p:pr,ate:performance.now()+60000};else S.lines[h.k]=pr}else S.marcas.niveis[h.i].preco=pr;
+    if(h.puxa){const m=mz(),pos=m&&m.posicao;if(!pos)return;const comp=pos.direcao==="alta",abaixo=pr<pos.preco_entrada;
+      const k=(comp?abaixo:!abaixo)?"stop":"alvo";h.k2=k;S.ovr={k,p:pr,ate:performance.now()+60000}}   // compra: puxar p/ baixo = stop, p/ cima = alvo (venda: o contrário)
+    else if(h.tipo==="linha"){if(mesaOn())S.ovr={k:h.k,p:pr,ate:performance.now()+60000};else S.lines[h.k]=pr}else S.marcas.niveis[h.i].preco=pr;
     ui();draw();
   }else if(modo==="pan"&&t0.moved){S.follow=false;S.cwAlvo=null;aoVivoUI();S.off=t0.off-(p.x-t0.x)/S.cw;limita();draw()}
 });
@@ -937,7 +948,7 @@ function fim(e){
   if(modo==="pinch"){if(ptrs.size<2){modo=null;pinch=null;t0=null}return}
   const tap=t0&&!t0.moved&&performance.now()-t0.t<600;
   if(modo==="pan"&&t0&&t0.moved&&S.modo!=="analise"&&S.off>=fimOff()-1.5){S.follow=true;aoVivoUI()}
-  if(modo==="drag"){frozen=null;if(mesaOn()&&t0&&t0.hit&&t0.moved)soltaLinha(t0.hit.k);draw()}
+  if(modo==="drag"){frozen=null;if(mesaOn()&&t0&&t0.hit&&t0.moved)soltaLinha(t0.hit.k2||t0.hit.k);draw()}
   if(tap&&modo==="pan"&&p.x<=L.pw&&(S.tool||(mesaOn()&&S.modo==="replay"&&S.campo&&advAberto())))toque(p);
   modo=null;t0=null;frozen=null;
 }
@@ -963,7 +974,7 @@ function toque(p){
   else if(t==="apagar"){const h=acharApagar(p);if(h){if(h.tipo==="linha")S.lines[h.k]=null;else if(h.tipo==="nivel")S.marcas.niveis.splice(h.i,1);else if(h.tipo==="nota")S.marcas.notas.splice(h.i,1);else if(h.tipo==="tend")S.marcas.tendencias.splice(h.i,1)}else flash("Nada para apagar aqui")}
   ui();draw();
 }
-let ft=0;function flash(m){const d=$("dica");d.style.display="block";d.textContent=m;clearTimeout(ft);ft=setTimeout(ui,1600)}
+let ft=0;function flash(m,ms){const d=$("dica");d.style.display="block";d.textContent=m;clearTimeout(ft);ft=setTimeout(ui,ms||1600)}
 function escolhe(t){S.tool=S.tool===t?null:t;S.pend=null;$("mais").style.display="none";ui()}
 $("b-buy").onclick=()=>{S.dir=S.dir==="alta"?null:"alta";S.erroLocal="";ui()};
 $("b-sell").onclick=()=>{S.dir=S.dir==="baixa"?null:"baixa";S.erroLocal="";ui()};
@@ -1030,6 +1041,8 @@ $("m-alvo").onclick=()=>{S.tool=S.tool==="malvo"?null:"malvo";ui()};
 $("m-adv").onclick=()=>{const a=$("adv");a.style.display=a.style.display==="flex"?"none":"flex";boletaUI();ui()};
 function boletaUI(){const ab=advAberto();$("app").classList.toggle("adv",ab);$("m-adv").textContent=ab?"▴ Recolher":"⚙ Opções ▾"}
 function moveEnc(){const e=$("m-enc"),l=corrida()?$("mb2"):$("pos");if(e&&l&&typeof l.insertBefore==="function"&&e.parentNode!==l){if(corrida())l.insertBefore(e,$("m-ind"));else l.appendChild(e)}}
+$("m-tg").onclick=()=>{const a=$("app"),min=!a.classList.contains("bmin");a.classList.toggle("bmin",min);$("m-tg").textContent=min?"▴ Boleta":"▾ Boleta";
+  setTimeout(()=>{if(typeof layout==="function"){layout();draw()}},30)};
 $("m-ind").onclick=()=>{const m=$("mais");m.style.display=m.style.display==="flex"?"none":"flex"};
 $("o-tipo").onchange=()=>ui();$("o-buy").onclick=()=>enviarOrdem("alta");$("o-sell").onclick=()=>enviarOrdem("baixa");
 ["o-preco","o-stop","o-alvo","g-stop","g-alvo"].forEach(id=>$(id).addEventListener("focus",()=>{S.campo=id}));
