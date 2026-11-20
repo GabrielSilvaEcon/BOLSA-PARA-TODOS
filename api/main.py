@@ -522,6 +522,9 @@ def _fmt_quando(iso) -> str:
     return d.astimezone(TC.timezone(TC.timedelta(hours=-3))).strftime("%d/%m %H:%M") if d else ""
 
 
+KINDS_LOJA = ("tema", "moldura")            # a Loja vende só temas e molduras (decisão do Gabriel); o resto não aparece nem pode ser comprado
+
+
 @app.get("/loja")
 def loja(q: Quem = Depends(quem)) -> dict:
     """Loja Ticker, como a do app antigo (tickercoins_app.pagina_economia): saldo; Recompensas (baú diário e baús de progresso);
@@ -544,6 +547,8 @@ def loja(q: Quem = Depends(quem)) -> dict:
         if not (stt["tem"] or ok):
             continue
         kind = (p.get("efeito") or {}).get("kind")
+        if kind not in KINDS_LOJA:
+            continue
         itens.append({"id": p["id"], "nome": p["nome"], "desc": p.get("desc") or "", "preco": int(p["preco"]), "raridade": VT.raridade(p),
                       "status": stt, "kind": kind, "equipavel": VT.equipavel(p), "em_uso": eq.get(kind) == p["id"], "previa": VT.previa(p)})
     itens.sort(key=lambda x: (x["status"]["tem"], x["preco"]))
@@ -589,6 +594,8 @@ class Compra(BaseModel):
 @app.post("/loja/comprar")
 def loja_comprar(c: Compra, q: Quem = Depends(quem)) -> dict:
     """Compra um item com TickerCoins (mesmas regras do app antigo). O escudo de ofensiva também abre a janela de 7 dias na Jornada."""
+    if ((TC.produto(c.pid) or {}).get("efeito") or {}).get("kind") not in KINDS_LOJA:
+        raise HTTPException(400, "Este item não está à venda na Loja.")
     r = TC.comprar(q.conta.get("id"), c.pid, c.req[:64], _plano_de(q))
     if r.get("ok") and not r.get("duplicada") and c.pid == "escudo_ofensiva":
         try:

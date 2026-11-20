@@ -232,9 +232,19 @@ def test_loja_mostra_saldo_itens_e_extrato(cli):
         assert cli.post("/loja/comprar", json={"pid": sem_saldo["id"], "req": "t1"}).status_code == 400
 
 
+def test_loja_so_tem_tema_e_moldura(cli):
+    d = cli.get("/loja").json()
+    assert d["itens"] and {it["kind"] for it in d["itens"]} <= {"tema", "moldura"}
+    import tickercoins as TC
+    outro = next(p for p in TC.produtos() if p["efeito"]["kind"] not in ("tema", "moldura"))
+    assert cli.post("/loja/comprar", json={"pid": outro["id"], "req": "z"}).status_code == 400
+
+
 def test_loja_bau_compra_e_usa(cli):
+    import tickercoins as TC
     assert cli.post("/loja/bau").json()["valor"] > 0                       # baú diário credita
     assert cli.post("/loja/bau").json().get("novo") is False                # só um por dia: abrir de novo não credita outra vez
+    TC.creditar("id-" + EU, 500, "teste", "Moedas de teste", "teste:500")
     d = cli.get("/loja").json()
     item = next(it for it in d["itens"] if not it["status"]["tem"] and it["preco"] <= d["saldo"])
     r = cli.post("/loja/comprar", json={"pid": item["id"], "req": "pedido-1"})

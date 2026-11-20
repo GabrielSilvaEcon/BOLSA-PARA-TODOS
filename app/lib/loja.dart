@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'efeitos.dart';
 import 'navegacao.dart';
 
 /// Loja Ticker, como a do app antigo (tickercoins_app.pagina_economia): título, saldo de Ticker Coins e três abas.
@@ -22,8 +23,6 @@ const _verde = Color(0xFF2EE59D);
 const _ouro = Color(0xFFFFD66B);
 const _lila = Color(0xFFCFC8EE);
 const _abas = [('Recompensas', Icons.star_rounded), ('Loja', Icons.storefront_rounded), ('Extrato', Icons.receipt_long_rounded)];
-const _rotRaridade = {'comum': 'Comum', 'raro': 'Raro', 'epico': 'Épico', 'lendario': 'Lendário'};
-const _corRaridade = {'comum': Color(0xFF9FB2C8), 'raro': Color(0xFF4DA3FF), 'epico': Color(0xFFB06BFF), 'lendario': Color(0xFFFFB938)};
 
 Color _cor(Object? hex, [Color padrao = const Color(0xFF8B6CFF)]) {
   final s = '${hex ?? ''}'.replaceFirst('#', '');
@@ -42,7 +41,7 @@ String _milhar(num v) {
   return b.toString();
 }
 
-String _rar(Object? r) => _rotRaridade.containsKey(r) ? '$r' : 'comum';
+String _rar(Object? r) => rotRaridade.containsKey(r) ? '$r' : 'comum';
 
 class _LojaTelaState extends State<LojaTela> {
   Map<String, dynamic>? _d;
@@ -61,6 +60,12 @@ class _LojaTelaState extends State<LojaTela> {
   void initState() {
     super.initState();
     _carregar();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precarregarEfeitos(context);
   }
 
   Future<void> _carregar() async {
@@ -298,10 +303,10 @@ class _LojaTelaState extends State<LojaTela> {
         _secao('Recompensas em destaque', Icons.star_rounded, const Color(0xFFFFD76A), pill: 'Renova à meia-noite'),
         const SizedBox(height: 8),
         if (_bauNovo != null || bau['aberto'] == true) ...[
-          _BauAberto(
+          BauAnimado(
+            key: ValueKey('bau-${_bauNovo != null}'),
             raridade: _rar((_bauNovo ?? bau)['raridade']),
             valor: (((_bauNovo ?? bau)['valor'] as num?) ?? 0).toInt(),
-            rotulo: 'TickerCoins',
             animar: _bauNovo != null && _bauNovo!['novo'] != false,
           ),
           if (_bauNovo == null || _bauNovo!['novo'] == false) ...[
@@ -313,11 +318,11 @@ class _LojaTelaState extends State<LojaTela> {
         const SizedBox(height: 14),
       ],
       if (_bauProgNovo != null) ...[
-        _BauAberto(
+        BauAnimado(
+          key: ValueKey(_bauProgNovo),
           raridade: _rar(_bauProgNovo!['raridade']),
           valor: ((_bauProgNovo!['valor'] as num?) ?? 0).toInt(),
-          rotulo: '${_bauProgNovo!['rotulo'] ?? 'TickerCoins'}',
-          animar: true,
+          titulo: '${_bauProgNovo!['rotulo'] ?? 'Baú'} aberto!',
         ),
         const SizedBox(height: 14),
       ],
@@ -329,7 +334,7 @@ class _LojaTelaState extends State<LojaTela> {
             _caixa(
               topo: Image.asset('assets/loja/bau_${_rar(b['raridade'])}.webp', height: 64),
               nome: '${b['rotulo'] ?? 'Baú'}',
-              sub: b['raridade'] != null ? 'Baú ${_rotRaridade[_rar(b['raridade'])]!.toLowerCase()}' : 'Prêmio surpresa',
+              sub: b['raridade'] != null ? 'Baú ${rotRaridade[_rar(b['raridade'])]!.toLowerCase()}' : 'Prêmio surpresa',
               botao: _botaoOuro('Abrir', _ocupado ? null : () => _abrirBauProg(((b['indice'] as num?) ?? 0).toInt())),
             ),
         ]),
@@ -404,7 +409,15 @@ class _LojaTelaState extends State<LojaTela> {
           ),
         )
       else
-        _grade([for (final it in itens) _itemVitrine(it, saldo)]),
+        for (final (kind, titulo, icone) in const [('tema', 'Temas', Icons.palette_rounded), ('moldura', 'Molduras', Icons.blur_circular_rounded)])
+          if (itens.any((it) => it['kind'] == kind)) ...[
+            _secao(titulo, icone, const Color(0xFFFFD76A)),
+            const SizedBox(height: 8),
+            _grade([
+              for (final (i, it) in itens.where((it) => it['kind'] == kind).indexed) _entrada(i, _itemVitrine(it, saldo)),
+            ]),
+            const SizedBox(height: 14),
+          ],
       const SizedBox(height: 16),
       _secao('Minhas compras', Icons.shopping_bag_rounded, const Color(0xFFB89CFF)),
       const SizedBox(height: 8),
@@ -514,6 +527,16 @@ class _LojaTelaState extends State<LojaTela> {
         ],
       );
 
+  /// Cartões da vitrine entram um depois do outro (sobem e aparecem).
+  Widget _entrada(int i, Widget filho) => TweenAnimationBuilder<double>(
+        key: ValueKey('ent-$_aba-$i'),
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: 350 + 70 * min(i, 8)),
+        curve: Curves.easeOutCubic,
+        builder: (ctx, v, f) => Opacity(opacity: v, child: Transform.translate(offset: Offset(0, 24 * (1 - v)), child: f)),
+        child: filho,
+      );
+
   Widget _grade(List<Widget> filhos) => LayoutBuilder(
         builder: (ctx, c) {
           final n = c.maxWidth >= 560 ? 3 : 2;
@@ -610,64 +633,6 @@ class _LojaTelaState extends State<LojaTela> {
         ),
         child: child,
       );
-}
-
-/// Cartão do baú aberto, no lugar do baú fechado: o baú da raridade, o prêmio e "Baú Raro aberto!". Ao abrir, o baú dá um pulo e o prêmio aparece.
-class _BauAberto extends StatelessWidget {
-  const _BauAberto({required this.raridade, required this.valor, required this.rotulo, required this.animar});
-  final String raridade;
-  final int valor;
-  final String rotulo;
-  final bool animar;
-
-  @override
-  Widget build(BuildContext context) {
-    final cor = _corRaridade[raridade]!;
-    final nome = 'Baú ${_rotRaridade[raridade]}';
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: animar ? 0 : 1, end: 1),
-      duration: const Duration(milliseconds: 900),
-      curve: Curves.easeOutBack,
-      builder: (ctx, t, _) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: cor, width: 2),
-          gradient: RadialGradient(center: Alignment.topCenter, radius: 1.3, colors: [Color.lerp(const Color(0xFF2A1E86), cor, 0.35)!, const Color(0xFF140E4A)]),
-          boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.5 * t.clamp(0, 1)), blurRadius: 24)],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Transform.scale(scale: 0.7 + 0.3 * t, child: Image.asset('assets/loja/bau_$raridade.webp', height: 104)),
-                const SizedBox(width: 14),
-                Opacity(
-                  opacity: t.clamp(0, 1),
-                  child: Column(
-                    children: [
-                      Image.asset('assets/loja/tc.webp', height: 46),
-                      Text('+$valor', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: _ouro)),
-                      Text(rotulo, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _lila)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text('$nome aberto!', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white)),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: cor.withValues(alpha: 0.22), border: Border.all(color: cor)),
-              child: Text(_rotRaridade[raridade]!, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: cor)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// Miniatura do item (o que o servidor manda em `previa`): emoji, anel de moldura, tema, fundo, efeito ou texto.
