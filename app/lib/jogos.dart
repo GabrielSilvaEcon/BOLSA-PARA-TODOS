@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'ajuda.dart';
 import 'api.dart';
+import 'eventos.dart';
 import 'historico.dart';
 import 'navegacao.dart';
 import 'ticker.dart';
@@ -475,7 +477,12 @@ class _JogosTelaState extends State<JogosTela> {
           if (i > 0) const SizedBox(width: 8),
           Expanded(
             child: GestureDetector(
-              onTap: () => rot == 'Ranking' ? abrirAba(3) : _emBreve(rot),
+              onTap: () => switch (rot) {
+                'Ranking' => abrirAba(3),
+                'Eventos' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EventosTela(api: widget.api))),
+                'Ajuda' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AjudaTela(api: widget.api))),
+                _ => _emBreve(rot),
+              },
               child: Container(
                 padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
                 decoration: BoxDecoration(
