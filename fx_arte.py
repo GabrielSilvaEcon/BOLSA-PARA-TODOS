@@ -78,8 +78,6 @@ opacity:0;animation:fxa-brilha 1.7s ease-out var(--d) 1 both;pointer-events:none
 .fxa-bau .pr{{display:flex;align-items:center;justify-content:center;gap:10px}}
 .fxa-bau .pr .pv{{display:grid;justify-items:center;gap:4px}}
 .fxa-bau .pr .pv img{{height:76px;width:auto}}
-.fxa-bau .pr .ms img{{height:132px;width:auto;margin:0}}
-.fxa-bau.abrindo .pr .ms{{animation:fxa-pop .7s {EASE['pulo']} 1.55s 1 both}}
 .fxa-gan{{position:relative;z-index:3;font-size:clamp(1.5rem,6.5vw,2.1rem);font-weight:900;font-style:italic;line-height:1.1;margin:0 0 2px;
 color:#EDE9FF !important;-webkit-text-fill-color:#EDE9FF !important;text-shadow:0 0 14px rgba(91,245,160,.45)}}
 .fxa-gan i{{color:#5BF5A0 !important;-webkit-text-fill-color:#5BF5A0 !important}}
@@ -187,12 +185,7 @@ def html_bau(raridade: str = "comum", estado: str = "abrindo", premio: dict | No
     pr = ""
     if p:
         sprite = p.get("sprite") if AT.existe(p.get("sprite", "")) else "tc"
-        try:                                    # mascote comemorando ao lado do prêmio: o "Você ganhou!" acontece dentro do baú, sem pop-up
-            import arte_ganhos as AG
-            ms = f"<div class='ms'><img src='{AG.uri('mascote')}' alt=''></div>" if AG.existe("mascote") else ""
-        except Exception:
-            ms = ""
-        pr = (f"<div class='pr'>{ms}<div class='pv'>{AT.img(sprite, 64)}<div class='fxa-pr-n'>{_e(p.get('valor', ''))}</div>"
+        pr = (f"<div class='pr'><div class='pv'>{AT.img(sprite, 64)}<div class='fxa-pr-n'>{_e(p.get('valor', ''))}</div>"
               f"<div class='fxa-pr-l'>{_e(p.get('rotulo', ''))}</div></div></div>")
     titulo = {"fechado": f"{nome} fechado", "abrindo": f"{nome} aberto!", "aberto": f"{nome} aberto!"}[estado]
     leitor = titulo + (f" Prêmio: {p.get('valor', '')} {p.get('rotulo', '')}" if p else "")
