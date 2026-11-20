@@ -34,6 +34,13 @@ class CabecalhoState extends State<Cabecalho> {
   void initState() {
     super.initState();
     atualizar();
+    saldoMudou.addListener(atualizar);
+  }
+
+  @override
+  void dispose() {
+    saldoMudou.removeListener(atualizar);
+    super.dispose();
   }
 
   /// Relê nível, moedas, ranking e alertas (ao abrir o app, ao voltar dos alertas e quando outra tela pede).

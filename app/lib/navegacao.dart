@@ -5,6 +5,7 @@ import 'alertas.dart';
 import 'api.dart';
 import 'cabecalho.dart';
 import 'home.dart';
+import 'loja.dart';
 import 'jogos.dart';
 import 'ranking.dart';
 
@@ -26,6 +27,9 @@ void abrirAba(int i) => abaPedida.value = i;
 /// Partida aberta: o cabeçalho e a barra de baixo somem para o gráfico usar a tela inteira (a mesa tem o próprio botão de voltar).
 /// Conta as partidas abertas (trocar "Jogar de novo" abre uma e fecha a outra), para não piscar o cabeçalho no meio.
 final modoJogo = ValueNotifier<int>(0);
+
+/// Uma tela mudou moedas ou nível (baú aberto, compra na Loja): o cabeçalho relê `/eu`.
+final saldoMudou = ValueNotifier<int>(0);
 
 /// Estrutura do app, igual à do app antigo: cabeçalho fixo no topo, a tela no meio e a barra de navegação fixa embaixo.
 /// Cada aba tem a sua própria pilha de telas, então o cabeçalho e a barra continuam visíveis dentro da Carteira, da compra etc.
@@ -70,6 +74,7 @@ class _PrincipalState extends State<Principal> {
     if (i == 0) return HomeTela(api: widget.api);
     if (i == 1) return JogosTela(api: widget.api);
     if (i == 3) return RankingTela(api: widget.api);
+    if (i == 4) return LojaTela(api: widget.api);
     return EmBreveTela(titulo: _itens[i].$1, icone: _itens[i].$3);
   }
 

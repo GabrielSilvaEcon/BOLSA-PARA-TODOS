@@ -29,6 +29,7 @@ flutter:
     - assets/home/
     - assets/carteira/
     - assets/jogos/
+    - assets/loja/
     - assets/nav/
     - assets/cabecalho/
     - assets/mesa/
