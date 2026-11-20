@@ -535,6 +535,35 @@ def _gravar_solo(q: Quem, pid: str, d: dict) -> None:
     banco.cfg_gravar(_chave_solo(q, pid), d)
 
 
+def _pagar_xp(q: Quem, pid: str, info: dict) -> dict:
+    """XP da partida no progresso de estudo da conta, com as mesmas regras do app antigo (trader_battle_app._pagar_xp):
+    uma vez por partida, só nas XP_PARTIDAS_DIA primeiras do dia, nunca TickerCoins. Falha aqui nunca derruba a partida."""
+    n = int((info or {}).get("xp") or 0)
+    try:
+        a = q.ator
+        dados = banco.ler_dados(a, q.email) or {}
+        p = dict(ED.normalizar(dados.get("edu_progresso")))
+        tx = dict(p.get("trader_xp") or {})
+        if pid in tx:
+            return {"xp": tx[pid]["xp"], "status": "pago"}
+        if n <= 0:
+            return {"xp": 0, "status": "zero"}
+        hoje = JO.hoje().isoformat()
+        if sum(1 for v in tx.values() if v.get("d") == hoje) >= TB.XP_PARTIDAS_DIA:
+            return {"xp": 0, "status": "limite"}
+        j = JO.normalizar_jornada(p.get("jornada"))
+        j["xp"] += n
+        j["xp_dia"][hoje] = int(j["xp_dia"].get(hoje, 0)) + n
+        tx[pid] = {"d": hoje, "xp": n}
+        p["jornada"], p["trader_xp"] = j, tx
+        dados["edu_progresso"] = p
+        banco.gravar_dados(a, q.email, dados)
+        return {"xp": n, "status": "pago"}
+    except Exception as e:
+        banco.registrar_erro("api.pagar_xp", e)
+        return {"xp": 0, "status": "erro"}
+
+
 def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
     """Avança pelo relógio do servidor e devolve o que a tela desenha. No fim: lança o resultado na Carteira e no placar (uma vez)."""
     agora = _agora()
@@ -547,6 +576,7 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
         TCA.liquidar_seguro(p)
         fz = TB.resumo_final(p, q.email)
         _registrar_ranking(q, pid, p, fz, (p.get("resultados") or {}).get(TB._chave(1, q.email)))
+        d["xp_pago"] = _pagar_xp(q, pid, fz.get("xp") or {})
         d["fechada"] = True
     d["p"] = p
     _gravar_solo(q, pid, d)
@@ -554,7 +584,7 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
     out = {"id": pid, "fase": p["fase"], "tela": args}
     if fim:
         res = (p.get("resultados") or {}).get(TB._chave(1, q.email))
-        out["fim"] = {"resultado": res, "revelado": TB.revelacao(p, cen), "final": TB.resumo_final(p, q.email)}
+        out["fim"] = {"resultado": res, "revelado": TB.revelacao(p, cen), "final": TB.resumo_final(p, q.email), "xp": d.get("xp_pago")}
     return out
 
 
@@ -638,7 +668,9 @@ def trade_solo_relatorio(pid: str, q: Quem = Depends(quem)) -> dict:
     if not res:
         raise HTTPException(404, "Sem resultado para esta partida.")
     revelado = TB.revelacao(p, cen)
-    paineis = (("Resumo", TR.html_resumo(res, revelado, "")), ("Operações", TR.html_operacoes(res)), ("Raio-X", TR.html_raiox(TB.explicar_mesa(res))))
+    xp = d.get("xp_pago") or {}
+    xp_txt = f"⭐ +{int(xp.get('xp') or 0)} XP nesta partida" if xp.get("status") == "pago" and xp.get("xp") else ""
+    paineis = (("Resumo", TR.html_resumo(res, revelado, xp_txt)), ("Operações", TR.html_operacoes(res)), ("Raio-X", TR.html_raiox(TB.explicar_mesa(res))))
     botoes = "".join(f"<button class='{'on' if i == 0 else ''}' onclick='ab({i})'>{n}</button>" for i, (n, _) in enumerate(paineis))
     corpo = "".join(f"<div class='pn{' on' if i == 0 else ''}'>{h}</div>" for i, (_, h) in enumerate(paineis))
     js = ("<script>function ab(i){document.querySelectorAll('.ab button').forEach((b,k)=>b.classList.toggle('on',k===i));"

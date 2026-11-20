@@ -161,3 +161,18 @@ def test_relatorio_da_partida_solo(cli, monkeypatch):
     assert r.status_code == 200, r.text
     h = r.json()["html"]
     assert "Resumo" in h and "Operações" in h and "Raio-X" in h and "section role='dialog'" in h
+
+
+def test_partida_solo_paga_xp_uma_vez(cli, monkeypatch):
+    t = {"agora": 3_000_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    xp0 = cli.get("/eu").json()["xp"] or 0
+    pid = cli.post("/trade/solo", json={"corrida": "rapida"}).json()["id"]
+    cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta"})
+    t["agora"] += 5
+    cli.post(f"/trade/solo/{pid}/acao", json={"dados": {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 50}})
+    t["agora"] += TB.CORRIDAS["rapida"]["n_replay"] * TB.SEG_POR_CANDLE + 20
+    xp = cli.get(f"/trade/solo/{pid}").json()["fim"]["xp"]
+    assert xp["status"] == "pago" and xp["xp"] > 0
+    cli.get(f"/trade/solo/{pid}")                                            # consultar de novo não paga outra vez
+    assert (cli.get("/eu").json()["xp"] or 0) == xp0 + xp["xp"]
