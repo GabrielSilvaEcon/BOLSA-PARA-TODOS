@@ -292,3 +292,44 @@ def test_desenhos_sao_avaliados_no_fim(cli, monkeypatch):
     assert len(datas) == len(fim["tela"]["candles"]) and "/" in datas[0]                # datas reais, uma por candle do gráfico (só no fim)
     html = cli.get(f"/trade/solo/{pid}/relatorio").json()["html"]
     assert "Seus desenhos" in html
+
+
+def _cartas_teste():
+    import banco
+    """Cartas de teste (todas as ações do universo, dados de hoje) no snapshot do banco isolado: nenhuma rede."""
+    import random as R
+    from datetime import datetime, timedelta, timezone
+    import battle_dados as BD
+    hoje = datetime.now(timezone(timedelta(hours=-3)))
+    rnd = R.Random(7)
+    cartas = {}
+    for b in BD.universo():
+        ind = {"dy_12m": rnd.uniform(0.01, 0.12), "ret_12m": rnd.uniform(-0.3, 0.6), "vol": rnd.uniform(0.15, 0.6), "queda_max": rnd.uniform(0.05, 0.5),
+               "roe": rnd.uniform(0.02, 0.35), "margem_liq": rnd.uniform(0.02, 0.3), "pl": rnd.uniform(3, 25), "pvp": rnd.uniform(0.5, 4), "div_pl": rnd.uniform(0.1, 2)}
+        cartas[b["tk"]] = {**{k: b[k] for k in ("tk", "nome", "classe", "moeda")}, "ind": ind, "ref": hoje.date().isoformat(),
+                           "gerado": hoje.replace(tzinfo=None).isoformat(timespec="seconds"), "fonte": "teste", "avisos": []}
+    banco.cfg_gravar(BD.CH_SNAPSHOT, {"v": 1, "cartas": cartas})
+    return cartas
+
+
+def test_ticker_battle_duelo_inteiro(cli):
+    _cartas_teste()
+    c = cli.get("/ticker/central").json()
+    assert len(c["cartas"]) >= 10 and c["deck"] == [] and not c["valido"] and c["sugestao"]
+    assert c["cartas"][0]["ind"] and c["cartas"][0]["ind"][0]["txt"]
+    assert cli.post("/ticker/duelo").status_code == 400                     # sem baralho válido não começa
+    r = cli.post("/ticker/baralho", json={"deck": c["sugestao"][:4] + [c["sugestao"][0], "NAOEXISTE"]}).json()
+    assert r["deck"] == c["sugestao"][:4] and r["valido"]                  # repetida e inexistente ficam de fora
+    d = cli.post("/ticker/duelo").json()
+    did = d["id"]
+    assert d["rodada"] == 1 and len(d["mao"]) == 4 and d["final"] is None
+    for n in range(1, 4):
+        carta = next(m["tk"] for m in d["mao"] if not m["sem_adv"])
+        adv = cli.get(f"/ticker/duelo/{did}/adversaria", params={"carta": carta}).json()
+        assert adv["adversaria"]["tk"] != carta and "ind" not in adv["adversaria"]     # os valores do sistema ficam escondidos
+        d = cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": adv["disputaveis"][0]}).json()
+        assert len(d["rodadas"]) == n and d["rodadas"][-1]["raio_x"]["porque"]
+    assert d["final"] in ("vitoria", "derrota", "empate") and sum(d["placar"].values()) == 3
+    assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "roe"}).status_code == 400      # acabou
+    h = cli.get("/ticker/central").json()["historico"]
+    assert h["ultimos"][0]["id"] == did and h[d["final"]] == 1              # entrou no histórico uma vez

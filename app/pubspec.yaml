@@ -33,6 +33,7 @@ flutter:
     - assets/home/
     - assets/carteira/
     - assets/jogos/
+    - assets/ticker/
     - assets/loja/
     - assets/nav/
     - assets/cabecalho/
