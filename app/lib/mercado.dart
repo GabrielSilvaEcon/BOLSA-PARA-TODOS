@@ -124,6 +124,7 @@ class _MercadoTelaState extends State<MercadoTela> {
   String? _erro;
   final _busca = TextEditingController();
   final _foco = FocusNode();
+  final _rolagem = ScrollController();
   Timer? _espera;
   List<Map>? _achados;
   bool _buscando = false;
@@ -138,6 +139,7 @@ class _MercadoTelaState extends State<MercadoTela> {
   void dispose() {
     _busca.dispose();
     _foco.dispose();
+    _rolagem.dispose();
     _espera?.cancel();
     super.dispose();
   }
@@ -181,7 +183,22 @@ class _MercadoTelaState extends State<MercadoTela> {
     });
   }
 
-  void _abrir(Map e) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AcaoTela(api: widget.api, ticker: '${e['ticker']}', nome: '${e['nome']}', logo: e['logo'])));
+  void _abrir(Map e) => Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => e['tipo'] == 'cripto'
+          ? CriptoTela(api: widget.api, id: '${e['id']}', nome: '${e['nome']}', simbolo: '${e['ticker']}', logo: e['logo'])
+          : AcaoTela(api: widget.api, ticker: '${e['ticker']}', nome: '${e['nome']}', logo: e['logo'])));
+
+  final _chaveAcoes = GlobalKey(), _chaveCripto = GlobalKey();
+
+  void _irPara(GlobalKey k) {
+    final c = k.currentContext;
+    if (c != null) {
+      Scrollable.ensureVisible(c, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
+    } else if (_rolagem.hasClients) {
+      // a lista só monta o que está perto da tela: a seção ainda não existe, então desce até ela (as criptos ficam no fim)
+      _rolagem.animateTo(_rolagem.position.maxScrollExtent, duration: const Duration(milliseconds: 600), curve: Curves.easeOutCubic);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +212,7 @@ class _MercadoTelaState extends State<MercadoTela> {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
-              child: ListView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 30), children: [
+              child: ListView(controller: _rolagem, padding: const EdgeInsets.fromLTRB(12, 4, 12, 30), children: [
                 Row(children: [
                   IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
                   const Expanded(child: Text('Mercado', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white))),
@@ -211,8 +228,12 @@ class _MercadoTelaState extends State<MercadoTela> {
                   ],
                   _titulo('Explorar por tipo', ic: Icons.explore_rounded),
                   Entrada(ordem: 2, child: _tipos(((d['tipos'] as List?) ?? const []).cast<Map>())),
-                  _titulo('Ações populares', ic: Icons.local_fire_department_rounded),
+                  KeyedSubtree(key: _chaveAcoes, child: _titulo('Ações populares', ic: Icons.local_fire_department_rounded)),
                   for (final (i, e) in ((d['populares'] as List?) ?? const []).cast<Map>().indexed) Entrada(ordem: 3 + i, child: _linhaEmpresa(e)),
+                  if (((d['criptos'] as List?) ?? const []).isNotEmpty) ...[
+                    KeyedSubtree(key: _chaveCripto, child: _titulo('Criptomoedas', ic: Icons.currency_bitcoin_rounded)),
+                    for (final (i, e) in ((d['criptos'] as List?) ?? const []).cast<Map>().indexed) Entrada(ordem: 4 + i, child: _linhaEmpresa(e)),
+                  ],
                   const SizedBox(height: 14),
                   Text('${d['aviso'] ?? ''}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: _lilas)),
                 ],
@@ -356,7 +377,9 @@ class _MercadoTelaState extends State<MercadoTela> {
             return SizedBox(
               width: w,
               child: Pressionavel(
-                aoTocar: () => pronto ? _foco.requestFocus() : ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${t['titulo']}: chega na próxima etapa do Mercado.'))),
+                aoTocar: () => pronto
+                    ? _irPara(t['id'] == 'cripto' ? _chaveCripto : _chaveAcoes)
+                    : ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${t['titulo']}: chega na próxima etapa do Mercado.'))),
                 child: Opacity(
                   opacity: pronto ? 1 : 0.85,
                   child: Container(
@@ -834,4 +857,260 @@ class _Linha extends CustomPainter {
 
   @override
   bool shouldRepaint(_Linha o) => o.t != t || o.v != v;
+}
+
+String _usd(Object? v) {
+  if (v is! num) return '—';
+  final casas = v.abs() >= 1 ? 2 : (v.abs() >= 0.01 ? 4 : 8);
+  return 'US\$ ${_num(v, casas)}';
+}
+
+String _usdCurto(Object? v) {
+  if (v is! num) return '—';
+  for (final (lim, suf) in const [(1e12, ' tri'), (1e9, ' bi'), (1e6, ' mi')]) {
+    if (v.abs() >= lim) return 'US\$ ${_num(v / lim, 2)}$suf';
+  }
+  return _usd(v);
+}
+
+/// Uma criptomoeda: preço em dólar, variações, gráfico de 1 ano e os seis quadros do app antigo (tendência, desempenho,
+/// volatilidade, queda desde a máxima, diluição do token e porte). Dados da CoinGecko, contas do servidor (cripto.py).
+class CriptoTela extends StatefulWidget {
+  const CriptoTela({super.key, required this.api, required this.id, this.nome, this.simbolo, this.logo});
+  final Api api;
+  final String id;
+  final String? nome, simbolo;
+  final Object? logo;
+
+  @override
+  State<CriptoTela> createState() => _CriptoTelaState();
+}
+
+class _CriptoTelaState extends State<CriptoTela> {
+  Map<String, dynamic>? _d;
+  String? _erro;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  Future<void> _carregar() async {
+    setState(() => _erro = null);
+    try {
+      final r = await widget.api.get('/mercado/cripto/${widget.id}');
+      if (mounted) setState(() => _d = r);
+    } catch (e) {
+      if (mounted) setState(() => _erro = e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = _d;
+    return Scaffold(
+      backgroundColor: const Color(0xFF140A55),
+      body: Stack(fit: StackFit.expand, children: [
+        const FundoCidade(),
+        RefreshIndicator(
+          onRefresh: _carregar,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: ListView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 30), children: [
+                Row(children: [
+                  IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
+                  Expanded(child: Text(widget.simbolo ?? '', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white))),
+                ]),
+                Entrada(ordem: 0, child: _topo(d)),
+                if (d == null && _erro == null)
+                  const Padding(
+                    padding: EdgeInsets.all(36),
+                    child: Column(children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 12),
+                      Text('Buscando os dados da moeda…', style: TextStyle(color: _lilas)),
+                    ]),
+                  ),
+                if (d == null && _erro != null)
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(children: [
+                      Text(_erro!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white)),
+                      const SizedBox(height: 10),
+                      FilledButton.icon(onPressed: _carregar, icon: const Icon(Icons.refresh_rounded), label: const Text('Tentar de novo')),
+                    ]),
+                  ),
+                if (d != null) ...[
+                  const SizedBox(height: 10),
+                  Entrada(ordem: 1, child: _variacoes(d)),
+                  const SizedBox(height: 10),
+                  Entrada(ordem: 2, child: _grafico(((d['serie'] as List?) ?? const []).cast<Map>())),
+                  _titulo('Em palavras simples', ic: Icons.lightbulb_rounded),
+                  for (final (i, c) in ((d['indicadores'] as List?) ?? const []).cast<Map>().indexed) Entrada(ordem: 3 + i, child: _quadro(c)),
+                  if (((d['alertas'] as List?) ?? const []).isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: _caixa(_ouro, 'moedas'),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        for (final a in (d['alertas'] as List)) Text('• $a', style: const TextStyle(fontSize: 12, color: Colors.white)),
+                      ]),
+                    ),
+                  const SizedBox(height: 14),
+                  Text('${d['aviso'] ?? ''}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: _lilas)),
+                ],
+              ]),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _topo(Map? d) {
+    final v = d?['var7'];
+    final cor = v is num ? (v >= 0 ? _verde : _vermelho) : _lilas;
+    final cats = ((d?['categorias'] as List?) ?? const []).join(' · ');
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFF7931A), width: 2),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF5A2A6E), Color(0xFF140A55)]),
+        image: arteCartao('moedas', opacidade: 0.5),
+        boxShadow: const [BoxShadow(color: Color(0x66F7931A), blurRadius: 16)],
+      ),
+      child: Row(children: [
+        Hero(tag: 'logo-${widget.simbolo}', child: logoAtivo(d?['logo'] ?? widget.logo, widget.simbolo ?? '?', tam: 58)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${d?['nome'] ?? widget.nome ?? widget.id}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
+            Text([widget.simbolo ?? '', if (d?['rank'] != null) '#${d!['rank']} no ranking', if (cats.isNotEmpty) cats].join(' · '),
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: _lilas)),
+            const SizedBox(height: 6),
+            if (d != null)
+              Wrap(crossAxisAlignment: WrapCrossAlignment.end, spacing: 8, children: [
+                Text(_usd(d['preco']), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
+                if (v is num)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: cor.withValues(alpha: 0.18), border: Border.all(color: cor)),
+                    child: Text('${_pct(v, sinal: true)} em 7 dias', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: cor)),
+                  ),
+              ]),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _variacoes(Map d) {
+    Widget item(String t, Object? v, {bool dinheiro = false}) {
+      final cor = dinheiro ? const Color(0xFF8B6CFF) : (v is num ? (v >= 0 ? _verde : _vermelho) : const Color(0xFF8C86B8));
+      return Expanded(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [cor.withValues(alpha: 0.4), cor.withValues(alpha: 0.12)]),
+            border: Border.all(color: cor.withValues(alpha: 0.85), width: 1.5),
+          ),
+          child: Column(children: [
+            FittedBox(child: Text(dinheiro ? _usdCurto(v) : _pct(v, sinal: true), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white))),
+            Text(t, style: const TextStyle(fontSize: 11, color: Colors.white)),
+          ]),
+        ),
+      );
+    }
+
+    return Row(children: [item('7 dias', d['var7']), item('30 dias', d['var30']), item('1 ano', d['var1a']), item('Valor de mercado', d['mcap'], dinheiro: true)]);
+  }
+
+  Widget _grafico(List<Map> s) {
+    final pts = [for (final p in s) ((p['c'] as num?) ?? 0).toDouble()];
+    final sobe = pts.length >= 2 && pts.last >= pts.first;
+    final cor = sobe ? _verde : _vermelho;
+    String data(String t) => t.length >= 10 ? '${t.substring(8, 10)}/${t.substring(5, 7)}/${t.substring(0, 4)}' : t;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      decoration: _caixa(),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Text('Último ano (em dólar)', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+          const Spacer(),
+          if (pts.length >= 2 && pts.first > 0) Text(_pct((pts.last / pts.first - 1) * 100, sinal: true), style: TextStyle(fontWeight: FontWeight.w900, color: cor)),
+        ]),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 170,
+          child: pts.length < 2
+              ? const Center(child: Text('Gráfico indisponível agora.', style: TextStyle(color: _lilas)))
+              : TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeOutCubic,
+                  builder: (ctx, t, _) => CustomPaint(size: Size.infinite, painter: _Linha(pts, cor, t)),
+                ),
+        ),
+        if (s.length >= 2)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(children: [
+              Text(data('${s.first['t']}'), style: const TextStyle(fontSize: 11, color: _lilas)),
+              const Spacer(),
+              Text(data('${s.last['t']}'), style: const TextStyle(fontSize: 11, color: _lilas)),
+            ]),
+          ),
+      ]),
+    );
+  }
+
+  Widget _quadro(Map c) {
+    final cor = _corFaixa('${c['status']}');
+    final linhas = ((c['linhas'] as List?) ?? const []).cast<List>();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: _caixa(cor.withValues(alpha: 0.85), arteDe('${c['titulo']}')),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: cor.withValues(alpha: 0.2), border: Border.all(color: cor)),
+            child: Text('${c['icone'] ?? ''}', style: const TextStyle(fontSize: 17)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${c['titulo']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+              const SizedBox(height: 3),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: cor.withValues(alpha: 0.2), border: Border.all(color: cor)),
+                child: Text('${c['selo']}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: cor)),
+              ),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Text('${c['texto']}', style: const TextStyle(fontSize: 13, color: Colors.white, height: 1.3)),
+        for (final l in linhas)
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Row(children: [
+              Expanded(child: Text('${l[0]}', style: const TextStyle(fontSize: 12.5, color: _lilas))),
+              Text('${l[1]}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: Colors.white)),
+            ]),
+          ),
+        if ('${c['nota'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${c['nota']}', style: const TextStyle(fontSize: 11, color: Color(0xFFB8B0E8)))),
+      ]),
+    );
+  }
 }
