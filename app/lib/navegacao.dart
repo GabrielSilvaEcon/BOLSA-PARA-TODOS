@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'alertas.dart';
 import 'api.dart';
 import 'cabecalho.dart';
 import 'home.dart';
 import 'loja.dart';
+import 'perfil.dart';
 import 'jogos.dart';
 import 'ranking.dart';
 import 'versao.dart';
@@ -100,6 +102,16 @@ class _PrincipalState extends State<Principal> {
     }
   }
 
+  Future<void> _abrirPerfil() async {
+    await _chaves[_aba].currentState?.push(MaterialPageRoute(
+      builder: (_) => PerfilTela(api: widget.api, aoSair: () async {
+        try {
+          await Supabase.instance.client.auth.signOut();
+        } catch (_) {}
+      }),
+    ));
+  }
+
   Future<void> _abrirAlertas() async {
     await _chaves[_aba].currentState?.push(MaterialPageRoute(builder: (_) => AlertasTela(api: widget.api)));
   }
@@ -115,7 +127,7 @@ class _PrincipalState extends State<Principal> {
         backgroundColor: const Color(0xFF0E0B26),
         body: Column(
           children: [
-            if (modoJogo.value == 0) SafeArea(bottom: false, child: Cabecalho(api: widget.api, abrirAlertas: _abrirAlertas)),
+            if (modoJogo.value == 0) SafeArea(bottom: false, child: Cabecalho(api: widget.api, abrirAlertas: _abrirAlertas, abrirPerfil: _abrirPerfil)),
             if (modoJogo.value == 0) const AvisoVersao(),
             Expanded(
               child: MediaQuery.removePadding(
