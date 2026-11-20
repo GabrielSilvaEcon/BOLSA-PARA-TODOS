@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'navegacao.dart';
 import 'partida.dart';
+import 'sala.dart';
 
 /// Tela inicial do Trade Battle, igual à do app antigo (trader_battle_app._central + jogos_app.faixa_jogo):
 /// arte do jogo, escolha da duração, Jogar Solo / Jogar com Amigos, Entrar em uma Sala,
@@ -43,7 +44,80 @@ class _TradeTelaState extends State<TradeTela> {
     }
   }
 
-  void _emBreve(String nome) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$nome: chega na próxima etapa do app novo')));
+  /// Abre a sala (espera ou partida em andamento) e, ao voltar, atualiza a tela (a sala ativa pode ter acabado).
+  Future<void> _abrirSala(String id) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SalaTela(api: widget.api, salaId: id)));
+    _carregar();
+  }
+
+  /// "Jogar com Amigos": cria a sala na duração escolhida (como no app antigo) e abre a sala de espera.
+  Future<void> _criarSala() async {
+    final criar = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: const Color(0xFF16104A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Jogar com Amigos', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white)),
+            const SizedBox(height: 8),
+            const Text('Crie a sala e passe o código para 1 a 3 amigos. Todos veem o mesmo gráfico, o mesmo relógio e a mesma partida.',
+                style: TextStyle(fontSize: 13.5, height: 1.35, color: _lila)),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              icon: const Icon(Icons.group_add),
+              label: const Text('Criar sala'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (criar != true || !mounted) return;
+    try {
+      final r = await widget.api.post('/trade/salas', {'corrida': _corrida});
+      if (mounted) await _abrirSala('${r['id']}');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  /// "Entrar em uma Sala": digita o código que o amigo passou.
+  Future<void> _entrarSala() async {
+    final campo = TextEditingController();
+    final codigo = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16104A),
+        title: const Text('Entrar em uma Sala', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: TextField(
+          controller: campo,
+          autofocus: true,
+          maxLength: 8,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(labelText: 'Código da sala', hintText: 'Código de 6 letras/números'),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(campo.text), child: const Text('Entrar')),
+        ],
+      ),
+    );
+    campo.dispose();
+    final cod = codigo?.trim().toUpperCase() ?? '';
+    if (cod.isEmpty || !mounted) return;
+    try {
+      final r = await widget.api.post('/trade/salas/entrar', {'codigo': cod});
+      if (mounted) await _abrirSala('${r['id']}');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +202,7 @@ class _TradeTelaState extends State<TradeTela> {
                               brilho: const Color(0x808B6CFF),
                               seta: const Color(0xFFB9A8FF),
                               selo: '👥 2-4',
-                              acao: () => _emBreve('Salas com amigos'),
+                              acao: () => _d?['ativa'] != null ? _abrirSala('${_d!['ativa']}') : _criarSala(),
                             ),
                           ),
                         ],
@@ -323,7 +397,7 @@ class _TradeTelaState extends State<TradeTela> {
   // ---- Entrar em uma Sala / Voltar para a sala
   Widget _linhaSala(bool ativa) {
     return GestureDetector(
-      onTap: () => _emBreve('Salas com amigos'),
+      onTap: () => ativa ? _abrirSala('${_d!['ativa']}') : _entrarSala(),
       child: Container(
         constraints: const BoxConstraints(minHeight: 58),
         padding: const EdgeInsets.fromLTRB(14, 6, 16, 6),
