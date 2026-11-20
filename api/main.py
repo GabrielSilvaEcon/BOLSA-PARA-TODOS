@@ -1711,3 +1711,55 @@ def missoes(q: Quem = Depends(quem)) -> dict:
     except Exception as e:
         banco.registrar_erro("api.missoes_carteira", e)
     return out
+
+
+# ------------------------------------------------------------------ Eventos e recompensas, e o glossário da Ajuda (atalhos da aba Jogos)
+@app.get("/eventos")
+def eventos(q: Quem = Depends(quem)) -> dict:
+    """Eventos ativos e recompensas (como jogos_app.pagina_eventos do app antigo, só leitura): campanhas de TickerCoins, baú diário,
+    baús de progresso, a temporada do Hunter Pass, o desafio da semana e as últimas TickerCoins ganhas. Resgates ficam na Loja."""
+    from datetime import datetime, timedelta, timezone
+    cid = q.conta.get("id")
+    agora = datetime.now(timezone.utc)
+    out = {"campanhas": [], "bau": None, "baus_pendentes": 0, "passe": None, "desafio": None, "recompensas": []}
+    try:
+        for c in TC.config().get("campanhas") or []:
+            ini, fim = TC._de_iso(c.get("inicio")), TC._de_iso(c.get("fim"))
+            if ini and fim and ini <= agora < fim:
+                out["campanhas"].append({"rotulo": str(c.get("rotulo") or "Campanha"), "fim": (fim - timedelta(hours=3)).strftime("%d/%m %H:%M"),
+                                         "multiplicador": c.get("multiplicador", 1)})
+    except Exception:
+        pass
+    try:
+        out["bau"] = TC.bau_diario(cid)
+        out["baus_pendentes"] = sum(1 for el in TC.baus_status(cid, _baus_elegiveis(q)) if not el["aberto"])
+    except Exception:
+        pass
+    try:
+        prog = ED.normalizar((banco.ler_dados(q.ator, q.email) or {}).get("edu_progresso"))
+        hoje = (agora - timedelta(hours=3)).date()
+        pa = PA.estado(JO._jor(prog)["xp_dia"], hoje)
+        out["passe"] = {k: pa.get(k) for k in ("rotulo", "dias_restantes", "feitos", "total", "falta", "completo", "xp")}
+        out["passe"]["proximo"] = {k: (pa.get("proximo") or {}).get(k) for k in ("nome", "simbolo", "honraria", "xp")} if pa.get("proximo") else None
+        import jogar as JG
+        d = JG.desafio_semana(prog)
+        out["desafio"] = {k: d.get(k) for k in ("titulo", "texto", "atual", "alvo", "ok", "pontos")}
+    except Exception:
+        pass
+    try:
+        for r in TC.historico(cid, 40) if cid else []:
+            if int(r.get("delta") or 0) > 0:
+                out["recompensas"].append({"descricao": str(r.get("descricao") or "Ticker Coins"), "em": str(r.get("criado_em") or "")[:10],
+                                           "tc": int(r["delta"])})
+            if len(out["recompensas"]) >= 10:
+                break
+    except Exception:
+        pass
+    return out
+
+
+@app.get("/ajuda/glossario")
+def ajuda_glossario(q: Quem = Depends(quem)) -> dict:
+    """Os termos do glossário central do app (o mesmo dos tooltips do app antigo): o que é e para que serve."""
+    import glossario as GL
+    return {"termos": [{"termo": k, "oque": v[0], "pra_que": v[1]} for k, v in sorted(GL.GLOSSARIO.items(), key=lambda x: x[0].lower())]}
