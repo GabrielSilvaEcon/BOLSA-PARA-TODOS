@@ -288,5 +288,7 @@ def test_desenhos_sao_avaliados_no_fim(cli, monkeypatch):
     assert [x["papel"] for x in lt["itens"]] == ["alvo", "suporte"]
     assert lt["itens"][1]["ok"] is None                                    # suporte muito longe: o preço não chegou, não conta
     assert lt["avaliados"] == 1 and lt["nota"] in (0.0, 100.0)
+    datas = fim["fim"]["revelado"]["datas"]
+    assert len(datas) == len(fim["tela"]["candles"]) and "/" in datas[0]                # datas reais, uma por candle do gráfico (só no fim)
     html = cli.get(f"/trade/solo/{pid}/relatorio").json()["html"]
     assert "Seus desenhos" in html

@@ -1031,8 +1031,14 @@ def revelacao(p: dict, cenario: dict) -> dict:
     def br(t):
         t = str(t)
         return f"{t[8:10]}/{t[5:7]}/{t[:4]}"
+    diario = TIMEFRAMES[cenario["tf"]]["nome"] == "1 dia"
+
+    def rotulo(t):                                         # eixo do gráfico do resultado: a data real de cada candle (só existe no fim)
+        t = str(t)
+        return f"{t[8:10]}/{t[5:7]}" if diario or len(t) < 16 else f"{t[8:10]}/{t[5:7]} {t[11:16]}"
+    datas = [rotulo(c.get("t", "")) for c in cenario["candles"][:ini]] + [rotulo(r.get("t", "")) for r in rep]
     return {"ticker": cenario["ticker"], "nome": cenario.get("nome") or cenario["ticker"], "de": br(rep[0]["t"]) if rep else "", "ate": br(rep[-1]["t"]) if rep else "",
-            "tf_nome": TIMEFRAMES[cenario["tf"]]["nome"], "demo": bool(cenario.get("demo"))}
+            "tf_nome": TIMEFRAMES[cenario["tf"]]["nome"], "demo": bool(cenario.get("demo")), "datas": datas}
 
 
 def resumo_final(p: dict, jog: str) -> dict:
