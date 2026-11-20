@@ -1130,3 +1130,125 @@ def ticker_rodada(did: str, r: RodadaTk, q: Quem = Depends(quem)) -> dict:
             banco.registrar_erro("api.ticker_historico", e)
     banco.cfg_gravar(_tk_chave(q, did), d)
     return _tk_estado(d)
+
+
+# ------------------------------------------------------------------ Ticker Battle ONLINE (mesmas regras de battle_online.py / battle_online_dados.py)
+# Fila (encontrar adversário) ou sala privada com código. Cada jogador escolhe carta e indicador EM SEGREDO; quando os dois confirmam,
+# o servidor revela e compara (se escolheram indicadores diferentes, cada um precisa vencer o que escolheu). Duelos online contam no ranking.
+def _tk_on(fn, *a):
+    import battle_online as BO
+    try:
+        return fn(*a)
+    except BO.ErroPartida as e:
+        raise HTTPException(400, str(e))
+    except banco.ErroBanco as e:
+        _erro(e, 503)
+
+
+def _tk_on_registrar(q: Quem, v: dict) -> None:
+    """Duelo online terminado entra no placar dos jogos (uma vez por duelo; repetir não soma)."""
+    f = v.get("final") or {}
+    if not v.get("encerrada") or f.get("resultado") not in ("vitoria", "derrota", "empate") or f.get("motivo") == "cancelada":
+        return
+    try:
+        doc = banco.jogos_placar_ler(q.ator)
+        doc, mudou = J.registrar_ticker(doc, v["id"], f["resultado"], "online", str(f.get("em") or "")[:16].replace("T", " "),
+                                        apelido=(v.get("eu") or {}).get("nick") or "")
+        if mudou:
+            banco.jogos_placar_gravar(q.ator, doc)
+    except Exception as e:
+        banco.registrar_erro("api.ticker_online_placar", e)
+
+
+def _tk_on_visao(q: Quem, v: dict) -> dict:
+    """O que a tela online desenha: a visão segura do jogador (nunca a escolha pendente do adversário), com as cartas no formato do app
+    e cada comparação já formatada."""
+    import battle as BT
+    hoje = _tk_agora().date()
+    cartas = {t: _tk_carta(c, hoje) for t, c in (v.get("cartas") or {}).items()}
+    for c in cartas.values():
+        c["ind"] = [i for i in c.get("ind") or [] if i["id"] in TK_INDICADORES]
+    regs = []
+    for r in v.get("reg") or []:
+        cmp = [{**x, "nome": BT.INDICADORES.get(x["ind"], {}).get("nome", x["ind"]), "txt_a": BT.formatar(x["ind"], x["va"]), "txt_b": BT.formatar(x["ind"], x["vb"])}
+               for x in r.get("cmp") or []]
+        regs.append({"n": r["n"], "eu": r["eu"], "op": r["op"], "venc": r["venc"], "motivo": r.get("motivo") or "", "cmp": cmp, "lado": v["lado"]})
+    _tk_on_registrar(q, v)
+    return {**{k: v.get(k) for k in ("id", "fase", "lado", "rod", "rodadas", "eu", "op", "placar", "final", "encerrada")}, "cartas": cartas, "reg": regs,
+            "indicadores": _tk_meta()}
+
+
+@app.post("/ticker/online/fila")
+def tk_on_fila_entrar(q: Quem = Depends(quem)) -> dict:
+    import battle_online_dados as BOD
+    return _tk_on(BOD.entrar_na_fila, q.email)
+
+
+@app.get("/ticker/online/fila")
+def tk_on_fila(q: Quem = Depends(quem)) -> dict:
+    """Chamado a cada 2 s enquanto procura: renova a presença na fila e tenta emparelhar. {'estado': 'partida'|'fila'|'fora'|'expirou', 'id'?}"""
+    import battle_online_dados as BOD
+    return _tk_on(BOD.consultar_fila, q.email)
+
+
+@app.post("/ticker/online/fila/sair")
+def tk_on_fila_sair(q: Quem = Depends(quem)) -> dict:
+    import battle_online_dados as BOD
+    _tk_on(BOD.sair_da_fila, q.email)
+    return {"ok": True}
+
+
+@app.post("/ticker/online/sala")
+def tk_on_sala(q: Quem = Depends(quem)) -> dict:
+    """Cria a sala privada (ou devolve a que já está aberta). {'id', 'codigo'}"""
+    import battle_online_dados as BOD
+    return _tk_on(BOD.criar_sala, q.email)
+
+
+class CodigoTk(BaseModel):
+    codigo: str
+
+
+@app.post("/ticker/online/sala/entrar")
+def tk_on_sala_entrar(c: CodigoTk, q: Quem = Depends(quem)) -> dict:
+    import battle_online_dados as BOD
+    return _tk_on(BOD.entrar_na_sala, q.email, c.codigo)
+
+
+@app.get("/ticker/online/ativa")
+def tk_on_ativa(q: Quem = Depends(quem)) -> dict:
+    """Duelo online que a pessoa ainda tem aberto (para voltar a ele)."""
+    import battle_online_dados as BOD
+    return {"id": _tk_on(BOD.partida_ativa, q.email)}
+
+
+@app.get("/ticker/online/{pid}")
+def tk_on_ler(pid: str, q: Quem = Depends(quem)) -> dict:
+    """Consulta de sincronização (a cada 1,5 s): presença, prazos e só o que este jogador pode ver."""
+    import battle_online_dados as BOD
+    v = _tk_on(BOD.ler, pid, q.email)
+    out = _tk_on_visao(q, v)
+    out["codigo"] = (BOD._partida_row(pid) or {}).get("codigo") or ""
+    return out
+
+
+@app.post("/ticker/online/{pid}/pronto")
+def tk_on_pronto(pid: str, q: Quem = Depends(quem)) -> dict:
+    import battle_online_dados as BOD
+    return _tk_on_visao(q, _tk_on(BOD.estou_pronto, pid, q.email))
+
+
+@app.post("/ticker/online/{pid}/jogar")
+def tk_on_jogar(pid: str, r: RodadaTk, q: Quem = Depends(quem)) -> dict:
+    """Confirma carta e indicador (não dá para mudar depois). Se o adversário já confirmou, a rodada é revelada na hora."""
+    import battle_online_dados as BOD
+    if r.ind not in TK_INDICADORES:
+        raise HTTPException(400, "Indicador fora do jogo.")
+    return _tk_on_visao(q, _tk_on(BOD.jogar, pid, q.email, r.carta, r.ind))
+
+
+@app.post("/ticker/online/{pid}/sair")
+def tk_on_sair(pid: str, q: Quem = Depends(quem)) -> dict:
+    """Sair: sala sem jogo é cancelada; duelo em andamento = desistência (vitória do adversário)."""
+    import battle_online_dados as BOD
+    return _tk_on_visao(q, _tk_on(BOD.sair, pid, q.email))
