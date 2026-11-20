@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade, GraficoEnfeite;
+import 'arte_cartao.dart';
 import 'navegacao.dart';
 
 /// Meu Perfil (como no app antigo, perfis_app.pagina_meu_perfil): avatar com raridade, nível e XP, sequência, ranking, moedas e
@@ -330,6 +331,7 @@ class _PerfilTelaState extends State<PerfilTela> {
     return _caixa(
       cor: const Color(0xFFB54BFF),
       marca: Icons.star_rounded,
+      arte: 'seta',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -406,6 +408,7 @@ class _PerfilTelaState extends State<PerfilTela> {
     final of = (d['ofensiva'] as num?)?.toInt() ?? 0;
     return _caixa(
       cor: const Color(0xFFFF8A3D),
+      arte: 'moedas',
       child: IntrinsicHeight(
         child: Row(
           children: [
@@ -431,6 +434,7 @@ class _PerfilTelaState extends State<PerfilTela> {
     return _caixa(
       cor: const Color(0xFF1FB5A6),
       marca: Icons.insights_rounded,
+      arte: 'arena',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -552,6 +556,7 @@ class _PerfilTelaState extends State<PerfilTela> {
     return _caixa(
       cor: const Color(0xFFF2B84B),
       marca: Icons.emoji_events_rounded,
+      arte: 'loja',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -642,6 +647,7 @@ class _PerfilTelaState extends State<PerfilTela> {
     return _caixa(
       cor: const Color(0xFFE0559E),
       marca: Icons.format_quote_rounded,
+      arte: 'cidade',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -672,6 +678,7 @@ class _PerfilTelaState extends State<PerfilTela> {
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: tom.withValues(alpha: 0.8), width: 1.5),
               gradient: LinearGradient(colors: [Color.lerp(tom, const Color(0xFF160B5E), 0.6)!, const Color(0xFF1C0F78)]),
+              image: arteCartao(arteDe(t), opacidade: 0.45),
             ),
             child: Row(
               children: [
@@ -716,7 +723,7 @@ class _PerfilTelaState extends State<PerfilTela> {
 }
 
 /// Caixa de cada bloco do perfil, cada uma com a sua cor (para a tela não ficar toda azul) e um ícone grande e apagado no canto.
-Widget _caixa({required Widget child, Color cor = const Color(0xFF6A4FE6), IconData? marca}) => Container(
+Widget _caixa({required Widget child, Color cor = const Color(0xFF6A4FE6), IconData? marca, String? arte}) => Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -726,10 +733,11 @@ Widget _caixa({required Widget child, Color cor = const Color(0xFF6A4FE6), IconD
           end: Alignment.bottomRight,
           colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.45)!, Color.lerp(cor, const Color(0xFF120850), 0.78)!],
         ),
+        image: arte == null ? null : arteCartao(arte, opacidade: 0.5),
         boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.35), blurRadius: 14)],
       ),
       child: Stack(children: [
-        if (marca != null) Positioned(right: -14, bottom: -18, child: Icon(marca, size: 110, color: Colors.white.withValues(alpha: 0.07))),
+        if (marca != null && arte == null) Positioned(right: -14, bottom: -18, child: Icon(marca, size: 110, color: Colors.white.withValues(alpha: 0.07))),
         Padding(padding: const EdgeInsets.all(14), child: child),
       ]),
     );

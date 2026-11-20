@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade;
+import 'arte_cartao.dart';
 
 /// Mercado (botão Mercado da Home; a área Analisar do app antigo): Mercado hoje, busca de empresas, tipos de ativo e ações
 /// populares. Cada ação abre a AcaoTela com preço, gráfico, resumo em palavras simples, preço justo e indicadores.
@@ -39,7 +40,8 @@ String _pct(Object? v, {bool sinal = false}) => v is num ? '${sinal && v >= 0 ? 
 
 Color _corFaixa(String? f) => switch (f) { 'bom' => _verde, 'medio' => _ouro, 'ruim' => _vermelho, _ => const Color(0xFF8C86B8) };
 
-BoxDecoration _caixa([Color borda = const Color(0xFF6A4FE6)]) => BoxDecoration(
+BoxDecoration _caixa([Color borda = const Color(0xFF6A4FE6), String? arte]) => BoxDecoration(
+      image: arte == null ? null : arteCartao(arte),
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: borda, width: 1.6),
       // o fundo puxa a cor da borda: cada assunto com a sua cor, para a tela não ficar toda azul
@@ -258,7 +260,7 @@ class _MercadoTelaState extends State<MercadoTela> {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(6),
-      decoration: _caixa(),
+      decoration: _caixa(const Color(0xFF6A4FE6), 'cidade'),
       child: _buscando && r.isEmpty
           ? const Padding(padding: EdgeInsets.all(14), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))))
           : r.isEmpty
@@ -266,6 +268,8 @@ class _MercadoTelaState extends State<MercadoTela> {
               : Column(children: [for (final e in r) _linhaEmpresa(e, compacta: true)]),
     );
   }
+
+  static const _arteHoje = {'Ibovespa': 'velas', 'Dólar': 'moedas', 'Bitcoin': 'cofre', 'Índice do medo': 'touro'};
 
   static const _visualHoje = {
     'Ibovespa': (Icons.show_chart_rounded, Color(0xFF8B6CFF)),
@@ -301,6 +305,7 @@ class _MercadoTelaState extends State<MercadoTela> {
                     border: Border.all(color: cor, width: 1.6),
                     gradient:
                         LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.35)!, Color.lerp(cor, const Color(0xFF120850), 0.8)!]),
+                    image: arteCartao(_arteHoje['${it['rotulo']}'] ?? 'velas', opacidade: 0.5),
                     boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.4), blurRadius: 14)],
                   ),
                   child: Stack(children: [
@@ -360,6 +365,7 @@ class _MercadoTelaState extends State<MercadoTela> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
                       gradient: LinearGradient(colors: [Color.lerp(cor, Colors.black, 0.25)!, Color.lerp(cor, const Color(0xFF140A55), 0.7)!]),
+                      image: arteCartao(const {'acoes': 'velas', 'fundos': 'cidade', 'rf': 'cofre', 'cripto': 'moedas', 'macro': 'seta'}['${t['id']}'] ?? 'cidade', opacidade: 0.55),
                       border: Border.all(color: Color.lerp(cor, Colors.white, 0.35)!, width: 1.4),
                       boxShadow: [BoxShadow(color: cor.withValues(alpha: pronto ? 0.45 : 0.15), blurRadius: 12)],
                     ),
@@ -387,7 +393,7 @@ class _MercadoTelaState extends State<MercadoTela> {
           aoTocar: () => _abrir(e),
           child: Container(
             padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
-            decoration: compacta ? null : _caixa(_corSetor('${e['setor'] ?? ''}')),
+            decoration: compacta ? null : _caixa(_corSetor('${e['setor'] ?? ''}'), arteDe('${e['setor'] ?? ''}')),
             child: Row(children: [
               Hero(tag: 'logo-${e['ticker']}', child: logoAtivo(e['logo'], '${e['ticker']}', tam: compacta ? 38 : 44)),
               const SizedBox(width: 10),
@@ -504,7 +510,7 @@ class _AcaoTelaState extends State<AcaoTela> {
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: _caixa(_ouro),
+                      decoration: _caixa(_ouro, 'moedas'),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         const Row(children: [
                           Icon(Icons.info_rounded, color: _ouro, size: 18),
@@ -535,6 +541,7 @@ class _AcaoTelaState extends State<AcaoTela> {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _ouro, width: 2),
         gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2E1CA0), Color(0xFF140A55)]),
+        image: arteCartao('touro', opacidade: 0.5),
         boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 16)],
       ),
       child: Row(children: [
@@ -639,7 +646,7 @@ class _AcaoTelaState extends State<AcaoTela> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: _caixa(cor.withValues(alpha: 0.85)),
+      decoration: _caixa(cor.withValues(alpha: 0.85), const {'preco': 'seta', 'saude': 'cidade', 'dividendos': 'moedas'}['${c['id']}']),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
@@ -690,7 +697,7 @@ class _AcaoTelaState extends State<AcaoTela> {
       return Expanded(
         child: Container(
           padding: const EdgeInsets.all(12),
-          decoration: _caixa(cor.withValues(alpha: 0.85)),
+          decoration: _caixa(cor.withValues(alpha: 0.85), nome == 'Graham' ? 'loja' : 'cofre'),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(nome, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
             const SizedBox(height: 4),
@@ -738,7 +745,7 @@ class _AcaoTelaState extends State<AcaoTela> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   padding: const EdgeInsets.all(12),
-                  decoration: _caixa(cor.withValues(alpha: 0.8)),
+                  decoration: _caixa(cor.withValues(alpha: 0.8), arteDe('${i['id']}')),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Container(width: 9, height: 9, decoration: BoxDecoration(shape: BoxShape.circle, color: cor, boxShadow: [BoxShadow(color: cor, blurRadius: 6)])),
