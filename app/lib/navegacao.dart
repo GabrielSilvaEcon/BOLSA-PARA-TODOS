@@ -22,6 +22,10 @@ final abaPedida = ValueNotifier<int?>(null);
 /// Abre a aba [i] da barra de baixo (0 Início, 1 Jogos, 2 Aprender, 3 Ranking, 4 Loja).
 void abrirAba(int i) => abaPedida.value = i;
 
+/// Partida aberta: o cabeçalho e a barra de baixo somem para o gráfico usar a tela inteira (a mesa tem o próprio botão de voltar).
+/// Conta as partidas abertas (trocar "Jogar de novo" abre uma e fecha a outra), para não piscar o cabeçalho no meio.
+final modoJogo = ValueNotifier<int>(0);
+
 /// Estrutura do app, igual à do app antigo: cabeçalho fixo no topo, a tela no meio e a barra de navegação fixa embaixo.
 /// Cada aba tem a sua própria pilha de telas, então o cabeçalho e a barra continuam visíveis dentro da Carteira, da compra etc.
 class Principal extends StatefulWidget {
@@ -40,12 +44,18 @@ class _PrincipalState extends State<Principal> {
   void initState() {
     super.initState();
     abaPedida.addListener(_trocarPedida);
+    modoJogo.addListener(_redesenhar);
   }
 
   @override
   void dispose() {
     abaPedida.removeListener(_trocarPedida);
+    modoJogo.removeListener(_redesenhar);
     super.dispose();
+  }
+
+  void _redesenhar() {
+    if (mounted) setState(() {});
   }
 
   void _trocarPedida() {
@@ -96,11 +106,11 @@ class _PrincipalState extends State<Principal> {
         backgroundColor: const Color(0xFF0E0B26),
         body: Column(
           children: [
-            SafeArea(bottom: false, child: Cabecalho(api: widget.api, abrirAlertas: _abrirAlertas)),
+            if (modoJogo.value == 0) SafeArea(bottom: false, child: Cabecalho(api: widget.api, abrirAlertas: _abrirAlertas)),
             Expanded(
               child: MediaQuery.removePadding(
                 context: context,
-                removeTop: true,
+                removeTop: modoJogo.value == 0,
                 child: IndexedStack(
                   index: _aba,
                   children: [
@@ -115,7 +125,7 @@ class _PrincipalState extends State<Principal> {
             ),
           ],
         ),
-        bottomNavigationBar: _barra(),
+        bottomNavigationBar: modoJogo.value > 0 ? null : _barra(),
       ),
     );
   }

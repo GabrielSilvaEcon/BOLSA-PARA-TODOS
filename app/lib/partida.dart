@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'api.dart';
 import 'mesa/mesa_host.dart';
+import 'navegacao.dart';
 
 /// Partida solo do Trade Battle. A mesa (gráfico, boleta, placar) é a MESMA do app antigo; aqui o app só faz a ponte com o servidor:
 /// cria a partida (`POST /trade/solo`), consulta o andamento a cada segundo (`GET /trade/solo/{id}`) e manda as jogadas
@@ -36,6 +38,9 @@ class _PartidaTelaState extends State<PartidaTela> {
   @override
   void initState() {
     super.initState();
+    // tela cheia durante a partida: some o cabeçalho e a barra de baixo do app e, no celular, as barras do sistema
+    WidgetsBinding.instance.addPostFrameCallback((_) => modoJogo.value++);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _iniciar();
   }
 
@@ -43,6 +48,10 @@ class _PartidaTelaState extends State<PartidaTela> {
   void dispose() {
     _relogio?.cancel();
     _mesa.fechar();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (modoJogo.value > 0) modoJogo.value--;
+      if (modoJogo.value == 0) SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    });
     super.dispose();
   }
 
@@ -214,7 +223,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       backgroundColor: const Color(0xFF0B0828),
       body: Stack(
         children: [
-          Positioned.fill(child: _mesa.widget()),
+          Positioned.fill(child: SafeArea(child: _mesa.widget())),
           if (_pid == null) const Center(child: CircularProgressIndicator()),
           if (_fim)
             Positioned(
