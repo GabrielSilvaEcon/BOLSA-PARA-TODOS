@@ -1390,3 +1390,118 @@ def perfil_salvar(f: PerfilEdicao, q: Quem = Depends(quem)) -> dict:
         banco.registrar_erro("api.perfil_salvar", e)
         raise HTTPException(503, "Não consegui salvar agora. Tente de novo em instantes.")
     return perfil_meu(q)
+
+
+# ------------------------------------------------------------------ Aprender (Jornada, como no app antigo: jornada.py, jornada_player.py)
+# A lição fica no servidor: o app recebe uma pergunta por vez (sem a resposta), manda a resposta e o servidor corrige. Erro volta ao fim
+# da fila (sem vidas). No fim, o progresso de estudo é gravado (XP, ofensiva, revisão) e as TickerCoins da sessão são pagas uma vez.
+CHAVE_LICAO = "jor_api|{h}"
+
+
+def _apr_gravar(q: Quem, dados: dict, p: dict) -> None:
+    dados["edu_progresso"] = p
+    banco.gravar_dados(q.ator, q.email, dados)
+
+
+def _apr_ex_tela(ex: dict) -> dict:
+    """Exercício para a tela, SEM a resposta certa (ordenar e pares já vêm embaralhados)."""
+    out = {"id": ex["id"], "tipo": ex["tipo"], "pergunta": ex["pergunta"]}
+    if ex["tipo"] in ("escolha", "completar"):
+        out["opcoes"] = list(ex["opcoes"])
+    elif ex["tipo"] == "ordenar":
+        out["itens"] = JO.embaralhar_itens(ex)
+    elif ex["tipo"] == "pares":
+        out["esquerda"] = [a for a, _ in ex["pares"]]
+        out["direita"] = JO.embaralhar_pares(ex)
+    return out
+
+
+def _apr_sessao(q: Quem) -> dict | None:
+    return banco.cfg_ler(CHAVE_LICAO.format(h=banco._h_conta(q.email))) or None
+
+
+def _apr_estado(s: dict) -> dict:
+    ex = JO.exercicio_atual(s)
+    return {"sessao": {"total": s["total"], "feitos": s["feitos"], "pct": JO.progresso_sessao(s), "revisao": s["revisao"],
+                       "titulo": "Revisão" if s["revisao"] else jornada_conteudo().LICAO_POR_ID[s["licao"]]["titulo"]},
+            "exercicio": _apr_ex_tela(ex) if ex else None}
+
+
+def jornada_conteudo():
+    import jornada_conteudo as JC
+    return JC
+
+
+@app.get("/aprender")
+def aprender(q: Quem = Depends(quem)) -> dict:
+    """Trilha de estudo: resumo (XP, meta do dia, ofensiva, revisão) e o mapa das unidades com o estado de cada lição (nada fica trancado)."""
+    _, p = _prog_estudo(q)
+    r = JO.resumo(p)
+    ne = NV.estado(r["xp"])
+    s = _apr_sessao(q)
+    return {"resumo": r, "nivel": ne, "mapa": JO.mapa(p), "em_andamento": bool(s and not JO.terminada(s))}
+
+
+@app.get("/aprender/aula/{aid}")
+def aprender_aula(aid: str, q: Quem = Depends(quem)) -> dict:
+    """Texto da aula ligada a uma lição (o mesmo do app antigo), no modo de leitura da pessoa."""
+    import edu_conteudo as E
+    a = E.POR_ID.get(aid)
+    if not a:
+        raise HTTPException(404, "aula não encontrada")
+    _, p = _prog_estudo(q)
+    return {"titulo": a["titulo"], "min": a.get("min"), "texto": ED.texto_aula(a, p.get("modo") or "iniciante")}
+
+
+@app.post("/aprender/licao/{lid}")
+def aprender_comecar(lid: str, q: Quem = Depends(quem)) -> dict:
+    """Começa a lição (ou a revisão, com lid = 'revisao'). Devolve a 1ª pergunta."""
+    if lid == "revisao":
+        _, p = _prog_estudo(q)
+        s = JO.iniciar_revisao(p)
+        if not s:
+            raise HTTPException(400, "Nada para revisar agora. Bom trabalho!")
+    else:
+        s = JO.iniciar_sessao(lid)
+        if not s:
+            raise HTTPException(404, "lição não encontrada")
+    banco.cfg_gravar(CHAVE_LICAO.format(h=banco._h_conta(q.email)), s)
+    return _apr_estado(s)
+
+
+class RespostaApr(BaseModel):
+    id: str
+    resposta: object = None
+
+
+@app.post("/aprender/responder")
+def aprender_responder(r: RespostaApr, q: Quem = Depends(quem)) -> dict:
+    """Corrige a pergunta atual (no servidor). Devolve se acertou, a explicação, a resposta certa e a próxima pergunta.
+    Na última, conclui: grava o progresso (XP, ofensiva, revisão) e paga as TickerCoins da sessão (uma vez)."""
+    s = _apr_sessao(q)
+    if not s or JO.terminada(s):
+        raise HTTPException(400, "Nenhuma lição em andamento.")
+    ex = JO.exercicio_atual(s)
+    if ex["id"] != r.id:
+        raise HTTPException(409, "Essa pergunta já foi respondida.")
+    ok, s2 = JO.responder(s, r.resposta)
+    out = {"ok": ok, "explicacao": ex.get("explicacao") or "", "certa": JO.resposta_certa_texto(ex)}
+    if not JO.terminada(s2):
+        banco.cfg_gravar(CHAVE_LICAO.format(h=banco._h_conta(q.email)), s2)
+        return {**out, **_apr_estado(s2), "fim": None}
+    dados, p = _prog_estudo(q)
+    antes = {c["id"] for c in ED.conquistas(p) if c["ok"]}
+    p2, res = JO.concluir_sessao(p, s2)
+    _apr_gravar(q, dados, p2)
+    banco.cfg_gravar(CHAVE_LICAO.format(h=banco._h_conta(q.email)), {})
+    novas = [c for c in ED.conquistas(p2) if c["ok"] and c["id"] not in antes]
+    tc = 0
+    try:
+        linhas = TC.recompensar_sessao(q.conta.get("id"), {**res, "ok": True}, [c["id"] for c in novas])
+        tc = sum(int(x["delta"]) for x in linhas or [])
+    except Exception as e:
+        banco.registrar_erro("api.aprender_moedas", e)
+    res["conquistas_novas"] = [c["titulo"] for c in novas]
+    res["tc"] = tc
+    res["nivel_antes"], res["nivel_depois"] = NV.nivel_de(res["xp_antes"]), NV.nivel_de(res["xp_depois"])
+    return {**out, "sessao": None, "exercicio": None, "fim": res}
