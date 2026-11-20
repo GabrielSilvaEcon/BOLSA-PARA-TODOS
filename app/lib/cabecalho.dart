@@ -13,8 +13,11 @@ import 'navegacao.dart';
 ///   · sino com o número de alertas não lidos
 /// Fica no topo de todas as telas. Dados do servidor (`GET /eu`).
 class Cabecalho extends StatefulWidget {
-  const Cabecalho({super.key, required this.api, this.abrirAlertas});
+  const Cabecalho({super.key, required this.api, this.abrirAlertas, this.abrirPerfil});
   final Api api;
+
+  /// Abre o Meu Perfil (toque no avatar/nível).
+  final Future<void> Function()? abrirPerfil;
 
   /// Abre a tela de alertas na aba aberta (quem monta o app passa isto; sem ele, o sino abre por cima).
   final Future<void> Function()? abrirAlertas;
@@ -99,7 +102,7 @@ class CabecalhoState extends State<Cabecalho> {
             Expanded(
               flex: 150,
               child: GestureDetector(
-                onTap: _falhou ? atualizar : null,
+                onTap: _falhou ? atualizar : widget.abrirPerfil,
                 child: Row(
                   children: [
                     _avatar(_eu?['avatar_img']),

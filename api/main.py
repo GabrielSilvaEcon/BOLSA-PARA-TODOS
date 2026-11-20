@@ -1252,3 +1252,141 @@ def tk_on_sair(pid: str, q: Quem = Depends(quem)) -> dict:
     """Sair: sala sem jogo é cancelada; duelo em andamento = desistência (vitória do adversário)."""
     import battle_online_dados as BOD
     return _tk_on_visao(q, _tk_on(BOD.sair, pid, q.email))
+
+
+# ------------------------------------------------------------------ Perfil (o mesmo do app antigo: perfis.py, perfis_app.py, avatares.py)
+def _pf_colecao(q: Quem, prog: dict) -> set:
+    """Avatares liberados para a conta (nível real da Jornada + o que já está guardado na coleção). Guarda o que acabou de liberar."""
+    import avatares as AV
+    from datetime import datetime, timezone
+    ctx = {"nivel": prog.get("nivel") or 1, "emblemas": set()}
+    try:
+        doc, novos = AV.sincronizar(banco.avatares_colecao_ler(q.ator), ctx, datetime.now(timezone.utc).date().isoformat())
+        if novos:
+            banco.avatares_colecao_gravar(q.ator, doc)
+        return AV.liberados({**ctx, "concedidos": doc["concedidos"]}, doc["ids"])
+    except Exception as e:
+        banco.registrar_erro("api.perfil_colecao", e)
+        return AV.liberados({"nivel": 1})
+
+
+def _pf_prog(q: Quem) -> dict:
+    import perfis as PF
+    try:
+        return PF.progresso((banco.ler_dados(q.ator, q.email) or {}).get("edu_progresso"))
+    except Exception:
+        return PF.progresso({})
+
+
+def _pf_loja(q: Quem, tipo: str) -> dict:
+    """Itens de `tipo` (moldura ou tema) que a conta possui na Loja e o equipado agora (com a prévia para desenhar)."""
+    import loja_vitrine as VT
+    try:
+        donos = {c["produto_id"] for c in TC.beneficios_ativos(q.conta.get("id"))}
+        itens = [{"id": p["id"], "nome": p["nome"], "previa": VT.previa(p)} for p in TC.produtos() if (p.get("efeito") or {}).get("kind") == tipo and p["id"] in donos]
+        return {"itens": itens, "equipado": TC.equipado(q.email).get(tipo)}
+    except Exception:
+        return {"itens": [], "equipado": None}
+
+
+@app.get("/perfil")
+def perfil_meu(q: Quem = Depends(quem)) -> dict:
+    """Tela Meu Perfil: nome, usuário, avatar (com raridade e moldura), nível e XP, sequência, ranking, moedas, patrimônio,
+    desempenho nos jogos, conquistas, bio, privacidade e o que dá para usar da Loja. Só leitura das fontes reais."""
+    import avatares as AV
+    import perfis as PF
+    a = q.ator
+    try:
+        doc = PF.sanear(banco.perfil_jogador_ler(a))
+    except Exception:
+        doc = PF.vazio()
+    prog = _pf_prog(q)
+    ne = NV.estado(prog["xp"])
+    try:
+        placar = J.sanear(banco.jogos_placar_ler(a))
+    except Exception:
+        placar = J.sanear({})
+    try:
+        linhas = banco.sis_comp_todos(J.CH_PLACAR)
+        rt, rk = J.montar_ranking(J.TRADE, linhas, q.email), J.montar_ranking(J.TICKER, linhas, q.email)
+    except Exception:
+        rt, rk = None, None
+    try:
+        ofensiva = int(JO.resumo(ED.normalizar((banco.ler_dados(a, q.email) or {}).get("edu_progresso"))).get("ofensiva") or 0)
+    except Exception:
+        ofensiva = 0
+    try:
+        moedas = TC.saldo(q.conta.get("id"))
+    except Exception:
+        moedas = None
+    try:
+        pat = (TCA.situacao(q.email) or {}).get("patrimonio")
+    except Exception:
+        pat = None
+    av = doc["avatar"] if AV.existe(doc["avatar"]) else PF.AVATAR_PADRAO
+    rar = AV.RARIDADES[AV.raridade_de(av)]
+    desde = str(q.conta.get("criado_em") or "")[:10]
+    return {"nome": doc["nome"] or doc["usuario"] or "Jogador", "usuario": doc["usuario"], "bio": doc["bio"], "desde": desde,
+            "avatar": av, "avatar_img": _avatar_img(av), "avatar_nome": AV.POR_ID[av]["nome"], "raridade": {"nome": rar["nome"], "cor": rar["cor"]},
+            "nivel": ne, "titulo": prog["titulo"], "xp": prog["xp"], "ofensiva": ofensiva, "moedas": moedas, "patrimonio": pat,
+            "ranking": _ranking_da_casa(a, q.email), "jogos": PF.jogos(placar, rt, rk), "estat": J.estatisticas(placar),
+            "conquistas": {"ok": prog["conquistas"], "total": prog["conquistas_total"], "medalhas": prog["medalhas"]},
+            "privacidade": doc["privacidade"], "moldura": _pf_loja(q, "moldura"), "tema": _pf_loja(q, "tema"),
+            "opcoes": {"visivel": PF.VISIVEL, "pedidos": PF.PEDIDOS}}
+
+
+@app.get("/perfil/avatares")
+def perfil_avatares(q: Quem = Depends(quem)) -> dict:
+    """Coleção de Avatares: todos os avatares (liberados e bloqueados, com como liberar), por raridade, e o equipado."""
+    import avatares as AV
+    import perfis as PF
+    lib = _pf_colecao(q, _pf_prog(q))
+    try:
+        eq = PF.sanear(banco.perfil_jogador_ler(q.ator))["avatar"]
+    except Exception:
+        eq = PF.AVATAR_PADRAO
+    itens = [{"id": a["id"], "nome": a["nome"], "img": _avatar_img(a["id"]), "raridade": a["raridade"], "cor": a["rar"]["cor"],
+              "liberado": a["liberado"], "equipado": a["equipado"], "como": a["como"]} for a in AV.colecao(lib, eq)]
+    tot = AV.totais(lib)
+    return {"itens": itens, "raridades": {r: {"nome": v["plural"], "cor": v["cor"], **tot[r]} for r, v in AV.RARIDADES.items()},
+            "liberados": len(lib & set(AV.POR_ID)), "total": len(AV.POR_ID)}
+
+
+class PerfilEdicao(BaseModel):
+    nome: str | None = None
+    usuario: str | None = None
+    bio: str | None = None
+    avatar: str | None = None
+    privacidade: dict | None = None
+
+
+@app.post("/perfil")
+def perfil_salvar(f: PerfilEdicao, q: Quem = Depends(quem)) -> dict:
+    """Salva o perfil com as mesmas regras do app antigo: só campos editáveis; nome de usuário único (reservado antes de liberar o antigo,
+    troca no máximo a cada 7 dias); avatar só se estiver liberado na coleção. XP, pontos e conquistas nunca vêm daqui."""
+    import avatares as AV
+    import perfis as PF
+    a = q.ator
+    atual = PF.sanear(banco.perfil_jogador_ler(a))
+    form = {k: v for k, v in f.model_dump().items() if v is not None}
+    if form.get("avatar") not in (None, atual["avatar"]):
+        if form["avatar"] == PF.FOTO or not AV.pode_equipar(form["avatar"], _pf_colecao(q, _pf_prog(q))):
+            raise HTTPException(400, "Esse avatar ainda está bloqueado. " + AV.como_liberar(AV.POR_ID.get(form["avatar"]) or {"desbloqueio": {}}) + ".")
+    try:
+        novo, mud = PF.editar(atual, form)
+    except PF.ErroPerfil as e:
+        raise HTTPException(400, str(e))
+    try:
+        if "usuario" in mud or (novo["usuario"] and not atual["usuario"]):
+            if not banco.usuario_reservar(a, novo["usuario_k"]):
+                raise HTTPException(400, "Esse nome de usuário já está em uso. Escolha outro.")
+            if atual["usuario_k"] and atual["usuario_k"] != novo["usuario_k"]:
+                banco.usuario_liberar(a, atual["usuario_k"])
+        banco.perfil_jogador_gravar(a, novo)
+        banco.auditar(a.id, "perfil_jogador.salvo", ",".join(sorted(form)))
+    except HTTPException:
+        raise
+    except Exception as e:
+        banco.registrar_erro("api.perfil_salvar", e)
+        raise HTTPException(503, "Não consegui salvar agora. Tente de novo em instantes.")
+    return perfil_meu(q)

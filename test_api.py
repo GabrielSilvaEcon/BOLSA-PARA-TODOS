@@ -396,3 +396,21 @@ def test_ticker_online_fila_emparelha(cli):
     assert cli.get("/ticker/online/ativa").json()["id"] == r["id"]
     v = caio.post(f"/ticker/online/{r['id']}/sair").json()                  # sair antes de alguém ficar pronto: cancela
     assert v["encerrada"]
+
+
+def test_perfil_ver_editar_e_avatar(cli):
+    p = cli.get("/perfil").json()
+    assert {"nome", "usuario", "avatar_img", "nivel", "estat", "conquistas", "privacidade", "jogos"} <= set(p)
+    r = cli.post("/perfil", json={"nome": "Ana Trader", "usuario": "ana_trader", "bio": "Aprendendo a investir."})
+    assert r.status_code == 200, r.text
+    assert r.json()["usuario"] == "ana_trader" and r.json()["bio"] == "Aprendendo a investir."
+    assert cli.post("/perfil", json={"usuario": "outro_nome"}).status_code == 200          # a 1ª troca é livre e marca a data
+    assert cli.post("/perfil", json={"usuario": "mais_um"}).status_code == 400             # trocar de novo logo em seguida: só depois de 7 dias
+    col = cli.get("/perfil/avatares").json()
+    assert col["total"] >= col["liberados"] > 0
+    livre = next(a for a in col["itens"] if a["liberado"] and not a["equipado"])
+    bloq = next((a for a in col["itens"] if not a["liberado"]), None)
+    assert cli.post("/perfil", json={"avatar": livre["id"]}).json()["avatar"] == livre["id"]
+    if bloq:
+        assert cli.post("/perfil", json={"avatar": bloq["id"]}).status_code == 400       # avatar bloqueado não é equipado
+    assert cli.post("/perfil", json={"privacidade": {"visivel": "amigos", "mostrar_bio": False}}).json()["privacidade"]["visivel"] == "amigos"
