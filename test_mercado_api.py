@@ -59,3 +59,32 @@ def test_rotas_mercado(cli, monkeypatch):
     assert a["preco_justo"]["graham"]["justo"] and len(a["serie"]) == 2 and len(a["resumo"]) == 3
     assert cli.get("/mercado/acao/ZZZZ3").status_code == 404
     assert cli.get("/mercado/acao/PETR4/historico", params={"periodo": "5a"}).json()["periodo"] == "5a"
+
+
+def _moeda():
+    import pandas as pd
+    hist = [(pd.Timestamp("2025-11-20") + pd.Timedelta(days=i), 100 + i * 0.5) for i in range(365)]
+    import cripto as CR
+    return {"id": "bitcoin", "nome": "Bitcoin", "simbolo": "BTC", "rank": 1, "preco": 282.0, "mcap": 1.8e12, "fdv": 1.9e12,
+            "mc_fdv": 0.95, "maximo": 21e6, "vol24": 3e10, "var7": 2.0, "var30": 12.0, "var1a": 80.0, "categorias": ["Layer 1"],
+            "hist": hist, **CR._sinais_preco(hist), "avisos": []}
+
+
+def test_cripto_montar_e_rota(cli, monkeypatch):
+    import cripto as CR
+    import api.main as API
+    r = MA.montar_cripto(_moeda())
+    assert r["logo"] == "cripto/btc.webp" and len(r["indicadores"]) == 6 and len(r["serie"]) <= 365
+    assert {c["status"] for c in r["indicadores"]} <= {"bom", "medio", "ruim", "na"}
+    assert r["indicadores"][0]["titulo"] == "Tendência" and r["indicadores"][0]["status"] == "bom"
+    API._MERC_CACHE.clear()
+    monkeypatch.setattr(CR, "analisar_moeda", lambda g: {**_moeda(), "id": g})
+    a = cli.get("/mercado/cripto/bitcoin").json()
+    assert a["nome"] == "Bitcoin" and a["preco"] == 282.0
+    assert cli.get("/mercado/cripto/BTC!!").status_code == 404
+    b = cli.get("/mercado/busca", params={"texto": "bit"}).json()["itens"]
+    assert b[0]["tipo"] == "cripto" and b[0]["id"] == "bitcoin"
+    import inicio_painel as IP
+    monkeypatch.setattr(IP, "mercado_hoje", lambda: [])
+    m = cli.get("/mercado").json()
+    assert [t["id"] for t in m["tipos"]] == ["acoes", "cripto"] and m["criptos"][0]["id"] == "bitcoin"

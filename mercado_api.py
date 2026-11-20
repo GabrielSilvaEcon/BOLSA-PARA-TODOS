@@ -7,6 +7,7 @@ e `historico` falam com as fontes (Yahoo e Fundamentus, pelo dados.py, que já t
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from math import sqrt
 
@@ -22,11 +23,59 @@ AVISO = "Leitura educativa com dados públicos. Não é recomendação de compra
 # Cartões da tela Mercado: (id, título, descrição, pronto no app novo?)
 TIPOS = (
     ("acoes", "Ações", "Preço justo, valor e saúde da empresa", True),
-    ("fundos", "FIIs, fundos e ETFs", "Fundos imobiliários e de investimento", False),
-    ("rf", "Renda fixa", "Tesouro Direto, CDI e títulos", False),
-    ("cripto", "Criptomoedas", "Bitcoin, Ethereum e outras", False),
-    ("macro", "Cenário econômico", "Juros, inflação e dólar", False),
+    ("cripto", "Criptomoedas", "Tendência, risco e diluição do token", True),
 )
+
+# Criptomoedas da tela Mercado: (id na CoinGecko, nome, símbolo). Logos em app/assets/logos/cripto/.
+CRIPTOS = (
+    ("bitcoin", "Bitcoin", "BTC"), ("ethereum", "Ethereum", "ETH"), ("solana", "Solana", "SOL"), ("ripple", "XRP", "XRP"),
+    ("binancecoin", "BNB", "BNB"), ("cardano", "Cardano", "ADA"), ("dogecoin", "Dogecoin", "DOGE"), ("chainlink", "Chainlink", "LINK"),
+    ("avalanche-2", "Avalanche", "AVAX"), ("polkadot", "Polkadot", "DOT"), ("litecoin", "Litecoin", "LTC"), ("uniswap", "Uniswap", "UNI"),
+)
+_LOGOS_CRIPTO = {"btc", "eth", "xrp", "bnb", "sol", "ada", "avax", "doge", "usdt", "usdc", "trx", "dot", "shib", "link", "matic", "ltc",
+                 "bch", "dai", "uni", "cro"}
+ID_CRIPTO = re.compile(r"^[a-z0-9][a-z0-9-]{1,60}$")
+
+
+def logo_cripto(simbolo: str | None):
+    s = str(simbolo or "").lower()
+    return f"cripto/{s}.webp" if s in _LOGOS_CRIPTO else None
+
+
+def cripto_item(gid: str, nome: str, simbolo: str) -> dict:
+    return {"tipo": "cripto", "id": gid, "ticker": simbolo, "nome": nome, "setor": "Criptomoeda", "logo": logo_cripto(simbolo)}
+
+
+def criptos_populares() -> list[dict]:
+    return [cripto_item(*c) for c in CRIPTOS]
+
+
+def buscar_criptos(texto: str) -> list[dict]:
+    """Criptos da lista pelo nome ou símbolo (sem rede)."""
+    t = (texto or "").strip().lower()
+    return [cripto_item(*c) for c in CRIPTOS if t and (t in c[1].lower() or t in c[2].lower() or t == c[0])]
+
+
+_STATUS_CRIPTO = {"good": "bom", "fair": "medio", "bad": "ruim", "na": "na"}
+
+
+def montar_cripto(m: dict) -> dict:
+    """Resposta de GET /mercado/cripto/{id} a partir de cripto.analisar_moeda (puro, sem rede). Os seis quadros são os do
+    app antigo (cripto.indicadores_moeda): tendência, desempenho, volatilidade, queda desde a máxima, diluição e porte."""
+    import cripto as CR
+    cards = []
+    for c in CR.indicadores_moeda(m):
+        cards.append({"titulo": c["titulo"], "icone": c["icone"], "status": _STATUS_CRIPTO.get(c["cls"], "na"), "selo": c["status"],
+                      "texto": c["texto"], "linhas": [[str(a), str(b)] for a, b in c["linhas"]], "nota": c.get("nota", "")})
+    hist = m.get("hist") or []
+    passo = max(1, len(hist) // 260)
+    hist = hist[::-1][::passo][::-1]
+    serie = [{"t": t.strftime("%Y-%m-%d"), "c": round(float(v), 8)} for t, v in hist]
+    return {"tipo": "cripto", "id": m.get("id"), "nome": m.get("nome"), "simbolo": m.get("simbolo"), "rank": m.get("rank"),
+            "logo": logo_cripto(m.get("simbolo")), "preco": _f(m.get("preco")), "var7": _f(m.get("var7")), "var30": _f(m.get("var30")),
+            "var1a": _f(m.get("var1a")), "mcap": _f(m.get("mcap")), "categorias": list(m.get("categorias") or [])[:3],
+            "indicadores": cards, "serie": serie, "alertas": [a for a in (m.get("avisos") or []) if isinstance(a, str)][:3],
+            "aviso": "Leitura educativa com dados públicos (CoinGecko). Cripto oscila muito. Não é recomendação de compra ou venda."}
 
 PERIODOS = {"6m": ("6mo", "1d"), "1a": ("1y", "1d"), "5a": ("5y", "1wk")}
 
