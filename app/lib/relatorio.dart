@@ -83,11 +83,8 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
             child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 20),
               children: [
-                Row(children: [
-                  const Expanded(child: Text('Resultado da partida', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white))),
-                  IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.close_rounded, color: Colors.white), tooltip: 'Fechar'),
-                ]),
-                const SizedBox(height: 4),
+                _topo(),
+                const SizedBox(height: 6),
                 Entrada(ordem: 0, child: _revelado(rev)),
                 const SizedBox(height: 10),
                 Entrada(ordem: 1, child: _placar(pts, fin, nota, xp)),
@@ -96,28 +93,95 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
                 const SizedBox(height: 12),
                 Entrada(ordem: 3, child: _lista()),
                 const SizedBox(height: 14),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF12A83C),
-                    minimumSize: const Size.fromHeight(52),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                Reflexo(
+                  raio: 999,
+                  atraso: const Duration(milliseconds: 2500),
+                  child: Pressionavel(
+                    aoTocar: widget.acao,
+                    child: Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF6BFF8A), Color(0xFF1FCB5A)]),
+                        boxShadow: const [BoxShadow(color: Color(0xFF0F8F51), offset: Offset(0, 4)), BoxShadow(color: Color(0x8834E85E), blurRadius: 18)],
+                      ),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        const Icon(Icons.replay_rounded, color: Color(0xFF06361F), size: 26),
+                        const SizedBox(width: 8),
+                        Text(widget.rotuloAcao, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF06361F))),
+                      ]),
+                    ),
                   ),
-                  onPressed: widget.acao,
-                  icon: const Icon(Icons.replay_rounded),
-                  label: Text(widget.rotuloAcao),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, minimumSize: const Size.fromHeight(46), side: const BorderSide(color: Color(0xFF7A5CFF))),
-                  onPressed: widget.aoCompleto,
-                  icon: const Icon(Icons.bar_chart_rounded),
-                  label: const Text('Relatório completo'),
+                const SizedBox(height: 10),
+                Pressionavel(
+                  aoTocar: widget.aoCompleto,
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      color: const Color(0xCC1B1462),
+                      border: Border.all(color: const Color(0xFF8B6CFF), width: 2),
+                    ),
+                    child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.bar_chart_rounded, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text('Relatório completo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                    ]),
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Topo: logo e "Resultado da partida" com o troféu; à direita o touro comemorando, flutuando (bordas esmaecidas).
+  Widget _topo() {
+    Widget esmaece(Widget f, {double raio = 0.7, double ini = 0.62}) => ShaderMask(
+          shaderCallback: (r) => RadialGradient(radius: raio, colors: const [Color(0xFF000000), Color(0x00000000)], stops: [ini, 1]).createShader(r),
+          blendMode: BlendMode.dstIn,
+          child: f,
+        );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              esmaece(Image.asset('assets/logo_th.webp', height: 60), raio: 0.85, ini: 0.78),
+              const SizedBox(height: 4),
+              Row(children: [
+                esmaece(Image.asset('assets/jogos/trofeu.webp', height: 46), raio: 0.62, ini: 0.58),
+                const SizedBox(width: 6),
+                const Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text('Resultado da partida',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 8)])),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+        SizedBox(
+          width: 118,
+          height: 128,
+          child: Stack(clipBehavior: Clip.none, children: [
+            Positioned.fill(child: Flutua(altura: 5, child: esmaece(Image.asset('assets/home/mascote_principal.webp', fit: BoxFit.contain), raio: 0.72, ini: 0.6))),
+            Positioned(
+              right: -12,
+              top: -10,
+              child: IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.close_rounded, color: Colors.white), tooltip: 'Fechar'),
+            ),
+          ]),
+        ),
+      ],
     );
   }
 
@@ -161,13 +225,19 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     final cor = pts > 0 ? const Color(0xFF26D07C) : (pts < 0 ? const Color(0xFFFF4D6D) : Colors.white);
     final pnl = (fin['pnl'] as num?)?.toDouble();
     final pct = (fin['pct_aposta'] as num?)?.toDouble();
-    Widget chip(String t, String v, Color c) => Expanded(
+    Widget chip(IconData ic, String t, String v, Color c, {String? nota}) => Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0xFF1B1462), border: Border.all(color: c.withValues(alpha: 0.6))),
             child: Column(children: [
-              Text(t, style: const TextStyle(fontSize: 11, color: Color(0xFFBDB5E6))),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(ic, size: 16, color: c),
+                const SizedBox(width: 4),
+                Text(t, style: const TextStyle(fontSize: 11.5, color: Color(0xFFDCD6FF), fontWeight: FontWeight.w700)),
+              ]),
+              const SizedBox(height: 2),
               FittedBox(child: Text(v, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: c))),
+              if (nota != null) Text(nota, style: const TextStyle(fontSize: 10, color: Color(0xFFBDB5E6))),
             ]),
           ),
         );
@@ -179,36 +249,109 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
           tween: Tween(begin: 0, end: pts),
           duration: const Duration(milliseconds: 1600),
           curve: Curves.easeOutCubic,
-          builder: (ctx, v, _) => Text('${v > 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', ',')} pts',
-              style: TextStyle(fontSize: 38, fontWeight: FontWeight.w900, color: cor, shadows: [Shadow(color: cor.withValues(alpha: 0.6), blurRadius: 16)])),
+          builder: (ctx, v, _) => Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(pts >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: cor, size: 40),
+            const SizedBox(width: 8),
+            Flexible(
+              child: FittedBox(
+                child: Text('${v > 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', ',')} pts',
+                    style: TextStyle(fontSize: 38, fontWeight: FontWeight.w900, color: cor, shadows: [Shadow(color: cor.withValues(alpha: 0.6), blurRadius: 16)])),
+              ),
+            ),
+          ]),
         ),
         const Text('70% operação · 30% leitura', style: TextStyle(fontSize: 11.5, color: Color(0xFFBDB5E6))),
         const SizedBox(height: 10),
         Row(children: [
-          chip('Lucro', pnl == null ? '—' : '${_moeda(pnl)}${pct == null ? '' : ' (${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2).replaceAll('.', ',')}%)'}',
+          chip(Icons.bar_chart_rounded, 'Lucro', pnl == null ? '—' : '${_moeda(pnl)}${pct == null ? '' : ' (${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2).replaceAll('.', ',')}%)'}',
               (pnl ?? 0) >= 0 ? const Color(0xFF26D07C) : const Color(0xFFFF4D6D)),
           const SizedBox(width: 6),
-          chip('Desenhos', nota == null ? '—' : '${nota.toStringAsFixed(0)}/100', const Color(0xFFB59BFF)),
+          chip(Icons.track_changes_rounded, 'Desenhos', nota == null ? '—' : '${nota.toStringAsFixed(0)}/100', const Color(0xFFB59BFF)),
           const SizedBox(width: 6),
-          chip('XP', xp == null ? '—' : '+$xp', const Color(0xFFFFD66B)),
+          chip(Icons.star_rounded, 'XP', xp == null ? '—' : '+$xp', const Color(0xFFFFD66B), nota: xp == 0 ? 'limite do dia' : null),
         ]),
       ]),
     );
   }
 
+  List<String>? get _datas => ((widget.fim['revelado'] as Map?)?['datas'] as List?)?.map((e) => '$e').toList();
+
+  void _telaCheia(Map rev) {
+    Navigator.of(context).push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (ctx) => Scaffold(
+        backgroundColor: const Color(0xFF0B0828),
+        body: SafeArea(
+          child: Stack(children: [
+            Positioned.fill(child: Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover)),
+            const Positioned.fill(child: ColoredBox(color: Color(0xB3060226))),
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(6, 44, 6, 6),
+                child: GraficoNativo(
+                  velas: _velas,
+                  desenhos: _desenhos,
+                  ferramenta: null,
+                  somenteLeitura: true,
+                  divisor: _divisor,
+                  resultados: _ok,
+                  datas: _datas,
+                  tfNome: '${rev['tf_nome'] ?? ''}',
+                  pedirTexto: () async => null,
+                  aoMudar: ({bool usouFerramenta = false}) {},
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              top: 8,
+              child: Text('${rev['ticker'] ?? ''} · ${rev['tf_nome'] ?? ''}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
+            ),
+            Positioned(
+              right: 4,
+              top: 0,
+              child: IconButton(onPressed: () => Navigator.of(ctx).pop(), icon: const Icon(Icons.close_rounded, color: Colors.white), tooltip: 'Fechar'),
+            ),
+          ]),
+        ),
+      ),
+    ));
+  }
+
   Widget _grafico(Map rev) {
     return Container(
-      height: 320,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFF5B4BD6), width: 2)),
+      height: 360,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF5B4BD6), width: 2),
+        boxShadow: const [BoxShadow(color: Color(0x665B4BD6), blurRadius: 14)],
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: ColoredBox(
           color: const Color(0x99060226),
           child: _velas.isEmpty
               ? const SizedBox()
-              : AnimatedBuilder(
+              : Column(children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 6, 2, 0),
+                    child: Row(children: [
+                      const Icon(Icons.candlestick_chart_rounded, color: Color(0xFFB59BFF), size: 20),
+                      const SizedBox(width: 6),
+                      const Expanded(child: Text('O gráfico real da partida', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
+                      IconButton(
+                        tooltip: 'Tela cheia',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _telaCheia(rev),
+                        icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
+                      ),
+                    ]),
+                  ),
+                  Expanded(
+                    child: AnimatedBuilder(
                   animation: _c,
                   builder: (ctx, _) => GraficoNativo(
+                    datas: _datas,
                     velas: _velas,
                     desenhos: _desenhos,
                     ferramenta: null,
@@ -221,7 +364,9 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
                     pedirTexto: () async => null,
                     aoMudar: ({bool usouFerramenta = false}) {},
                   ),
-                ),
+                    ),
+                  ),
+                ]),
         ),
       ),
     );
@@ -237,8 +382,14 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
       );
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('Seus desenhos · ${_lt['acertos'] ?? 0} de ${_lt['avaliados'] ?? 0} se confirmaram',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+      Row(children: [
+        const Icon(Icons.lightbulb_rounded, color: Color(0xFFFFD66B), size: 26),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text('Seus desenhos · ${_lt['acertos'] ?? 0} de ${_lt['avaliados'] ?? 0} se confirmaram',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+        ),
+      ]),
       const SizedBox(height: 8),
       for (final (k, x) in _itens.indexed)
         Entrada(
@@ -257,7 +408,7 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
                 height: 28,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(shape: BoxShape.circle, color: _cor(x['ok'])),
-                child: Text(x['ok'] == true ? '✔' : (x['ok'] == false ? '✖' : '•'),
+                child: Text(x['ok'] == true ? '✔' : (x['ok'] == false ? '✖' : '!'),
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
               ),
               const SizedBox(width: 10),
@@ -268,5 +419,5 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     ]);
   }
 
-  Color _cor(Object? ok) => ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF8A86A8));
+  Color _cor(Object? ok) => ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF8B6CFF));
 }
