@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'animacoes.dart';
 import 'api.dart';
+import 'arte_cartao.dart';
 import 'navegacao.dart';
 
 /// Aprender (a Jornada do app antigo: jornada.py e jornada_player.py): trilha de unidades com lições curtas no estilo Duolingo.
@@ -242,6 +243,7 @@ class _AprenderTelaState extends State<AprenderTela> {
               borderRadius: BorderRadius.circular(20),
               gradient: LinearGradient(colors: [Color.lerp(cor, Colors.white, 0.05)!, Color.lerp(cor, Colors.black, 0.3)!]),
               border: Border.all(color: Color.lerp(cor, Colors.white, 0.5)!, width: 1.5),
+              image: arteCartao(artesCartao[k % artesCartao.length], opacidade: 0.45),
               boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.55), blurRadius: 16)],
             ),
             child: Row(
