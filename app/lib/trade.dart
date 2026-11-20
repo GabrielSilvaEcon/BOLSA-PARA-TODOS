@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'navegacao.dart';
 import 'partida.dart';
 
 /// Tela inicial do Trade Battle, igual à do app antigo (trader_battle_app._central + jogos_app.navegacao/faixa_jogo):
@@ -173,6 +174,8 @@ class _TradeTelaState extends State<TradeTela> {
             onTap: () {
               if (rot == 'Central') {
                 Navigator.of(context).maybePop();
+              } else if (rot == 'Ranking') {
+                abrirAba(3);
               } else if (!on) {
                 _emBreve(rot);
               }
@@ -449,7 +452,7 @@ class _TradeTelaState extends State<TradeTela> {
           ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          onPressed: () => _emBreve('Ranking completo'),
+          onPressed: () => abrirAba(3),
           icon: const Icon(Icons.emoji_events),
           label: const Text('Ver ranking completo'),
         ),

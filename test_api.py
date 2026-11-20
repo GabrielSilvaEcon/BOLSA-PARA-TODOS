@@ -176,3 +176,13 @@ def test_partida_solo_paga_xp_uma_vez(cli, monkeypatch):
     assert xp["status"] == "pago" and xp["xp"] > 0
     cli.get(f"/trade/solo/{pid}")                                            # consultar de novo não paga outra vez
     assert (cli.get("/eu").json()["xp"] or 0) == xp0 + xp["xp"]
+
+
+def test_tela_do_ranking(cli):
+    r = cli.get("/ranking/trade/tela")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["nome"] == "Trade Battle" and isinstance(d["linhas"], list) and "total" in d
+    assert all("email" not in x for x in d["linhas"])                       # nunca manda e-mail
+    assert cli.get("/ranking/ticker/tela").status_code == 200
+    assert cli.get("/ranking/xadrez/tela").status_code == 404

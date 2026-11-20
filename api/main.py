@@ -502,6 +502,48 @@ def ranking(jogo: str, metrica: str = "pts", q: Quem = Depends(quem)) -> dict:
         _erro(e)
 
 
+@app.get("/ranking/{jogo}/tela")
+def ranking_tela(jogo: str, q: Quem = Depends(quem)) -> dict:
+    """Tela Ranking Geral, igual à do app antigo (jogos_app.pagina_ranking): pódio, sua posição e a classificação (até 50),
+    com o nome do perfil, o avatar equipado e a variação de posição desde o início do dia. Nunca envia e-mail."""
+    import perfis as PF
+    if jogo not in J.JOGOS:
+        raise HTTPException(404, "jogo desconhecido")
+    try:
+        placares = banco.sis_comp_todos(J.CH_PLACAR)
+    except Exception as e:
+        _erro(e, 503)
+    rk = J.montar_ranking(jogo, placares, q.email)
+    try:                                                   # variação do dia: mesma base guardada que o app antigo usa
+        hoje = _agora_brt().date().isoformat()
+        chave = f"jogos_rk|{jogo}"
+        base, novo = J.base_do_dia(banco.cfg_ler(chave), hoje, rk)
+        if novo:
+            banco.cfg_gravar(chave, novo)
+        rk = J.montar_ranking(jogo, placares, q.email, base)
+    except Exception as e:
+        banco.registrar_erro("api.ranking_base", e)
+    email_de = {J.hash_conta(r.get("email", "")): r.get("email", "") for r in placares}
+    perfis = {}
+    try:
+        for r in banco.sis_comp_todos("perfil_jogador"):
+            perfis[r["email"]] = PF.sanear(r["dados"])
+    except Exception:
+        perfis = {}
+
+    def linha(x: dict) -> dict:
+        p = perfis.get(email_de.get(x["h"], "")) or {}
+        visivel = (p.get("privacidade") or {}).get("visivel") != "ninguem"
+        nome = (p.get("nome") or p.get("usuario")) if (visivel or x["eu"]) else ""
+        av = p.get("avatar") if (visivel or x["eu"]) else ""
+        return {"pos": x["pos"], "nome": nome or x["apelido"], "valor": x["valor"], "partidas": x.get("partidas", 0), "var": x.get("var"),
+                "eu": x["eu"], "avatar_img": _avatar_img(av)}
+
+    linhas = [linha(x) for x in rk["linhas"][:50]]
+    return {"jogo": jogo, "nome": J.NOME[jogo], "total": rk["total"], "linhas": linhas, "eu": linha(rk["eu"]) if rk.get("eu") else None,
+            "hora": _agora_brt().strftime("%H:%M")}
+
+
 def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -> None:
     """Partida terminada no placar dos jogos (a regra de só contar partida online fica em jogos.registrar_trade)."""
     try:
