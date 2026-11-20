@@ -55,6 +55,9 @@ class MesaHost {
     janela.postMessage({'type': 'streamlit:render', 'args': args}.jsify(), '*'.toJS);
   }
 
+  /// Liga/desliga os toques na mesa (quando uma tela do app fica por cima dela, o iframe não pode "roubar" os toques).
+  void toques(bool ligados) => _iframe?.style.pointerEvents = ligados ? 'auto' : 'none';
+
   void fechar() => web.window.removeEventListener('message', _ouvinte);
 }
 
