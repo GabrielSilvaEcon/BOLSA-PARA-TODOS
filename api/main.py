@@ -1540,7 +1540,7 @@ def mercado(q: Quem = Depends(quem)) -> dict:
         hoje = []
     pop = [_merc_empresa(R.POR_TICKER[t]) for t in R.POPULARES if t in R.POR_TICKER]
     return {"hoje": hoje, "tipos": [{"id": i, "titulo": t, "descricao": d, "pronto": p} for i, t, d, p in MA.TIPOS],
-            "populares": pop, "aviso": MA.AVISO}
+            "populares": pop, "criptos": MA.criptos_populares(), "aviso": MA.AVISO}
 
 
 @app.get("/mercado/busca")
@@ -1550,7 +1550,9 @@ def mercado_busca(texto: str = "", q: Quem = Depends(quem)) -> dict:
     t = (texto or "").strip()[:40]
     if len(t) < 2:
         return {"itens": []}
-    return {"itens": [_merc_empresa(e) for e in R.buscar_catalogo(t, 12) if e.get("ticker") in R.POR_TICKER]}
+    import mercado_api as MA
+    acoes = [_merc_empresa(e) for e in R.buscar_catalogo(t, 12) if e.get("ticker") in R.POR_TICKER]
+    return {"itens": MA.buscar_criptos(t)[:6] + acoes}
 
 
 def _merc_tk(tk: str) -> str:
@@ -1585,3 +1587,25 @@ def mercado_acao_historico(tk: str, periodo: str = "1a", q: Quem = Depends(quem)
     t = _merc_tk(tk)
     p = periodo if periodo in MA.PERIODOS else "1a"
     return {"periodo": p, "serie": _merc_cache(f"hist:{t}:{p}", 900, lambda: MA.historico(t, p)) or []}
+
+
+@app.get("/mercado/cripto/{gid}")
+def mercado_cripto(gid: str, q: Quem = Depends(quem)) -> dict:
+    """Leitura de uma criptomoeda: preço em dólar, gráfico de 1 ano e os seis quadros do app antigo (cripto.py, CoinGecko)."""
+    import cripto as CR
+    import mercado_api as MA
+    g = (gid or "").lower().strip()
+    if not MA.ID_CRIPTO.fullmatch(g):
+        raise HTTPException(404, "Criptomoeda não encontrada.")
+
+    def ler():
+        try:
+            return CR.analisar_moeda(g)
+        except CR.ErroAPI as e:
+            if "404" in str(e):
+                raise HTTPException(404, "Criptomoeda não encontrada.")
+            return None
+    m = _merc_cache("cripto:" + g, 600, ler)
+    if not m or m.get("preco") is None:
+        raise HTTPException(424, "Não consegui os dados dessa criptomoeda agora. Tente de novo em instantes.")
+    return MA.montar_cripto(m)
