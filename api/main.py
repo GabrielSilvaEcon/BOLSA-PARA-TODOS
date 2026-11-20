@@ -709,18 +709,21 @@ def trade_solo_relatorio(pid: str, q: Quem = Depends(quem)) -> dict:
     res = (p.get("resultados") or {}).get(TB._chave(1, q.email))
     if not res:
         raise HTTPException(404, "Sem resultado para esta partida.")
-    revelado = TB.revelacao(p, cen)
-    xp = d.get("xp_pago") or {}
+    return {"html": _pagina_relatorio(res, TB.revelacao(p, cen), d.get("xp_pago") or {})}
+
+
+def _pagina_relatorio(res: dict, revelado: dict | None, xp: dict) -> str:
+    """Página HTML do relatório (topo + abas Resumo, Operações e Raio-X), a mesma do app antigo."""
+    import trader_relatorio as TR
     xp_txt = f"⭐ +{int(xp.get('xp') or 0)} XP nesta partida" if xp.get("status") == "pago" and xp.get("xp") else ""
     paineis = (("Resumo", TR.html_resumo(res, revelado, xp_txt)), ("Operações", TR.html_operacoes(res)), ("Raio-X", TR.html_raiox(TB.explicar_mesa(res))))
     botoes = "".join(f"<button class='{'on' if i == 0 else ''}' onclick='ab({i})'>{n}</button>" for i, (n, _) in enumerate(paineis))
     corpo = "".join(f"<div class='pn{' on' if i == 0 else ''}'>{h}</div>" for i, (_, h) in enumerate(paineis))
     js = ("<script>function ab(i){document.querySelectorAll('.ab button').forEach((b,k)=>b.classList.toggle('on',k===i));"
           "document.querySelectorAll('.pn').forEach((p,k)=>p.classList.toggle('on',k===i))}</script>")
-    pagina = ("<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-              + _ABAS_RELATORIO + TR.CSS + "</head><body><section role='dialog'>" + TR.html_topo()
-              + f"<div class='ab'>{botoes}</div>{corpo}</section>{js}</body></html>")
-    return {"html": pagina}
+    return ("<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+            + _ABAS_RELATORIO + TR.CSS + "</head><body><section role='dialog'>" + TR.html_topo()
+            + f"<div class='ab'>{botoes}</div>{corpo}</section>{js}</body></html>")
 
 
 # ------------------------------------------------------------------ Trade Battle · salas online (2 a 4 jogadores)
@@ -759,11 +762,28 @@ def sala_iniciar(pid: str, q: Quem = Depends(quem)) -> dict:
 
 @app.get("/trade/salas/{pid}")
 def sala_ver(pid: str, q: Quem = Depends(quem)) -> dict:
+    """Sala de espera ("sala": código e jogadores), partida ("jogo": o que a mesa desenha, como na partida solo) ou "cancelada".
+    No fim: placar dos jogos e XP (uma vez por partida, como no app antigo)."""
+    agora = _agora()
+    b = _sala(OL.ler, pid, q.email, agora)
+    if b.get("estado") != "jogo":
+        return b
+    v, p = b["v"], b["p"]
+    out = {"estado": "jogo", "id": pid, "fase": p["fase"], "tela": TG.args_mesa(v, p, {}, agora)}
+    if p["fase"] == "fim" and v.get("final"):
+        _registrar_ranking(q, pid, p, v["final"], v.get("resultado"))
+        out["fim"] = {"xp": _pagar_xp(q, pid, (v["final"] or {}).get("xp") or {}), "placar": (v["final"] or {}).get("placar")}
+    return out
+
+
+@app.get("/trade/salas/{pid}/relatorio")
+def sala_relatorio(pid: str, q: Quem = Depends(quem)) -> dict:
+    """Relatório do fim da partida em sala (o mesmo da partida solo)."""
     b = _sala(OL.ler, pid, q.email, _agora())
-    v = b.get("v")
-    if v and v.get("fase") == "fim" and v.get("final"):
-        _registrar_ranking(q, pid, b["p"], v["final"], v.get("resultado"))
-    return b
+    v = b.get("v") or {}
+    if b.get("estado") != "jogo" or (b.get("p") or {}).get("fase") != "fim" or not v.get("resultado"):
+        raise HTTPException(400, "A partida ainda não terminou.")
+    return {"html": _pagina_relatorio(v["resultado"], v.get("revelado"), _pagar_xp(q, pid, (v.get("final") or {}).get("xp") or {}))}
 
 
 @app.post("/trade/salas/{pid}/estrategia")
