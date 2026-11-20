@@ -18,6 +18,7 @@ import time
 import uuid
 
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -38,6 +39,7 @@ import trader_online_dados as OL
 app = FastAPI(title="TickerHunters · servidor do jogo", version="0.1.0")
 ORIGENS = [o.strip() for o in os.environ.get("BPT_API_ORIGENS", "*").split(",") if o.strip()]   # link de teste do app (GitHub Pages) etc.
 app.add_middleware(CORSMiddleware, allow_origins=ORIGENS, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(GZipMiddleware, minimum_size=1024)       # respostas comprimidas: a partida manda o gráfico a cada segundo (~5x menos dados no celular)
 
 CHAVE_SOLO = "tb_api|{h}|{pid}"          # partida solo guardada no banco (no Streamlit ela ficava só na sessão do navegador)
 
