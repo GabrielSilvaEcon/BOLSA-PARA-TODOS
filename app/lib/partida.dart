@@ -8,6 +8,7 @@ import 'api.dart';
 import 'estrategia.dart';
 import 'mesa/mesa_host.dart';
 import 'navegacao.dart';
+import 'relatorio.dart';
 
 /// Partida solo do Trade Battle. A mesa (gráfico, boleta, placar) é a MESMA do app antigo; aqui o app só faz a ponte com o servidor:
 /// cria a partida (`POST /trade/solo`) ou entra na da sala (`/trade/salas/{id}`), consulta o andamento a cada segundo e manda as jogadas
@@ -33,6 +34,8 @@ class _PartidaTelaState extends State<PartidaTela> {
   bool _ocupado = false;
   bool _fim = false;
   bool _relatorioAberto = false;
+  Map<String, dynamic>? _fimDados;
+  bool _resultadoAberto = false;
 
   /// Fase da estratégia na partida corrida: o app mostra o gráfico próprio com as ferramentas de desenho (a mesa fica por baixo).
   bool _estrategia = false;
@@ -106,15 +109,16 @@ class _PartidaTelaState extends State<PartidaTela> {
       args['erro_seq'] = _seqErro;
       _ultima = args;
       _mesa.desenhar(args);
-      final est = args['modo'] == 'analise' && args['corrida'] == true;
+      final est = r['fase'] == 'analise' && args['corrida'] == true; // pela fase da partida: no fim a tela também vem como "analise"
       if (est != _estrategia) _mesa.toques(!est);
       if (mounted && (est || est != _estrategia)) setState(() => _estrategia = est);
     }
     if (r['fim'] != null && !_fim) {
       _fim = true;
+      _fimDados = (r['fim'] as Map).cast<String, dynamic>();
       _relogio?.cancel();
       if (mounted) setState(() {});
-      _abrirRelatorio();
+      _abrirResultado();
     }
   }
 
@@ -162,6 +166,31 @@ class _PartidaTelaState extends State<PartidaTela> {
     } finally {
       _ocupado = false;
     }
+  }
+
+  /// Resultado da partida no app (ativo revelado, pontos, gráfico real com os desenhos ✔/✖). O relatório completo fica a um toque.
+  Future<void> _abrirResultado() async {
+    final f = _fimDados, tela = _ultima;
+    if (f == null || tela == null || _resultadoAberto || !mounted) return;
+    _resultadoAberto = true;
+    final solo = widget.salaId == null;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (ctx) => RelatorioTela(
+        fim: f,
+        tela: tela,
+        aoCompleto: _abrirRelatorio,
+        rotuloAcao: solo ? 'Jogar de novo' : 'Voltar ao Trade Battle',
+        acao: () {
+          Navigator.of(ctx).pop();
+          if (solo) {
+            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: widget.corrida)));
+          } else {
+            Navigator.of(context).maybePop();
+          }
+        },
+      ),
+    ));
+    _resultadoAberto = false;
   }
 
   Future<void> _abrirRelatorio() async {
@@ -264,9 +293,9 @@ class _PartidaTelaState extends State<PartidaTela> {
                 children: [
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: _abrirRelatorio,
+                      onPressed: _abrirResultado,
                       icon: const Icon(Icons.bar_chart),
-                      label: const Text('Ver relatório'),
+                      label: const Text('Ver resultado'),
                     ),
                   ),
                   const SizedBox(width: 8),
