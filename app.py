@@ -4699,7 +4699,8 @@ if DESIGN_V2:                                # cabeçalho (estilo de referência
             _quem = getattr(usuarios.ator(), "email", "") or ""
             _agora_g = _gn.foto(_h["xp"], _tc_s, _h["ofensiva"])
             _ult_g = st.session_state.get("_ganhos_ult")
-            _gna.registrar(_gn.comparar(_ult_g["f"], _agora_g) if _ult_g and _ult_g.get("q") == _quem else [])
+            if pg.url_path != PG_ECONOMIA.url_path:      # na Loja o resultado (baú aberto) já aparece no próprio cartão: sem pop-up
+                _gna.registrar(_gn.comparar(_ult_g["f"], _agora_g) if _ult_g and _ult_g.get("q") == _quem else [])
             st.session_state["_ganhos_ult"] = {"q": _quem, "f": _agora_g}
         except Exception:
             pass
