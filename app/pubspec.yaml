@@ -44,11 +44,14 @@ flutter:
     - assets/logos/cripto/
     - assets/avatares/
 
-# Ícone do app no Android (gerado no build do APK pelo robô app_apk): o mascote do TickerHunters
+# Ícone do app no Android (gerado no build do APK pelo robô app_apk): o touro do TickerHunters com a moeda
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: "icone/icone.png"
+  # Android 8+: o celular recorta o ícone em círculo, gota ou quadrado; a arte fica no centro, com folga para os chifres
+  adaptive_icon_background: "#1B0A63"
+  adaptive_icon_foreground: "icone/icone_frente.png"
 
 # cor do instante antes do Flutter desenhar (sem clarão branco ao abrir o app); a arte de abertura vem logo depois (lib/abertura.dart)
 flutter_native_splash:
