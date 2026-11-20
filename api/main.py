@@ -491,6 +491,138 @@ def trade_central(q: Quem = Depends(quem)) -> dict:
     return {"corridas": corridas, "ativa": ativa, "ranking": ranking, "xp_dia": TB.XP_PARTIDAS_DIA}
 
 
+# ------------------------------------------------------------------ Loja Ticker (saldo, recompensas, vitrine e extrato)
+def _plano_de(q: "Quem") -> str:
+    try:
+        import planos
+        return planos.plano_de(q.email, q.conta.get("papel"))
+    except Exception:
+        return "gratuito"
+
+
+def _prog_estudo(q: "Quem"):
+    """(dados, progresso de estudo) da conta, para os baús e o escudo de ofensiva."""
+    dados = banco.ler_dados(q.ator, q.email) or {}
+    return dados, ED.normalizar(dados.get("edu_progresso"))
+
+
+def _baus_elegiveis(q: "Quem") -> list[dict]:
+    """Baús a que a pessoa tem direito (marcos do Hunter Pass e semana de ofensiva), como no app antigo. Falha = nenhum."""
+    try:
+        import baus as B
+        _, p = _prog_estudo(q)
+        hoje = JO.hoje()
+        return B.todos(PA.estado(JO._jor(p)["xp_dia"], hoje), JO.ofensiva(p), hoje)
+    except Exception:
+        return []
+
+
+def _fmt_quando(iso) -> str:
+    d = TC._de_iso(iso)
+    return d.astimezone(TC.timezone(TC.timedelta(hours=-3))).strftime("%d/%m %H:%M") if d else ""
+
+
+KINDS_LOJA = ("tema", "moldura")            # a Loja vende só temas e molduras (decisão do Gabriel); o resto não aparece nem pode ser comprado
+
+
+@app.get("/loja")
+def loja(q: Quem = Depends(quem)) -> dict:
+    """Loja Ticker, como a do app antigo (tickercoins_app.pagina_economia): saldo; Recompensas (baú diário e baús de progresso);
+    Loja (itens à venda e os que você tem, com a prévia e o estado de cada um); Extrato (totais, benefícios e histórico)."""
+    import loja_vitrine as VT
+    from datetime import datetime, timedelta, timezone
+    cid = q.conta.get("id")
+    hoje = datetime.now(timezone(timedelta(hours=-3))).date()
+    try:
+        s = TC.saldo(cid)
+    except Exception as e:
+        _erro(e, 503)
+    possui = {b["produto_id"] for b in TC.beneficios_ativos(cid)}
+    eq = TC.equipado(q.email)
+    plano = _plano_de(q)
+    itens = []
+    for p in TC.produtos():
+        stt = VT.status(p, possui, eq, s, hoje)
+        ok = TC.pode_comprar(cid, p["id"], plano)[0]
+        if not (stt["tem"] or ok):
+            continue
+        kind = (p.get("efeito") or {}).get("kind")
+        if kind not in KINDS_LOJA:
+            continue
+        itens.append({"id": p["id"], "nome": p["nome"], "desc": p.get("desc") or "", "preco": int(p["preco"]), "raridade": VT.raridade(p),
+                      "status": stt, "kind": kind, "equipavel": VT.equipavel(p), "em_uso": eq.get(kind) == p["id"], "previa": VT.previa(p)})
+    itens.sort(key=lambda x: (x["status"]["tem"], x["preco"]))
+    bau = TC.bau_diario(cid)
+    pend = [{"indice": i, "rotulo": el.get("rotulo", "Baú"), "raridade": el.get("raridade")}
+            for i, el in enumerate(TC.baus_status(cid, _baus_elegiveis(q))) if not el["aberto"]]
+    compras = [{"nome": (TC.produto(x["produto_id"]) or {}).get("nome", x["produto_id"]), "preco": int(x["preco"]),
+                "quando": _fmt_quando(x["criado_em"]), "estado": TC.ROTULO_ESTADO.get(x["estado"], x["estado"])} for x in TC.compras(cid, 20)]
+    hist = [{"descricao": x["descricao"] or x["origem"], "delta": int(x["delta"]), "pendente": x["estado"] == "pendente",
+             "quando": _fmt_quando(x["criado_em"]), "estado": TC.ROTULO_ESTADO.get(x["estado"], x["estado"]), "saldo_apos": int(x["saldo_apos"])}
+            for x in TC.historico(cid, 60)]
+    benef = [{"nome": (TC.produto(x["produto_id"]) or {}).get("nome", x["produto_id"]),
+              "validade": "Permanente" if not x.get("expira_em") else f"até {_fmt_quando(x['expira_em'])}"} for x in TC.beneficios_ativos(cid)]
+    return {"saldo": s, "bau": bau, "baus": pend, "itens": itens, "compras": compras, "totais": TC.totais(cid), "historico": hist, "beneficios": benef}
+
+
+@app.post("/loja/bau")
+def loja_bau(q: Quem = Depends(quem)) -> dict:
+    """Abre o baú diário (uma vez por dia; o servidor sorteia e credita)."""
+    try:
+        return TC.abrir_bau_diario(q.conta.get("id"))
+    except TC.ErroTC as e:
+        _erro(e)
+
+
+@app.post("/loja/bau/{indice}")
+def loja_bau_progresso(indice: int, q: Quem = Depends(quem)) -> dict:
+    """Abre um baú de progresso (marco do passe ou semana de ofensiva). Uma vez por baú."""
+    lista = _baus_elegiveis(q)
+    if not 0 <= indice < len(lista):
+        raise HTTPException(404, "Baú não encontrado.")
+    try:
+        return {**TC.abrir_bau(q.conta.get("id"), lista[indice]), "rotulo": lista[indice].get("rotulo", "Baú")}
+    except TC.ErroTC as e:
+        _erro(e)
+
+
+class Compra(BaseModel):
+    pid: str
+    req: str                                # identificador do pedido (repetir o mesmo pedido não cobra de novo)
+
+
+@app.post("/loja/comprar")
+def loja_comprar(c: Compra, q: Quem = Depends(quem)) -> dict:
+    """Compra um item com TickerCoins (mesmas regras do app antigo). O escudo de ofensiva também abre a janela de 7 dias na Jornada."""
+    if ((TC.produto(c.pid) or {}).get("efeito") or {}).get("kind") not in KINDS_LOJA:
+        raise HTTPException(400, "Este item não está à venda na Loja.")
+    r = TC.comprar(q.conta.get("id"), c.pid, c.req[:64], _plano_de(q))
+    if r.get("ok") and not r.get("duplicada") and c.pid == "escudo_ofensiva":
+        try:
+            dados, p = _prog_estudo(q)
+            dados["edu_progresso"] = JO.registrar_escudo(p)
+            banco.gravar_dados(q.ator, q.email, dados)
+        except Exception as e:
+            banco.registrar_erro("api.escudo", e)
+    if not r.get("ok"):
+        raise HTTPException(400, r.get("erro") or "Não foi possível concluir a compra.")
+    return r
+
+
+class Equipar(BaseModel):
+    pid: str | None = None                  # vazio = tirar
+    tipo: str
+
+
+@app.post("/loja/equipar")
+def loja_equipar(e: Equipar, q: Quem = Depends(quem)) -> dict:
+    """Usa (ou tira) um item que a conta possui: tema, moldura, emblema etc."""
+    try:
+        return TC.equipar(q.conta.get("id"), q.email, e.pid, e.tipo)
+    except TC.ErroTC as x:
+        _erro(x)
+
+
 # ------------------------------------------------------------------ rankings (só partidas online contam)
 @app.get("/ranking/{jogo}")
 def ranking(jogo: str, metrica: str = "pts", q: Quem = Depends(quem)) -> dict:
