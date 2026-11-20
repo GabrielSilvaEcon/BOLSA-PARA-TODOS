@@ -123,6 +123,18 @@ class _TickerTelaState extends State<TickerTela> {
               ),
             ),
           ),
+          // fundo da arena do Ticker Battle (arte do Gabriel: touro × urso), parado atrás da página, com um véu para o texto ficar legível
+          Image.asset('assets/ticker/fundo.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x330A0630), Color(0x8C0A0630), Color(0x8C0A0630), Color(0x330A0630)],
+                stops: [0, 0.3, 0.75, 1],
+              ),
+            ),
+          ),
           RefreshIndicator(
             onRefresh: _carregar,
             child: Center(
