@@ -288,7 +288,12 @@ def _recompensas() -> None:
 
 
 # ------------------------------------------------------------------ Loja Ticker
+KINDS_LOJA = ("tema", "moldura")
+
+
 def _pedir(pid: str) -> None:
+    if ((TC.produto(pid) or {}).get("efeito") or {}).get("kind") not in KINDS_LOJA:
+        return
     st.session_state["tc_conf"] = {"pid": pid, "req": uuid.uuid4().hex, "abrir": True}
 
 
@@ -502,6 +507,8 @@ def _loja() -> None:
     _abrir_dialogo_compra()
     itens = []
     for p in TC.produtos():
+        if (p.get("efeito") or {}).get("kind") not in KINDS_LOJA:       # a Loja vende só temas e molduras
+            continue
         stt = VT.status(p, possui, eq, s, _hoje())
         ok = TC.pode_comprar(c["id"], p["id"], _plano())[0]
         if stt["tem"] or ok:
