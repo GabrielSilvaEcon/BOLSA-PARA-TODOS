@@ -39,6 +39,7 @@ jobs:
           sed -i 's#android:label="[^"]*"#android:label="TickerHunters"#' $M
           flutter pub get
           dart run flutter_launcher_icons            # ícone do TickerHunters (app/icone/icone.png)
+          dart run flutter_native_splash:create      # cor de fundo ao abrir (sem clarão branco antes da tela de abertura)
           flutter analyze --no-fatal-infos
       - name: Chave fixa do APK de teste
         # Sempre a MESMA chave (app/assinatura/teste.keystore, chave de teste no padrão "debug" do Android, sem valor secreto):
