@@ -795,6 +795,7 @@ def trade_solo_ver(pid: str, q: Quem = Depends(quem)) -> dict:
 class Estrategia(BaseModel):
     direcao: str | None = None          # "alta" (Subir), "baixa" (Cair) ou vazio (Aguardar)
     tipo: str | None = None
+    marcas: dict | None = None          # desenhos da estratégia: níveis com papel, tendências, zonas e notas (avaliados no fim)
 
 
 @app.post("/trade/solo/{pid}/estrategia")
@@ -803,7 +804,7 @@ def trade_solo_estrategia(pid: str, e: Estrategia, q: Quem = Depends(quem)) -> d
     ref = cen["candles"][cen["n_analise"] - 1]["c"]
     est = {"direcao": None, "tipo": "aguardar"} if e.direcao in (None, "", "lateral") else {"direcao": e.direcao, "tipo": e.tipo or "continuacao"}
     try:
-        TB.salvar_estrategia(p, q.email, est, None, ref, _agora())     # solo: confirmar já começa o gráfico
+        TB.salvar_estrategia(p, q.email, est, e.marcas, ref, _agora())     # solo: confirmar já começa o gráfico
     except TB.ErroTrader as x:
         _erro(x)
     return _estado_solo(q, pid, d, p, cen)
@@ -923,7 +924,7 @@ def sala_relatorio(pid: str, q: Quem = Depends(quem)) -> dict:
 @app.post("/trade/salas/{pid}/estrategia")
 def sala_estrategia(pid: str, e: Estrategia, q: Quem = Depends(quem)) -> dict:
     est = {"direcao": None, "tipo": "aguardar"} if e.direcao in (None, "", "lateral") else {"direcao": e.direcao, "tipo": e.tipo or "continuacao"}
-    _sala(OL.salvar, pid, q.email, est, None, _agora())
+    _sala(OL.salvar, pid, q.email, est, e.marcas, _agora())
     return sala_ver(pid, q)
 
 
