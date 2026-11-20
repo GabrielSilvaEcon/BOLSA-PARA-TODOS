@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -236,7 +237,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       body: Stack(
         children: [
           Positioned.fill(child: SafeArea(child: _mesa.widget())),
-          if (_pid == null) const Center(child: CircularProgressIndicator()),
+          if (_pid == null) const Positioned.fill(child: _Carregando()),
           if (_fim)
             Positioned(
               left: 10,
@@ -273,6 +274,92 @@ class _PartidaTelaState extends State<PartidaTela> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Espera da partida: candles que sobem e descem em onda enquanto o servidor sorteia o gráfico.
+/// Se passar de 6 s, explica que o servidor está acordando (o grátis dorme quando ninguém usa).
+class _Carregando extends StatefulWidget {
+  const _Carregando();
+
+  @override
+  State<_Carregando> createState() => _CarregandoState();
+}
+
+class _CarregandoState extends State<_Carregando> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+  Timer? _t;
+  bool _demorando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer(const Duration(seconds: 6), () {
+      if (mounted) setState(() => _demorando = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    _t?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const cores = [Color(0xFF26D07C), Color(0xFFFF4D6D)];
+    return ColoredBox(
+      color: const Color(0xF20B0828),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 70,
+              child: AnimatedBuilder(
+                animation: _c,
+                builder: (ctx, _) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < 7; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      Builder(builder: (ctx) {
+                        final f = (sin((_c.value * 2 * pi) - i * 0.8) + 1) / 2;
+                        return Container(
+                          width: 11,
+                          height: 18 + 50 * f,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(3),
+                            color: cores[i % 2],
+                            boxShadow: [BoxShadow(color: cores[i % 2].withValues(alpha: 0.5), blurRadius: 8)],
+                          ),
+                        );
+                      }),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text('Preparando o gráfico…', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+            const SizedBox(height: 6),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              child: Text(
+                _demorando
+                    ? 'O servidor está acordando. Na primeira partida do dia\npode levar até 1 minuto.'
+                    : 'Sorteando um gráfico real da B3.',
+                key: ValueKey(_demorando),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13.5, height: 1.35, color: Color(0xFFCFC8EE)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
