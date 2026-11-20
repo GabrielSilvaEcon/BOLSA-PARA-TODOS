@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'alertas.dart';
+import 'aprender.dart';
 import 'api.dart';
 import 'cabecalho.dart';
 import 'home.dart';
@@ -77,6 +78,7 @@ class _PrincipalState extends State<Principal> {
   Widget _raiz(int i) {
     if (i == 0) return HomeTela(api: widget.api);
     if (i == 1) return JogosTela(api: widget.api);
+    if (i == 2) return AprenderTela(api: widget.api);
     if (i == 3) return RankingTela(api: widget.api);
     if (i == 4) return LojaTela(api: widget.api);
     return EmBreveTela(titulo: _itens[i].$1, icone: _itens[i].$3);
