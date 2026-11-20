@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'navegacao.dart';
 
-/// Ranking Geral, igual ao do app antigo (jogos_app.pagina_ranking): cabeçalho com o troféu, abas da Central, escolha do jogo
+/// Ranking Geral (como no app antigo, jogos_app.pagina_ranking): topo com a arte "Ranking Geral", escolha do jogo
 /// (Trade Battle ou Ticker Battle), pódio dos 3 primeiros, sua posição e a classificação com a variação do dia.
 /// Dados do servidor (`GET /ranking/{jogo}/tela`).
 class RankingTela extends StatefulWidget {
@@ -55,8 +55,6 @@ class _RankingTelaState extends State<RankingTela> {
     _carregar();
   }
 
-  void _emBreve(String nome) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$nome: chega na próxima etapa do app novo')));
-
   String _valor(Object? v) {
     if (v is! num) return '';
     if (_jogo == 'trade') {
@@ -98,9 +96,10 @@ class _RankingTelaState extends State<RankingTela> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
                   children: [
-                    _cab(),
-                    const SizedBox(height: 8),
-                    _abasCentral(),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset('assets/jogos/banner_ranking.webp', fit: BoxFit.cover),
+                    ),
                     const SizedBox(height: 10),
                     _seletor(),
                     const SizedBox(height: 10),
@@ -149,92 +148,6 @@ class _RankingTelaState extends State<RankingTela> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ---- cabeçalho da Central: troféu, "Ranking Geral" e a frase
-  Widget _cab() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x8CF2B84B), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF241A86), Color(0xFF0E0840)]),
-        boxShadow: const [BoxShadow(color: Color(0x598B6CFF), blurRadius: 18)],
-      ),
-      child: Row(
-        children: [
-          Image.asset('assets/jogos/trofeu.webp', width: 78),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Ranking Geral',
-                    style: TextStyle(
-                      fontSize: 21.6,
-                      height: 1.05,
-                      fontWeight: FontWeight.w900,
-                      fontStyle: FontStyle.italic,
-                      color: Color(0xFFFFC93C),
-                      shadows: [Shadow(color: Color(0x73FFC93C), blurRadius: 12)],
-                    )),
-                SizedBox(height: 3),
-                Text('Cada jogo com a sua classificação.', style: TextStyle(fontSize: 12.2, color: Color(0xFFD9D4F7))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _abasCentral() {
-    const abas = [
-      ('Central', Icons.sports_esports),
-      ('Trade', Icons.show_chart),
-      ('Ticker', Icons.style),
-      ('Ranking', Icons.emoji_events),
-      ('Amigos', Icons.group),
-      ('Eventos', Icons.redeem),
-    ];
-    return SizedBox(
-      height: 34,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: abas.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
-        itemBuilder: (_, i) {
-          final (rot, ic) = abas[i];
-          final on = rot == 'Ranking';
-          return GestureDetector(
-            onTap: () {
-              if (rot == 'Central' || rot == 'Trade') {
-                abrirAba(1);
-              } else if (!on) {
-                _emBreve(rot);
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                gradient: on ? const LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFB06BFF)]) : null,
-                color: on ? null : const Color(0xFF1B1442),
-                border: Border.all(color: on ? const Color(0xFFB9A8FF) : const Color(0x558B6CFF)),
-                boxShadow: on ? const [BoxShadow(color: Color(0x998B6CFF), blurRadius: 12)] : null,
-              ),
-              child: Row(
-                children: [
-                  Icon(ic, size: 16, color: Colors.white),
-                  const SizedBox(width: 5),
-                  Text(rot, style: const TextStyle(fontSize: 12.8, fontWeight: FontWeight.w800, color: Colors.white)),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }

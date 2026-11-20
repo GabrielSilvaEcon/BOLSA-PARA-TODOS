@@ -4,8 +4,8 @@ import 'api.dart';
 import 'navegacao.dart';
 import 'partida.dart';
 
-/// Tela inicial do Trade Battle, igual à do app antigo (trader_battle_app._central + jogos_app.navegacao/faixa_jogo):
-/// abas da Central, arte do jogo, escolha da duração, Jogar Solo / Jogar com Amigos, Entrar em uma Sala,
+/// Tela inicial do Trade Battle, igual à do app antigo (trader_battle_app._central + jogos_app.faixa_jogo):
+/// arte do jogo, escolha da duração, Jogar Solo / Jogar com Amigos, Entrar em uma Sala,
 /// ranking do jogo, "Sobre o Trade Battle" e "Como funciona". Dados do servidor (`GET /trade/central`).
 class TradeTela extends StatefulWidget {
   const TradeTela({super.key, required this.api, this.jogarSolo});
@@ -74,8 +74,6 @@ class _TradeTelaState extends State<TradeTela> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
                   children: [
-                    _abasCentral(),
-                    const SizedBox(height: 10),
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
@@ -147,58 +145,6 @@ class _TradeTelaState extends State<TradeTela> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ---- abas da Central de Jogos (Trade aberta)
-  Widget _abasCentral() {
-    const abas = [
-      ('Central', Icons.sports_esports),
-      ('Trade', Icons.show_chart),
-      ('Ticker', Icons.style),
-      ('Ranking', Icons.emoji_events),
-      ('Amigos', Icons.group),
-      ('Eventos', Icons.redeem),
-    ];
-    return SizedBox(
-      height: 34,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: abas.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
-        itemBuilder: (_, i) {
-          final (rot, ic) = abas[i];
-          final on = rot == 'Trade';
-          return GestureDetector(
-            onTap: () {
-              if (rot == 'Central') {
-                Navigator.of(context).maybePop();
-              } else if (rot == 'Ranking') {
-                abrirAba(3);
-              } else if (!on) {
-                _emBreve(rot);
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                gradient: on ? const LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFB06BFF)]) : null,
-                color: on ? null : const Color(0xFF1B1442),
-                border: Border.all(color: on ? const Color(0xFFB9A8FF) : const Color(0x558B6CFF)),
-                boxShadow: on ? const [BoxShadow(color: Color(0x998B6CFF), blurRadius: 12)] : null,
-              ),
-              child: Row(
-                children: [
-                  Icon(ic, size: 16, color: Colors.white),
-                  const SizedBox(width: 5),
-                  Text(rot, style: const TextStyle(fontSize: 12.8, fontWeight: FontWeight.w800, color: Colors.white)),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
