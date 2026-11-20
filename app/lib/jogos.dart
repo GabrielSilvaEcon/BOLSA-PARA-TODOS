@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'navegacao.dart';
 import 'trade.dart';
 
 /// Central de Jogos ("Mundo dos Jogos!"), igual à do app antigo (jogos_app.pagina_central + design/kit.topo):
@@ -473,7 +474,7 @@ class _JogosTelaState extends State<JogosTela> {
           if (i > 0) const SizedBox(width: 8),
           Expanded(
             child: GestureDetector(
-              onTap: () => _emBreve(rot),
+              onTap: () => rot == 'Ranking' ? abrirAba(3) : _emBreve(rot),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
                 decoration: BoxDecoration(

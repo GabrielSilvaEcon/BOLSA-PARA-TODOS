@@ -6,6 +6,7 @@ import 'api.dart';
 import 'cabecalho.dart';
 import 'home.dart';
 import 'jogos.dart';
+import 'ranking.dart';
 
 /// Itens da barra de baixo, na mesma ordem do app antigo: (nome, ícone 3D da arte da barra, ícone simples para a tela "em breve").
 const _itens = <(String, String, IconData)>[
@@ -68,6 +69,7 @@ class _PrincipalState extends State<Principal> {
   Widget _raiz(int i) {
     if (i == 0) return HomeTela(api: widget.api);
     if (i == 1) return JogosTela(api: widget.api);
+    if (i == 3) return RankingTela(api: widget.api);
     return EmBreveTela(titulo: _itens[i].$1, icone: _itens[i].$3);
   }
 
