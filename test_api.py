@@ -218,3 +218,32 @@ def test_sala_com_dois_jogadores_do_comeco_ao_fim(cli, monkeypatch):
     assert fim["fase"] == "fim" and fim["fim"]["xp"]["status"] in ("pago", "zero", "limite")
     rel = cli.get(f"/trade/salas/{pid}/relatorio")
     assert rel.status_code == 200 and "Raio-X" in rel.json()["html"]
+
+
+def test_loja_mostra_saldo_itens_e_extrato(cli):
+    r = cli.get("/loja")
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert {"saldo", "bau", "baus", "itens", "compras", "totais", "historico", "beneficios"} <= set(d)
+    for it in d["itens"]:
+        assert {"id", "nome", "preco", "raridade", "status", "previa"} <= set(it)
+    sem_saldo = next((it for it in d["itens"] if it["preco"] > d["saldo"] and not it["status"]["tem"]), None)
+    if sem_saldo:
+        assert cli.post("/loja/comprar", json={"pid": sem_saldo["id"], "req": "t1"}).status_code == 400
+
+
+def test_loja_bau_compra_e_usa(cli):
+    assert cli.post("/loja/bau").json()["valor"] > 0                       # baú diário credita
+    assert cli.post("/loja/bau").json().get("novo") is False                # só um por dia: abrir de novo não credita outra vez
+    d = cli.get("/loja").json()
+    item = next(it for it in d["itens"] if not it["status"]["tem"] and it["preco"] <= d["saldo"])
+    r = cli.post("/loja/comprar", json={"pid": item["id"], "req": "pedido-1"})
+    assert r.status_code == 200, r.text
+    assert cli.post("/loja/comprar", json={"pid": item["id"], "req": "pedido-1"}).json().get("duplicada")   # mesmo pedido não cobra de novo
+    d2 = cli.get("/loja").json()
+    assert d2["saldo"] == d["saldo"] - item["preco"]
+    assert any(c["nome"] == item["nome"] for c in d2["compras"])
+    eqp = next((it for it in d2["itens"] if it["status"]["tem"] and it["equipavel"]), None)
+    if eqp:
+        assert cli.post("/loja/equipar", json={"pid": eqp["id"], "tipo": eqp["kind"]}).status_code == 200
+        assert next(it for it in cli.get("/loja").json()["itens"] if it["id"] == eqp["id"])["em_uso"]
