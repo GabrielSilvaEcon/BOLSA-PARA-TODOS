@@ -1609,3 +1609,48 @@ def mercado_cripto(gid: str, q: Quem = Depends(quem)) -> dict:
     if not m or m.get("preco") is None:
         raise HTTPException(424, "Não consegui os dados dessa criptomoeda agora. Tente de novo em instantes.")
     return MA.montar_cripto(m)
+
+
+# ------------------------------------------------------------------ Cenário econômico (botão da tela inicial) e dados da Home
+@app.get("/cenario")
+def cenario(q: Quem = Depends(quem)) -> dict:
+    """Cenário econômico do Brasil: o mesmo cálculo da página Economia do app antigo (macro_servico, cache de 30 min para todos)."""
+    import cenario_api as CA
+    import macro_servico as MS
+
+    def ler():
+        try:
+            return MS.cenario_compartilhado()
+        except Exception as e:
+            banco.registrar_erro("api.cenario", e)
+            return None
+    foto = _merc_cache("cenario", 1800, ler)
+    if not foto or not foto.get("indicadores"):
+        raise HTTPException(424, "Não consegui os indicadores da economia agora. Tente de novo em instantes.")
+    return CA.montar(foto)
+
+
+@app.get("/home")
+def home(q: Quem = Depends(quem)) -> dict:
+    """O que a tela inicial mostra além do /eu: Pregão Orbit (4 indicadores do Mercado hoje), missões do dia e o último veredito
+    do cenário econômico (leitura já gravada, sem consultar as fontes)."""
+    import home_game as HG
+    import inicio_painel as IP
+    import jogar
+    import macro_servico as MS
+    try:
+        hoje = _merc_cache("hoje", 600, IP.mercado_hoje) or []
+    except Exception:
+        hoje = []
+    try:
+        prog = ED.normalizar((banco.ler_dados(q.ator, q.email) or {}).get("edu_progresso"))
+        miss = HG.resumo_missoes(jogar.resumo(prog)["missoes"])
+    except Exception:
+        miss = HG.resumo_missoes([])
+    try:
+        ex = MS.ler_exibicao()
+        ger = ((ex or {}).get("snap") or {}).get("geral") or {}
+        cen = {"veredito": ger.get("v")} if ger.get("v") else None
+    except Exception:
+        cen = None
+    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen}
