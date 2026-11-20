@@ -938,3 +938,195 @@ def sala_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
 def sala_sair(pid: str, q: Quem = Depends(quem)) -> dict:
     _sala(OL.sair, pid, q.email, _agora())
     return {"ok": True}
+
+
+# ------------------------------------------------------------------ Ticker Battle: duelo contra o sistema (mesmas regras de battle.py)
+# O duelo fica no banco com as cartas CONGELADAS no início (como no app antigo, onde ficava na sessão). O app só manda "qual carta" e
+# "qual indicador"; o servidor escolhe a adversária (regra fixa e pública), compara os valores reais e guarda o histórico.
+CHAVE_TICKER = "tk_api|{h}|{id}"
+TK_INDICADORES = ("dy_12m", "ret_12m", "vol", "roe", "pl")   # no app novo, só 5 indicadores por carta (os mais didáticos)
+
+
+def _tk_agora():
+    from datetime import datetime, timedelta, timezone
+    return datetime.now(timezone(timedelta(hours=-3)))
+
+
+def _tk_data(ref) -> str:
+    r = str(ref or "")
+    return f"{r[8:10]}/{r[5:7]}/{r[:4]}" if len(r) >= 10 else "—"
+
+
+def _tk_carta(c: dict, hoje, valores: bool = True) -> dict:
+    """Carta para a tela: ticker, nome, categoria, data dos dados e (se `valores`) os indicadores válidos já formatados."""
+    import battle as BT
+    cat = BT.CATEGORIAS.get(c.get("classe"), {"nome": "—", "cor": "#8B6CFF"})
+    ok, mot = BT.jogavel(c, hoje)
+    out = {"tk": c.get("tk"), "nome": c.get("nome") or c.get("tk"), "classe": c.get("classe"), "categoria": cat["nome"], "cor": cat["cor"],
+           "ref": _tk_data(c.get("ref")), "fonte": c.get("fonte") or "", "jogavel": ok, "motivo": mot, "avisos": list(c.get("avisos") or [])}
+    if valores:
+        ind = c.get("ind") or {}
+        out["ind"] = [{"id": i, "v": float(ind[i]), "txt": BT.formatar(i, ind[i])} for i in BT.indicadores_validos(c) if i in TK_INDICADORES]
+    return out
+
+
+def _tk_meta() -> dict:
+    import battle as BT
+    return {i: {k: m[k] for k in ("nome", "curto", "icone", "melhor", "regra", "significa")} for i, m in BT.INDICADORES.items() if i in TK_INDICADORES}
+
+
+def _tk_snapshot(atualizar: bool = True) -> dict:
+    """Cartas do snapshot compartilhado; na central renova poucas cartas vencidas por vez (dados reais, nunca no meio do duelo)."""
+    import battle_dados as BD
+    agora = _tk_agora().replace(tzinfo=None)
+    snap = BD.ler_snapshot(banco)
+    if atualizar and BD.pendentes(snap, agora):
+        try:
+            snap, _ = BD.atualizar(banco, agora)
+        except Exception as e:
+            banco.registrar_erro("api.ticker_snapshot", e)
+    return snap
+
+
+@app.get("/ticker/central")
+def ticker_central(q: Quem = Depends(quem)) -> dict:
+    """Central do Ticker Battle: todas as cartas (com os indicadores), o baralho salvo, a sugestão inicial e o histórico de duelos."""
+    import battle as BT
+    import battle_dados as BD
+    hoje = _tk_agora().date()
+    snap = _tk_snapshot()
+    pes = BD.ler_pessoa(banco, q.email)
+    deck = [t for t in pes["deck"] if t in snap]
+    ok, msg = BT.validar_baralho(deck, snap, hoje)
+    hist = pes["hist"]
+    conta = {"vitoria": 0, "derrota": 0, "empate": 0}
+    for h in hist:
+        if h.get("final") in conta:
+            conta[h["final"]] += 1
+    cartas = sorted((_tk_carta(c, hoje) for c in snap.values()), key=lambda c: (not c["jogavel"], c["tk"]))
+    return {"cartas": cartas, "indicadores": _tk_meta(), "deck": deck, "valido": ok, "msg": msg, "min": BT.BARALHO_MIN, "max": BT.BARALHO_MAX,
+            "rodadas": BT.RODADAS, "sugestao": BT.baralho_padrao(snap, hoje), "historico": {**conta, "ultimos": [
+                {"id": h.get("id"), "ts": str(h.get("ts") or "")[:16].replace("T", " "), "final": h.get("final"), "placar": h.get("placar")} for h in hist[:5]]}}
+
+
+class BaralhoTk(BaseModel):
+    deck: list[str]
+
+
+@app.post("/ticker/baralho")
+def ticker_baralho(b: BaralhoTk, q: Quem = Depends(quem)) -> dict:
+    """Guarda o baralho (só cartas que existem, sem repetir, até o máximo). Devolve se ele já vale para jogar."""
+    import battle as BT
+    import battle_dados as BD
+    hoje = _tk_agora().date()
+    snap = _tk_snapshot(False)
+    deck = []
+    for t in b.deck:
+        if t in snap and t not in deck:
+            deck.append(t)
+    if len(deck) > BT.BARALHO_MAX:
+        raise HTTPException(400, f"O baralho aceita no máximo {BT.BARALHO_MAX} cartas.")
+    pes = BD.ler_pessoa(banco, q.email)
+    if not BD.gravar_pessoa(banco, q.email, {**pes, "deck": deck}):
+        raise HTTPException(503, "Não consegui salvar o baralho agora. Tente de novo.")
+    ok, msg = BT.validar_baralho(deck, snap, hoje)
+    return {"deck": deck, "valido": ok, "msg": msg}
+
+
+def _tk_chave(q: Quem, did: str) -> str:
+    return CHAVE_TICKER.format(h=banco._h_conta(q.email), id=did)
+
+
+def _tk_ler(q: Quem, did: str) -> dict:
+    d = banco.cfg_ler(_tk_chave(q, did))
+    if not d or not d.get("duelo"):
+        raise HTTPException(404, "duelo não encontrado")
+    return d
+
+
+def _tk_estado(d: dict) -> dict:
+    """O que a arena desenha: rodada, placar, as cartas que sobraram na mão (e se cada uma tem adversária) e as rodadas já reveladas."""
+    import battle as BT
+    hoje = _tk_agora().date()
+    du, cartas = d["duelo"], d["cartas"]
+    mao = []
+    for t in BT.cartas_disponiveis(du):
+        if t in cartas:
+            c = _tk_carta(cartas[t], hoje)
+            c["sem_adv"] = BT.adversaria_da_rodada(du, cartas, t, hoje) is None
+            mao.append(c)
+    rods = []
+    for r in du["rodadas"]:
+        e = BT.explicar(r, cartas)
+        rods.append({**{k: r[k] for k in ("n", "ind", "va", "vb", "venc", "melhor", "barra_a")},
+                     "txt_a": BT.formatar(r["ind"], r["va"]), "txt_b": BT.formatar(r["ind"], r["vb"]), "nome_ind": BT.INDICADORES[r["ind"]]["nome"],
+                     "jog": _tk_carta(cartas[r["jog"]], hoje, False), "adv": _tk_carta(cartas[r["adv"]], hoje, False), "raio_x": e})
+    return {"id": du["id"], "rodada": min(BT.rodada_atual(du), BT.RODADAS), "total": BT.RODADAS, "placar": du["placar"], "final": du.get("final"),
+            "mao": mao, "rodadas": rods}
+
+
+@app.post("/ticker/duelo")
+def ticker_novo(q: Quem = Depends(quem)) -> dict:
+    """Começa um Duelo Clássico (3 rodadas) contra o sistema com o baralho salvo. As cartas ficam congeladas até o fim."""
+    import battle as BT
+    import battle_dados as BD
+    hoje = _tk_agora().date()
+    snap = _tk_snapshot(False)
+    pes = BD.ler_pessoa(banco, q.email)
+    ok, msg = BT.validar_baralho(pes["deck"], snap, hoje)
+    if not ok:
+        raise HTTPException(400, msg)
+    du = BT.novo_duelo(uuid.uuid4().hex[:12], uuid.uuid4().hex, list(pes["deck"]), _tk_agora().replace(tzinfo=None),
+                       BD.referencia_dos_dados(snap, list(snap)))
+    d = {"duelo": du, "cartas": {t: dict(c) for t, c in snap.items()}}
+    banco.cfg_gravar(_tk_chave(q, du["id"]), d)
+    return _tk_estado(d)
+
+
+@app.get("/ticker/duelo/{did}")
+def ticker_ver(did: str, q: Quem = Depends(quem)) -> dict:
+    return _tk_estado(_tk_ler(q, did))
+
+
+@app.get("/ticker/duelo/{did}/adversaria")
+def ticker_adversaria(did: str, carta: str, q: Quem = Depends(quem)) -> dict:
+    """A carta que o sistema usará se você jogar `carta` agora (SEM os valores dela) e os indicadores que dá para disputar."""
+    import battle as BT
+    hoje = _tk_agora().date()
+    d = _tk_ler(q, did)
+    du, cartas = d["duelo"], d["cartas"]
+    adv = BT.adversaria_da_rodada(du, cartas, carta, hoje)
+    if adv is None:
+        raise HTTPException(409, "Não há carta adversária compatível com esta carta. Escolha outra.")
+    a = cartas[carta]
+    disp = BT.atributos_disputaveis(a, adv, hoje)
+    bloq = {i: m for i, m in disp["bloqueados"].items() if a.get("classe") in BT.INDICADORES[i]["classes"] and i in TK_INDICADORES}
+    return {"adversaria": _tk_carta(adv, hoje, False), "disputaveis": [i for i in disp["ok"] if i in TK_INDICADORES], "bloqueados": bloq}
+
+
+class RodadaTk(BaseModel):
+    carta: str
+    ind: str
+
+
+@app.post("/ticker/duelo/{did}/rodada")
+def ticker_rodada(did: str, r: RodadaTk, q: Quem = Depends(quem)) -> dict:
+    """Joga a rodada: o servidor escolhe a adversária, compara e grava. No fim, o duelo entra no histórico (uma vez)."""
+    import battle as BT
+    import battle_dados as BD
+    d = _tk_ler(q, did)
+    if r.ind not in TK_INDICADORES:
+        raise HTTPException(400, "Indicador fora do jogo.")
+    try:
+        d["duelo"] = BT.jogar_rodada(d["duelo"], d["cartas"], r.carta, r.ind, _tk_agora().date())
+    except (ValueError, KeyError) as e:
+        raise HTTPException(400, str(e) or "Jogada inválida.")
+    if d["duelo"].get("final") and not d.get("salvo"):
+        try:
+            reg = BD.registro_historico(d["duelo"], d["cartas"])
+            BD.gravar_pessoa(banco, q.email, BD.adicionar_historico(BD.ler_pessoa(banco, q.email), reg))
+            d["salvo"] = True
+        except Exception as e:
+            banco.registrar_erro("api.ticker_historico", e)
+    banco.cfg_gravar(_tk_chave(q, did), d)
+    return _tk_estado(d)
