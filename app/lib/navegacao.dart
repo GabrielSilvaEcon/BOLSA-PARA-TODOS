@@ -8,6 +8,7 @@ import 'home.dart';
 import 'loja.dart';
 import 'jogos.dart';
 import 'ranking.dart';
+import 'versao.dart';
 
 /// Itens da barra de baixo, na mesma ordem do app antigo: (nome, ícone 3D da arte da barra, ícone simples para a tela "em breve").
 const _itens = <(String, String, IconData)>[
@@ -50,6 +51,7 @@ class _PrincipalState extends State<Principal> {
     super.initState();
     abaPedida.addListener(_trocarPedida);
     modoJogo.addListener(_redesenhar);
+    conferirVersaoSempre(); // aviso de APK novo (só no app instalado)
   }
 
   @override
@@ -114,6 +116,7 @@ class _PrincipalState extends State<Principal> {
         body: Column(
           children: [
             if (modoJogo.value == 0) SafeArea(bottom: false, child: Cabecalho(api: widget.api, abrirAlertas: _abrirAlertas)),
+            if (modoJogo.value == 0) const AvisoVersao(),
             Expanded(
               child: MediaQuery.removePadding(
                 context: context,

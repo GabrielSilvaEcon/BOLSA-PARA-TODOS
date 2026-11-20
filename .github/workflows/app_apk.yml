@@ -49,7 +49,7 @@ jobs:
         env:
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          flutter build apk --release --split-per-abi --dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY
+          flutter build apk --release --split-per-abi --dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY --dart-define=VERSAO_APP=${{ github.run_number }}
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ../tickerhunters.apk
           ls -la ../tickerhunters.apk
       - uses: actions/upload-artifact@v4
@@ -62,5 +62,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete apk-teste --yes --cleanup-tag || true
-          gh release create apk-teste tickerhunters.apk --prerelease --title "App de teste (Android)" \
+          echo '{"versao": ${{ github.run_number }}}' > versao.json        # o app compara com o número dele e avisa "Nova versão disponível"
+          gh release create apk-teste tickerhunters.apk versao.json --prerelease --title "App de teste (Android)" \
             --notes "APK de teste do TickerHunters, gerado automaticamente a partir do branch main ($(git rev-parse --short HEAD)). Só para teste: não é a versão da Play Store."
