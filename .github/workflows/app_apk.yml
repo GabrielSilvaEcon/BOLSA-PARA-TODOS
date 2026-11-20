@@ -38,6 +38,7 @@ jobs:
           grep -q 'android.permission.INTERNET' $M || sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' $M
           sed -i 's#android:label="[^"]*"#android:label="TickerHunters"#' $M
           flutter pub get
+          dart run flutter_launcher_icons            # ícone do TickerHunters (app/icone/icone.png)
           flutter analyze --no-fatal-infos
       - name: Compilar APK
         working-directory: app
