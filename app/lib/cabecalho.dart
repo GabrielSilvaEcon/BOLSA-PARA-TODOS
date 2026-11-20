@@ -23,11 +23,14 @@ class Cabecalho extends StatefulWidget {
   State<Cabecalho> createState() => CabecalhoState();
 }
 
+/// Nível, moedas e ranking já trazidos pela tela de abertura: o cabeçalho abre preenchido (depois se atualiza sozinho).
+Map<String, dynamic>? euInicial;
+
 const _ouro = Color(0xFFFFC93C);
 const _ouroEscuro = Color(0xFFE9A80C);
 
 class CabecalhoState extends State<Cabecalho> {
-  Map<String, dynamic>? _eu;
+  Map<String, dynamic>? _eu = euInicial;
   bool _falhou = false;
 
   @override
