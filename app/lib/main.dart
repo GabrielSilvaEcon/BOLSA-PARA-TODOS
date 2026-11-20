@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'abertura.dart';
 import 'api.dart';
 import 'config.dart';
 import 'login.dart';
@@ -35,7 +36,7 @@ class TickerHuntersApp extends StatelessWidget {
         // mesma letra do app antigo (Source Sans, a fonte padrão do Streamlit)
         textTheme: GoogleFonts.sourceSans3TextTheme(ThemeData(brightness: Brightness.dark).textTheme),
       ),
-      home: configurado ? const PortaDeEntrada() : const _SemConfiguracao(),
+      home: configurado ? const AberturaTela(depois: PortaDeEntrada()) : const _SemConfiguracao(),
     );
   }
 }
