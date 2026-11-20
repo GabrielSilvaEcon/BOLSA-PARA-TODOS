@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
 import 'carteira.dart';
+import 'mercado.dart';
 import 'navegacao.dart';
 
 /// Home no estilo de jogo: cabeçalho (nível, Ticker Coins e ranking), banner do Hunter Pass e os três acessos.
@@ -59,32 +60,32 @@ class _HomeTelaState extends State<HomeTela> {
           Image.asset('assets/home/fundo_home.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
           Container(color: const Color(0xD90B0930)),
           SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _carregar,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _arena(),
-              const SizedBox(height: 14),
-              if (_carregando && _eu == null)
-                const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
-              else if (_erro != null && _eu == null)
-                _erroTela(tema)
-              else ...[
-                _bannerPasse(tema),
-                const SizedBox(height: 14),
-                _acessos(tema),
-              ],
-              const SizedBox(height: 24),
-              Text(
-                'Jogo educativo. Sem recomendação de compra ou venda.',
-                style: tema.textTheme.bodySmall,
-                textAlign: TextAlign.center,
+            child: RefreshIndicator(
+              onRefresh: _carregar,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _arena(),
+                  const SizedBox(height: 14),
+                  if (_carregando && _eu == null)
+                    const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+                  else if (_erro != null && _eu == null)
+                    _erroTela(tema)
+                  else ...[
+                    _bannerPasse(tema),
+                    const SizedBox(height: 14),
+                    _acessos(tema),
+                  ],
+                  const SizedBox(height: 24),
+                  Text(
+                    'Jogo educativo. Sem recomendação de compra ou venda.',
+                    style: tema.textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
         ],
       ),
     );
@@ -150,13 +151,20 @@ class _HomeTelaState extends State<HomeTela> {
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(flex: 2, child: _botao(
-            'assets/home/btn_jogar.webp',
-            'Jogar agora',
-            onTap: () => abrirAba(1),
-          )),
+        Expanded(
+            flex: 2,
+            child: _botao(
+              'assets/home/btn_jogar.webp',
+              'Jogar agora',
+              onTap: () => abrirAba(1),
+            )),
         const SizedBox(width: 8),
-        Expanded(child: _botao('assets/home/btn_mercado.webp', 'Mercado')),
+        Expanded(
+            child: _botao(
+          'assets/home/btn_mercado.webp',
+          'Mercado',
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MercadoTela(api: widget.api))),
+        )),
       ],
     );
   }
