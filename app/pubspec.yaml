@@ -35,6 +35,7 @@ flutter:
     - assets/jogos/
     - assets/ticker/
     - assets/loja/
+    - assets/aprender/
     - assets/nav/
     - assets/cabecalho/
     - assets/mesa/

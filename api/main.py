@@ -1312,9 +1312,10 @@ def perfil_meu(q: Quem = Depends(quem)) -> dict:
     except Exception:
         rt, rk = None, None
     try:
-        ofensiva = int(JO.resumo(ED.normalizar((banco.ler_dados(a, q.email) or {}).get("edu_progresso"))).get("ofensiva") or 0)
+        res = JO.resumo(ED.normalizar((banco.ler_dados(a, q.email) or {}).get("edu_progresso")))
+        ofensiva, licoes = int(res.get("ofensiva") or 0), int(res.get("licoes_feitas") or 0)
     except Exception:
-        ofensiva = 0
+        ofensiva, licoes = 0, 0
     try:
         moedas = TC.saldo(q.conta.get("id"))
     except Exception:
@@ -1328,7 +1329,7 @@ def perfil_meu(q: Quem = Depends(quem)) -> dict:
     desde = str(q.conta.get("criado_em") or "")[:10]
     return {"nome": doc["nome"] or doc["usuario"] or "Jogador", "usuario": doc["usuario"], "bio": doc["bio"], "desde": desde,
             "avatar": av, "avatar_img": _avatar_img(av), "avatar_nome": AV.POR_ID[av]["nome"], "raridade": {"nome": rar["nome"], "cor": rar["cor"]},
-            "nivel": ne, "titulo": prog["titulo"], "xp": prog["xp"], "ofensiva": ofensiva, "moedas": moedas, "patrimonio": pat,
+            "nivel": ne, "titulo": prog["titulo"], "xp": prog["xp"], "ofensiva": ofensiva, "licoes": licoes, "moedas": moedas, "patrimonio": pat,
             "ranking": _ranking_da_casa(a, q.email), "jogos": PF.jogos(placar, rt, rk), "estat": J.estatisticas(placar),
             "conquistas": {"ok": prog["conquistas"], "total": prog["conquistas_total"], "medalhas": prog["medalhas"]},
             "privacidade": doc["privacidade"], "moldura": _pf_loja(q, "moldura"), "tema": _pf_loja(q, "tema"),
