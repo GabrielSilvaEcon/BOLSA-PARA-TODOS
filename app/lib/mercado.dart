@@ -42,7 +42,15 @@ Color _corFaixa(String? f) => switch (f) { 'bom' => _verde, 'medio' => _ouro, 'r
 BoxDecoration _caixa([Color borda = const Color(0xFF6A4FE6)]) => BoxDecoration(
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: borda, width: 1.6),
-      gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xE6231388), Color(0xE6160B5E)]),
+      // o fundo puxa a cor da borda: cada assunto com a sua cor, para a tela não ficar toda azul
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color.lerp(borda.withValues(alpha: 1), const Color(0xFF160B5E), 0.5)!.withValues(alpha: 0.95),
+          Color.lerp(borda.withValues(alpha: 1), const Color(0xFF120850), 0.8)!.withValues(alpha: 0.95)
+        ],
+      ),
       boxShadow: [BoxShadow(color: borda.withValues(alpha: 0.3), blurRadius: 12)],
     );
 
@@ -53,6 +61,45 @@ Widget _titulo(String t, {IconData? ic}) => Padding(
         Text(t, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
       ]),
     );
+
+/// Cor de cada setor nas linhas das empresas.
+Color _corSetor(String s) {
+  const cores = [Color(0xFF8B6CFF), Color(0xFF2BA7C9), Color(0xFF26D07C), Color(0xFFF2B84B), Color(0xFFFF6B8A), Color(0xFFFF8A3D), Color(0xFFB54BFF), Color(0xFF4F9BFF)];
+  return cores[s.codeUnits.fold<int>(0, (a, b) => a + b) % cores.length];
+}
+
+/// Ondinha decorativa no pé dos cartões do Mercado hoje (sobe no dia de alta, desce no de queda).
+class _Onda extends CustomPainter {
+  _Onda(this.cor, this.sobe);
+  final Color cor;
+  final bool sobe;
+
+  @override
+  void paint(Canvas c, Size s) {
+    final p = Path();
+    for (var i = 0; i <= 30; i++) {
+      final x = s.width * i / 30;
+      final tend = (sobe ? -1 : 1) * 18 * i / 30;
+      final y = s.height * 0.78 + tend + sin(i * 0.9) * 4;
+      i == 0 ? p.moveTo(x, y) : p.lineTo(x, y);
+    }
+    final area = Path.from(p)
+      ..lineTo(s.width, s.height)
+      ..lineTo(0, s.height)
+      ..close();
+    c.drawPath(
+        area, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [cor.withValues(alpha: 0.3), cor.withValues(alpha: 0)]).createShader(Offset.zero & s));
+    c.drawPath(
+        p,
+        Paint()
+          ..color = cor.withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2);
+  }
+
+  @override
+  bool shouldRepaint(_Onda o) => o.cor != cor || o.sobe != sobe;
+}
 
 /// Logo do ativo (ícone do setor) num disco; sem logo, as iniciais.
 Widget logoAtivo(Object? logo, String tk, {double tam = 44}) => Container(
@@ -220,29 +267,72 @@ class _MercadoTelaState extends State<MercadoTela> {
     );
   }
 
-  Widget _hoje(List<Map> itens) => GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 2.1,
-        children: [
+  static const _visualHoje = {
+    'Ibovespa': (Icons.show_chart_rounded, Color(0xFF8B6CFF)),
+    'Dólar': (Icons.attach_money_rounded, Color(0xFF26D07C)),
+    'Bitcoin': (Icons.currency_bitcoin_rounded, Color(0xFFF7931A)),
+    'Índice do medo': (Icons.psychology_rounded, Color(0xFFFF6B8A)),
+  };
+
+  // Cartões de altura fixa (no tablet não sobra espaço vazio): cor e ícone de cada indicador, a variação em destaque
+  // e uma ondinha subindo ou descendo conforme o dia.
+  Widget _hoje(List<Map> itens) => LayoutBuilder(builder: (ctx, c) {
+        final w = (c.maxWidth - 8) / 2;
+        return Wrap(spacing: 8, runSpacing: 8, children: [
           for (final it in itens)
-            Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
-              decoration: _caixa(it['var'] is num ? ((it['var'] as num) >= 0 ? _verde : _vermelho).withValues(alpha: 0.8) : const Color(0xFF6A4FE6)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text('${it['rotulo']}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _lilas)),
-                FittedBox(child: Text('${it['valor']}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white))),
-                Text(it['nota'] != null ? '${it['nota']}' : _pct(it['var'], sinal: true),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: it['var'] is num ? ((it['var'] as num) >= 0 ? _verde : _vermelho) : _ouro)),
-              ]),
+            SizedBox(
+              width: w,
+              height: 104,
+              child: Builder(builder: (ctx) {
+                final (ic, cor) = _visualHoje['${it['rotulo']}'] ?? (Icons.insights_rounded, const Color(0xFF8B6CFF));
+                final v = it['var'];
+                final nota = '${it['nota'] ?? ''}';
+                final corVar = v is num
+                    ? (v >= 0 ? _verde : _vermelho)
+                    : nota.contains('alto')
+                        ? _vermelho
+                        : nota.contains('aten')
+                            ? _ouro
+                            : _verde;
+                return Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: cor, width: 1.6),
+                    gradient:
+                        LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.35)!, Color.lerp(cor, const Color(0xFF120850), 0.8)!]),
+                    boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.4), blurRadius: 14)],
+                  ),
+                  child: Stack(children: [
+                    Positioned.fill(child: CustomPaint(painter: _Onda(corVar, v is num ? v >= 0 : !nota.contains('alto')))),
+                    Positioned(
+                        right: 10,
+                        top: 10,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: cor.withValues(alpha: 0.35), border: Border.all(color: Colors.white.withValues(alpha: 0.6))),
+                          child: Icon(ic, color: Colors.white, size: 20),
+                        )),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 50, 8),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${it['rotulo']}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                        FittedBox(child: Text('${it['valor']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white))),
+                        Container(
+                          margin: const EdgeInsets.only(top: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x99120850), border: Border.all(color: corVar)),
+                          child: Text(nota.isNotEmpty ? nota : _pct(v, sinal: true), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: corVar)),
+                        ),
+                      ]),
+                    ),
+                  ]),
+                );
+              }),
             ),
-        ],
-      );
+        ]);
+      });
 
   static const _iconeTipo = {
     'acoes': (Icons.candlestick_chart_rounded, Color(0xFF8B6CFF)),
@@ -263,7 +353,7 @@ class _MercadoTelaState extends State<MercadoTela> {
               child: Pressionavel(
                 aoTocar: () => pronto ? _foco.requestFocus() : ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${t['titulo']}: chega na próxima etapa do Mercado.'))),
                 child: Opacity(
-                  opacity: pronto ? 1 : 0.62,
+                  opacity: pronto ? 1 : 0.85,
                   child: Container(
                     height: 92,
                     padding: const EdgeInsets.all(10),
@@ -297,7 +387,7 @@ class _MercadoTelaState extends State<MercadoTela> {
           aoTocar: () => _abrir(e),
           child: Container(
             padding: const EdgeInsets.fromLTRB(10, 9, 8, 9),
-            decoration: compacta ? null : _caixa(),
+            decoration: compacta ? null : _caixa(_corSetor('${e['setor'] ?? ''}')),
             child: Row(children: [
               Hero(tag: 'logo-${e['ticker']}', child: logoAtivo(e['logo'], '${e['ticker']}', tam: compacta ? 38 : 44)),
               const SizedBox(width: 10),

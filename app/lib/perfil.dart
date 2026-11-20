@@ -328,6 +328,8 @@ class _PerfilTelaState extends State<PerfilTela> {
     final pct = ((nv['pct'] as num?) ?? 0).toDouble().clamp(0.0, 1.0);
     final falta = nv['maximo'] == true ? 'Nível máximo!' : 'faltam ${nv['falta'] ?? '—'} XP para o nível ${((nv['nivel'] as num?) ?? 0) + 1}';
     return _caixa(
+      cor: const Color(0xFFB54BFF),
+      marca: Icons.star_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -373,32 +375,43 @@ class _PerfilTelaState extends State<PerfilTela> {
     final rk = (d['ranking'] as Map?) ?? const {};
     final pat = d['patrimonio'] as num?;
     Widget item(IconData ic, Color cor, String v, String t) => Expanded(
-          child: Column(
-            children: [
-              Icon(ic, color: cor, size: 26),
-              const SizedBox(height: 2),
-              FittedBox(
-                child: Text(
-                  v,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [cor.withValues(alpha: 0.42), cor.withValues(alpha: 0.12)]),
+              border: Border.all(color: cor.withValues(alpha: 0.85), width: 1.5),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: cor.withValues(alpha: 0.25), boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 10)]),
+                  child: Icon(ic, color: cor, size: 24),
                 ),
-              ),
-              Text(t, style: const TextStyle(fontSize: 11, color: _lilas)),
-            ],
+                const SizedBox(height: 4),
+                FittedBox(
+                  child: Text(
+                    v,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
+                  ),
+                ),
+                FittedBox(child: Text(t, style: const TextStyle(fontSize: 11, color: Colors.white))),
+              ],
+            ),
           ),
         );
-    Widget sep() => const VerticalDivider(width: 1, thickness: 1, color: Color(0x596A4FE6));
     final of = (d['ofensiva'] as num?)?.toInt() ?? 0;
     return _caixa(
+      cor: const Color(0xFFFF8A3D),
       child: IntrinsicHeight(
         child: Row(
           children: [
             item(Icons.local_fire_department_rounded, const Color(0xFFFF8A3D), '$of ${of == 1 ? 'dia' : 'dias'}', 'Sequência'),
-            sep(),
             item(Icons.emoji_events_rounded, const Color(0xFFFFC93C), rk['pos'] == null ? '—' : '#${rk['pos']}', 'Ranking'),
-            sep(),
             item(Icons.toll_rounded, const Color(0xFFF2B84B), d['moedas'] == null ? '—' : _milhar(d['moedas'] as num), 'Ticker Coins'),
-            sep(),
             // sem carteira o patrimônio ficaria vazio: no lugar dele, as lições concluídas na Jornada
             pat == null
                 ? item(Icons.menu_book_rounded, const Color(0xFF26D07C), '${d['licoes'] ?? 0}', 'Lições')
@@ -416,12 +429,14 @@ class _PerfilTelaState extends State<PerfilTela> {
     final t = (jg['trade'] as Map?) ?? const {}, k = (jg['ticker'] as Map?) ?? const {};
     String pos(Object? p) => p == null ? '—' : '#$p';
     return _caixa(
+      cor: const Color(0xFF1FB5A6),
+      marca: Icons.insights_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.bar_chart_rounded, color: Color(0xFFB59BFF)),
+              Icon(Icons.bar_chart_rounded, color: Color(0xFF7FF5E6)),
               SizedBox(width: 6),
               Text(
                 'Desempenho',
@@ -445,7 +460,7 @@ class _PerfilTelaState extends State<PerfilTela> {
                       SizedBox(
                         width: 86,
                         height: 86,
-                        child: CircularProgressIndicator(value: v, strokeWidth: 9, backgroundColor: const Color(0x335B4BD6), color: const Color(0xFF26D07C), strokeCap: StrokeCap.round),
+                        child: CircularProgressIndicator(value: v, strokeWidth: 9, backgroundColor: const Color(0x557FF5E6), color: const Color(0xFF26D07C), strokeCap: StrokeCap.round),
                       ),
                       Column(
                         mainAxisSize: MainAxisSize.min,
@@ -535,6 +550,8 @@ class _PerfilTelaState extends State<PerfilTela> {
     final c = (d['conquistas'] as Map?) ?? const {};
     final med = ((c['medalhas'] as List?) ?? const []).cast<Map>();
     return _caixa(
+      cor: const Color(0xFFF2B84B),
+      marca: Icons.emoji_events_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -555,9 +572,38 @@ class _PerfilTelaState extends State<PerfilTela> {
             ],
           ),
           const SizedBox(height: 8),
-          if (med.isEmpty)
-            const Text('Conclua lições na Jornada para ganhar as primeiras medalhas.', style: TextStyle(color: _lilas))
-          else
+          if (med.isEmpty) ...[
+            // sem medalhas ainda: as próximas aparecem trancadas, para mostrar o que dá para ganhar
+            Row(children: [
+              for (final (i, e) in const ['🎓', '🔥', '📈', '🏆', '💎'].indexed)
+                Expanded(
+                  child: Center(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: Duration(milliseconds: 500 + 90 * i),
+                      curve: Curves.easeOutBack,
+                      builder: (ctx, v, f) => Transform.scale(scale: v, child: f),
+                      child: Stack(clipBehavior: Clip.none, children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const RadialGradient(colors: [Color(0xFF6B4A1E), Color(0xFF3A2410)]),
+                            border: Border.all(color: const Color(0x99F2B84B), width: 2),
+                          ),
+                          child: Opacity(opacity: 0.45, child: Text(e, style: const TextStyle(fontSize: 22))),
+                        ),
+                        const Positioned(right: -2, bottom: -2, child: Icon(Icons.lock_rounded, size: 16, color: Color(0xFFFFE08A))),
+                      ]),
+                    ),
+                  ),
+                ),
+            ]),
+            const SizedBox(height: 8),
+            const Text('Conclua lições na Jornada para ganhar as primeiras medalhas.', style: TextStyle(color: Colors.white)),
+          ] else
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -594,12 +640,14 @@ class _PerfilTelaState extends State<PerfilTela> {
   Widget _sobre(Map d) {
     final bio = '${d['bio'] ?? ''}';
     return _caixa(
+      cor: const Color(0xFFE0559E),
+      marca: Icons.format_quote_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.person_rounded, color: Color(0xFFB59BFF)),
+              Icon(Icons.person_rounded, color: Color(0xFFFFB3DA)),
               SizedBox(width: 6),
               Text(
                 'Sobre mim',
@@ -608,26 +656,31 @@ class _PerfilTelaState extends State<PerfilTela> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(bio.isEmpty ? 'Conte um pouco sobre você em Editar.' : bio, style: TextStyle(color: bio.isEmpty ? _lilas : Colors.white, height: 1.35)),
+          Text(bio.isEmpty ? 'Conte um pouco sobre você em Editar.' : bio, style: TextStyle(color: bio.isEmpty ? const Color(0xFFFFD6EC) : Colors.white, height: 1.35)),
         ],
       ),
     );
   }
 
   Widget _conta() {
-    Widget op(IconData ic, String t, VoidCallback f, {Color cor = Colors.white}) => Pressionavel(
+    Widget op(IconData ic, String t, VoidCallback f, Color tom, {Color cor = Colors.white}) => Pressionavel(
           aoTocar: f,
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFF6A4FE6), width: 1.5),
-              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2E1CA0), Color(0xFF1C0F78)]),
+              border: Border.all(color: tom.withValues(alpha: 0.8), width: 1.5),
+              gradient: LinearGradient(colors: [Color.lerp(tom, const Color(0xFF160B5E), 0.6)!, const Color(0xFF1C0F78)]),
             ),
             child: Row(
               children: [
-                Icon(ic, color: cor),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: tom.withValues(alpha: 0.3), border: Border.all(color: tom)),
+                  child: Icon(ic, color: Colors.white, size: 20),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -650,27 +703,35 @@ class _PerfilTelaState extends State<PerfilTela> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
           ),
         ),
-        op(Icons.edit_rounded, 'Editar perfil', () => _editar()),
-        op(Icons.lock_rounded, 'Privacidade', () => _editar(privacidade: true)),
+        op(Icons.edit_rounded, 'Editar perfil', () => _editar(), const Color(0xFF4F9BFF)),
+        op(Icons.lock_rounded, 'Privacidade', () => _editar(privacidade: true), const Color(0xFF26D07C)),
         op(Icons.storefront_rounded, 'Loja Ticker (molduras e temas)', () {
           Navigator.of(context).maybePop();
           abrirAba(4);
-        }),
-        if (widget.aoSair != null) op(Icons.logout_rounded, 'Sair da conta', _sair, cor: const Color(0xFFFF8FA3)),
+        }, const Color(0xFFF2B84B)),
+        if (widget.aoSair != null) op(Icons.logout_rounded, 'Sair da conta', _sair, const Color(0xFFFF5A7A), cor: const Color(0xFFFF8FA3)),
       ],
     );
   }
 }
 
-Widget _caixa({required Widget child}) => Container(
-      padding: const EdgeInsets.all(14),
+/// Caixa de cada bloco do perfil, cada uma com a sua cor (para a tela não ficar toda azul) e um ícone grande e apagado no canto.
+Widget _caixa({required Widget child, Color cor = const Color(0xFF6A4FE6), IconData? marca}) => Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF6A4FE6), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231388), Color(0xFF160B5E)]),
-        boxShadow: const [BoxShadow(color: Color(0x556A4FE6), blurRadius: 12)],
+        border: Border.all(color: cor.withValues(alpha: 0.9), width: 2),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.45)!, Color.lerp(cor, const Color(0xFF120850), 0.78)!],
+        ),
+        boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.35), blurRadius: 14)],
       ),
-      child: child,
+      child: Stack(children: [
+        if (marca != null) Positioned(right: -14, bottom: -18, child: Icon(marca, size: 110, color: Colors.white.withValues(alpha: 0.07))),
+        Padding(padding: const EdgeInsets.all(14), child: child),
+      ]),
     );
 
 /// Editar perfil: nome, nome de usuário, bio, avatar (Coleção de Avatares), moldura e tema da Loja e privacidade. Nada é gravado até Salvar.
