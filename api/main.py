@@ -1506,3 +1506,82 @@ def aprender_responder(r: RespostaApr, q: Quem = Depends(quem)) -> dict:
     res["tc"] = tc
     res["nivel_antes"], res["nivel_depois"] = NV.nivel_de(res["xp_antes"]), NV.nivel_de(res["xp_depois"])
     return {**out, "sessao": None, "exercicio": None, "fim": res}
+
+
+# ------------------------------------------------------------------ Mercado (botão Mercado da Home): Mercado hoje, busca e leitura de uma ação
+_MERC_CACHE: dict = {}
+
+
+def _merc_cache(chave: str, ttl: float, f):
+    """Guarda a resposta de `f()` por `ttl` segundos (cotações mudam devagar e as fontes limitam consultas). Falha não é guardada."""
+    agora = time.time()
+    c = _MERC_CACHE.get(chave)
+    if c and agora - c[0] < ttl:
+        return c[1]
+    v = f()
+    if v:
+        _MERC_CACHE[chave] = (agora, v)
+    return v
+
+
+def _merc_empresa(e: dict) -> dict:
+    return {"ticker": e["ticker"], "nome": e["nome"], "setor": e.get("setor"), "logo": _logo_ativo(e["ticker"])}
+
+
+@app.get("/mercado")
+def mercado(q: Quem = Depends(quem)) -> dict:
+    """Tela Mercado: Mercado hoje (Ibovespa, dólar, bitcoin e índice do medo), os tipos de ativo e as ações populares."""
+    import inicio_painel as IP
+    import mercado_api as MA
+    import recursos as R
+    try:
+        hoje = _merc_cache("hoje", 600, IP.mercado_hoje) or []
+    except Exception:
+        hoje = []
+    pop = [_merc_empresa(R.POR_TICKER[t]) for t in R.POPULARES if t in R.POR_TICKER]
+    return {"hoje": hoje, "tipos": [{"id": i, "titulo": t, "descricao": d, "pronto": p} for i, t, d, p in MA.TIPOS],
+            "populares": pop, "aviso": MA.AVISO}
+
+
+@app.get("/mercado/busca")
+def mercado_busca(texto: str = "", q: Quem = Depends(quem)) -> dict:
+    """Empresas do catálogo pelo nome, código ou setor (ex.: 'petro', 'VALE3', 'bancos')."""
+    import recursos as R
+    t = (texto or "").strip()[:40]
+    if len(t) < 2:
+        return {"itens": []}
+    return {"itens": [_merc_empresa(e) for e in R.buscar_catalogo(t, 12) if e.get("ticker") in R.POR_TICKER]}
+
+
+def _merc_tk(tk: str) -> str:
+    import recursos as R
+    t = (tk or "").upper().strip()
+    if t not in R.POR_TICKER:
+        raise HTTPException(404, "Essa ação ainda não está no Mercado do app.")
+    return t
+
+
+@app.get("/mercado/acao/{tk}")
+def mercado_acao(tk: str, q: Quem = Depends(quem)) -> dict:
+    """Leitura de uma ação: preço, variação do dia, gráfico de 1 ano, indicadores com faixas, preço justo (Graham e Bazin) e o resumo
+    em palavras simples. Contas do app antigo (mercado_api.py)."""
+    import mercado_api as MA
+    import recursos as R
+    t = _merc_tk(tk)
+    d = _merc_cache("acao:" + t, 900, lambda: MA.dados_acao(t))
+    if not d or not d.get("preco"):
+        raise HTTPException(424, "Não consegui os dados dessa ação agora. Tente de novo em instantes.")  # 424 e não 5xx: o app não fica repetindo
+    serie = _merc_cache("hist:" + t + ":1a", 900, lambda: MA.historico(t, "1a")) or []
+    d = {**d, "var_dia": MA.var_dia(serie)}
+    out = MA.montar_acao(t, d, R.POR_TICKER[t])
+    out["logo"] = _logo_ativo(t)
+    out["serie"] = serie
+    return out
+
+
+@app.get("/mercado/acao/{tk}/historico")
+def mercado_acao_historico(tk: str, periodo: str = "1a", q: Quem = Depends(quem)) -> dict:
+    import mercado_api as MA
+    t = _merc_tk(tk)
+    p = periodo if periodo in MA.PERIODOS else "1a"
+    return {"periodo": p, "serie": _merc_cache(f"hist:{t}:{p}", 900, lambda: MA.historico(t, p)) or []}
