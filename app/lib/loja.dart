@@ -118,51 +118,65 @@ class _LojaTelaState extends State<LojaTela> {
     final req = '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 30)}';
     await _acao(
       () => widget.api.post('/loja/comprar', {'pid': it['id'], 'req': req}),
-      (r) => _aviso = (true, r['duplicada'] == true ? 'Esta compra já tinha sido feita (nada foi cobrado de novo).' : 'Compra feita: ${it['nome']}! Já está na sua conta.'),
+      (r) => _aviso =
+          (true, r['duplicada'] == true ? 'Esta compra já tinha sido feita (nada foi cobrado de novo).' : 'Compra feita: ${it['nome']}! Já está na sua conta.'),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final d = _d;
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1A1258), Color(0xFF0D0A33)]),
-      ),
-      child: RefreshIndicator(
-        onRefresh: _carregar,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
-          children: [
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _titulo(),
-                    const SizedBox(height: 12),
-                    if (d == null && _erro != null) ...[
-                      _cartao(child: Text(_erro!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white))),
-                      const SizedBox(height: 8),
-                      FilledButton(onPressed: _carregar, child: const Text('Tentar de novo')),
-                    ] else if (d == null)
-                      const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
-                    else ...[
-                      _saldo(d),
+    // fundo da Loja (arte do Gabriel: touro, candles e moedas), parado atrás da página; um véu escuro no meio deixa os cartões legíveis
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: Color(0xFF0D0A33)),
+        Image.asset('assets/loja/fundo_loja.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x330D0A33), Color(0x800D0A33), Color(0x800D0A33), Color(0x260D0A33)],
+              stops: [0, 0.3, 0.75, 1],
+            ),
+          ),
+        ),
+        RefreshIndicator(
+          onRefresh: _carregar,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _titulo(),
                       const SizedBox(height: 12),
-                      _seletorAbas(),
-                      const SizedBox(height: 12),
-                      if (_aviso != null) ...[_faixaAviso(_aviso!), const SizedBox(height: 10)],
-                      ...switch (_aba) { 0 => _recompensas(d), 1 => _loja(d), _ => _extrato(d) },
+                      if (d == null && _erro != null) ...[
+                        _cartao(child: Text(_erro!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white))),
+                        const SizedBox(height: 8),
+                        FilledButton(onPressed: _carregar, child: const Text('Tentar de novo')),
+                      ] else if (d == null)
+                        const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+                      else ...[
+                        _saldo(d),
+                        const SizedBox(height: 12),
+                        _seletorAbas(),
+                        const SizedBox(height: 12),
+                        if (_aviso != null) ...[_faixaAviso(_aviso!), const SizedBox(height: 10)],
+                        ...switch (_aba) { 0 => _recompensas(d), 1 => _loja(d), _ => _extrato(d) },
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -225,7 +239,9 @@ class _LojaTelaState extends State<LojaTela> {
                 const SizedBox(height: 4),
                 GestureDetector(
                   onTap: () => setState(() => _aba = 0),
-                  child: const Text('Como ganhar?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _verde, decoration: TextDecoration.underline, decorationColor: _verde)),
+                  child: const Text('Como ganhar?',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _verde, decoration: TextDecoration.underline, decorationColor: _verde)),
                 ),
               ],
             ),
@@ -494,7 +510,8 @@ class _LojaTelaState extends State<LojaTela> {
       _secao('Histórico', Icons.history_rounded, const Color(0xFFB89CFF)),
       const SizedBox(height: 8),
       if (hist.isEmpty)
-        _cartao(child: const Text('Nenhuma movimentação ainda. Conclua uma lição na Jornada para ganhar suas primeiras moedas.', style: TextStyle(color: _lila)))
+        _cartao(
+            child: const Text('Nenhuma movimentação ainda. Conclua uma lição na Jornada para ganhar suas primeiras moedas.', style: TextStyle(color: _lila)))
       else
         for (final h in hist) ...[
           _linha(
@@ -517,7 +534,8 @@ class _LojaTelaState extends State<LojaTela> {
           if (pill != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x2218DB7C), border: Border.all(color: const Color(0x992EE59D))),
+              decoration:
+                  BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x2218DB7C), border: Border.all(color: const Color(0x992EE59D))),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.schedule, size: 14, color: _verde),
                 const SizedBox(width: 4),
@@ -546,7 +564,14 @@ class _LojaTelaState extends State<LojaTela> {
         },
       );
 
-  Widget _caixa({required Widget topo, required String nome, String sub = '', int? preco, required Widget botao, Color borda = const Color(0xFF5B4BD6), String etiqueta = ''}) =>
+  Widget _caixa(
+          {required Widget topo,
+          required String nome,
+          String sub = '',
+          int? preco,
+          required Widget botao,
+          Color borda = const Color(0xFF5B4BD6),
+          String etiqueta = ''}) =>
       Container(
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
         decoration: BoxDecoration(
@@ -568,7 +593,10 @@ class _LojaTelaState extends State<LojaTela> {
               ),
             SizedBox(height: 74, child: Center(child: topo)),
             const SizedBox(height: 6),
-            Text(nome, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
+            Text(nome,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, height: 1.15)),
             if (sub.isNotEmpty) Text(sub, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: _lila)),
             if (preco != null)
@@ -601,7 +629,9 @@ class _LojaTelaState extends State<LojaTela> {
               border: Border.all(color: cores.first == const Color(0x22FFFFFF) ? const Color(0x80C5B3FF) : const Color(0xD9FFD66B), width: 1.5),
               boxShadow: [BoxShadow(color: sombra, offset: const Offset(0, 4))],
             ),
-            child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis,
+            child: Text(t,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: f == null && texto == Colors.white ? _lila : texto)),
           ),
         ),
@@ -672,7 +702,10 @@ class _Previa extends StatelessWidget {
           width: 92,
           height: 62,
           padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: _cor(pl['fundo'], const Color(0xFF0D0A2E)), border: Border.all(color: _cor(pl['borda'], cor), width: 2)),
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: _cor(pl['fundo'], const Color(0xFF0D0A2E)),
+              border: Border.all(color: _cor(pl['borda'], cor), width: 2)),
           child: Column(
             children: [
               Container(height: 14, decoration: BoxDecoration(borderRadius: BorderRadius.circular(5), color: _cor(pl['cartao'], cor))),
@@ -755,8 +788,7 @@ class _ConfirmaCompra extends StatelessWidget {
             _Previa((item['previa'] as Map?)?.cast<String, dynamic>() ?? const {}),
             const SizedBox(height: 8),
             Text('${item['nome']}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
-            if ('${item['desc'] ?? ''}'.isNotEmpty)
-              Text('${item['desc']}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: _lila)),
+            if ('${item['desc'] ?? ''}'.isNotEmpty) Text('${item['desc']}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: _lila)),
             const SizedBox(height: 8),
             linha('Preço', '$preco TC'),
             linha('Seu saldo', '$saldo TC'),
@@ -764,14 +796,18 @@ class _ConfirmaCompra extends StatelessWidget {
             if (falta)
               const Padding(
                 padding: EdgeInsets.only(top: 6),
-                child: Text('Saldo insuficiente. Ganhe mais TC na Jornada ou no baú diário.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFFF8FA3))),
+                child: Text('Saldo insuficiente. Ganhe mais TC na Jornada ou no baú diário.',
+                    textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFFF8FA3))),
               ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 48,
               child: FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF2B84B), foregroundColor: const Color(0xFF2A1A00), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFF2B84B),
+                    foregroundColor: const Color(0xFF2A1A00),
+                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
                 onPressed: falta ? null : () => Navigator.of(context).pop(true),
                 child: const Text('Confirmar compra'),
               ),
