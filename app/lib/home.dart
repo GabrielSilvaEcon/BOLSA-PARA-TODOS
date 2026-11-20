@@ -7,6 +7,7 @@ import 'arte_cartao.dart';
 import 'carteira.dart';
 import 'cenario.dart';
 import 'mercado.dart';
+import 'missoes.dart';
 import 'navegacao.dart';
 
 /// Tela inicial no formato da referência do TickerHunters (a mesma ordem da Home do app antigo, home_game.py):
@@ -278,7 +279,7 @@ class _HomeTelaState extends State<HomeTela> {
     final fim = total > 0 && feitas >= total;
     final sub = total == 0 ? 'Sem missões disponíveis agora.' : (fim ? 'Missões de hoje concluídas!' : 'Complete desafios e ganhe recompensas!');
     return Pressionavel(
-      aoTocar: () => abrirAba(2),
+      aoTocar: () => _abrir(MissoesTela(api: widget.api)),
       child: Container(
         height: 96,
         clipBehavior: Clip.antiAlias,
