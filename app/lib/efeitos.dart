@@ -11,7 +11,7 @@ const corRaridade = {'comum': Color(0xFF9FB2C8), 'raro': Color(0xFF4DA3FF), 'epi
 /// Carrega antes as imagens da comemoração (para o baú não aparecer em branco no primeiro quadro).
 void precarregarEfeitos(BuildContext context) {
   for (final a in ['assets/loja/bau_comum.webp', 'assets/loja/bau_raro.webp', 'assets/loja/bau_epico.webp', 'assets/loja/bau_lendario.webp',
-    'assets/loja/tc.webp', 'assets/mascote.webp']) {
+    'assets/loja/tc.webp']) {
     precacheImage(AssetImage(a), context);
   }
 }
@@ -24,7 +24,7 @@ double _faixa(double t, double a, double b) => ((t - a) / (b - a)).clamp(0.0, 1.
 /// Baú abrindo DENTRO do cartão, com o "Você ganhou!" fazendo parte da animação (sem pop-up):
 ///   1. o baú treme e a luz da raridade vaza por trás;
 ///   2. clarão, os raios começam a girar e moedas e brilhos explodem para fora;
-///   3. o baú encolhe para o canto, "Você ganhou!" aparece, o mascote pula e o prêmio entra com o número subindo;
+///   3. o baú vai para a esquerda, "Você ganhou!" aparece e o prêmio entra à direita com a moeda girando e o número subindo;
 ///   4. por último, o nome do baú e a raridade.
 /// [animar] falso (baú já aberto antes) mostra o resultado parado, só com os raios girando devagar.
 class BauAnimado extends StatefulWidget {
@@ -94,7 +94,6 @@ class _BauAnimadoState extends State<BauAnimado> with TickerProviderStateMixin {
         final explode = _faixa(t, 0.32, 0.80);
         final recua = Curves.easeInOutCubic.transform(_faixa(t, 0.40, 0.58));
         final titulo = Curves.elasticOut.transform(_faixa(t, 0.46, 0.70));
-        final mascote = Curves.easeOutBack.transform(_faixa(t, 0.54, 0.74));
         final premio = Curves.easeOutCubic.transform(_faixa(t, 0.62, 0.82));
         final numero = Curves.easeOutExpo.transform(_faixa(t, 0.64, 0.92));
         final nome = Curves.easeOutBack.transform(_faixa(t, 0.82, 0.98));
@@ -155,9 +154,9 @@ class _BauAnimadoState extends State<BauAnimado> with TickerProviderStateMixin {
                       child: LayoutBuilder(
                         builder: (ctx, c) {
                           final w = c.maxWidth;
-                          // o baú começa no meio e vai para a esquerda, menor; o mascote e o prêmio ocupam o lugar
-                          final bauX = w / 2 - (w / 2 - w * 0.17) * recua;
-                          final bauEscala = (0.85 + 0.25 * treme + 0.2 * clarao) * (1 - 0.42 * recua);
+                          // o baú começa no meio e vai para a esquerda; o prêmio entra à direita (os dois lado a lado, centralizados)
+                          final bauX = w / 2 - (w / 2 - w * 0.33) * recua;
+                          final bauEscala = (0.85 + 0.25 * treme + 0.2 * clarao) * (1 - 0.12 * recua);
                           final balanco = treme < 1 ? sin(t * 70) * 0.10 * treme : 0.0;
                           return Stack(
                             clipBehavior: Clip.none,
@@ -184,20 +183,11 @@ class _BauAnimadoState extends State<BauAnimado> with TickerProviderStateMixin {
                                   child: Transform.scale(scale: bauEscala, child: Image.asset('assets/loja/bau_$_r.webp', width: 120, height: 120)),
                                 ),
                               ),
-                              // mascote comemorando (pula do chão)
-                              Positioned(
-                                left: w * 0.30,
-                                top: 18 + 40 * (1 - mascote),
-                                child: Opacity(
-                                  opacity: mascote.clamp(0.0, 1.0),
-                                  child: Transform.scale(scale: 0.5 + 0.5 * mascote, child: Image.asset('assets/mascote.webp', height: 140)),
-                                ),
-                              ),
                               // prêmio: moeda girando e número subindo
                               Positioned(
-                                right: 0,
-                                top: 40,
-                                width: w * 0.38,
+                                left: w * 0.67 - w * 0.17,
+                                top: 22,
+                                width: w * 0.34,
                                 child: Opacity(
                                   opacity: premio,
                                   child: Transform.translate(
@@ -207,13 +197,13 @@ class _BauAnimadoState extends State<BauAnimado> with TickerProviderStateMixin {
                                         Transform(
                                           alignment: Alignment.center,
                                           transform: Matrix4.identity()..rotateY((1 - numero) * pi * 4),
-                                          child: Image.asset('assets/loja/tc.webp', height: 44),
+                                          child: Image.asset('assets/loja/tc.webp', height: 56),
                                         ),
                                         FittedBox(
                                           child: Text(
                                             '+${(widget.valor * numero).round()}',
                                             style: const TextStyle(
-                                              fontSize: 34,
+                                              fontSize: 44,
                                               fontWeight: FontWeight.w900,
                                               color: Color(0xFFFFD66B),
                                               shadows: [Shadow(color: Color(0x88000000), offset: Offset(0, 2))],
