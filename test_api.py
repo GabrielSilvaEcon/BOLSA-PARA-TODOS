@@ -414,3 +414,37 @@ def test_perfil_ver_editar_e_avatar(cli):
     if bloq:
         assert cli.post("/perfil", json={"avatar": bloq["id"]}).status_code == 400       # avatar bloqueado não é equipado
     assert cli.post("/perfil", json={"privacidade": {"visivel": "amigos", "mostrar_bio": False}}).json()["privacidade"]["visivel"] == "amigos"
+
+
+def _resposta_certa(ex):
+    import jornada_conteudo as JC
+    e = JC.EX_POR_ID[ex["id"]]
+    t = e["tipo"]
+    if t in ("escolha", "completar"):
+        return e["correta"]
+    if t == "vf":
+        return e["correta"]
+    if t == "ordenar":
+        return list(e["itens"])
+    return {a: b for a, b in e["pares"]}
+
+
+def test_aprender_licao_inteira(cli):
+    m = cli.get("/aprender").json()
+    lic = m["mapa"][0]["licoes"][0]
+    assert lic["estado"] == "proxima" and m["resumo"]["xp"] == 0
+    assert cli.get(f"/aprender/aula/{lic['aula']}").json()["texto"]
+    e = cli.post(f"/aprender/licao/{lic['id']}").json()["exercicio"]
+    assert "correta" not in e and "pares" not in e                         # a resposta nunca vai para a tela
+    errado = {"escolha": 99, "completar": 99, "vf": "x", "ordenar": [], "pares": {}}[e["tipo"]]
+    r = cli.post("/aprender/responder", json={"id": e["id"], "resposta": errado}).json()
+    assert r["ok"] is False and r["certa"] and r["exercicio"]                # errou: a pergunta volta para o fim da fila
+    assert cli.post("/aprender/responder", json={"id": e["id"], "resposta": errado}).status_code == 409   # já respondida
+    while r.get("exercicio"):
+        r = cli.post("/aprender/responder", json={"id": r["exercicio"]["id"], "resposta": _resposta_certa(r["exercicio"])}).json()
+    f = r["fim"]
+    assert f["xp"] == 10 and not f["perfeita"] and f["ofensiva"] == 1        # 10 XP (sem bônus de perfeita), 1º dia de sequência
+    m2 = cli.get("/aprender").json()
+    assert m2["resumo"]["xp"] == 10 and m2["resumo"]["erros"] == 1 and m2["mapa"][0]["licoes"][0]["estado"] == "concluida"
+    rv = cli.post("/aprender/licao/revisao").json()["exercicio"]           # o que errou entra na revisão
+    assert rv["id"] == e["id"]
