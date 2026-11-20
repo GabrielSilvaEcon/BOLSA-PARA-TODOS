@@ -186,3 +186,35 @@ def test_tela_do_ranking(cli):
     assert all("email" not in x for x in d["linhas"])                       # nunca manda e-mail
     assert cli.get("/ranking/ticker/tela").status_code == 200
     assert cli.get("/ranking/xadrez/tela").status_code == 404
+
+
+def test_sala_com_dois_jogadores_do_comeco_ao_fim(cli, monkeypatch):
+    import banco
+    import contas
+    from test_perfil_foto import _contas
+    t = {"agora": 4_000_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    _contas(banco, "bia@x.com")
+    banco.sis_atualizar_conta("id-bia@x.com", {"status": "ativa"})
+    bia = TestClient(API.app)
+    bia.headers["Authorization"] = f"Bearer {contas.criar_sessao('id-bia@x.com')}"
+    sala = cli.post("/trade/salas", json={"corrida": "rapida"})
+    assert sala.status_code == 200, sala.text
+    pid = sala.json()["id"]
+    espera = cli.get(f"/trade/salas/{pid}").json()
+    assert espera["estado"] == "sala" and espera["sala"]["criador"] and espera["sala"]["n"] == 1
+    assert bia.post("/trade/salas/entrar", json={"codigo": espera["sala"]["codigo"]}).status_code == 200
+    assert bia.post(f"/trade/salas/{pid}/iniciar").status_code == 400                # só o criador inicia
+    r = cli.post(f"/trade/salas/{pid}/iniciar")
+    assert r.status_code == 200, r.text
+    assert r.json()["estado"] == "jogo" and r.json()["tela"]["multi"] is True
+    for c in (cli, bia):
+        assert c.post(f"/trade/salas/{pid}/estrategia", json={"direcao": "alta"}).status_code == 200
+    t["agora"] += 10
+    r = cli.post(f"/trade/salas/{pid}/acao", json={"dados": {"aid": "s1", "tipo": "mercado", "direcao": "alta", "q": 50}})
+    assert r.status_code == 200, r.text
+    t["agora"] += TB.CORRIDAS["rapida"]["n_replay"] * TB.SEG_POR_CANDLE + 60
+    fim = cli.get(f"/trade/salas/{pid}").json()
+    assert fim["fase"] == "fim" and fim["fim"]["xp"]["status"] in ("pago", "zero", "limite")
+    rel = cli.get(f"/trade/salas/{pid}/relatorio")
+    assert rel.status_code == 200 and "Raio-X" in rel.json()["html"]

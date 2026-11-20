@@ -8,12 +8,15 @@ import 'mesa/mesa_host.dart';
 import 'navegacao.dart';
 
 /// Partida solo do Trade Battle. A mesa (gráfico, boleta, placar) é a MESMA do app antigo; aqui o app só faz a ponte com o servidor:
-/// cria a partida (`POST /trade/solo`), consulta o andamento a cada segundo (`GET /trade/solo/{id}`) e manda as jogadas
+/// cria a partida (`POST /trade/solo`) ou entra na da sala (`/trade/salas/{id}`), consulta o andamento a cada segundo e manda as jogadas
 /// (`/estrategia` e `/acao`). No fim, abre o relatório da partida (o mesmo do app antigo).
 class PartidaTela extends StatefulWidget {
-  const PartidaTela({super.key, required this.api, required this.corrida});
+  const PartidaTela({super.key, required this.api, this.corrida = 'intermediaria', this.salaId});
   final Api api;
   final String corrida;
+
+  /// Partida de uma sala com amigos (já criada e iniciada). Sem ela, é a partida solo.
+  final String? salaId;
 
   @override
   State<PartidaTela> createState() => _PartidaTelaState();
@@ -57,8 +60,9 @@ class _PartidaTelaState extends State<PartidaTela> {
 
   Future<void> _iniciar() async {
     try {
-      final r = await widget.api.post('/trade/solo', {'corrida': widget.corrida});
-      if (mounted) setState(() => _pid = r['id']?.toString());
+      final sala = widget.salaId;
+      final r = sala == null ? await widget.api.post('/trade/solo', {'corrida': widget.corrida}) : await widget.api.get('/trade/salas/$sala');
+      if (mounted) setState(() => _pid = sala ?? r['id']?.toString());
       _aplicar(r);
       _relogio = Timer.periodic(const Duration(seconds: 1), (_) => _consultar());
     } catch (e) {
@@ -66,11 +70,14 @@ class _PartidaTelaState extends State<PartidaTela> {
     }
   }
 
+  /// Endereço da partida no servidor: solo ou sala.
+  String get _base => widget.salaId == null ? '/trade/solo/$_pid' : '/trade/salas/$_pid';
+
   Future<void> _consultar() async {
     if (_ocupado || _pid == null || _fim) return;
     _ocupado = true;
     try {
-      _aplicar(await widget.api.get('/trade/solo/$_pid'));
+      _aplicar(await widget.api.get(_base));
     } catch (_) {
       // falha de rede passageira: tenta de novo no próximo segundo
     } finally {
@@ -80,6 +87,11 @@ class _PartidaTelaState extends State<PartidaTela> {
 
   /// Manda o estado do servidor para a mesa desenhar, com o retorno das jogadas já tratadas.
   void _aplicar(Map<String, dynamic> r) {
+    if (r['estado'] == 'cancelada') {
+      _relogio?.cancel();
+      if (mounted) setState(() => _erroInicio = 'A sala foi cancelada.');
+      return;
+    }
     final tela = r['tela'];
     if (tela is Map) {
       final args = Map<String, dynamic>.from(tela);
@@ -126,10 +138,10 @@ class _PartidaTelaState extends State<PartidaTela> {
       final Map<String, dynamic> r;
       if (ev == 'confirmar') {
         final plano = (v['plano'] as Map?) ?? {'direcao': v['direcao'], 'tipo': v['tipo']};
-        r = await widget.api.post('/trade/solo/$_pid/estrategia', {'direcao': plano['direcao'], 'tipo': plano['tipo']});
+        r = await widget.api.post('$_base/estrategia', {'direcao': plano['direcao'], 'tipo': plano['tipo']});
         _seqOk = seq;
       } else {
-        r = await widget.api.post('/trade/solo/$_pid/acao', {'dados': v['dados'] ?? {}});
+        r = await widget.api.post('$_base/acao', {'dados': v['dados'] ?? {}});
       }
       _erro = '';
       _seqTratada = seq;
@@ -148,7 +160,7 @@ class _PartidaTelaState extends State<PartidaTela> {
     if (_pid == null || _relatorioAberto) return;
     String html;
     try {
-      html = (await widget.api.get('/trade/solo/$_pid/relatorio'))['html']?.toString() ?? '';
+      html = (await widget.api.get('$_base/relatorio'))['html']?.toString() ?? '';
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
       return;
@@ -241,14 +253,21 @@ class _PartidaTelaState extends State<PartidaTela> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12A83C)),
-                      onPressed: () => Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: widget.corrida)),
-                      ),
-                      icon: const Icon(Icons.replay),
-                      label: const Text('Jogar de novo'),
-                    ),
+                    child: widget.salaId == null
+                        ? FilledButton.icon(
+                            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12A83C)),
+                            onPressed: () => Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: widget.corrida)),
+                            ),
+                            icon: const Icon(Icons.replay),
+                            label: const Text('Jogar de novo'),
+                          )
+                        : FilledButton.icon(
+                            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12A83C)),
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            icon: const Icon(Icons.home),
+                            label: const Text('Voltar ao Trade Battle'),
+                          ),
                   ),
                 ],
               ),
