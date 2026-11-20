@@ -49,6 +49,9 @@ class MesaHost {
     _c.runJavaScript("window.postMessage({type:'streamlit:render',args:${jsonEncode(args)}},'*');");
   }
 
+  /// No celular a tela do app por cima da WebView já recebe os toques (nada a fazer).
+  void toques(bool ligados) {}
+
   void fechar() {}
 }
 

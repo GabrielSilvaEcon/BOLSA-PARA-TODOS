@@ -257,3 +257,36 @@ def test_loja_bau_compra_e_usa(cli):
     if eqp:
         assert cli.post("/loja/equipar", json={"pid": eqp["id"], "tipo": eqp["kind"]}).status_code == 200
         assert next(it for it in cli.get("/loja").json()["itens"] if it["id"] == eqp["id"])["em_uso"]
+
+
+def test_estrategia_guarda_os_desenhos(cli):
+    pid = cli.post("/trade/solo", json={"corrida": "rapida"}).json()["id"]
+    marcas = {"niveis": [{"preco": 25.4, "rotulo": "Suporte", "papel": "suporte"}, {"preco": 27.0, "papel": "inventado"}],
+              "tendencias": [{"i1": 10, "p1": 25.0, "i2": 40, "p2": 26.0}],
+              "zonas": [{"i1": 50, "i2": 30, "p1": 26.2, "p2": 25.8, "reacao": "alta"}, {"i1": 1, "i2": 2, "p1": 1, "p2": 2, "reacao": "?"}],
+              "notas": [{"i": 5, "preco": 25.5, "texto": "fundo duplo"}]}
+    r = cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta", "marcas": marcas})
+    assert r.status_code == 200, r.text
+    m = r.json()["tela"]["inicial"]["marcas"]
+    assert m["niveis"][0]["papel"] == "suporte" and "papel" not in m["niveis"][1]          # papel desconhecido é descartado
+    assert m["zonas"] == [{"i1": 30, "i2": 50, "p1": 25.8, "p2": 26.2, "reacao": "alta"}]   # zona inválida é descartada
+    assert m["tendencias"] and m["notas"][0]["texto"] == "fundo duplo"
+
+
+def test_desenhos_sao_avaliados_no_fim(cli, monkeypatch):
+    t = {"agora": 1_000_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    r = cli.post("/trade/solo", json={"corrida": "rapida"}).json()
+    pid, ref = r["id"], r["tela"]["candles"][-1]["c"]
+    marcas = {"niveis": [{"preco": round(ref * 1.001, 2), "papel": "alvo"}, {"preco": round(ref * 0.5, 2), "papel": "suporte"}]}
+    cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta", "marcas": marcas})
+    t["agora"] += 5
+    cli.post(f"/trade/solo/{pid}/acao", json={"dados": {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 50}})
+    t["agora"] += TB.CORRIDAS["rapida"]["n_replay"] * TB.SEG_POR_CANDLE + 5
+    fim = cli.get(f"/trade/solo/{pid}").json()
+    lt = fim["fim"]["resultado"]["leitura"]
+    assert [x["papel"] for x in lt["itens"]] == ["alvo", "suporte"]
+    assert lt["itens"][1]["ok"] is None                                    # suporte muito longe: o preço não chegou, não conta
+    assert lt["avaliados"] == 1 and lt["nota"] in (0.0, 100.0)
+    html = cli.get(f"/trade/solo/{pid}/relatorio").json()["html"]
+    assert "Seus desenhos" in html

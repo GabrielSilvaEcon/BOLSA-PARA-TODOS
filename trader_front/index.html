@@ -453,11 +453,13 @@ function rsi(c,n){const o=c.map(()=>null);if(c.length<=n)return o;let g=0,l=0;
   for(let i=1;i<=n;i++){const d=c[i].c-c[i-1].c;if(d>=0)g+=d;else l-=d}g/=n;l/=n;
   o[n]=l===0?100:100-100/(1+g/l);
   for(let i=n+1;i<c.length;i++){const d=c[i].c-c[i-1].c;g=(g*(n-1)+(d>0?d:0))/n;l=(l*(n-1)+(d<0?-d:0))/n;o[i]=l===0?100:100-100/(1+g/l)}return o}
+function copiaMarcas(m){return {niveis:(m.niveis||[]).map(x=>({...x})),tendencias:(m.tendencias||[]).map(x=>({...x})),notas:(m.notas||[]).map(x=>({...x})),zonas:(m.zonas||[]).map(x=>({...x}))}}
+const COR_PAPEL={suporte:"#26D07C",resistencia:"#FF4D6D",rompimento:"#F2B84B",alvo:"#38B6FF"};
 function novoEstado(a){
   const ini=a.inicial||{},m=ini.marcas||{};
   const s={dir:ini.direcao==="alta"||ini.direcao==="baixa"?ini.direcao:null,tipo:TIPOS.includes(ini.tipo)?ini.tipo:"continuacao",conf:ini.confianca||3,
     lines:{entrada:ini.entrada??null,stop:ini.stop??null,alvo:ini.alvo??null},
-    marcas:{niveis:(m.niveis||[]).map(x=>({...x})),tendencias:(m.tendencias||[]).map(x=>({...x})),notas:(m.notas||[]).map(x=>({...x}))},
+    marcas:copiaMarcas(m),
     ind:{vol:true,sma:true,ema:false,rsi:false,sr:false},tool:null,pend:null,notaPend:null,cw:0,off:0,seq:0,sentSeq:0,sentSig:null,savedSig:null,erroLocal:"",locked:false,timeoutSent:false,fila:[],fT:0,fStep:300};
   return s;
 }
@@ -481,7 +483,7 @@ function transicao(a){   // mudou de fase/rodada: o gráfico, o zoom e os desenh
   const velho=S.modo,nova=S.rodada!==a.rodada;
   S.fk=a.fase_key;S.modo=a.modo;S.locked=false;S.timeoutSent=false;$("app").classList.remove("locked");S.tool=null;S.pend=null;
   if(nova){S.savedSig=null;S.sentSig=null;S.erroLocal="";S.notaPend=null;$("nota").style.display="none";$("mais").style.display="none";S.rodada=a.rodada;aplicaOp({})}
-  if(a.modo!=="analise")aplicaOp(a);
+  if(a.modo!=="analise"){aplicaOp(a);const im=a.inicial&&a.inicial.marcas;if(im&&["niveis","tendencias","notas","zonas"].some(k=>(im[k]||[]).length))S.marcas=copiaMarcas(im)}   // desenhos feitos na estratégia (app) seguem visíveis no gráfico andando
   if(a.modo==="analise"&&a.inicial&&a.inicial.tipo){aplicaOp(a);S.savedSig=sig()}
   cresce(a);modoClasses();
   if(a.modo!=="analise"){S.follow=true;if(velho==="analise"){S.domNovo=true;zoomReplay()}}
@@ -612,7 +614,10 @@ function draw(){
   if(Ln.entrada!=null&&Ln.stop!=null){ctx.fillStyle="rgba(255,77,109,.10)";const a=L.y(Ln.entrada),b=L.y(Ln.stop);ctx.fillRect(0,Math.min(a,b),L.pw,Math.abs(b-a))}
   if(Ln.entrada!=null&&Ln.alvo!=null){ctx.fillStyle="rgba(38,208,124,.10)";const a=L.y(Ln.entrada),b=L.y(Ln.alvo);ctx.fillRect(0,Math.min(a,b),L.pw,Math.abs(b-a))}
   // marcações de análise
-  for(const n of S.marcas.niveis)hline(n.preco,COR.niv,[3,3],n.rotulo||"");
+  for(const z of S.marcas.zonas||[]){const up=z.reacao==="alta",c=up?"38,208,124":"255,77,109",x=Math.max(0,L.x(z.i1)-S.cw/2),y1=L.y(z.p2),y2=L.y(z.p1);
+    ctx.fillStyle=`rgba(${c},.14)`;ctx.fillRect(x,y1,L.pw-x,y2-y1);ctx.strokeStyle=`rgba(${c},.8)`;ctx.lineWidth=1.2;ctx.strokeRect(x,y1,L.pw-x,y2-y1);
+    ctx.font="bold 10px system-ui";ctx.textAlign="left";ctx.textBaseline="middle";ctx.fillStyle=`rgb(${c})`;ctx.fillText(up?"▲ zona":"▼ zona",x+5,y1+9)}
+  for(const n of S.marcas.niveis)hline(n.preco,COR_PAPEL[n.papel]||COR.niv,n.papel==="rompimento"?[8,4]:(n.papel?[]:[3,3]),(n.rotulo||"").toUpperCase());
   for(const t of S.marcas.tendencias){const x1=L.x(t.i1),y1=L.y(t.p1),x2=L.x(t.i2),y2=L.y(t.p2),k=(y2-y1)/((x2-x1)||1);
     ctx.strokeStyle=COR.niv;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(L.pw,y1+k*(L.pw-x1));ctx.stroke()}
   if(S.pend){const x=L.x(S.pend.i),y=L.y(S.pend.p);ctx.fillStyle=COR.niv;ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fill()}

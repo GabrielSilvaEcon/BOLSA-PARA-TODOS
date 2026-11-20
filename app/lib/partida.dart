@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'api.dart';
+import 'estrategia.dart';
 import 'mesa/mesa_host.dart';
 import 'navegacao.dart';
 
@@ -32,6 +33,9 @@ class _PartidaTelaState extends State<PartidaTela> {
   bool _ocupado = false;
   bool _fim = false;
   bool _relatorioAberto = false;
+
+  /// Fase da estratégia na partida corrida: o app mostra o gráfico próprio com as ferramentas de desenho (a mesa fica por baixo).
+  bool _estrategia = false;
 
   // o que a mesa precisa saber das jogadas já tratadas (no Streamlit vinha do "estado" da sessão)
   int _seqTratada = 0;
@@ -102,6 +106,9 @@ class _PartidaTelaState extends State<PartidaTela> {
       args['erro_seq'] = _seqErro;
       _ultima = args;
       _mesa.desenhar(args);
+      final est = args['modo'] == 'analise' && args['corrida'] == true;
+      if (est != _estrategia) _mesa.toques(!est);
+      if (mounted && (est || est != _estrategia)) setState(() => _estrategia = est);
     }
     if (r['fim'] != null && !_fim) {
       _fim = true;
@@ -237,6 +244,16 @@ class _PartidaTelaState extends State<PartidaTela> {
       body: Stack(
         children: [
           Positioned.fill(child: SafeArea(child: _mesa.widget())),
+          if (_estrategia && _ultima != null && _pid != null)
+            Positioned.fill(
+              child: EstrategiaView(
+                api: widget.api,
+                base: _base,
+                args: _ultima!,
+                aoResponder: _aplicar,
+                aoVoltar: () => Navigator.of(context).maybePop(),
+              ),
+            ),
           if (_pid == null) const Positioned.fill(child: _Carregando()),
           if (_fim)
             Positioned(
