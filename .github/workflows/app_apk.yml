@@ -40,6 +40,10 @@ jobs:
           flutter pub get
           dart run flutter_launcher_icons            # ícone do TickerHunters (app/icone/icone.png)
           flutter analyze --no-fatal-infos
+      - name: Chave fixa do APK de teste
+        # Sempre a MESMA chave (app/assinatura/teste.keystore, chave de teste no padrão "debug" do Android, sem valor secreto):
+        # assim o celular aceita instalar a versão nova por cima da antiga. A versão da Play Store terá outra chave, guardada em segredo.
+        run: mkdir -p ~/.android && cp app/assinatura/teste.keystore ~/.android/debug.keystore
       - name: Compilar APK
         working-directory: app
         env:
