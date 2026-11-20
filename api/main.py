@@ -692,6 +692,18 @@ def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -
             banco.jogos_placar_gravar(q.ator, doc)
     except Exception as e:
         banco.registrar_erro("api.registrar_ranking", e)
+    try:                                                   # histórico pessoal (solo e online), só para o jogador ver suas partidas
+        import historico_jogos as HJ
+        meu = next(x for x in fz["placar"] if x["voce"])
+        n = len(fz["placar"])
+        fin = (res or {}).get("fin") or {}
+        doc, mudou = HJ.anotar_trade(banco.sis_estado_ler(q.email, HJ.CHAVE_TRADE), pid, time.strftime("%Y-%m-%d %H:%M"), n, meu["pontos"],
+                                     meu["pos"] if n > 1 else None, TB.cfg_de(p).get("formato") or "", fin.get("pnl"), fin.get("pct_aposta"),
+                                     (res or {}).get("qualidade_nota"))
+        if mudou:
+            banco.sis_estado_gravar(q.email, HJ.CHAVE_TRADE, doc)
+    except Exception as e:
+        banco.registrar_erro("api.historico_trade", e)
 
 
 # ------------------------------------------------------------------ Trade Battle · solo
@@ -1654,3 +1666,48 @@ def home(q: Quem = Depends(quem)) -> dict:
     except Exception:
         cen = None
     return {"hoje": hoje[:4], "missoes": miss, "cenario": cen}
+
+
+# ------------------------------------------------------------------ Histórico de partidas e Missões
+@app.get("/jogos/historico")
+def jogos_historico(q: Quem = Depends(quem)) -> dict:
+    """Todas as partidas do jogador nos dois jogos (solo e online), da mais nova para a mais antiga (historico_jogos.py)."""
+    import battle_dados as BD
+    import historico_jogos as HJ
+    try:
+        trade = banco.sis_estado_ler(q.email, HJ.CHAVE_TRADE)
+    except Exception:
+        trade = {}
+    try:
+        placar = J.sanear(banco.jogos_placar_ler(q.ator))
+    except Exception:
+        placar = {}
+    try:
+        tk = BD.ler_pessoa(banco, q.email).get("hist") or []
+    except Exception:
+        tk = []
+    return HJ.montar(trade, placar, tk)
+
+
+@app.get("/missoes")
+def missoes(q: Quem = Depends(quem)) -> dict:
+    """Todas as missões: as de estudo (do dia e o desafio da semana, jogar.py) e as da carteira (do dia, da semana e especiais,
+    wallet_game.py). Só leitura: quem conclui e paga é o próprio jogo, como no app antigo."""
+    import jogar
+    out = {"estudo": None, "carteira": [], "regra": jogar.REGRA}
+    try:
+        prog = ED.normalizar((banco.ler_dados(q.ator, q.email) or {}).get("edu_progresso"))
+        r = jogar.resumo(prog)
+        out["estudo"] = {"dia": r["missoes"], "semana": r["semanal"], "pontos": r["pontos"], "ofensiva": r["ofensiva"], "xp_hoje": r["xp_hoje"]}
+    except Exception as e:
+        banco.registrar_erro("api.missoes_estudo", e)
+    try:
+        import wallet_game as W
+        res = W.avaliar(q.email, q.conta.get("id"), registrar_visita=False)
+        for m in res.get("missoes") or []:
+            out["carteira"].append({"id": m.get("id"), "periodo": m.get("periodo"), "nome": m.get("nome"), "descricao": m.get("descricao"),
+                                    "objetivo": m.get("objetivo"), "progresso": m.get("progresso") or 0, "meta": m.get("meta") or 1,
+                                    "feita": bool(m.get("feita")), "recompensa": m.get("recompensa") or {}})
+    except Exception as e:
+        banco.registrar_erro("api.missoes_carteira", e)
+    return out

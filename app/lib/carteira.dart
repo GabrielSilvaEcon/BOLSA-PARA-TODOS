@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'compra.dart';
+import 'missoes.dart';
 
 /// Carteira igual à do app antigo (carteira_game.py + carteira_visual.py), com as mesmas medidas e cores:
 ///   1. cartão "Carteira" com o valor total e a variação desde o último fechamento
@@ -240,8 +241,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
             Expanded(child: _botaoJogo('Comprar', Icons.shopping_cart_outlined, const [Color(0xFF38E26B), Color(0xFF12A83C)], const Color(0xFF0B7A2B), () => _abrirCompra('C'))),
             const SizedBox(width: 12),
             Expanded(
-              child: _botaoJogo('Vender', Icons.north_east, const [Color(0xFFFF5B5B), Color(0xFFD61F2C)], const Color(0xFFA0121D),
-                  temPos ? () => _abrirCompra('V') : null),
+              child: _botaoJogo('Vender', Icons.north_east, const [Color(0xFFFF5B5B), Color(0xFFD61F2C)], const Color(0xFFA0121D), temPos ? () => _abrirCompra('V') : null),
             ),
           ],
         ),
@@ -438,9 +438,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                icone.startsWith('assets/')
-                    ? Image.asset(icone, height: 24, fit: BoxFit.contain)
-                    : Text(icone, style: const TextStyle(fontSize: 19, height: 1)),
+                icone.startsWith('assets/') ? Image.asset(icone, height: 24, fit: BoxFit.contain) : Text(icone, style: const TextStyle(fontSize: 19, height: 1)),
                 const SizedBox(height: 2),
                 Text(rotulo, maxLines: 1, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: _branco)),
               ],
@@ -515,9 +513,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
 
   Widget _vazio() {
     final rotulo = _abas.firstWhere((a) => a.$1 == _aba).$2;
-    final texto = _aba == null
-        ? 'Nenhum ativo ainda. Todo o seu capital está disponível: toque em Comprar para começar.'
-        : 'Você ainda não tem $rotulo. Toque em Comprar para escolher.';
+    final texto = _aba == null ? 'Nenhum ativo ainda. Todo o seu capital está disponível: toque em Comprar para começar.' : 'Você ainda não tem $rotulo. Toque em Comprar para escolher.';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
       decoration: BoxDecoration(
@@ -568,26 +564,20 @@ class _CarteiraTelaState extends State<CarteiraTela> {
                       border: Border.all(color: cor.withValues(alpha: 0.6)),
                       boxShadow: const [BoxShadow(color: Color(0x80000000), blurRadius: 4, offset: Offset(0, 2))],
                     ),
-                    child: logo is String
-                        ? Image.asset('assets/logos/$logo', width: 24, height: 24, fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => _iconeClasse(classe))
-                        : _iconeClasse(classe),
+                    child: logo is String ? Image.asset('assets/logos/$logo', width: 24, height: 24, fit: BoxFit.contain, errorBuilder: (_, __, ___) => _iconeClasse(classe)) : _iconeClasse(classe),
                   ),
-                  Text(codigo, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12.8, height: 1.1, fontWeight: FontWeight.w900, color: _branco, shadows: [Shadow(blurRadius: 3)])),
-                  Text(nome, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 9, height: 1.15, fontWeight: FontWeight.w700, color: _lila)),
+                  Text(codigo,
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.8, height: 1.1, fontWeight: FontWeight.w900, color: _branco, shadows: [Shadow(blurRadius: 3)])),
+                  Text(nome, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, height: 1.15, fontWeight: FontWeight.w700, color: _lila)),
                   Container(
                     margin: const EdgeInsets.only(top: 2, bottom: 1),
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     decoration: BoxDecoration(color: const Color(0x66000000), borderRadius: BorderRadius.circular(99)),
-                    child: Text('${_qtd(p['qtd'])} ${_unidade[classe] ?? 'un.'}', maxLines: 1,
-                        style: const TextStyle(fontSize: 8.6, fontWeight: FontWeight.w700, color: _lila)),
+                    child: Text('${_qtd(p['qtd'])} ${_unidade[classe] ?? 'un.'}', maxLines: 1, style: const TextStyle(fontSize: 8.6, fontWeight: FontWeight.w700, color: _lila)),
                   ),
                   FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text(_moeda(valor),
-                        style: const TextStyle(fontSize: 11.8, height: 1.2, fontWeight: FontWeight.w900, color: _branco, shadows: [Shadow(blurRadius: 3)])),
+                    child: Text(_moeda(valor), style: const TextStyle(fontSize: 11.8, height: 1.2, fontWeight: FontWeight.w900, color: _branco, shadows: [Shadow(blurRadius: 3)])),
                   ),
                   Text('${_seta(res)}${_pct(res)}', style: TextStyle(fontSize: 10.6, height: 1.1, fontWeight: FontWeight.w900, color: _corPct(res))),
                   const Spacer(),
@@ -722,7 +712,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
             ],
           ],
           const Spacer(),
-          _link('Ver todas as missões →', () => _emBreve('Missões')),
+          _link('Ver todas as missões →', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MissoesTela(api: widget.api)))),
         ],
       ),
     );
@@ -893,9 +883,7 @@ class _FundoCarta extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // brilho no topo
-    final brilho = ui.Paint()
-      ..shader = ui.Gradient.radial(Offset(size.width / 2, size.height * 0.12), size.longestSide * 0.7,
-          [cor.withValues(alpha: 0.45), cor.withValues(alpha: 0)]);
+    final brilho = ui.Paint()..shader = ui.Gradient.radial(Offset(size.width / 2, size.height * 0.12), size.longestSide * 0.7, [cor.withValues(alpha: 0.45), cor.withValues(alpha: 0)]);
     canvas.drawRect(Offset.zero & size, brilho);
 
     final k = math.max(size.width / 116, size.height / 150);
@@ -903,8 +891,21 @@ class _FundoCarta extends CustomPainter {
     canvas.translate((size.width - 116 * k) / 2, size.height - 150 * k);
     canvas.scale(k);
     final luz = ui.Paint()..color = const Color(0x0DFFFFFF);
-    canvas.drawPath(ui.Path()..moveTo(70, 0)..lineTo(116, 0)..lineTo(116, 40)..close(), luz);
-    canvas.drawPath(ui.Path()..moveTo(-10, 60)..lineTo(60, -10)..lineTo(74, -10)..lineTo(4, 60)..close(), luz);
+    canvas.drawPath(
+        ui.Path()
+          ..moveTo(70, 0)
+          ..lineTo(116, 0)
+          ..lineTo(116, 40)
+          ..close(),
+        luz);
+    canvas.drawPath(
+        ui.Path()
+          ..moveTo(-10, 60)
+          ..lineTo(60, -10)
+          ..lineTo(74, -10)
+          ..lineTo(4, 60)
+          ..close(),
+        luz);
 
     canvas.saveLayer(null, ui.Paint()..color = const Color(0x80000000));
     final traco = ui.Paint()
@@ -927,9 +928,30 @@ class _FundoCarta extends CustomPainter {
         break;
       case 'etf':
         for (final (x, y) in const [(14.0, 112.0), (38.0, 112.0), (62.0, 112.0), (26.0, 98.0), (50.0, 98.0), (74.0, 112.0), (38.0, 84.0)]) {
-          canvas.drawPath(ui.Path()..moveTo(x, y)..relativeLineTo(12, -7)..relativeLineTo(12, 7)..relativeLineTo(-12, 7)..close(), cheio(0.30));
-          canvas.drawPath(ui.Path()..moveTo(x, y)..relativeLineTo(12, 7)..relativeLineTo(0, 14)..relativeLineTo(-12, -7)..close(), cheio(0.18));
-          canvas.drawPath(ui.Path()..moveTo(x + 24, y)..relativeLineTo(-12, 7)..relativeLineTo(0, 14)..relativeLineTo(12, -7)..close(), cheio(0.10));
+          canvas.drawPath(
+              ui.Path()
+                ..moveTo(x, y)
+                ..relativeLineTo(12, -7)
+                ..relativeLineTo(12, 7)
+                ..relativeLineTo(-12, 7)
+                ..close(),
+              cheio(0.30));
+          canvas.drawPath(
+              ui.Path()
+                ..moveTo(x, y)
+                ..relativeLineTo(12, 7)
+                ..relativeLineTo(0, 14)
+                ..relativeLineTo(-12, -7)
+                ..close(),
+              cheio(0.18));
+          canvas.drawPath(
+              ui.Path()
+                ..moveTo(x + 24, y)
+                ..relativeLineTo(-12, 7)
+                ..relativeLineTo(0, 14)
+                ..relativeLineTo(12, -7)
+                ..close(),
+              cheio(0.10));
         }
         break;
       case 'cripto':
@@ -962,8 +984,13 @@ class _FundoCarta extends CustomPainter {
       default: // ações: velas e linha de alta
         const verm = Color(0xFFFF5B6E);
         for (final (x, y, h, sobe) in const [
-          (10.0, 118.0, 16.0, true), (24.0, 108.0, 18.0, true), (38.0, 114.0, 12.0, false), (52.0, 96.0, 20.0, true),
-          (66.0, 100.0, 14.0, false), (80.0, 84.0, 20.0, true), (94.0, 72.0, 22.0, true),
+          (10.0, 118.0, 16.0, true),
+          (24.0, 108.0, 18.0, true),
+          (38.0, 114.0, 12.0, false),
+          (52.0, 96.0, 20.0, true),
+          (66.0, 100.0, 14.0, false),
+          (80.0, 84.0, 20.0, true),
+          (94.0, 72.0, 22.0, true),
         ]) {
           final c = sobe ? cor : verm;
           canvas.drawLine(Offset(x + 3, y - 6), Offset(x + 3, y + h + 6), ui.Paint()..color = c.withValues(alpha: 0.5));
@@ -973,10 +1000,12 @@ class _FundoCarta extends CustomPainter {
         for (final p in const [Offset(30, 112), Offset(50, 116), Offset(72, 92), Offset(96, 74), Offset(112, 60)]) {
           linha.lineTo(p.dx, p.dy);
         }
-        canvas.drawPath(linha, ui.Paint()
-          ..style = ui.PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = cor.withValues(alpha: 0.7));
+        canvas.drawPath(
+            linha,
+            ui.Paint()
+              ..style = ui.PaintingStyle.stroke
+              ..strokeWidth = 2
+              ..color = cor.withValues(alpha: 0.7));
     }
     canvas.restore(); // camada com 50% de opacidade
     canvas.restore();

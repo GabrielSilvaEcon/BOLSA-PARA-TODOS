@@ -53,6 +53,8 @@ def test_partida_solo_inteira_pela_api(cli, monkeypatch):
     t["agora"] += TB.CORRIDAS["rapida"]["n_replay"] * TB.SEG_POR_CANDLE + 5
     fim = cli.get(f"/trade/solo/{pid}").json()
     assert fim["fase"] == "fim" and fim["fim"]["revelado"]["ticker"] and fim["fim"]["resultado"]["fin"]["n_ops"] == 1
+    hist = cli.get("/jogos/historico").json()["trade"]                      # a partida solo aparece no histórico pessoal
+    assert len(hist) == 1 and hist[0]["modo"] == "solo"
 
 
 def test_ordem_invalida_volta_como_erro_claro(cli):
