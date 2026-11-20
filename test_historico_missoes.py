@@ -33,3 +33,11 @@ def test_rotas(cli):
     m = cli.get("/missoes").json()
     assert len(m["estudo"]["dia"]) == 3 and m["estudo"]["semana"]["alvo"] > 0
     assert {x["periodo"] for x in m["carteira"]} <= {"dia", "semana", "especial"}
+
+
+def test_eventos_e_glossario(cli):
+    e = cli.get("/eventos")
+    assert e.status_code == 200 and {"campanhas", "bau", "passe", "desafio", "recompensas"} <= set(e.json())
+    assert e.json()["passe"]["total"] > 0
+    g = cli.get("/ajuda/glossario").json()["termos"]
+    assert len(g) > 20 and all(t["oque"] for t in g)
