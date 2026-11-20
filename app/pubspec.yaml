@@ -28,6 +28,7 @@ flutter:
   assets:
     - assets/mascote.webp
     - assets/abertura.webp
+    - assets/logo_th.webp
     - assets/fundo_login.webp
     - assets/home/
     - assets/carteira/

@@ -28,6 +28,7 @@ class GraficoNativo extends StatefulWidget {
     this.revelacao = 1,
     this.resultados,
     this.selos = 1,
+    this.datas,
   });
 
   /// Relatório: só olhar (arrastar e dar zoom), sem desenhar nem mexer nos desenhos.
@@ -44,6 +45,9 @@ class GraficoNativo extends StatefulWidget {
 
   /// 0 a 1: os selos ✔/✖ aparecem um a um conforme este valor cresce.
   final double selos;
+
+  /// Datas reais de cada candle (só no resultado, quando o ativo já foi revelado); sem elas, o eixo usa os rótulos ocultos.
+  final List<String>? datas;
 
   final List<Vela> velas;
   final List<Desenho> desenhos;
@@ -559,7 +563,7 @@ class _Pintor extends CustomPainter {
           o = Offset(pw - 16, g._y(d.p2!) + 2);
         }
         final ok = res[k];
-        final cor = ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF8A86A8));
+        final cor = ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF8B6CFF));
         final esc = t < 1 ? Curves.elasticOut.transform(t) : 1.0;
         canvas.save();
         canvas.translate(o.dx, o.dy);
@@ -570,7 +574,7 @@ class _Pintor extends CustomPainter {
           ..color = Colors.white
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5);
-        _texto(canvas, ok == true ? '✔' : (ok == false ? '✖' : '•'), Offset.zero, 12, Colors.white, centro: true, peso: FontWeight.w900);
+        _texto(canvas, ok == true ? '✔' : (ok == false ? '✖' : '!'), Offset.zero, 12, Colors.white, centro: true, peso: FontWeight.w900);
         canvas.restore();
       }
     }
@@ -592,7 +596,9 @@ class _Pintor extends CustomPainter {
       final x = g._x(i);
       if (x < 14 || x > pw - 14) continue;
       final v = w.velas[i];
-      _texto(canvas, diario ? 'Pregão ${v.d ?? i + 1}' : '${v.d != null ? 'D${v.d} ' : ''}${v.t}', Offset(x, size.height - 7), 9, const Color(0xFF9E96CE), centro: true);
+      final dt = w.datas;
+      final rot = dt != null && i < dt.length ? dt[i] : (diario ? 'Pregão ${v.d ?? i + 1}' : '${v.d != null ? 'D${v.d} ' : ''}${v.t}');
+      _texto(canvas, rot, Offset(x, size.height - 7), 9, const Color(0xFF9E96CE), centro: true);
     }
     canvas.restore();
   }
