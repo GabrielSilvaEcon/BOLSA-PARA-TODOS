@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'animacoes.dart';
 import 'api.dart';
 import 'navegacao.dart';
 import 'partida.dart';
 import 'sala.dart';
 
-/// Tela inicial do Trade Battle, igual à do app antigo (trader_battle_app._central + jogos_app.faixa_jogo):
-/// arte do jogo, escolha da duração, Jogar Solo / Jogar com Amigos, Entrar em uma Sala,
-/// ranking do jogo, "Sobre o Trade Battle" e "Como funciona". Dados do servidor (`GET /trade/central`).
+/// Tela inicial do Trade Battle, montada com a arte do Gabriel: título e touro com as três durações (Rápida, Intermediária, Longa),
+/// Jogar Solo / Jogar com Amigos, Entrar em uma Sala (ou voltar para a sala), ranking do jogo, "Sobre o Trade Battle" e "Como funciona".
+/// As partes da arte são botões de verdade e ganham vida com animações (entrada em sequência, moldura pulsando, reflexo, toque com mola).
+/// Dados do servidor (`GET /trade/central`).
 class TradeTela extends StatefulWidget {
   const TradeTela({super.key, required this.api, this.jogarSolo});
   final Api api;
@@ -19,10 +21,7 @@ class TradeTela extends StatefulWidget {
   State<TradeTela> createState() => _TradeTelaState();
 }
 
-const _verde = Color(0xFF34E85E);
-const _roxo = Color(0xFF5B4BD6);
 const _lila = Color(0xFFD9D4F7);
-const _icones = {'rapida': Icons.bolt, 'intermediaria': Icons.timer_outlined, 'longa': Icons.emoji_events_outlined};
 
 class _TradeTelaState extends State<TradeTela> {
   Map<String, dynamic>? _d;
@@ -124,19 +123,19 @@ class _TradeTelaState extends State<TradeTela> {
     final corridas = ((_d?['corridas'] as List?) ?? const []).cast<Map<String, dynamic>>();
     final atual = corridas.where((c) => c['id'] == _corrida).firstOrNull;
     final semGraficos = atual != null && ((atual['reais'] as num?) ?? 0) < 1;
+    final ativa = _d?['ativa'] != null;
     return Scaffold(
-      backgroundColor: const Color(0xFF110C2E),
+      backgroundColor: const Color(0xFF140A55),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/jogos/fundo_batalha.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0x80090722), Color(0x9E090722), Color(0xD6090722)],
-                stops: [0, 0.4, 1],
+                colors: [Color(0xFF0A0A5A), Color(0xFF1C0870), Color(0xFF14054E), Color(0xFF050038)],
+                stops: [0, 0.35, 0.7, 1],
               ),
             ),
           ),
@@ -146,73 +145,41 @@ class _TradeTelaState extends State<TradeTela> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 720),
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0x998B6CFF), width: 2),
-                        boxShadow: const [BoxShadow(color: Color(0x808B6CFF), blurRadius: 18)],
-                      ),
-                      child: ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/jogos/trade_hero.webp')),
-                    ),
-                    _secao('🕒', 'Escolha a duração da partida'),
-                    const SizedBox(height: 8),
-                    if (corridas.isEmpty)
-                      const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
-                    else
-                      Row(
-                        children: [
-                          for (final (i, c) in corridas.indexed) ...[
-                            if (i > 0) const SizedBox(width: 8),
-                            Expanded(child: _duracao(c)),
-                          ],
-                        ],
-                      ),
+                    Entrada(ordem: 0, child: _cabecalho()),
+                    Entrada(ordem: 0, child: _duracoes(corridas)),
                     if (semGraficos) _aviso(),
-                    const SizedBox(height: 10),
-                    IntrinsicHeight(
+                    const SizedBox(height: 8),
+                    Entrada(
+                      ordem: 1,
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
-                            child: _modo(
-                              titulo: 'Jogar Solo',
-                              sub: 'Desafie-se e melhore seu desempenho!',
-                              icone: Icons.trending_up,
-                              corIcone: _verde,
-                              borda: _verde,
-                              fundo: const [Color(0xBF146E50), Color(0xF50A1A28)],
-                              brilho: const Color(0x7334E85E),
-                              seta: _verde,
-                              acao: () => widget.jogarSolo != null
+                            child: _cartaoModo(
+                              'tb_solo',
+                              Duration.zero,
+                              () => widget.jogarSolo != null
                                   ? widget.jogarSolo!(_corrida)
                                   : Navigator.of(context).push(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida))),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Expanded(
-                            child: _modo(
-                              titulo: 'Jogar com Amigos',
-                              sub: 'Convide seus amigos para uma batalha!',
-                              icone: Icons.groups,
-                              corIcone: const Color(0xFFA99BFF),
-                              borda: const Color(0xFF8B6CFF),
-                              fundo: const [Color(0xB36E46E6), Color(0xF5140C40)],
-                              brilho: const Color(0x808B6CFF),
-                              seta: const Color(0xFFB9A8FF),
-                              selo: '👥 2-4',
-                              acao: () => _d?['ativa'] != null ? _abrirSala('${_d!['ativa']}') : _criarSala(),
-                            ),
+                            child: _cartaoModo('tb_amigos', const Duration(milliseconds: 1900), () => ativa ? _abrirSala('${_d!['ativa']}') : _criarSala()),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    _linhaSala(_d?['ativa'] != null),
-                    _secaoRanking(),
-                    _sobre(),
-                    _comoFunciona(),
+                    const SizedBox(height: 10),
+                    Entrada(ordem: 2, child: _linhaSala(ativa)),
+                    Entrada(ordem: 3, child: _secaoRanking()),
+                    const SizedBox(height: 10),
+                    Entrada(ordem: 4, child: _sobre()),
+                    const SizedBox(height: 6),
+                    Entrada(ordem: 5, child: _comoFunciona()),
+                    const SizedBox(height: 6),
+                    Image.asset('assets/jogos/tb_chao.webp'),
                   ],
                 ),
               ),
@@ -223,77 +190,237 @@ class _TradeTelaState extends State<TradeTela> {
     );
   }
 
-  Widget _secao(String ic, String t) => Padding(
-        padding: const EdgeInsets.only(top: 12, bottom: 2),
-        child: Row(
-          children: [
-            Text(ic, style: const TextStyle(fontSize: 18.4)),
-            const SizedBox(width: 8),
-            Expanded(child: Text(t, style: const TextStyle(fontSize: 16.3, fontWeight: FontWeight.w800, color: _lila))),
-          ],
-        ),
-      );
-
-  // ---- botão de duração (Rápida / Intermediária / Longa)
-  Widget _duracao(Map<String, dynamic> c) {
-    final id = c['id'] as String;
-    final on = id == _corrida;
-    return GestureDetector(
-      onTap: () => setState(() => _corrida = id),
+  // ---- topo: relógio, "Escolha a duração da partida" e o touro da arte (flutuando)
+  Widget _cabecalho() {
+    return SizedBox(
+      height: 112,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
-            constraints: const BoxConstraints(minHeight: 62),
-            width: double.infinity,
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: on ? _verde : _roxo, width: 2),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: on ? const [Color(0x3834E85E), Color(0xFF150F55)] : const [Color(0xFF241A86), Color(0xFF150F55)],
-                stops: on ? const [0, 0.8] : null,
+          Positioned(
+            right: -8,
+            top: 0,
+            bottom: 0,
+            child: ShaderMask(
+              shaderCallback: (r) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Color(0x00000000), Color(0xFF000000)],
+                stops: [0, 0.35],
+              ).createShader(r),
+              blendMode: BlendMode.dstIn,
+              child: ShaderMask(
+                shaderCallback: (r) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF000000), Color(0x00000000)],
+                  stops: [0.8, 1],
+                ).createShader(r),
+                blendMode: BlendMode.dstIn,
+                child: Flutua(altura: 3, child: Image.asset('assets/jogos/tb_touro.webp', height: 112, fit: BoxFit.fitHeight)),
               ),
-              boxShadow: [BoxShadow(color: on ? const Color(0x8034E85E) : const Color(0x665B4BD6), blurRadius: on ? 16 : 10)],
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+          ),
+          Positioned(
+            left: 2,
+            top: 20,
+            right: 120,
+            child: Row(
               children: [
-                Icon(_icones[id] ?? Icons.timer, color: const Color(0xFFFFC93C), size: 25.6),
-                const SizedBox(height: 2),
-                Text('${c['rotulo']}', style: const TextStyle(fontSize: 15.2, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white)),
-                const SizedBox(height: 2),
-                Text(
-                  'Gráfico de ${c['grafico']}\n~${c['minutos']} min',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10.9, height: 1.25, fontWeight: FontWeight.w600, color: on ? const Color(0xFF8DF5C1) : const Color(0xFFC9C2FF)),
+                ClipOval(child: Image.asset('assets/jogos/tb_ic_relogio.webp', width: 46, height: 46, fit: BoxFit.cover)),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Escolha a duração da partida',
+                          style: TextStyle(fontSize: 17, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
+                      SizedBox(height: 3),
+                      Text('Defina o tempo da sua batalha!',
+                          style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Color(0xFFD9D4F7), shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          if (id == 'intermediaria')
-            Positioned(
-              top: -10,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: _verde,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: const [BoxShadow(color: Color(0x9934E85E), blurRadius: 8)],
-                  ),
-                  child: const Text('Recomendado', style: TextStyle(fontSize: 9.9, fontWeight: FontWeight.w900, color: Color(0xFF06240F))),
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
+
+  // ---- as três durações, no visual da arte (azul, dourado e roxo). A escolhida cresce, pulsa e ganha o ✓; as outras ficam mais apagadas.
+  static const _estilos = {
+    'rapida': ('tb_ic_rapida', Color(0xFF3FA2FF), [Color(0xFF2050D8), Color(0xFF141C78)]),
+    'intermediaria': ('tb_ic_inter', Color(0xFFFFC93C), [Color(0xFF5B3A16), Color(0xFF2A1640)]),
+    'longa': ('tb_ic_longa', Color(0xFFB083FF), [Color(0xFF4A2BB8), Color(0xFF22126E)]),
+  };
+
+  Widget _duracoes(List<Map<String, dynamic>> corridas) {
+    if (corridas.isEmpty) return const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()));
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final (i, c) in corridas.indexed) ...[
+            if (i > 0) const SizedBox(width: 7),
+            Expanded(child: _duracao(c)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _duracao(Map<String, dynamic> c) {
+    final id = '${c['id']}';
+    final on = id == _corrida;
+    final (arte, cor, fundo) = _estilos[id] ?? _estilos['intermediaria']!;
+    return Pressionavel(
+      aoTocar: () => setState(() => _corrida = id),
+      child: AnimatedScale(
+        scale: on ? 1.04 : 0.97,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutBack,
+        child: AnimatedOpacity(
+          opacity: on ? 1 : 0.72,
+          duration: const Duration(milliseconds: 250),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                height: 128,
+                padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: cor.withValues(alpha: on ? 1 : 0.6), width: 2),
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: fundo),
+                  boxShadow: [BoxShadow(color: cor.withValues(alpha: on ? 0.55 : 0.25), blurRadius: on ? 16 : 8)],
+                ),
+                child: Column(
+                  children: [
+                    ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.asset('assets/jogos/$arte.webp', height: 46)),
+                    const SizedBox(height: 5),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('${c['rotulo']}', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, color: Colors.white)),
+                    ),
+                    const SizedBox(height: 1),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Gráfico de ${c['grafico']}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFE4DEFF))),
+                    ),
+                    Text('~${c['minutos']} min', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFE4DEFF))),
+                  ],
+                ),
+              ),
+              if (on) Positioned.fill(child: IgnorePointer(child: Pulso(cor: cor, raio: 18, largura: 2.5))),
+              if (id == 'intermediaria')
+                Positioned(
+                  top: -11,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        gradient: const LinearGradient(colors: [Color(0xFFFFE08A), Color(0xFFF2B84B)]),
+                        border: Border.all(color: const Color(0xFFFFF1B8), width: 1.2),
+                        boxShadow: const [BoxShadow(color: Color(0x99F2B84B), blurRadius: 8)],
+                      ),
+                      child: const Text('Recomendado ★', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF3B2600))),
+                    ),
+                  ),
+                ),
+              if (on)
+                Positioned(
+                  right: -5,
+                  top: -7,
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey(id),
+                    tween: Tween(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.elasticOut,
+                    builder: (ctx, v, f) => Transform.scale(scale: v, child: f),
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF26D07C),
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: const [BoxShadow(color: Color(0x9926D07C), blurRadius: 8)],
+                      ),
+                      child: const Icon(Icons.check, size: 13, color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---- Sobre o Trade Battle (ícones da arte)
+  Widget _sobre() {
+    const itens = [('tb_ic_jog', '2-4', 'jogadores'), ('tb_ic_graf', '15m · 1h · 1D', 'gráficos reais'), ('tb_ic_saldo', '5%', 'do saldo disponível'), ('tb_ic_xp', 'XP', 'por colocação')];
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFF6A4FE6), width: 2),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231388), Color(0xFF160B5E)]),
+        boxShadow: const [BoxShadow(color: Color(0x666A4FE6), blurRadius: 14)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 8),
+            child: Row(children: [
+              Icon(Icons.star_rounded, color: Color(0xFFFFC93C), size: 24),
+              SizedBox(width: 6),
+              Text('Sobre o Trade Battle', style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
+            ]),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF120852), border: Border.all(color: const Color(0x406A4FE6))),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  for (final (i, (ic, b, t)) in itens.indexed) ...[
+                    if (i > 0) const VerticalDivider(width: 1, thickness: 1, color: Color(0x596A4FE6)),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.asset('assets/jogos/$ic.webp', height: 34)),
+                          const SizedBox(height: 4),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(b, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Colors.white)),
+                          ),
+                          Text(t, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, height: 1.2, color: Color(0xFFBDB5E6))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- Jogar Solo / Jogar com Amigos: a arte inteira é o botão (afunda ao tocar) e um reflexo de luz passa de tempos em tempos
+  Widget _cartaoModo(String arte, Duration atraso, VoidCallback acao) => Pressionavel(
+        aoTocar: acao,
+        child: Reflexo(raio: 14, atraso: atraso, child: Image.asset('assets/jogos/$arte.webp')),
+      );
 
   // ---- aviso quando a duração escolhida ainda não tem gráfico real
   Widget _aviso() {
@@ -325,142 +452,89 @@ class _TradeTelaState extends State<TradeTela> {
     );
   }
 
-  // ---- Jogar Solo / Jogar com Amigos
-  Widget _modo({
-    required String titulo,
-    required String sub,
-    required IconData icone,
-    required Color corIcone,
-    required Color borda,
-    required List<Color> fundo,
-    required Color brilho,
-    required Color seta,
-    required VoidCallback acao,
-    String? selo,
-  }) {
-    return GestureDetector(
-      onTap: acao,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            constraints: const BoxConstraints(minHeight: 150),
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(10, 12, 10, 34),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: borda, width: 2),
-              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: fundo),
-              boxShadow: [BoxShadow(color: brilho, blurRadius: 18)],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icone, size: 44.8, color: corIcone),
-                const SizedBox(height: 4),
-                Text(titulo, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16.8, fontWeight: FontWeight.w900, color: Colors.white)),
-                const SizedBox(height: 4),
-                Text(sub, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.8, height: 1.3, fontWeight: FontWeight.w500, color: _lila)),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 10,
-            bottom: 9,
-            child: Container(
-              width: 26,
-              height: 26,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: seta, width: 2)),
-              child: const Text('→', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
-            ),
-          ),
-          if (selo != null)
-            Positioned(
-              top: -1,
-              right: -1,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E7A3C),
-                  borderRadius: const BorderRadius.only(topRight: Radius.circular(20), bottomLeft: Radius.circular(12)),
-                  border: Border.all(color: _verde, width: 1.5),
-                ),
-                child: Text(selo, style: const TextStyle(fontSize: 11.2, fontWeight: FontWeight.w900, color: Colors.white)),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ---- Entrar em uma Sala / Voltar para a sala
+  // ---- Entrar em uma Sala / Voltar para a sala (no visual da arte)
   Widget _linhaSala(bool ativa) {
-    return GestureDetector(
-      onTap: () => ativa ? _abrirSala('${_d!['ativa']}') : _entrarSala(),
+    return Pressionavel(
+      aoTocar: () => ativa ? _abrirSala('${_d!['ativa']}') : _entrarSala(),
       child: Container(
         constraints: const BoxConstraints(minHeight: 58),
-        padding: const EdgeInsets.fromLTRB(14, 6, 16, 6),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _roxo, width: 2),
-          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2A1F8E), Color(0xFF150F55)]),
-          boxShadow: const [BoxShadow(color: Color(0x735B4BD6), blurRadius: 12)],
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFF6A4FE6), width: 2),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2E1CA0), Color(0xFF1C0F78)]),
+          boxShadow: const [BoxShadow(color: Color(0x806A4FE6), blurRadius: 14)],
         ),
         child: Row(
           children: [
-            const Icon(Icons.login, size: 30, color: Color(0xFFE4DEFF)),
-            const SizedBox(width: 12),
+            const Icon(Icons.login_rounded, size: 30, color: Color(0xFFE4DEFF)),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(ativa ? 'Voltar para sua sala/partida' : 'Entrar em uma Sala',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                      style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
                   if (!ativa)
                     const Text('Digite o código de um amigo', style: TextStyle(fontSize: 12.2, fontWeight: FontWeight.w500, color: Color(0xFFC9C2FF))),
                 ],
               ),
             ),
-            const Text('›', style: TextStyle(fontSize: 28.8, color: Color(0xFFE4DEFF))),
+            const Icon(Icons.chevron_right_rounded, size: 30, color: Colors.white),
           ],
         ),
       ),
     );
   }
 
-  // ---- faixa do ranking do Trade Battle
+  // ---- Ranking do Trade Battle: título, "Ver ranking completo", a faixa da arte e a sua posição
   Widget _secaoRanking() {
     final rk = _d?['ranking'] as Map?;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(0, 14, 0, 6),
-          child: Text('📊 Ranking do Trade Battle', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 16, 0, 8),
+          child: Row(
+            children: [
+              const Icon(Icons.bar_chart_rounded, size: 30, color: Color(0xFFB59BFF)),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text('Ranking do Trade Battle', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+              ),
+              Pressionavel(
+                aoTocar: () => abrirAba(3),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFF7B63F0), width: 1.5),
+                    color: const Color(0x661C0F78),
+                  ),
+                  child: const Text('Ver ranking completo ›', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
         ),
-        if (rk == null)
+        Pressionavel(
+          aoTocar: () => abrirAba(3),
+          child: Reflexo(raio: 14, atraso: const Duration(milliseconds: 900), intervalo: const Duration(milliseconds: 4600), child: Image.asset('assets/jogos/tb_ranking.webp')),
+        ),
+        if (rk != null)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0x8C8B6CFF), width: 1.5),
-            ),
-            child: const Text('Termine uma partida para entrar no ranking do Trade Battle.',
-                textAlign: TextAlign.center, style: TextStyle(fontSize: 13.8, color: _lila)),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _roxo, width: 2),
+              border: Border.all(color: const Color(0xFF6A4FE6), width: 1.5),
               gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF241A86), Color(0xFF150F55)]),
             ),
             child: Row(
               children: [
-                Text('#${rk['pos']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                Text('#${rk['pos']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFC93C))),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text('${rk['nome'] ?? 'Você'} · de ${rk['total']}', maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -470,12 +544,6 @@ class _TradeTelaState extends State<TradeTela> {
               ],
             ),
           ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: () => abrirAba(3),
-          icon: const Icon(Icons.emoji_events),
-          label: const Text('Ver ranking completo'),
-        ),
       ],
     );
   }
@@ -484,51 +552,6 @@ class _TradeTelaState extends State<TradeTela> {
     if (v is! num) return '';
     final s = v.abs().toStringAsFixed(1).replaceAll('.', ',');
     return '${v > 0 ? '+' : v < 0 ? '−' : ''}$s pts';
-  }
-
-  // ---- Sobre o Trade Battle
-  Widget _sobre() {
-    const itens = [('👥', '2-4', 'jogadores'), ('📊', '15m · 1h · 1D', 'gráficos reais'), ('💰', '5%', 'do saldo disponível'), ('🏆', 'XP', 'por colocação')];
-    return Container(
-      margin: const EdgeInsets.only(top: 10, bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _roxo, width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1B1470), Color(0xFF0E0840)]),
-        boxShadow: const [BoxShadow(color: Color(0x665B4BD6), blurRadius: 12)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 6),
-            child: Text('⭐ Sobre o Trade Battle', style: TextStyle(fontSize: 14.7, fontWeight: FontWeight.w900, color: Colors.white)),
-          ),
-          IntrinsicHeight(
-            child: Row(
-              children: [
-                for (final (i, (ic, b, s)) in itens.indexed) ...[
-                  if (i > 0) const VerticalDivider(width: 1, thickness: 1, color: Color(0x598B6CFF)),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(ic, style: const TextStyle(fontSize: 20)),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(b, style: const TextStyle(fontSize: 15.2, fontWeight: FontWeight.w900, color: Colors.white)),
-                        ),
-                        Text(s, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.6, height: 1.2, color: Color(0xFFBDB5E6))),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   // ---- Como funciona (o mesmo texto do app antigo)
