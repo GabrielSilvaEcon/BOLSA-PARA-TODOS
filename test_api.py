@@ -317,6 +317,7 @@ def test_ticker_battle_duelo_inteiro(cli):
     c = cli.get("/ticker/central").json()
     assert len(c["cartas"]) >= 10 and c["deck"] == [] and not c["valido"] and c["sugestao"]
     assert c["cartas"][0]["ind"] and c["cartas"][0]["ind"][0]["txt"]
+    assert all(len(k["ind"]) <= 5 for k in c["cartas"]) and set(c["indicadores"]) == {"dy_12m", "ret_12m", "vol", "roe", "pl"}
     assert cli.post("/ticker/duelo").status_code == 400                     # sem baralho válido não começa
     r = cli.post("/ticker/baralho", json={"deck": c["sugestao"][:4] + [c["sugestao"][0], "NAOEXISTE"]}).json()
     assert r["deck"] == c["sugestao"][:4] and r["valido"]                  # repetida e inexistente ficam de fora
@@ -327,6 +328,8 @@ def test_ticker_battle_duelo_inteiro(cli):
         carta = next(m["tk"] for m in d["mao"] if not m["sem_adv"])
         adv = cli.get(f"/ticker/duelo/{did}/adversaria", params={"carta": carta}).json()
         assert adv["adversaria"]["tk"] != carta and "ind" not in adv["adversaria"]     # os valores do sistema ficam escondidos
+        assert set(adv["disputaveis"]) <= {"dy_12m", "ret_12m", "vol", "roe", "pl"}
+        assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "pvp"}).status_code == 400   # fora dos 5
         d = cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": adv["disputaveis"][0]}).json()
         assert len(d["rodadas"]) == n and d["rodadas"][-1]["raio_x"]["porque"]
     assert d["final"] in ("vitoria", "derrota", "empate") and sum(d["placar"].values()) == 3
