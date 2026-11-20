@@ -23,7 +23,27 @@ class GraficoNativo extends StatefulWidget {
     this.tfNome = '',
     this.limite = 12,
     this.aoAviso,
+    this.somenteLeitura = false,
+    this.divisor,
+    this.revelacao = 1,
+    this.resultados,
+    this.selos = 1,
   });
+
+  /// Relatório: só olhar (arrastar e dar zoom), sem desenhar nem mexer nos desenhos.
+  final bool somenteLeitura;
+
+  /// Índice do 1º candle da partida (fim da análise): uma linha marca onde a partida começou.
+  final int? divisor;
+
+  /// 0 a 1: quanto dos candles depois do [divisor] já apareceu (animação do relatório).
+  final double revelacao;
+
+  /// Resultado de cada desenho (mesma ordem de [desenhos]): true ✔, false ✖, null • (o preço não chegou lá).
+  final List<bool?>? resultados;
+
+  /// 0 a 1: os selos ✔/✖ aparecem um a um conforme este valor cresce.
+  final double selos;
 
   final List<Vela> velas;
   final List<Desenho> desenhos;
@@ -90,7 +110,8 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
   int get _n => widget.velas.length;
 
   void _zoomInicial() {
-    final vis = min(_n, max(40, (_pw / 7).floor()));
+    final dv = widget.divisor;
+    final vis = dv != null ? min(_n, max(30, _n - max(0, dv - 30))) : min(_n, max(40, (_pw / 7).floor()));
     _cw = _pw / (vis + 3);
     _off = max(-3, _n - vis.toDouble());
     _iniciado = true;
@@ -133,7 +154,7 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
   // ---------------------------------------------------------------- toques
   Future<void> _tocar(Offset p) async {
     final f = widget.ferramenta;
-    if (f == null || p.dx > _pw) return;
+    if (widget.somenteLeitura || f == null || p.dx > _pw) return;
     final pr = _r2(_preco(p.dy));
     if (pr <= 0) return;
     if (f == Ferramenta.apagar) {
@@ -232,7 +253,7 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
     _off0 = _off;
     _foco0 = e.localFocalPoint;
     _arrastando = null;
-    if (e.pointerCount == 1 && widget.ferramenta == null && e.localFocalPoint.dx <= _pw) {
+    if (!widget.somenteLeitura && e.pointerCount == 1 && widget.ferramenta == null && e.localFocalPoint.dx <= _pw) {
       final d = _achar(e.localFocalPoint);
       if (d != null) {
         _arrastando = d;
@@ -322,7 +343,7 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
           behavior: HitTestBehavior.opaque,
           onTapUp: (e) => _tocar(e.localPosition),
           onLongPressStart: (e) {
-            if (widget.ferramenta != null) return;
+            if (widget.ferramenta != null || widget.somenteLeitura) return;
             final d = _achar(e.localPosition);
             if (d != null) {
               _remover(d);
@@ -395,10 +416,12 @@ class _Pintor extends CustomPainter {
     }
 
     // candles (entram em cascata da esquerda para a direita ao abrir)
+    final dv = w.divisor;
+    final ultimoVisivel = dv == null ? w.velas.length - 1 : dv - 1 + ((w.velas.length - dv) * w.revelacao).floor();
     for (var i = i0; i <= i1; i++) {
       final v = w.velas[i];
       final e = _cascata(ent, i, i0, i1);
-      if (e <= 0) continue;
+      if (e <= 0 || i > ultimoVisivel) continue;
       final cor = (v.alta ? _up : _dn).withValues(alpha: e);
       final x = g._x(i);
       final meio = (v.o + v.c) / 2;
@@ -408,6 +431,13 @@ class _Pintor extends CustomPainter {
         ..strokeWidth = 1);
       final y1 = g._y(ajusta(max(v.o, v.c))), y2 = g._y(ajusta(min(v.o, v.c)));
       canvas.drawRect(Rect.fromLTWH(x - bw / 2, y1, bw, max(1, y2 - y1)), Paint()..color = cor);
+    }
+
+    // onde a partida começou (relatório)
+    if (dv != null && dv >= i0 && dv <= i1 + 1) {
+      final xd = g._x(dv) - g._cw / 2;
+      _tracejadaV(canvas, xd, h, const Color(0x99FFD66B));
+      _texto(canvas, 'início da partida', Offset(xd + 4, 12), 9.5, const Color(0xFFFFD66B), peso: FontWeight.w800);
     }
 
     // médias móveis
@@ -467,9 +497,11 @@ class _Pintor extends CustomPainter {
         }
         _etiqueta(canvas, precoTxt(d.p1!), pw, y, size.width, cor, const Color(0xFF06101F));
         _rotulo(canvas, d.ferramenta.rotulo.toUpperCase(), y, cor, usados);
-        // alça para arrastar
-        canvas.drawCircle(Offset(pw - 14, y), 6 + 2 * acende, Paint()..color = cor);
-        _texto(canvas, '↕', Offset(pw - 14, y), 9, const Color(0xFF06101F), centro: true, peso: FontWeight.w900);
+        if (!w.somenteLeitura) {
+          // alça para arrastar
+          canvas.drawCircle(Offset(pw - 14, y), 6 + 2 * acende, Paint()..color = cor);
+          _texto(canvas, '↕', Offset(pw - 14, y), 9, const Color(0xFF06101F), centro: true, peso: FontWeight.w900);
+        }
       } else if (d.ferramenta == Ferramenta.tendencia) {
         final a = Offset(g._x(d.i1!), g._y(d.p1!)), b = Offset(g._x(d.i2!), g._y(d.p2!));
         final k = (b.dy - a.dy) / ((b.dx - a.dx) == 0 ? 1 : (b.dx - a.dx));
@@ -508,6 +540,38 @@ class _Pintor extends CustomPainter {
         for (final o in [Offset(g._x(d.i1!), g._y(d.p1!)), Offset(g._x(d.i2!), g._y(d.p2!))]) {
           canvas.drawCircle(o, 4.5, Paint()..color = cor);
         }
+      }
+    }
+
+    // selos ✔/✖ do relatório, um a um
+    final res = w.resultados;
+    if (res != null) {
+      for (var k = 0; k < w.desenhos.length && k < res.length; k++) {
+        final t = (w.selos * w.desenhos.length - k).clamp(0.0, 1.0);
+        if (t <= 0) continue;
+        final d = w.desenhos[k];
+        Offset o;
+        if (d.ferramenta.nivel) {
+          o = Offset(pw - 36, g._y(d.p1!));
+        } else if (d.ferramenta == Ferramenta.tendencia) {
+          o = Offset(g._x(d.i2!) + 14, g._y(d.p2!) - 14);
+        } else {
+          o = Offset(pw - 16, g._y(d.p2!) + 2);
+        }
+        final ok = res[k];
+        final cor = ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF8A86A8));
+        final esc = t < 1 ? Curves.elasticOut.transform(t) : 1.0;
+        canvas.save();
+        canvas.translate(o.dx, o.dy);
+        canvas.scale(esc);
+        canvas.drawCircle(Offset.zero, 13, Paint()..color = cor.withValues(alpha: 0.35));
+        canvas.drawCircle(Offset.zero, 10, Paint()..color = cor);
+        canvas.drawCircle(Offset.zero, 10, Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5);
+        _texto(canvas, ok == true ? '✔' : (ok == false ? '✖' : '•'), Offset.zero, 12, Colors.white, centro: true, peso: FontWeight.w900);
+        canvas.restore();
       }
     }
 
@@ -555,6 +619,15 @@ class _Pintor extends CustomPainter {
       if (k.isEven) c.drawLine(Offset(x, y), Offset(min(ate, x + l), y), p);
       x += l;
       k++;
+    }
+  }
+
+  void _tracejadaV(Canvas c, double x, double ate, Color cor) {
+    final p = Paint()
+      ..color = cor
+      ..strokeWidth = 1.5;
+    for (var y = 0.0; y < ate; y += 9) {
+      c.drawLine(Offset(x, y), Offset(x, min(ate, y + 5)), p);
     }
   }
 
