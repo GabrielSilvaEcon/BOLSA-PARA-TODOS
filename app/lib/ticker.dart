@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'animacoes.dart';
 import 'api.dart';
+import 'navegacao.dart';
 import 'ticker_duelo.dart';
 
 /// Ticker Battle (como no app antigo, battle_app.py): cartas de ações com os indicadores REAIS (dividendos, ROE, P/L…).
@@ -87,92 +88,70 @@ class _TickerTelaState extends State<TickerTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0828),
+      backgroundColor: const Color(0xFF140A55),
       body: Stack(
         fit: StackFit.expand,
         children: [
+          // mesmo fundo da tela do Trade Battle
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF0A0A5A), Color(0xFF1C0870), Color(0xFF050038)],
+                colors: [Color(0xFF0A0A5A), Color(0xFF1C0870), Color(0xFF14054E), Color(0xFF050038)],
+                stops: [0, 0.35, 0.7, 1],
               ),
             ),
           ),
-          SafeArea(
-            child: RefreshIndicator(
-              onRefresh: _carregar,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-                children: [
-                  Row(children: [
-                    IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
-                    const Expanded(child: Text('Ticker Battle', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white))),
-                  ]),
-                  Entrada(
-                    ordem: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0x998B6CFF), width: 2),
-                        boxShadow: const [BoxShadow(color: Color(0x808B6CFF), blurRadius: 18)],
-                      ),
-                      child: ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/ticker/hero.webp', fit: BoxFit.cover)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  if (d == null && _erro == null) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
-                  if (_erro != null && d == null) _caixa(child: Text(_erro!, style: const TextStyle(color: Colors.white))),
-                  if (d != null) ...[
-                    Entrada(ordem: 1, child: _placar(d)),
-                    const SizedBox(height: 12),
-                    Entrada(
-                      ordem: 2,
-                      child: Row(children: [
-                        Expanded(
-                          child: Pressionavel(
-                            aoTocar: _jogar,
-                            child: Reflexo(raio: 18, child: Image.asset('assets/ticker/modo_sis.webp')),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Opacity(
-                            opacity: 0.55,
-                            child: Stack(children: [
-                              Image.asset('assets/ticker/modo_on.webp'),
-                              Positioned(
-                                right: 8,
-                                bottom: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(color: const Color(0xFFF2B84B), borderRadius: BorderRadius.circular(999)),
-                                  child: const Text('Em breve', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF2A1A00))),
+          RefreshIndicator(
+            onRefresh: _carregar,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+                  children: [
+                    Entrada(ordem: 0, child: _cabecalho()),
+                    if (d == null && _erro == null) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
+                    if (_erro != null && d == null) _caixa(child: Text(_erro!, style: const TextStyle(color: Colors.white))),
+                    if (d != null) ...[
+                      const SizedBox(height: 6),
+                      Entrada(
+                        ordem: 1,
+                        child: Row(children: [
+                          Expanded(child: Pressionavel(aoTocar: _jogar, child: Reflexo(raio: 14, child: Image.asset('assets/ticker/modo_sis.webp')))),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Pressionavel(
+                              aoTocar: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Duelo Online: chega na próxima etapa do app novo'))),
+                              child: Stack(children: [
+                                Opacity(opacity: 0.6, child: Image.asset('assets/ticker/modo_on.webp')),
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(color: const Color(0xFFF2B84B), borderRadius: BorderRadius.circular(999)),
+                                    child: const Text('Em breve', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF2A1A00))),
+                                  ),
                                 ),
-                              ),
-                            ]),
+                              ]),
+                            ),
                           ),
-                        ),
-                      ]),
-                    ),
-                    const SizedBox(height: 10),
-                    Entrada(
-                      ordem: 3,
-                      child: Pressionavel(
-                        aoTocar: _jogar,
-                        child: Stack(alignment: Alignment.center, children: [
-                          Image.asset('assets/ticker/modo_jogar.webp'),
-                          if (_iniciando) const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
                         ]),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Entrada(ordem: 4, child: _meuBaralho(d)),
-                    const SizedBox(height: 12),
-                    Entrada(ordem: 5, child: _como(d)),
+                      const SizedBox(height: 10),
+                      Entrada(ordem: 2, child: _linhaBaralho(d)),
+                      Entrada(ordem: 3, child: _secaoRanking()),
+                      const SizedBox(height: 10),
+                      Entrada(ordem: 4, child: _sobre(d)),
+                      const SizedBox(height: 6),
+                      Entrada(ordem: 5, child: _como(d)),
+                    ],
+                    const SizedBox(height: 6),
+                    Image.asset('assets/jogos/tb_chao.webp'),
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -181,54 +160,86 @@ class _TickerTelaState extends State<TickerTela> {
     );
   }
 
-  Widget _placar(Map d) {
-    final h = (d['historico'] as Map?) ?? const {};
-    Widget item(String t, Object? v, Color c, IconData ic) => Expanded(
-          child: Column(children: [
-            Icon(ic, color: c, size: 22),
-            Text('${v ?? 0}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: c)),
-            Text(t, style: const TextStyle(fontSize: 11.5, color: lilas)),
+  // ---- topo: cartas, "Escolha seu modo de jogo" e o touro da arte (flutuando), como na tela do Trade Battle
+  Widget _cabecalho() {
+    return SizedBox(
+      height: 112,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned(
+          right: -8,
+          top: 0,
+          bottom: 0,
+          child: ShaderMask(
+            shaderCallback: (r) => const LinearGradient(colors: [Color(0x00000000), Color(0xFF000000)], stops: [0, 0.35]).createShader(r),
+            blendMode: BlendMode.dstIn,
+            child: ShaderMask(
+              shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF000000), Color(0x00000000)], stops: [0.8, 1])
+                  .createShader(r),
+              blendMode: BlendMode.dstIn,
+              child: Flutua(altura: 3, child: Image.asset('assets/jogos/tb_touro.webp', height: 112, fit: BoxFit.fitHeight)),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          top: 2,
+          child: IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
+        ),
+        Positioned(
+          left: 6,
+          top: 50,
+          right: 120,
+          child: Row(children: [
+            ClipOval(child: Image.asset('assets/ticker/pilha.webp', width: 46, height: 46, fit: BoxFit.cover)),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Ticker Battle',
+                    style: TextStyle(fontSize: 19, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
+                SizedBox(height: 3),
+                Text('Escolha seu modo de jogo',
+                    style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: lilas, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
+              ]),
+            ),
           ]),
-        );
-    return _caixa(
-      child: Row(children: [
-        item('Vitórias', h['vitoria'], const Color(0xFF26D07C), Icons.emoji_events_rounded),
-        item('Empates', h['empate'], const Color(0xFFF2B84B), Icons.handshake_rounded),
-        item('Derrotas', h['derrota'], const Color(0xFFFF6B87), Icons.close_rounded),
+        ),
       ]),
     );
   }
 
-  Widget _meuBaralho(Map d) {
+  // ---- Meu baralho (na barra roxa, como "Voltar para sua sala" do Trade Battle)
+  Widget _linhaBaralho(Map d) {
     final deck = ((d['deck'] as List?) ?? const []).cast<String>();
     final ok = d['valido'] == true;
     return Pressionavel(
       aoTocar: _baralho,
-      child: _caixa(
-        borda: ok ? const Color(0xFF26D07C) : const Color(0xFFF2B84B),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: ok ? const Color(0xFF6A4FE6) : const Color(0xFFF2B84B), width: 2),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2E1CA0), Color(0xFF1C0F78)]),
+          boxShadow: const [BoxShadow(color: Color(0x806A4FE6), blurRadius: 14)],
+        ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Image.asset('assets/ticker/pilha.webp', height: 44),
-            const SizedBox(width: 10),
+            const Icon(Icons.style_rounded, size: 30, color: Color(0xFFE4DEFF)),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Meu baralho · ${deck.length}/${d['max'] ?? 10}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                Text('Meu baralho · ${deck.length}/${d['max'] ?? 10}', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
                 Text(ok ? 'Pronto para o duelo. Toque para editar.' : '${d['msg'] ?? 'Monte seu baralho'}',
-                    style: TextStyle(fontSize: 12.5, color: ok ? const Color(0xFF8DF5C1) : const Color(0xFFFFD66B))),
+                    style: TextStyle(fontSize: 12.2, color: ok ? const Color(0xFF8DF5C1) : const Color(0xFFFFD66B))),
               ]),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white),
+            const Icon(Icons.chevron_right_rounded, size: 30, color: Colors.white),
           ]),
           if (deck.isNotEmpty) ...[
             const SizedBox(height: 8),
             SizedBox(
-              height: 64,
+              height: 60,
               child: ListView(scrollDirection: Axis.horizontal, children: [
-                for (final t in deck)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.asset('assets/ticker/carta_$t.webp', height: 64, errorBuilder: (_, __, ___) => const SizedBox())),
-                  ),
+                for (final t in deck) Padding(padding: const EdgeInsets.only(right: 6), child: CartaTk(tk: t, largura: 45)),
               ]),
             ),
           ],
@@ -237,22 +248,122 @@ class _TickerTelaState extends State<TickerTela> {
     );
   }
 
-  Widget _como(Map d) => _caixa(
+  // ---- Ranking do Ticker Battle (mesmo bloco da tela do Trade Battle)
+  Widget _secaoRanking() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 16, 0, 8),
+        child: Row(children: [
+          const Icon(Icons.bar_chart_rounded, size: 30, color: Color(0xFFB59BFF)),
+          const SizedBox(width: 6),
+          const Expanded(
+            child: Text('Ranking do Ticker Battle', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+          ),
+          Pressionavel(
+            aoTocar: () => abrirAba(3),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: const Color(0xFF7B63F0), width: 1.5),
+                color: const Color(0x661C0F78),
+              ),
+              child: const Text('Ver ranking completo ›', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
+          ),
+        ]),
+      ),
+      Pressionavel(
+        aoTocar: () => abrirAba(3),
+        child: Reflexo(raio: 14, atraso: const Duration(milliseconds: 900), intervalo: const Duration(milliseconds: 4600), child: Image.asset('assets/jogos/tb_ranking.webp')),
+      ),
+      const Padding(
+        padding: EdgeInsets.only(top: 6, left: 4),
+        child: Text('Só duelos online contam para o ranking.', style: TextStyle(fontSize: 12, color: lilas)),
+      ),
+    ]);
+  }
+
+  // ---- Sobre o Ticker Battle (quadro com ícones, como o do Trade Battle) + seus duelos
+  Widget _sobre(Map d) {
+    final h = (d['historico'] as Map?) ?? const {};
+    Widget col(Widget ic, String b, String t) => Expanded(
+          child: Column(children: [
+            SizedBox(height: 34, child: Center(child: ic)),
+            const SizedBox(height: 4),
+            FittedBox(fit: BoxFit.scaleDown, child: Text(b, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Colors.white))),
+            Text(t, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, height: 1.2, color: Color(0xFFBDB5E6))),
+          ]),
+        );
+    Widget img(String a) => ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.asset(a, height: 34));
+    Widget sep() => const VerticalDivider(width: 1, thickness: 1, color: Color(0x596A4FE6));
+    Widget quadro(List<Widget> filhos) => Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF120852), border: Border.all(color: const Color(0x406A4FE6))),
+          child: IntrinsicHeight(child: Row(children: filhos)),
+        );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFF6A4FE6), width: 2),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231388), Color(0xFF160B5E)]),
+        boxShadow: const [BoxShadow(color: Color(0x666A4FE6), blurRadius: 14)],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Row(children: [
+            Icon(Icons.star_rounded, color: Color(0xFFFFC93C), size: 24),
+            SizedBox(width: 6),
+            Text('Sobre o Ticker Battle', style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
+          ]),
+        ),
+        quadro([
+          col(img('assets/ticker/pilha.webp'), '3 a 10', 'cartas no baralho'),
+          sep(),
+          col(img('assets/jogos/tb_ic_graf.webp'), '5', 'indicadores reais'),
+          sep(),
+          col(img('assets/jogos/tb_ic_xp.webp'), 'Melhor de 3', 'rodadas'),
+          sep(),
+          col(img('assets/jogos/tb_ic_jog.webp'), '1 × 1', 'online em breve'),
+        ]),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 12, 0, 8),
+          child: Text('Seus duelos', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white)),
+        ),
+        quadro([
+          col(const Icon(Icons.emoji_events_rounded, color: Color(0xFF26D07C), size: 28), '${h['vitoria'] ?? 0}', 'vitórias'),
+          sep(),
+          col(const Icon(Icons.handshake_rounded, color: Color(0xFFF2B84B), size: 28), '${h['empate'] ?? 0}', 'empates'),
+          sep(),
+          col(const Icon(Icons.close_rounded, color: Color(0xFFFF6B87), size: 28), '${h['derrota'] ?? 0}', 'derrotas'),
+        ]),
+      ]),
+    );
+  }
+
+  // ---- Como funciona (mesmo bloco da tela do Trade Battle)
+  Widget _como(Map d) => Container(
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x558B6CFF)), color: const Color(0xCC140E3A)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           InkWell(
             onTap: () => setState(() => _comoAberto = !_comoAberto),
-            child: Row(children: [
-              const Icon(Icons.help_outline_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Expanded(child: Text('Como funciona', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
-              Icon(_comoAberto ? Icons.expand_less : Icons.expand_more, color: Colors.white),
-            ]),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(children: [
+                const Icon(Icons.help_outline, size: 20, color: Colors.white),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Como funciona', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white))),
+                Icon(_comoAberto ? Icons.expand_less : Icons.expand_more, color: Colors.white),
+              ]),
+            ),
           ),
           if (_comoAberto)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Text(
-                'Cada carta é uma ação real da B3 com os seus indicadores de verdade (dividendos, rentabilidade, volatilidade, ROE, P/L…). '
+                'Cada carta é uma ação real da B3 com 5 indicadores de verdade: Dividendos, Rentabilidade, Volatilidade, ROE e P/L. '
                 'No Duelo Clássico são ${d['rodadas'] ?? 3} rodadas: você escolhe a carta e o indicador; o sistema escolhe a carta dele por uma '
                 'regra fixa e pública, sem olhar os seus valores. Cada indicador tem a sua regra (maior vence, menor vence ou menor positivo vence). '
                 'Valores iguais empatam a rodada. Cada carta joga uma vez. Vence quem ganhar mais rodadas.\n\n'

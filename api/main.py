@@ -944,6 +944,7 @@ def sala_sair(pid: str, q: Quem = Depends(quem)) -> dict:
 # O duelo fica no banco com as cartas CONGELADAS no início (como no app antigo, onde ficava na sessão). O app só manda "qual carta" e
 # "qual indicador"; o servidor escolhe a adversária (regra fixa e pública), compara os valores reais e guarda o histórico.
 CHAVE_TICKER = "tk_api|{h}|{id}"
+TK_INDICADORES = ("dy_12m", "ret_12m", "vol", "roe", "pl")   # no app novo, só 5 indicadores por carta (os mais didáticos)
 
 
 def _tk_agora():
@@ -965,13 +966,13 @@ def _tk_carta(c: dict, hoje, valores: bool = True) -> dict:
            "ref": _tk_data(c.get("ref")), "fonte": c.get("fonte") or "", "jogavel": ok, "motivo": mot, "avisos": list(c.get("avisos") or [])}
     if valores:
         ind = c.get("ind") or {}
-        out["ind"] = [{"id": i, "v": float(ind[i]), "txt": BT.formatar(i, ind[i])} for i in BT.indicadores_validos(c)]
+        out["ind"] = [{"id": i, "v": float(ind[i]), "txt": BT.formatar(i, ind[i])} for i in BT.indicadores_validos(c) if i in TK_INDICADORES]
     return out
 
 
 def _tk_meta() -> dict:
     import battle as BT
-    return {i: {k: m[k] for k in ("nome", "curto", "icone", "melhor", "regra", "significa")} for i, m in BT.INDICADORES.items()}
+    return {i: {k: m[k] for k in ("nome", "curto", "icone", "melhor", "regra", "significa")} for i, m in BT.INDICADORES.items() if i in TK_INDICADORES}
 
 
 def _tk_snapshot(atualizar: bool = True) -> dict:
@@ -1099,8 +1100,8 @@ def ticker_adversaria(did: str, carta: str, q: Quem = Depends(quem)) -> dict:
         raise HTTPException(409, "Não há carta adversária compatível com esta carta. Escolha outra.")
     a = cartas[carta]
     disp = BT.atributos_disputaveis(a, adv, hoje)
-    bloq = {i: m for i, m in disp["bloqueados"].items() if a.get("classe") in BT.INDICADORES[i]["classes"]}
-    return {"adversaria": _tk_carta(adv, hoje, False), "disputaveis": disp["ok"], "bloqueados": bloq}
+    bloq = {i: m for i, m in disp["bloqueados"].items() if a.get("classe") in BT.INDICADORES[i]["classes"] and i in TK_INDICADORES}
+    return {"adversaria": _tk_carta(adv, hoje, False), "disputaveis": [i for i in disp["ok"] if i in TK_INDICADORES], "bloqueados": bloq}
 
 
 class RodadaTk(BaseModel):
@@ -1114,6 +1115,8 @@ def ticker_rodada(did: str, r: RodadaTk, q: Quem = Depends(quem)) -> dict:
     import battle as BT
     import battle_dados as BD
     d = _tk_ler(q, did)
+    if r.ind not in TK_INDICADORES:
+        raise HTTPException(400, "Indicador fora do jogo.")
     try:
         d["duelo"] = BT.jogar_rodada(d["duelo"], d["cartas"], r.carta, r.ind, _tk_agora().date())
     except (ValueError, KeyError) as e:
