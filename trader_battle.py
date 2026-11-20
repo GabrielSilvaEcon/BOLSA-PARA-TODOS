@@ -930,6 +930,13 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
         else:
             linhas.append(("Sua leitura", f"Você registrou: {nome.get(est.get('direcao'), '')} ({ROTULO_ESTRATEGIA.get(est.get('tipo'), '').lower()}), confiança {est.get('confianca')}/5."))
     linhas.append(("O mercado", f"O preço foi de {real['ref']:.2f} para {real['fim']:.2f} ({real['mov_pct']:+.1f}%): {nome[real['direcao']]}."))
+    lt = r.get("leitura") or {}
+    if lt.get("itens"):                                     # desenhos da estratégia conferidos contra o gráfico real
+        resumo = (f"{lt['acertos']} de {lt['avaliados']} se confirmaram · nota {lt['nota']:.0f}/100 (metade da leitura)."
+                  if lt.get("nota") is not None else "O preço não chegou a nenhum dos seus desenhos: eles não contaram.")
+        linhas.append(("Seus desenhos", resumo))
+        for x in lt["itens"]:
+            linhas.append(("✔" if x["ok"] else ("✖" if x["ok"] is False else "•"), x["texto"]))
     ops = r.get("operacoes") or []
     if not ops:
         if r.get("qualidade_nota") is not None:          # partida corrida: a leitura ainda vale para o ranking de Qualidade
@@ -1620,6 +1627,15 @@ def avaliar_corrida(cen_r: dict, est: dict, trades: list[dict]) -> dict:
         qual = q["total"] if est.get("confianca") else (q["direcao"] + q["entrada"] + q["risco"]) / 3.0
     else:                                                   # sem operação: só a leitura conta
         qual = (q["direcao"] + q["confianca"]) / 2.0 if est.get("confianca") else q["direcao"] / 2.0
+    leitura = None
+    try:                                                    # desenhos da estratégia (opcionais): cada um conferido contra o gráfico real
+        import trader_leitura as TL
+        real = base["real"]
+        leitura = TL.avaliar_desenhos(est.get("marcas"), cen_r["n_analise"], cen_r["candles"][cen_r["n_analise"]:], real["ref"], real["atr"])
+    except Exception:
+        leitura = None
+    if leitura and leitura["nota"] is not None:             # com desenhos avaliados, a leitura (30%) = metade direção/entrada/risco + metade desenhos
+        qual = (qual + (leitura["nota"] / 50.0 - 1.0)) / 2.0
     res = PONTOS_MAX * math.tanh(pt["x"] / pt["unidade"]) if trades else 0.0
     pts = PESO_RESULTADO * res + (1 - PESO_RESULTADO) * qual * PONTOS_MAX if trades else 0.0
     pts = max(-PONTOS_MAX, min(PONTOS_MAX, pts))
@@ -1628,6 +1644,7 @@ def avaliar_corrida(cen_r: dict, est: dict, trades: list[dict]) -> dict:
     base["pontos"] = round(pts, 1)
     base["qualidade_nota"] = round(50 * (qual + 1), 1)
     base["partes"] = {**pt, "res": round(res, 2), "qual": round(qual, 3), "peso_res": PESO_RESULTADO}
+    base["leitura"] = leitura
     return base
 
 
