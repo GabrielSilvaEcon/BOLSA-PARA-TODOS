@@ -4,6 +4,7 @@ import 'animacoes.dart';
 import 'api.dart';
 import 'navegacao.dart';
 import 'ticker_duelo.dart';
+import 'ticker_online.dart';
 
 /// Ticker Battle (como no app antigo, battle_app.py): cartas de ações com os indicadores REAIS (dividendos, ROE, P/L…).
 /// Central → Meu Baralho (3 a 10 cartas) → Duelo contra o Sistema (3 rodadas) → Resultado com o Raio-X de cada rodada.
@@ -43,7 +44,26 @@ class _TickerTelaState extends State<TickerTela> {
     _carregar();
   }
 
+  String? _ativa; // duelo online ainda aberto (para voltar a ele)
+
+  Future<void> _online() async {
+    final d = _d;
+    if (d == null) return;
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => OnlineTela(api: widget.api, baralhoValido: d['valido'] == true)));
+    _carregar();
+  }
+
+  Future<void> _voltarOnline() async {
+    final id = _ativa;
+    if (id == null) return;
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => PartidaOnlineTela(api: widget.api, pid: id)));
+    _carregar();
+  }
+
   Future<void> _carregar() async {
+    widget.api.get('/ticker/online/ativa').then((r) {
+      if (mounted) setState(() => _ativa = r['id'] as String?);
+    }).catchError((_) {});
     try {
       final r = await widget.api.get('/ticker/central');
       if (mounted) {
@@ -123,23 +143,33 @@ class _TickerTelaState extends State<TickerTela> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Pressionavel(
-                              aoTocar: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Duelo Online: chega na próxima etapa do app novo'))),
-                              child: Stack(children: [
-                                Opacity(opacity: 0.6, child: Image.asset('assets/ticker/modo_on.webp')),
-                                Positioned(
-                                  right: 8,
-                                  top: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(color: const Color(0xFFF2B84B), borderRadius: BorderRadius.circular(999)),
-                                    child: const Text('Em breve', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF2A1A00))),
-                                  ),
-                                ),
-                              ]),
+                              aoTocar: _online,
+                              child: Reflexo(raio: 14, atraso: const Duration(milliseconds: 1900), child: Image.asset('assets/ticker/modo_on.webp')),
                             ),
                           ),
                         ]),
                       ),
+                      if (_ativa != null) ...[
+                        const SizedBox(height: 10),
+                        Pressionavel(
+                          aoTocar: _voltarOnline,
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: const Color(0xFF26D07C), width: 2),
+                              gradient: const LinearGradient(colors: [Color(0xFF0E6B52), Color(0xFF0B3A40)]),
+                              boxShadow: const [BoxShadow(color: Color(0x6626D07C), blurRadius: 14)],
+                            ),
+                            child: const Row(children: [
+                              Icon(Icons.login_rounded, size: 28, color: Colors.white),
+                              SizedBox(width: 12),
+                              Expanded(child: Text('Voltar para o seu duelo online', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white))),
+                              Icon(Icons.chevron_right_rounded, size: 30, color: Colors.white),
+                            ]),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       Entrada(ordem: 2, child: _linhaBaralho(d)),
                       Entrada(ordem: 3, child: _secaoRanking()),
@@ -326,7 +356,7 @@ class _TickerTelaState extends State<TickerTela> {
           sep(),
           col(img('assets/jogos/tb_ic_xp.webp'), 'Melhor de 3', 'rodadas'),
           sep(),
-          col(img('assets/jogos/tb_ic_jog.webp'), '1 × 1', 'online em breve'),
+          col(img('assets/jogos/tb_ic_jog.webp'), '1 × 1', 'online, vale ranking'),
         ]),
         const Padding(
           padding: EdgeInsets.fromLTRB(4, 12, 0, 8),

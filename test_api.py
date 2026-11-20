@@ -336,3 +336,63 @@ def test_ticker_battle_duelo_inteiro(cli):
     assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "roe"}).status_code == 400      # acabou
     h = cli.get("/ticker/central").json()["historico"]
     assert h["ultimos"][0]["id"] == did and h[d["final"]] == 1              # entrou no histórico uma vez
+
+
+def test_ticker_online_sala_duas_pessoas(cli):
+    import banco
+    import contas
+    from test_perfil_foto import _contas
+    _cartas_teste()
+    _contas(banco, "bia@x.com")
+    banco.sis_atualizar_conta("id-bia@x.com", {"status": "ativa"})
+    bia = TestClient(API.app)
+    bia.headers["Authorization"] = f"Bearer {contas.criar_sessao('id-bia@x.com')}"
+    sug = cli.get("/ticker/central").json()["sugestao"]
+    for c in (cli, bia):
+        assert c.post("/ticker/baralho", json={"deck": sug[:3]}).json()["valido"]
+    sala = cli.post("/ticker/online/sala").json()
+    assert len(sala["codigo"]) == 6
+    assert bia.post("/ticker/online/sala/entrar", json={"codigo": sala["codigo"].lower()}).json()["id"] == sala["id"]
+    pid = sala["id"]
+    assert cli.get(f"/ticker/online/{pid}").json()["fase"] == "pronta"
+    cli.post(f"/ticker/online/{pid}/pronto")
+    v = bia.post(f"/ticker/online/{pid}/pronto").json()
+    assert v["fase"] == "em_jogo" and v["op"]["nick"]
+    for n in range(3):
+        ea = cli.get(f"/ticker/online/{pid}").json()
+        eb = bia.get(f"/ticker/online/{pid}").json()
+        ta = next(t for t in ea["eu"]["deck"] if t not in ea["eu"]["usadas"])
+        tb = next(t for t in eb["eu"]["deck"] if t not in eb["eu"]["usadas"])
+        assert cli.post(f"/ticker/online/{pid}/jogar", json={"carta": ta, "ind": "pvp"}).status_code == 400   # fora dos 5
+        va = cli.post(f"/ticker/online/{pid}/jogar", json={"carta": ta, "ind": "dy_12m"}).json()
+        assert va["eu"]["escolha"] and "escolha" not in (bia.get(f"/ticker/online/{pid}").json()["op"] or {})   # a escolha fica secreta
+        vb = bia.post(f"/ticker/online/{pid}/jogar", json={"carta": tb, "ind": "dy_12m"}).json()
+        assert len(vb["reg"]) == n + 1 and vb["reg"][-1]["cmp"][0]["txt_a"]
+    fa, fb = cli.get(f"/ticker/online/{pid}").json(), bia.get(f"/ticker/online/{pid}").json()
+    assert fa["encerrada"] and fa["final"]["resultado"] in ("vitoria", "derrota", "empate")
+    oposto = {"vitoria": "derrota", "derrota": "vitoria", "empate": "empate"}
+    assert fb["final"]["resultado"] == oposto[fa["final"]["resultado"]]
+    import json
+    doc = banco.jogos_placar_ler(banco.Ator(id="id-" + EU, email=EU, papel="usuario"))
+    assert pid in json.dumps(doc)                                           # o duelo online entrou no placar (ranking)
+
+
+def test_ticker_online_fila_emparelha(cli):
+    import banco
+    import contas
+    from test_perfil_foto import _contas
+    _cartas_teste()
+    _contas(banco, "caio@x.com")
+    banco.sis_atualizar_conta("id-caio@x.com", {"status": "ativa"})
+    caio = TestClient(API.app)
+    caio.headers["Authorization"] = f"Bearer {contas.criar_sessao('id-caio@x.com')}"
+    sug = cli.get("/ticker/central").json()["sugestao"]
+    for c in (cli, caio):
+        c.post("/ticker/baralho", json={"deck": sug[:3]})
+    assert cli.post("/ticker/online/fila").json()["estado"] == "fila"
+    r = caio.post("/ticker/online/fila").json()
+    assert r["estado"] == "partida"
+    assert cli.get("/ticker/online/fila").json() == {"estado": "partida", "id": r["id"]}
+    assert cli.get("/ticker/online/ativa").json()["id"] == r["id"]
+    v = caio.post(f"/ticker/online/{r['id']}/sair").json()                  # sair antes de alguém ficar pronto: cancela
+    assert v["encerrada"]
