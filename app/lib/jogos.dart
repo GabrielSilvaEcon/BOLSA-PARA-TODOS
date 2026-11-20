@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'historico.dart';
 import 'navegacao.dart';
 import 'ticker.dart';
 import 'trade.dart';
@@ -92,66 +93,66 @@ class _JogosTelaState extends State<JogosTela> {
             ),
           ),
           RefreshIndicator(
-        onRefresh: _carregar,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-              children: [
-                _topo(),
-                _titulo('🎮 Nossos Jogos'),
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _jogo(
-                          cor: _verde,
-                          arte: 'assets/jogos/trade_hero.webp',
-                          frase: 'Desafie outros jogadores em batalhas de trade!',
-                          botao: const [Color(0xFF2EE86B), Color(0xFF14C98F)],
-                          texto: const Color(0xFF06240F),
-                          acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TradeTela(api: widget.api))),
-                        ),
+            onRefresh: _carregar,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+                  children: [
+                    _topo(),
+                    _titulo('🎮 Nossos Jogos'),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: _jogo(
+                              cor: _verde,
+                              arte: 'assets/jogos/trade_hero.webp',
+                              frase: 'Desafie outros jogadores em batalhas de trade!',
+                              botao: const [Color(0xFF2EE86B), Color(0xFF14C98F)],
+                              texto: const Color(0xFF06240F),
+                              acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TradeTela(api: widget.api))),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _jogo(
+                              cor: _roxo,
+                              arte: 'assets/jogos/ticker_hero.webp',
+                              frase: 'Mostre seu conhecimento e suba no ranking!',
+                              botao: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                              texto: Colors.white,
+                              acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TickerTela(api: widget.api))),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _jogo(
-                          cor: _roxo,
-                          arte: 'assets/jogos/ticker_hero.webp',
-                          frase: 'Mostre seu conhecimento e suba no ranking!',
-                          botao: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
-                          texto: Colors.white,
-                          acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TickerTela(api: widget.api))),
-                        ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(2, 18, 2, 8),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text('📈 Sua Evolução', style: TextStyle(fontSize: 18.4, fontWeight: FontWeight.w900, color: Colors.white)),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HistoricoTela(api: widget.api))),
+                            child: const Text('Ver detalhes ›', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFB79CFF))),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    _evolucao(),
+                    if (_d?['desafio'] is Map) _desafio(_d!['desafio'] as Map),
+                    const SizedBox(height: 12),
+                    _atalhos(),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(2, 18, 2, 8),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text('📈 Sua Evolução', style: TextStyle(fontSize: 18.4, fontWeight: FontWeight.w900, color: Colors.white)),
-                      ),
-                      GestureDetector(
-                        onTap: () => _emBreve('Histórico de partidas'),
-                        child: const Text('Ver detalhes ›', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFB79CFF))),
-                      ),
-                    ],
-                  ),
-                ),
-                _evolucao(),
-                if (_d?['desafio'] is Map) _desafio(_d!['desafio'] as Map),
-                const SizedBox(height: 12),
-                _atalhos(),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
         ],
       ),
     );
@@ -297,8 +298,7 @@ class _JogosTelaState extends State<JogosTela> {
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF160F55), Color(0xFF0B0738)]),
                       ),
-                      child: Text(frase, textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12.2, height: 1.3, fontWeight: FontWeight.w700, color: Color(0xFFEDE9FF))),
+                      child: Text(frase, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.2, height: 1.3, fontWeight: FontWeight.w700, color: Color(0xFFEDE9FF))),
                     ),
                   ),
                 ],
@@ -393,75 +393,75 @@ class _JogosTelaState extends State<JogosTela> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.centerRight,
-                  radius: 1,
-                  colors: [_ouro.withValues(alpha: 0.22), _ouro.withValues(alpha: 0)],
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.centerRight,
+                    radius: 1,
+                    colors: [_ouro.withValues(alpha: 0.22), _ouro.withValues(alpha: 0)],
+                  ),
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-            children: [
-              const Text('📅', style: TextStyle(fontSize: 32)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Desafio da Semana', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFC93C))),
-                    const SizedBox(height: 2),
-                    Text('${d['texto'] ?? ''}', style: const TextStyle(fontSize: 12.8, height: 1.3, color: Color(0xFFEDE9FF))),
-                    const SizedBox(height: 8),
-                    Row(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  const Text('📅', style: TextStyle(fontSize: 32)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Container(
-                            height: 8,
-                            alignment: Alignment.centerLeft,
-                            decoration: BoxDecoration(color: const Color(0x1FFFFFFF), borderRadius: BorderRadius.circular(99)),
-                            child: FractionallySizedBox(
-                              widthFactor: pct,
+                        const Text('Desafio da Semana', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFC93C))),
+                        const SizedBox(height: 2),
+                        Text('${d['texto'] ?? ''}', style: const TextStyle(fontSize: 12.8, height: 1.3, color: Color(0xFFEDE9FF))),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
                               child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(99),
-                                  gradient: const LinearGradient(colors: [Color(0xFF34E85E), Color(0xFFB6F23E)]),
+                                height: 8,
+                                alignment: Alignment.centerLeft,
+                                decoration: BoxDecoration(color: const Color(0x1FFFFFFF), borderRadius: BorderRadius.circular(99)),
+                                child: FractionallySizedBox(
+                                  widthFactor: pct,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(99),
+                                      gradient: const LinearGradient(colors: [Color(0xFF34E85E), Color(0xFFB6F23E)]),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            Text('${atual.toInt()}/${alvo.toInt()}', style: const TextStyle(fontSize: 12.8, fontWeight: FontWeight.w900, color: Colors.white)),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Text('${atual.toInt()}/${alvo.toInt()}', style: const TextStyle(fontSize: 12.8, fontWeight: FontWeight.w900, color: Colors.white)),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: ok ? _verde : _ouro, width: 1.5),
+                      color: const Color(0x80281800),
+                    ),
+                    child: Text(
+                      ok ? '✓ Concluído' : '+${d['pontos'] ?? 0} pts',
+                      style: TextStyle(fontSize: 12.8, fontWeight: FontWeight.w900, color: ok ? const Color(0xFF6BFF8A) : const Color(0xFFFFE08A)),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: ok ? _verde : _ouro, width: 1.5),
-                  color: const Color(0x80281800),
-                ),
-                child: Text(
-                  ok ? '✓ Concluído' : '+${d['pontos'] ?? 0} pts',
-                  style: TextStyle(fontSize: 12.8, fontWeight: FontWeight.w900, color: ok ? const Color(0xFF6BFF8A) : const Color(0xFFFFE08A)),
-                ),
-              ),
-            ],
-          ),
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
       ),
     );
   }
