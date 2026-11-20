@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'navegacao.dart';
+import 'ticker.dart';
 import 'trade.dart';
 
 /// Central de Jogos ("Mundo dos Jogos!"), igual à do app antigo (jogos_app.pagina_central + design/kit.topo):
@@ -122,7 +123,7 @@ class _JogosTelaState extends State<JogosTela> {
                           frase: 'Mostre seu conhecimento e suba no ranking!',
                           botao: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
                           texto: Colors.white,
-                          acao: () => _emBreve('Ticker Battle'),
+                          acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TickerTela(api: widget.api))),
                         ),
                       ),
                     ],
