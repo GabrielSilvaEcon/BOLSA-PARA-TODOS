@@ -696,6 +696,10 @@ def ranking_tela(jogo: str, filtro: str = "geral", periodo: str = "geral", q: Qu
     ok = (lambda email: email == q.email or banco._h_conta(email) in amigos) if amigos is not None else (lambda email: True)
     if jogo == "carteira":
         return _ranking_carteira(q, periodo, perfis, ok)
+    if jogo == "semana":
+        return _ranking_semana(q, perfis)
+    if jogo == "torneio":
+        return _ranking_torneio(q, perfis, ok)
     if jogo not in ("trade", "ticker"):
         raise HTTPException(404, "jogo desconhecido")
     import trofeus as TF
@@ -795,9 +799,30 @@ def _trof_registrar(q: "Quem", jogo: str, pid: str, adversarios: list[str], plac
         if d is None:
             return
         depois = TF.divisao(doc[jogo]["t"])
+        hoje = _agora_brt().date()
+        TF.anotar_semana(doc, TF.semana_id(hoje), d)
+        TF.anotar_torneio(doc, TF.torneio_id(hoje), d)
+        advs = [e for e in adversarios if e and e != q.email]
+        for e in advs:
+            TF.anotar_h2h(doc, banco._h_conta(e), placar)
+        rev = None
+        if len(advs) == 1:                                   # duelo: dá para pedir revanche (se forem amigos)
+            import amigos as AM
+            h = banco._h_conta(advs[0])
+            try:
+                amigo = (banco.social_relacoes(q.ator).get(h) or {}).get("estado") == AM.AMIGOS
+            except Exception:
+                amigo = False
+            try:
+                import perfis as PF
+                pf = PF.sanear(banco.sis_estado_ler(advs[0], "perfil_jogador"))
+                nome, av = pf["nome"] or pf["usuario"] or "Adversário", _avatar_img(pf["avatar"] if pf["avatar"] != PF.FOTO else PF.AVATAR_PADRAO)
+            except Exception:
+                nome, av = "Adversário", ""
+            rev = {"h": h, "amigo": amigo, "placar": doc["h2h"].get(h), "nome": nome, "avatar_img": av}
         doc["ult"] = {"jogo": jogo, "id": str(pid), "delta": d, "t": doc[jogo]["t"], "divisao": depois["nome"], "dv": depois,
                       "resultado": "vitoria" if placar > 0.5 else ("empate" if placar == 0.5 else "derrota"),
-                      "subiu": depois["nivel"] > antes["nivel"], "caiu": depois["nivel"] < antes["nivel"]}
+                      "subiu": depois["nivel"] > antes["nivel"], "caiu": depois["nivel"] < antes["nivel"], "revanche": rev}
         banco.sis_estado_gravar(q.email, CHAVE_TROFEUS, doc)
     except Exception as e:
         banco.registrar_erro("api.trofeus", e)
@@ -2002,6 +2027,8 @@ def social(q: Quem = Depends(quem)) -> dict:
         ativos = {}
     eu_h = banco._h_conta(q.email)
     out = {"eu": None, "amigos": [], "recebidos": [], "enviados": [], "convites": []}
+    import trofeus as TF
+    meu_trof = _trof_doc(q.email)
     if eu_h in mapa:
         out["eu"] = _social_cartao(eu_h, q.email, mapa[eu_h][1], placares, ativos, False)
     for h, r in rel.items():
@@ -2010,6 +2037,19 @@ def social(q: Quem = Depends(quem)) -> dict:
         c = _social_cartao(h, mapa[h][0], mapa[h][1], placares, ativos, r["estado"] == AM.AMIGOS)
         if c:
             {AM.AMIGOS: out["amigos"], AM.RECEBIDA: out["recebidos"], AM.ENVIADA: out["enviados"]}[r["estado"]].append(c)
+    amigos_h = {x["h"] for x in out["amigos"]}
+    riv = TF.rival(meu_trof, amigos_h)
+    try:
+        todos = {e: d for e, d in _trof_todos() if banco._h_conta(e) in amigos_h or e == q.email}
+        coroa = _coroa_semana(q, amigos_h, todos)
+    except Exception:
+        coroa = None
+    for x in out["amigos"]:
+        x["h2h"] = meu_trof["h2h"].get(x["h"])
+        x["rival"] = x["h"] == riv
+        x["coroa"] = x["h"] == coroa
+    if out["eu"]:
+        out["eu"]["coroa"] = eu_h == coroa
     try:
         for cv in banco.convites_recebidos(a):
             de = next((x for x in out["amigos"] if x["h"] == cv["h"]), None)
@@ -2346,3 +2386,143 @@ def desafio_jogar(q: Quem = Depends(quem)) -> dict:
 def desafio_ranking(dia: str | None = None, filtro: str = "geral", q: Quem = Depends(quem)) -> dict:
     d = dia if dia in (_dsd_dia(), _dsd_dia(-1)) else _dsd_dia()
     return {"dia": d, **_dsd_ranking(q, d, filtro), "hora": _agora_brt().strftime("%H:%M")}
+
+
+# ------------------------------------------------------------------ ranking semanal entre amigos (com a coroa) e torneio de fim de semana
+def _trof_todos() -> list[tuple[str, dict]]:
+    import trofeus as TF
+    temp = _temporada()
+    out = []
+    try:
+        for r in banco.sis_comp_todos(CHAVE_TROFEUS):
+            out.append((r["email"], TF.sanear(r["dados"], temp)[0]))
+    except Exception:
+        pass
+    return out
+
+
+def _coroa_semana(q: "Quem", amigos_h: set[str], docs: dict) -> str | None:
+    """Hash do 1º da semana PASSADA entre você e seus amigos (quem usa a coroa nesta semana). Precisa de saldo positivo."""
+    import trofeus as TF
+    from datetime import timedelta
+    passada = TF.semana_id(_agora_brt().date() - timedelta(days=7))
+    melhor, pts = None, 0
+    for email, d in docs.items():
+        h = banco._h_conta(email)
+        if email != q.email and h not in amigos_h:
+            continue
+        p = TF.pontos_semana_passada(d, passada)
+        if p is not None and p > pts:
+            melhor, pts = h, p
+    return melhor
+
+
+def _ranking_semana(q: "Quem", perfis: dict) -> dict:
+    """Você e seus amigos pelo saldo de troféus desta semana (os dois jogos). Zera toda segunda; o 1º da semana passada usa a coroa."""
+    import trofeus as TF
+    sem = TF.semana_id(_agora_brt().date())
+    amigos = _rk_amigos(q) or set()
+    docs = {e: d for e, d in _trof_todos() if e == q.email or banco._h_conta(e) in amigos}
+    docs.setdefault(q.email, _trof_doc(q.email))
+    coroa = _coroa_semana(q, amigos, docs)
+    linhas = sorted(((TF.pontos_semana(d, sem), e) for e, d in docs.items()), key=lambda x: (-x[0], x[1]))
+    saida = [_rk_linha(i, e, perfis, q.email, p, {"coroa": banco._h_conta(e) == coroa}) for i, (p, e) in enumerate(linhas, 1)]
+    from datetime import timedelta
+    hoje = _agora_brt().date()
+    return {"jogo": "semana", "nome": "Semana dos amigos", "total": len(saida), "linhas": saida, "eu": next((x for x in saida if x["eu"]), None),
+            "unidade": "troféus na semana", "zera_em_dias": 7 - hoje.weekday(), "hora": _agora_brt().strftime("%H:%M")}
+
+
+def _torneio_status() -> dict:
+    """O torneio atual (aberto de sexta a domingo) ou o próximo, com quanto falta para abrir ou fechar."""
+    import trofeus as TF
+    from datetime import datetime, timedelta
+    agora = _agora_brt()
+    hoje = agora.date()
+    tid = TF.torneio_id(hoje)
+    if tid:
+        fim = datetime.combine(date_from_iso(tid) + timedelta(days=3), datetime.min.time(), tzinfo=agora.tzinfo)
+        return {"id": tid, "aberto": True, "segundos": int((fim - agora).total_seconds())}
+    sexta = hoje + timedelta(days=(4 - hoje.weekday()) % 7)
+    ini = datetime.combine(sexta, datetime.min.time(), tzinfo=agora.tzinfo)
+    return {"id": sexta.isoformat(), "aberto": False, "segundos": int((ini - agora).total_seconds())}
+
+
+def date_from_iso(s: str):
+    from datetime import date
+    return date.fromisoformat(s)
+
+
+def _torneio_classificacao(tid: str) -> list[tuple[int, str]]:
+    import trofeus as TF
+    out = []
+    for e, d in _trof_todos():
+        t = d.get("trn") or {}
+        if t.get("id") == tid and t.get("insc"):
+            out.append((TF.pontos_torneio(t), e))
+    out.sort(key=lambda x: (-x[0], x[1]))
+    return out
+
+
+def _ranking_torneio(q: "Quem", perfis: dict, ok) -> dict:
+    st = _torneio_status()
+    cl = [(p, e) for p, e in _torneio_classificacao(st["id"]) if ok(e)]
+    saida = [_rk_linha(i, e, perfis, q.email, p) for i, (p, e) in enumerate(cl, 1)]
+    return {"jogo": "torneio", "nome": "Torneio de fim de semana", "total": len(saida), "linhas": saida[:100], "eu": next((x for x in saida if x["eu"]), None),
+            "unidade": "pontos", "hora": _agora_brt().strftime("%H:%M")}
+
+
+def _torneio_premio_anterior(q: "Quem") -> dict | None:
+    """Prêmio do torneio do fim de semana passado para o top 3, pago uma vez (a chave do crédito impede pagar de novo)."""
+    import trofeus as TF
+    from datetime import timedelta
+    hoje = _agora_brt().date()
+    sexta_passada = hoje - timedelta(days=(hoje.weekday() - 4) % 7 or 7)
+    tid = sexta_passada.isoformat()
+    if TF.torneio_id(hoje) == tid:                         # ainda é o fim de semana dele: nada a pagar
+        return None
+    cl = _torneio_classificacao(tid)
+    pos = next((i for i, (p, e) in enumerate(cl, 1) if e == q.email and p > 0), None)
+    if not pos or pos > len(TF.TORNEIO_PREMIOS):
+        return None
+    tc = TF.TORNEIO_PREMIOS[pos - 1]
+    try:
+        lin = TC.creditar(q.conta.get("id"), tc, "bonus:torneio", f"Torneio de fim de semana {tid}: {pos}º lugar", f"trn:{q.conta.get('id')}:{tid}", tid)
+        return {"id": tid, "pos": pos, "tc": tc, "novo": not (lin or {}).get("duplicado")}
+    except Exception as e:
+        banco.registrar_erro("api.torneio_premio", e)
+        return None
+
+
+@app.get("/torneio")
+def torneio(q: Quem = Depends(quem)) -> dict:
+    """Torneio de fim de semana: aberto de sexta a domingo, para quem se inscreve. Valem as 5 melhores partidas online (troféus
+    ganhos em cada uma; perder não tira pontos). Top 3 ganha TC na segunda."""
+    import trofeus as TF
+    st = _torneio_status()
+    doc = _trof_meu(q)
+    t = doc.get("trn") or {}
+    meu = t if t.get("id") == st["id"] else {}
+    rk = _ranking_torneio(q, _rk_perfis(), lambda e: True)
+    return {**st, "inscrito": bool(meu.get("insc")), "pontos": TF.pontos_torneio(meu), "partidas": len(meu.get("jogos") or []),
+            "melhores": sorted((max(0, int(x)) for x in (meu.get("jogos") or [])), reverse=True)[:TF.TORNEIO_PARTIDAS],
+            "conta": TF.TORNEIO_PARTIDAS, "premios": list(TF.TORNEIO_PREMIOS), "inscritos": rk["total"], "top": rk["linhas"][:10], "eu": rk["eu"],
+            "premio_anterior": _torneio_premio_anterior(q)}
+
+
+@app.post("/torneio/inscrever")
+def torneio_inscrever(q: Quem = Depends(quem)) -> dict:
+    import trofeus as TF
+    st = _torneio_status()
+    if not st["aberto"]:
+        raise HTTPException(400, "As inscrições abrem na sexta-feira.")
+    doc = _trof_meu(q)
+    TF.inscrever(doc, st["id"])
+    banco.sis_estado_gravar(q.email, CHAVE_TROFEUS, doc)
+    return {"ok": True}
+
+
+@app.post("/social/revanche")
+def social_revanche(d: SocialAlvo, jogo: str = "ticker", q: Quem = Depends(quem)) -> dict:
+    """Revanche: o mesmo desafio PvP direto de /social/desafiar, para o adversário da última partida (só entre amigos)."""
+    return social_desafiar(SocialDesafio(h=d.h, jogo=jogo), q)

@@ -2,6 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'api.dart';
+import 'social.dart';
+
 /// Escudo de uma divisão (Bronze, Prata, Ouro, Platina, Diamante e Lenda). Se existir a arte em assets/ranking/<id>.webp ela é
 /// usada; enquanto não existir, o escudo é desenhado aqui, na cor da divisão, com o ícone e o número de estrelas do nível.
 class Escudo extends StatelessWidget {
@@ -135,11 +138,12 @@ class TrofeusGanhos extends StatelessWidget {
 /// Tela cheia depois de uma partida online (como a arte de referência): VITÓRIA / DERROTA / EMPATE, os troféus ganhos ou
 /// perdidos, o escudo e a barra da divisão (subindo ou caindo na hora) e o botão Continuar.
 class ResultadoTrofeusTela extends StatelessWidget {
-  const ResultadoTrofeusTela({super.key, required this.t});
+  const ResultadoTrofeusTela({super.key, required this.t, this.api});
   final Map t;
+  final Api? api;
 
-  static Future<void> abrir(BuildContext context, Map t) => Navigator.of(context, rootNavigator: true)
-      .push(PageRouteBuilder<void>(opaque: false, pageBuilder: (_, __, ___) => ResultadoTrofeusTela(t: t), transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)));
+  static Future<void> abrir(BuildContext context, Map t, {Api? api}) => Navigator.of(context, rootNavigator: true)
+      .push(PageRouteBuilder<void>(opaque: false, pageBuilder: (_, __, ___) => ResultadoTrofeusTela(t: t, api: api), transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c)));
 
   @override
   Widget build(BuildContext context) {
@@ -256,6 +260,30 @@ class ResultadoTrofeusTela extends StatelessWidget {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: t['subiu'] == true ? _ouroT : Colors.white)),
               ),
               const SizedBox(height: 18),
+              if (api != null && (t['revanche'] as Map?)?['amigo'] == true) ...[
+                if ((t['revanche'] as Map)['placar'] is Map)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text('Você ${((t['revanche'] as Map)['placar'] as Map)['v'] ?? 0} × ${((t['revanche'] as Map)['placar'] as Map)['d'] ?? 0} ${(t['revanche'] as Map)['nome'] ?? ''}',
+                        textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                  ),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _ouroT,
+                    side: const BorderSide(color: _ouroT, width: 2),
+                    minimumSize: const Size.fromHeight(52),
+                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                  onPressed: () {
+                    final nav = Navigator.of(context, rootNavigator: true);
+                    nav.pop();
+                    desafiarAmigo(nav.context, api!, t['revanche'] as Map, '${t['jogo'] ?? 'ticker'}');
+                  },
+                  icon: const Icon(Icons.replay_rounded),
+                  label: const Text('REVANCHE'),
+                ),
+                const SizedBox(height: 10),
+              ],
               FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF7B4BEE),

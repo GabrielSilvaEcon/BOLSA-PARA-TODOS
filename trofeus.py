@@ -59,7 +59,7 @@ def placar_por_posicao(pos: int, n: int) -> float:
 
 
 def vazio(temp: str) -> dict:
-    return {"temp": temp, "trade": {"t": 0, "max": 0}, "ticker": {"t": 0, "max": 0}, "ids": [], "premios": {}}
+    return {"temp": temp, "trade": {"t": 0, "max": 0}, "ticker": {"t": 0, "max": 0}, "ids": [], "premios": {}, "h2h": {}}
 
 
 def sanear(doc: dict | None, temp: str) -> tuple[dict, dict | None]:
@@ -69,6 +69,10 @@ def sanear(doc: dict | None, temp: str) -> tuple[dict, dict | None]:
     if not d.get("temp"):
         return vazio(temp), None
     out = {"temp": d["temp"], "ids": [str(x) for x in (d.get("ids") or [])][-IDS_MAX:], "premios": dict(d.get("premios") or {})}
+    for k in ("sem", "sem_ant", "trn", "ult"):                    # semana, semana passada, torneio e última partida
+        if isinstance(d.get(k), dict):
+            out[k] = dict(d[k])
+    out["h2h"] = {str(h): dict(v) for h, v in (d.get("h2h") or {}).items() if isinstance(v, dict)}
     for j in JOGOS:
         g = d.get(j) or {}
         out[j] = {"t": max(0, int(g.get("t") or 0)), "max": max(0, int(g.get("max") or 0))}
@@ -102,3 +106,85 @@ def registrar(doc: dict, jogo: str, pid: str, meus_deles: float, placar: float) 
     g["max"] = max(g["max"], g["t"])
     doc["ids"] = (doc["ids"] + [pid])[-IDS_MAX:]
     return doc, d
+
+
+# ------------------------------------------------------------------ semana, confronto direto (rival) e torneio de fim de semana
+TORNEIO_PARTIDAS = 5                                     # valem as 5 melhores partidas online do fim de semana
+TORNEIO_PREMIOS = (100, 60, 30)                          # TC para o 1º, 2º e 3º lugar
+
+
+def semana_id(dia) -> str:
+    ano, sem, _ = dia.isocalendar()
+    return f"{ano}-W{sem:02d}"
+
+
+def torneio_id(dia) -> str | None:
+    """Id do torneio do fim de semana (a data da sexta) se `dia` é sexta, sábado ou domingo; senão None."""
+    from datetime import timedelta
+    wd = dia.weekday()
+    return (dia - timedelta(days=wd - 4)).isoformat() if wd >= 4 else None
+
+
+def anotar_semana(doc: dict, sem: str, delta: int) -> None:
+    """Troféus ganhos (saldo) na semana, nos dois jogos. Na virada, a semana atual vira a passada (a da coroa)."""
+    s = doc.get("sem") or {}
+    if s.get("id") != sem:
+        if s.get("id"):
+            doc["sem_ant"] = {"id": s["id"], "pts": int(s.get("pts") or 0)}
+        s = {"id": sem, "pts": 0}
+    s["pts"] = int(s.get("pts") or 0) + int(delta)
+    doc["sem"] = s
+
+
+def pontos_semana(doc: dict, sem: str) -> int:
+    s = doc.get("sem") or {}
+    return int(s.get("pts") or 0) if s.get("id") == sem else 0
+
+
+def pontos_semana_passada(doc: dict, sem_passada: str) -> int | None:
+    for k in ("sem", "sem_ant"):
+        s = doc.get(k) or {}
+        if s.get("id") == sem_passada:
+            return int(s.get("pts") or 0)
+    return None
+
+
+def anotar_h2h(doc: dict, h_adv: str, placar: float) -> None:
+    """Confronto direto com um adversário (pelo hash da conta): vitórias, empates e derrotas."""
+    r = doc.setdefault("h2h", {}).setdefault(str(h_adv), {"v": 0, "e": 0, "d": 0})
+    r["v" if placar > 0.5 else ("e" if placar == 0.5 else "d")] += 1
+
+
+def rival(doc: dict, candidatos: set[str] | None = None) -> str | None:
+    """O adversário mais enfrentado (entre os candidatos, se vierem). Precisa de pelo menos 3 partidas."""
+    melhor, n = None, 0
+    for h, r in (doc.get("h2h") or {}).items():
+        if candidatos is not None and h not in candidatos:
+            continue
+        t = int(r.get("v", 0)) + int(r.get("e", 0)) + int(r.get("d", 0))
+        if t > n:
+            melhor, n = h, t
+    return melhor if n >= 3 else None
+
+
+def inscrever(doc: dict, tid: str) -> None:
+    t = doc.get("trn") or {}
+    if t.get("id") != tid:
+        t = {"id": tid, "jogos": []}
+    t["insc"] = True
+    doc["trn"] = t
+
+
+def anotar_torneio(doc: dict, tid: str | None, delta: int) -> None:
+    """Partida online durante o fim de semana de quem se inscreveu: o saldo de troféus da partida entra na lista do torneio."""
+    t = doc.get("trn") or {}
+    if not tid or t.get("id") != tid or not t.get("insc"):
+        return
+    t["jogos"] = (list(t.get("jogos") or []) + [int(delta)])[-60:]
+    doc["trn"] = t
+
+
+def pontos_torneio(trn: dict | None) -> int:
+    """Soma das 5 melhores partidas (só ganhos contam: perder não tira pontos do torneio)."""
+    js = sorted((max(0, int(x)) for x in ((trn or {}).get("jogos") or [])), reverse=True)
+    return sum(js[:TORNEIO_PARTIDAS])
