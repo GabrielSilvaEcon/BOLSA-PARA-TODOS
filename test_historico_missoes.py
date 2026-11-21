@@ -41,3 +41,10 @@ def test_eventos_e_glossario(cli):
     assert e.json()["passe"]["total"] > 0
     g = cli.get("/ajuda/glossario").json()["termos"]
     assert len(g) > 20 and all(t["oque"] for t in g)
+
+
+def test_carteira_historico_e_conquistas(cli):
+    h = cli.get("/carteira/historico")
+    assert h.status_code == 200 and {"itens", "resumo"} <= set(h.json())
+    c = cli.get("/carteira/conquistas")
+    assert c.status_code == 200 and "total" in c.json()
