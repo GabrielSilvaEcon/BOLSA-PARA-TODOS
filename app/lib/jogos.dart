@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'ajuda.dart';
 import 'api.dart';
+import 'aprender.dart' show FundoCidade;
 import 'eventos.dart';
 import 'historico.dart';
 import 'navegacao.dart';
@@ -83,7 +84,7 @@ class _JogosTelaState extends State<JogosTela> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/jogos/fundo_batalha.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const FundoCidade(),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

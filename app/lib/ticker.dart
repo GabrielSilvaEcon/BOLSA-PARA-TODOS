@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'animacoes.dart';
 import 'api.dart';
+import 'aprender.dart' show FundoCidade;
 import 'navegacao.dart';
 import 'ticker_duelo.dart';
 import 'ticker_online.dart';
@@ -124,7 +125,7 @@ class _TickerTelaState extends State<TickerTela> {
             ),
           ),
           // fundo da arena do Ticker Battle (arte do Gabriel: touro × urso), parado atrás da página, com um véu para o texto ficar legível
-          Image.asset('assets/ticker/fundo.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const FundoCidade(),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
