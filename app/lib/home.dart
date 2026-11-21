@@ -5,6 +5,7 @@ import 'animacoes.dart';
 import 'api.dart';
 import 'arte_cartao.dart';
 import 'carteira.dart';
+import 'desafio.dart';
 import 'cenario.dart';
 import 'mercado.dart';
 import 'missoes.dart';
@@ -71,7 +72,7 @@ class _HomeTelaState extends State<HomeTela> {
     return e.contains('@') ? e.split('@').first : 'Jogador';
   }
 
-  void _abrir(Widget t) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => t));
+  Future<void> _abrir(Widget t) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => t));
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +97,8 @@ class _HomeTelaState extends State<HomeTela> {
                         _erroTela()
                       else ...[
                         Entrada(ordem: 0, child: _banner()),
+                        const SizedBox(height: 12),
+                        Entrada(ordem: 1, child: _desafio()),
                         const SizedBox(height: 12),
                         Entrada(ordem: 1, child: _orbit()),
                         const SizedBox(height: 12),
@@ -268,6 +271,71 @@ class _HomeTelaState extends State<HomeTela> {
         FittedBox(child: Text(txt, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: cor))),
         Text(v is num ? '${it['valor']}' : nota, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Colors.white)),
       ]),
+    );
+  }
+
+  // ---- Desafio do dia (cartão grande, como a arte de referência)
+  Widget _desafio() {
+    final d = (_home?['desafio'] as Map?) ?? const {};
+    final s = (d['termina_em'] as num?)?.toInt() ?? 0;
+    final (txt, ic, cor) = d['terminou'] == true
+        ? ('Você já jogou hoje!', Icons.check_circle_outline_rounded, _verde)
+        : d['jogou'] == true
+            ? ('Termine sua tentativa!', Icons.play_circle_outline_rounded, _ouro)
+            : ('Você ainda não jogou hoje', Icons.bolt_rounded, _ouro);
+    return Pressionavel(
+      aoTocar: () async {
+        await _abrir(DesafioTela(api: widget.api));
+        _carregar();
+      },
+      child: Container(
+        height: 176,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFF2A50B), width: 2.5),
+          gradient: const LinearGradient(colors: [Color(0xFF3A1E8A), Color(0xFF1A0F5E)]),
+          boxShadow: const [BoxShadow(color: Color(0x88F2A50B), blurRadius: 18)],
+        ),
+        child: Stack(children: [
+          Positioned(left: -14, bottom: -6, child: Image.asset('assets/ranking/urso_aponta.webp', height: 180)),
+          Positioned(
+            right: 8,
+            top: 6,
+            bottom: 8,
+            width: 210,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Expanded(child: Image.asset('assets/ranking/desafio_titulo.webp', fit: BoxFit.contain)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0xCC120850)),
+                child: Row(children: [
+                  const Icon(Icons.schedule_rounded, color: _ouro, size: 20),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('Termina em:', style: TextStyle(fontSize: 10.5, color: Colors.white)),
+                      Text(contagem(s), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: _ouro)),
+                    ]),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFF8B6CFF)), color: const Color(0x99120850)),
+                child: Row(children: [
+                  Icon(ic, color: cor, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
+                      child:
+                          Text(txt, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic, color: Colors.white))),
+                ]),
+              ),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 
