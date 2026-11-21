@@ -64,7 +64,7 @@ class _RankingTelaState extends State<RankingTela> {
     });
     try {
       final rs = await Future.wait([
-        widget.api.get('/ranking/$_jogo/tela?filtro=$_filtro&periodo=$_periodo'),
+        widget.api.get(_jogo == 'desafio' ? '/desafio/ranking?filtro=$_filtro' : '/ranking/$_jogo/tela?filtro=$_filtro&periodo=$_periodo'),
         if (_t == null) widget.api.get('/trofeus'),
       ]);
       if (!mounted) return;
@@ -96,6 +96,7 @@ class _RankingTelaState extends State<RankingTela> {
 
   String _valor(Object? v) {
     if (v is! num) return '—';
+    if (_jogo == 'desafio') return v.toStringAsFixed(1).replaceAll('.', ',');
     if (_jogo == 'carteira') {
       if (_periodo == 'risco') return v.toStringAsFixed(2).replaceAll('.', ',');
       return '${v >= 0 ? '+' : ''}${v.toStringAsFixed(2).replaceAll('.', ',')}%';
@@ -134,7 +135,8 @@ class _RankingTelaState extends State<RankingTela> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
                   children: [
-                    if (_jogo != 'carteira' && _t != null) Entrada(ordem: 0, child: _minhaDivisao()),
+                    if ((_jogo == 'trade' || _jogo == 'ticker') && _t != null) Entrada(ordem: 0, child: _minhaDivisao()),
+                    if (_jogo == 'desafio') Entrada(ordem: 0, child: Image.asset('assets/ranking/desafio_titulo.webp', height: 170)),
                     if (_jogo == 'carteira') ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/jogos/banner_ranking.webp', fit: BoxFit.cover)),
                     const SizedBox(height: 10),
                     _abas(),
@@ -146,13 +148,16 @@ class _RankingTelaState extends State<RankingTela> {
                     else if (_falhou && _d == null)
                       _vazio('O ranking não carregou agora. Tente de novo em instantes.')
                     else if (total == 0) ...[
-                      _vazio(_jogo == 'carteira'
-                          ? 'Ainda não há participantes neste ranking. Ele mostra quem tem a carteira ativa há alguns pregões.'
-                          : _filtro == 'amigos'
-                              ? 'Nenhum amigo seu jogou online nesta temporada ainda. Desafie alguém!'
-                              : 'Ninguém jogou online nesta temporada ainda. Seja o primeiro a ganhar troféus!'),
+                      _vazio(_jogo == 'desafio'
+                          ? 'Ninguém terminou o Desafio do dia de hoje ainda. Seja o primeiro!'
+                          : _jogo == 'carteira'
+                              ? 'Ainda não há participantes neste ranking. Ele mostra quem tem a carteira ativa há alguns pregões.'
+                              : _filtro == 'amigos'
+                                  ? 'Nenhum amigo seu jogou online nesta temporada ainda. Desafie alguém!'
+                                  : 'Ninguém jogou online nesta temporada ainda. Seja o primeiro a ganhar troféus!'),
                       const SizedBox(height: 8),
-                      if (_jogo != 'carteira') FilledButton.icon(onPressed: () => abrirAba(1), icon: const Icon(Icons.play_arrow_rounded), label: Text('Jogar ${_d?['nome'] ?? ''} online')),
+                      if (_jogo == 'trade' || _jogo == 'ticker')
+                        FilledButton.icon(onPressed: () => abrirAba(1), icon: const Icon(Icons.play_arrow_rounded), label: Text('Jogar ${_d?['nome'] ?? ''} online')),
                     ] else ...[
                       _card(switch (_jogo) {
                         'carteira' => switch (_periodo) {
@@ -161,6 +166,7 @@ class _RankingTelaState extends State<RankingTela> {
                             'semana' => 'Retorno da carteira virtual nesta semana.',
                             _ => 'Retorno da carteira virtual desde o início.',
                           },
+                        'desafio' => 'O mesmo gráfico para todos, uma tentativa por dia. A nota é a pontuação da partida. Top 10 e top 100 ganham TC no dia seguinte.',
                         _ => 'Troféus da temporada: vencer partidas online dá troféus e perder tira. Vencer quem tem mais troféus vale mais.',
                       }),
                       const SizedBox(height: 6),
@@ -297,7 +303,7 @@ class _RankingTelaState extends State<RankingTela> {
       );
 
   Widget _abas() => Row(children: [
-        for (final (i, (id, rot)) in const [('trade', 'Trade Battle'), ('ticker', 'Ticker Battle'), ('carteira', 'Carteira')].indexed) ...[
+        for (final (i, (id, rot)) in const [('trade', 'Trade'), ('ticker', 'Ticker'), ('carteira', 'Carteira'), ('desafio', 'Desafio')].indexed) ...[
           if (i > 0) const SizedBox(width: 6),
           _chip(rot, _jogo == id, () => _trocar(jogo: id)),
         ],

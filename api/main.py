@@ -907,6 +907,8 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
         _registrar_ranking(q, pid, p, fz, (p.get("resultados") or {}).get(TB._chave(1, q.email)))
         d["xp_pago"] = _pagar_xp(q, pid, fz.get("xp") or {})
         d["fechada"] = True
+        if d.get("desafio"):                              # partida do Desafio do dia: a nota entra no ranking do dia
+            _desafio_nota(q, d["desafio"], pid, fz)
     d["p"] = p
     _gravar_solo(q, pid, d)
     args = TG.args_mesa(v, p, d.get("estado") or {}, agora)
@@ -1815,7 +1817,15 @@ def home(q: Quem = Depends(quem)) -> dict:
         cen = {"veredito": ger.get("v")} if ger.get("v") else None
     except Exception:
         cen = None
-    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen}
+    try:
+        from datetime import datetime, timedelta
+        agora = _agora_brt()
+        fim = datetime.combine(agora.date() + timedelta(days=1), datetime.min.time(), tzinfo=agora.tzinfo)
+        meu = banco.cfg_ler(f"dsd|{agora.date().isoformat()}|{banco._h_conta(q.email)}") or {}
+        dsd = {"jogou": bool(meu), "terminou": meu.get("nota") is not None, "nota": meu.get("nota"), "termina_em": int((fim - agora).total_seconds())}
+    except Exception:
+        dsd = None
+    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen, "desafio": dsd}
 
 
 # ------------------------------------------------------------------ Histórico de partidas e Missões
@@ -2204,3 +2214,135 @@ def social_convite_recusar(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
         banco.cfg_gravar(chave, {**dsf, "recusado": True})
     _social_erro(banco.convite_apagar, q.ator, d.h)
     return {"ok": True}
+
+
+# ------------------------------------------------------------------ Desafio do dia (desafio_dia.py): o mesmo gráfico para todos, 1 tentativa
+CHAVE_DSD_CEN = "dsd_cen|{dia}"             # o gráfico do dia (fixado na primeira consulta: muda nada se entrarem gráficos novos)
+CHAVE_DSD = "dsd|{dia}|{h}"                 # a tentativa de cada conta: {email, pid, inicio, nota?, fim?}
+
+
+def _dsd_dia(delta: int = 0) -> str:
+    from datetime import timedelta
+    return (_agora_brt() + timedelta(days=delta)).date().isoformat()
+
+
+def _dsd_cenario(dia: str) -> dict:
+    import desafio_dia as DD
+    ref = banco.cfg_ler(CHAVE_DSD_CEN.format(dia=dia))
+    if ref:
+        cen = TD.resolver(ref)
+        if cen:
+            return cen
+    sem = DD.semente(dia)
+    cen = TD.escolher_corrida(DD.CORRIDA, sem)
+    try:
+        banco._cfg_inserir(CHAVE_DSD_CEN.format(dia=dia), TD.referencia_corrida(cen, sem))
+    except banco.Duplicado:                                   # outra pessoa fixou o gráfico ao mesmo tempo: vale o dela
+        return TD.resolver(banco.cfg_ler(CHAVE_DSD_CEN.format(dia=dia)))
+    return cen
+
+
+def _dsd_resultados(dia: str) -> list[dict]:
+    try:
+        return [r["dados"] for r in banco._cfg_prefixo(f"dsd|{dia}|", 5000)]
+    except Exception:
+        return []
+
+
+def _desafio_nota(q: "Quem", dia: str, pid: str, fz: dict) -> None:
+    try:
+        meu = next(x for x in fz["placar"] if x["voce"])
+        chave = CHAVE_DSD.format(dia=dia, h=banco._h_conta(q.email))
+        r = banco.cfg_ler(chave) or {}
+        if r.get("pid") == pid and r.get("nota") is None:
+            banco.cfg_gravar(chave, {**r, "nota": round(float(meu["pontos"]), 1), "fim": time.strftime("%Y-%m-%dT%H:%M:%S")})
+    except Exception as e:
+        banco.registrar_erro("api.desafio_nota", e)
+
+
+def _dsd_ranking(q: "Quem", dia: str, filtro: str = "geral") -> dict:
+    import desafio_dia as DD
+    todos = DD.ordenar(_dsd_resultados(dia))
+    perfis = _rk_perfis()
+    amigos = _rk_amigos(q) if filtro == "amigos" else None
+    linhas = []
+    for r in todos:
+        e = r.get("email") or ""
+        if amigos is not None and e != q.email and banco._h_conta(e) not in amigos:
+            continue
+        linhas.append(_rk_linha(r["pos"], e, perfis, q.email, r["nota"]))
+    return {"total": len(todos), "linhas": linhas[:100], "eu": next((x for x in linhas if x["eu"]), None)}
+
+
+def _dsd_pagar_ontem(q: "Quem") -> dict | None:
+    """Prêmio do desafio de ontem para quem terminou, pago uma vez (a chave do crédito impede pagar de novo)."""
+    import desafio_dia as DD
+    ontem = _dsd_dia(-1)
+    try:
+        eu = next((r for r in DD.ordenar(_dsd_resultados(ontem)) if r.get("email") == q.email), None)
+        pr = DD.premio(eu["pos"]) if eu else None
+        if not pr:
+            return None
+        lin = TC.creditar(q.conta.get("id"), pr["tc"], "bonus:desafio_dia", f"Desafio do dia {ontem}: {pr['rotulo']}",
+                          f"dsd:{q.conta.get('id')}:{ontem}", ontem)
+        return {**pr, "dia": ontem, "pos": eu["pos"], "novo": not (lin or {}).get("duplicado")}
+    except Exception as e:
+        banco.registrar_erro("api.desafio_premio", e)
+        return None
+
+
+@app.get("/desafio")
+def desafio(q: Quem = Depends(quem)) -> dict:
+    """Tela do Desafio do dia: quanto falta, quantos jogaram, se você já jogou (e sua nota e posição), o top 3 de ontem,
+    a tabela de prêmios e o prêmio de ontem (pago aqui, uma vez)."""
+    import desafio_dia as DD
+    from datetime import datetime, timedelta
+    dia = _dsd_dia()
+    agora = _agora_brt()
+    fim = datetime.combine(agora.date() + timedelta(days=1), datetime.min.time(), tzinfo=agora.tzinfo)
+    res = _dsd_resultados(dia)
+    meu = banco.cfg_ler(CHAVE_DSD.format(dia=dia, h=banco._h_conta(q.email))) or None
+    rk = _dsd_ranking(q, dia)
+    ontem = _dsd_ranking(q, _dsd_dia(-1))
+    return {"dia": dia, "termina_em": int((fim - agora).total_seconds()), "jogaram": len(res),
+            "meu": ({"pid": meu.get("pid"), "nota": meu.get("nota"), "terminou": meu.get("nota") is not None,
+                     "pos": (rk.get("eu") or {}).get("pos"), "de": rk["total"]} if meu else None),
+            "top_ontem": ontem["linhas"][:3], "premios": DD.tabela_premios(), "premio_ontem": _dsd_pagar_ontem(q)}
+
+
+@app.post("/desafio/jogar")
+def desafio_jogar(q: Quem = Depends(quem)) -> dict:
+    """Começa a única tentativa do dia (já conta como tentativa). Volta a mesma partida se ela ainda não acabou."""
+    import desafio_dia as DD
+    dia = _dsd_dia()
+    chave = CHAVE_DSD.format(dia=dia, h=banco._h_conta(q.email))
+    feito = banco.cfg_ler(chave)
+    if feito:
+        if feito.get("nota") is None and feito.get("pid"):
+            try:
+                d, p, cen = _ler_solo(q, feito["pid"])
+                return _estado_solo(q, feito["pid"], d, p, cen)
+            except HTTPException:
+                pass
+        raise HTTPException(409, "Você já jogou o Desafio do dia hoje. Volte amanhã!")
+    try:
+        cen = _dsd_cenario(dia)
+        apostas = {q.email: TCA.capital_corrida(q.email, q.conta.get("id"))}
+        pid = uuid.uuid4().hex[:10]
+        p = TB.nova_partida(cen, cen["tf"], [q.email], _agora(), pid=pid, apostas=apostas, corrida=DD.CORRIDA)
+    except TCA.SemSaldo as e:
+        _erro(e, 409)
+    except TB.ErroTrader as e:
+        _erro(e, 409)
+    try:
+        banco._cfg_inserir(chave, {"email": q.email, "pid": pid, "inicio": time.strftime("%Y-%m-%dT%H:%M:%S")})
+    except banco.Duplicado:
+        raise HTTPException(409, "Você já jogou o Desafio do dia hoje. Volte amanhã!")
+    reg = {"p": p, "cen": TD.referencia_corrida(cen, DD.semente(dia)), "estado": {}, "desafio": dia}
+    return _estado_solo(q, pid, reg, p, cen)
+
+
+@app.get("/desafio/ranking")
+def desafio_ranking(dia: str | None = None, filtro: str = "geral", q: Quem = Depends(quem)) -> dict:
+    d = dia if dia in (_dsd_dia(), _dsd_dia(-1)) else _dsd_dia()
+    return {"dia": d, **_dsd_ranking(q, d, filtro), "hora": _agora_brt().strftime("%H:%M")}
