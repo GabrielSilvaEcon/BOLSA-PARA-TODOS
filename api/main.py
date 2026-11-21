@@ -200,7 +200,13 @@ def eu(q: Quem = Depends(quem)) -> dict:
     except Exception:
         passe = None
     ranking = _ranking_da_casa(a, q.email)
-    return {"conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
+    try:                                                   # troféus do jogo em que está melhor (a cápsula do troféu no cabeçalho)
+        import trofeus as TF
+        td = _trof_doc(q.email)
+        trofeus = max(td[j]["t"] for j in TF.JOGOS)
+    except Exception:
+        trofeus = None
+    return {"trofeus": trofeus, "conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
             "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar,
             "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe, "ranking": ranking,
             "avatar_img": _avatar_img(perfil.get("avatar")), "alertas": _alertas_nao_lidos(a)}

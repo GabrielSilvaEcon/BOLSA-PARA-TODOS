@@ -106,12 +106,14 @@ class _PrincipalState extends State<Principal> {
 
   Future<void> _abrirPerfil() async {
     await _chaves[_aba].currentState?.push(MaterialPageRoute(
-      builder: (_) => PerfilTela(api: widget.api, aoSair: () async {
-        try {
-          await Supabase.instance.client.auth.signOut();
-        } catch (_) {}
-      }),
-    ));
+          builder: (_) => PerfilTela(
+              api: widget.api,
+              aoSair: () async {
+                try {
+                  await Supabase.instance.client.auth.signOut();
+                } catch (_) {}
+              }),
+        ));
   }
 
   Future<void> _abrirAlertas() async {
@@ -126,7 +128,7 @@ class _PrincipalState extends State<Principal> {
         if (!didPop) _voltar();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0E0B26),
+        backgroundColor: const Color(0xFF0A1A45),
         body: Column(
           children: [
             if (modoJogo.value == 0) SafeArea(bottom: false, child: Cabecalho(api: widget.api, abrirAlertas: _abrirAlertas, abrirPerfil: _abrirPerfil)),
@@ -171,10 +173,9 @@ class _PrincipalState extends State<Principal> {
                 gradient: const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFFFE27A), Color(0xFFE9A80C), Color(0xFFB07A10)],
+                  colors: [Color(0xFF3E6FD0), Color(0xFF1C3C8A)],
                 ),
                 boxShadow: const [
-                  BoxShadow(color: Color(0x99FFC93C), blurRadius: 14, spreadRadius: -4),
                   BoxShadow(color: Color(0xCC000000), blurRadius: 18, offset: Offset(0, 8)),
                 ],
               ),
@@ -185,7 +186,7 @@ class _PrincipalState extends State<Principal> {
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF3B2690), Color(0xFF21125A)],
+                    colors: [Color(0xFF12285F), Color(0xFF0A1A45)],
                   ),
                 ),
                 child: Row(
@@ -195,23 +196,6 @@ class _PrincipalState extends State<Principal> {
                       Expanded(child: _botao(i)),
                     ],
                   ],
-                ),
-              ),
-            ),
-            // mascote espiando por cima da barra, no canto esquerdo (não pega toque)
-            Positioned(
-              left: 0,
-              top: -52,
-              child: IgnorePointer(
-                child: SizedBox(
-                  height: 60,
-                  child: ClipRect(
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      heightFactor: 0.6,
-                      child: Image.asset('assets/nav/mascote.webp', height: 100),
-                    ),
-                  ),
                 ),
               ),
             ),
@@ -239,10 +223,10 @@ class _PrincipalState extends State<Principal> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: ativo ? const [Color(0xFF6A45E0), Color(0xFF3A1F9E)] : const [Color(0xFF2E1C78), Color(0xFF1E1150)],
+              colors: ativo ? const [Color(0xFF1E3F8F), Color(0xFF102A66)] : const [Color(0xFF162E6A), Color(0xFF0D2052)],
             ),
-            border: Border.all(color: ativo ? const Color(0xFFFFC93C) : const Color(0x33B59BFF), width: ativo ? 2.5 : 1),
-            boxShadow: ativo ? const [BoxShadow(color: Color(0xAAFFC93C), blurRadius: 12, spreadRadius: -2)] : null,
+            border: Border.all(color: ativo ? const Color(0xFFFFC93C) : const Color(0x553A6FD8), width: ativo ? 2.5 : 1),
+            boxShadow: ativo ? const [BoxShadow(color: Color(0xCCFFB020), blurRadius: 14, spreadRadius: -1)] : null,
           ),
           child: Column(
             children: [
@@ -265,6 +249,14 @@ class _PrincipalState extends State<Principal> {
                     shadows: [Shadow(color: Color(0xCC000000), blurRadius: 3, offset: Offset(0, 1))],
                   ),
                 ),
+              ),
+              // tracinho dourado embaixo do item ativo
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                margin: const EdgeInsets.only(top: 2),
+                width: ativo ? 34 : 0,
+                height: 3,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: const Color(0xFFFFC93C)),
               ),
             ],
           ),
