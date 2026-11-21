@@ -73,6 +73,8 @@ def sanear(doc: dict | None, temp: str) -> tuple[dict, dict | None]:
         if isinstance(d.get(k), dict):
             out[k] = dict(d[k])
     out["h2h"] = {str(h): dict(v) for h, v in (d.get("h2h") or {}).items() if isinstance(v, dict)}
+    if isinstance(d.get("dsd_max"), (int, float)):            # melhor nota no Desafio do dia (de todos os tempos)
+        out["dsd_max"] = float(d["dsd_max"])
     for j in JOGOS:
         g = d.get(j) or {}
         out[j] = {"t": max(0, int(g.get("t") or 0)), "max": max(0, int(g.get("max") or 0))}

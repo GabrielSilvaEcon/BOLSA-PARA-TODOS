@@ -6,6 +6,8 @@ import 'api.dart';
 import 'arte_cartao.dart';
 import 'carteira.dart';
 import 'desafio.dart';
+import 'escudo.dart';
+import 'ranking.dart' show rankingPedido;
 import 'cenario.dart';
 import 'mercado.dart';
 import 'missoes.dart';
@@ -97,6 +99,10 @@ class _HomeTelaState extends State<HomeTela> {
                         _erroTela()
                       else ...[
                         Entrada(ordem: 0, child: _banner()),
+                        if (_home?['competicao'] is Map) ...[
+                          const SizedBox(height: 12),
+                          Entrada(ordem: 0, child: _competicao(_home!['competicao'] as Map)),
+                        ],
                         const SizedBox(height: 12),
                         Entrada(ordem: 1, child: _desafio()),
                         const SizedBox(height: 12),
@@ -272,6 +278,74 @@ class _HomeTelaState extends State<HomeTela> {
         Text(v is num ? '${it['valor']}' : nota, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Colors.white)),
       ]),
     );
+  }
+
+  // ---- topo da competição: a sua divisão (o melhor dos dois jogos) e a melhor nota no Desafio do dia
+  Widget _competicao(Map c) {
+    final dv = (c['divisao'] as Map?) ?? const {};
+    final cor = Escudo.corDe(dv['cor']);
+    final melhor = c['desafio_max'];
+    Widget caixa(Color borda, Widget filho, VoidCallback f) => Expanded(
+          child: Pressionavel(
+            aoTocar: f,
+            child: Container(
+              height: 104,
+              padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: borda, width: 1.8),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(borda, const Color(0xFF160B5E), 0.55)!, const Color(0xFF120850)]),
+                boxShadow: [BoxShadow(color: borda.withValues(alpha: 0.4), blurRadius: 14)],
+              ),
+              child: filho,
+            ),
+          ),
+        );
+    return Row(children: [
+      caixa(
+        cor,
+        Row(children: [
+          Flutua(child: Escudo.de(dv, tamanho: 70)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+              FittedBox(child: Text('${dv['nome'] ?? 'Bronze'}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color.lerp(cor, Colors.white, 0.3)))),
+              Row(children: [
+                const Icon(Icons.emoji_events_rounded, color: _ouro, size: 18),
+                const SizedBox(width: 3),
+                Flexible(child: FittedBox(child: Text('${c['t'] ?? 0} troféus', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white)))),
+              ]),
+              Text(c['jogo'] == 'ticker' ? 'Ticker Battle' : 'Trade Battle', style: const TextStyle(fontSize: 10.5, color: _lilas)),
+            ]),
+          ),
+        ]),
+        () {
+          rankingPedido.value = '${c['jogo'] ?? 'trade'}';
+          abrirAba(3);
+        },
+      ),
+      const SizedBox(width: 10),
+      caixa(
+        _ouro,
+        Row(children: [
+          const Text('🏆', style: TextStyle(fontSize: 40)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Text('Sua melhor pontuação', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+              FittedBox(
+                child: Text(melhor is num ? melhor.toStringAsFixed(1).replaceAll('.', ',') : '—', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: _ouro)),
+              ),
+              const Text('no Desafio do dia', style: TextStyle(fontSize: 11, color: _lilas)),
+            ]),
+          ),
+        ]),
+        () async {
+          await _abrir(DesafioTela(api: widget.api));
+          _carregar();
+        },
+      ),
+    ]);
   }
 
   // ---- Desafio do dia (cartão grande, como a arte de referência)
