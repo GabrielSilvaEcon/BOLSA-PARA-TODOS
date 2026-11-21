@@ -459,15 +459,16 @@ class FundoCidade extends StatelessWidget {
   Widget build(BuildContext context) => Stack(
         fit: StackFit.expand,
         children: [
-          const ColoredBox(color: Color(0xFF0A2755)),
-          Image.asset('assets/aprender/fundo.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const ColoredBox(color: Color(0xFF0B1A47)),
+          Image.asset('assets/home/cidade_dia.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          // camada azul-marinho por cima da cidade: as telas de conteúdo ficam legíveis (a tela inicial usa a cidade mais aberta)
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xCC0A0A5A), Color(0x330A2755), Color(0x440A2755), Color(0xCC001738)],
-                stops: [0, 0.3, 0.7, 1],
+                colors: [Color(0x880B1A47), Color(0xA60B1A47), Color(0xD90B1A47), Color(0xF20B1A47)],
+                stops: [0, 0.35, 0.7, 1],
               ),
             ),
           ),
