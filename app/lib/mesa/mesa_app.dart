@@ -10,7 +10,7 @@ class MesaHost {
   MesaHost({required this.aoEvento, required this.aoPronto}) {
     _c = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF0B0828))
+      ..setBackgroundColor(const Color(0xFF081528))
       ..addJavaScriptChannel('Mesa', onMessageReceived: (m) => _mensagem(m.message))
       ..setNavigationDelegate(NavigationDelegate(onPageFinished: (_) => _carregou()))
       ..loadFlutterAsset('assets/mesa/index.html');

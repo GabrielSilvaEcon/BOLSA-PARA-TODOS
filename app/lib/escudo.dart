@@ -56,7 +56,7 @@ class _Desenho extends CustomPainter {
           ..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, Colors.white, 0.45)!, cor, Color.lerp(cor, Colors.black, 0.45)!])
               .createShader(Offset.zero & s));
     c.drawPath(_forma(s, w * 0.09),
-        Paint()..shader = RadialGradient(colors: [Color.lerp(cor, const Color(0xFF2A1A6E), 0.35)!, Color.lerp(cor, const Color(0xFF120850), 0.75)!]).createShader(Offset.zero & s));
+        Paint()..shader = RadialGradient(colors: [Color.lerp(cor, const Color(0xFF1A3A6E), 0.35)!, Color.lerp(cor, const Color(0xFF082450), 0.75)!]).createShader(Offset.zero & s));
     c.drawPath(
         _forma(s, 0),
         Paint()
@@ -112,7 +112,7 @@ class TrofeusGanhos extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          color: const Color(0xCC120850),
+          color: const Color(0xCC082450),
           border: Border.all(color: t['subiu'] == true ? const Color(0xFFF2B84B) : cor, width: 2),
           boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 16)],
         ),
@@ -193,7 +193,7 @@ class ResultadoTrofeusTela extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 10),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
-                    color: const Color(0xE6160B5E),
+                    color: const Color(0xE60B2C5E),
                     border: Border.all(color: _ouroT, width: 2),
                     boxShadow: const [BoxShadow(color: Color(0x88F2B84B), blurRadius: 22)],
                   ),
@@ -214,7 +214,7 @@ class ResultadoTrofeusTela extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(10, 10, 14, 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  color: const Color(0xE6160B5E),
+                  color: const Color(0xE60B2C5E),
                   border: Border.all(color: cor, width: 2),
                   boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 16)],
                 ),
@@ -224,7 +224,7 @@ class ResultadoTrofeusTela extends StatelessWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${dv['nome'] ?? t['divisao'] ?? ''}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color.lerp(cor, Colors.white, 0.3))),
-                      Text(prox == null ? 'Divisão máxima!' : 'Próxima: ${prox['nome']} (${prox['min']} troféus)', style: const TextStyle(fontSize: 12.5, color: Color(0xFFD9D4F7))),
+                      Text(prox == null ? 'Divisão máxima!' : 'Próxima: ${prox['nome']} (${prox['min']} troféus)', style: const TextStyle(fontSize: 12.5, color: Color(0xFFD4E2F7))),
                       const SizedBox(height: 8),
                       TweenAnimationBuilder<double>(
                         tween: Tween(begin: antes, end: pct),
@@ -232,7 +232,7 @@ class ResultadoTrofeusTela extends StatelessWidget {
                         curve: Curves.easeOutCubic,
                         builder: (ctx, v, _) => ClipRRect(
                           borderRadius: BorderRadius.circular(999),
-                          child: LinearProgressIndicator(value: v, minHeight: 14, backgroundColor: const Color(0x55120850), color: cor),
+                          child: LinearProgressIndicator(value: v, minHeight: 14, backgroundColor: const Color(0x55082450), color: cor),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -247,7 +247,7 @@ class ResultadoTrofeusTela extends StatelessWidget {
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xCC1B1462), border: Border.all(color: const Color(0xFF6A4FE6))),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xCC143362), border: Border.all(color: const Color(0xFF4F88E6))),
                 child: Text(
                     t['subiu'] == true
                         ? 'Você subiu para ${dv['nome']}!'
@@ -286,7 +286,7 @@ class ResultadoTrofeusTela extends StatelessWidget {
               ],
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF7B4BEE),
+                  backgroundColor: const Color(0xFF4B84EE),
                   minimumSize: const Size.fromHeight(56),
                   textStyle: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
                 ),

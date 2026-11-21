@@ -55,7 +55,7 @@ class _OnlineTelaState extends State<OnlineTela> {
     final cod = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16104A),
+        backgroundColor: const Color(0xFF10274A),
         title: const Text('Entrar na sala do amigo', style: TextStyle(fontWeight: FontWeight.w900)),
         content: TextField(
           controller: campo,
@@ -92,7 +92,7 @@ class _OnlineTelaState extends State<OnlineTela> {
         else ...[
           Entrada(ordem: 1, child: _botao(Icons.travel_explore_rounded, 'Encontrar adversário', 'Entra na fila e joga com quem estiver procurando agora', const Color(0xFF26D07C), _buscar)),
           const SizedBox(height: 10),
-          Entrada(ordem: 2, child: _botao(Icons.group_add_rounded, 'Criar sala para um amigo', 'Gera um código de 6 letras para passar ao amigo', const Color(0xFF8B6CFF), _criarSala)),
+          Entrada(ordem: 2, child: _botao(Icons.group_add_rounded, 'Criar sala para um amigo', 'Gera um código de 6 letras para passar ao amigo', const Color(0xFF6CA3FF), _criarSala)),
           const SizedBox(height: 10),
           Entrada(ordem: 3, child: _botao(Icons.login_rounded, 'Entrar com código', 'Digite o código que o amigo passou', const Color(0xFFF2B84B), _entrarCodigo)),
         ],
@@ -115,7 +115,7 @@ class _OnlineTelaState extends State<OnlineTela> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: cor, width: 2),
-            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2E1CA0), Color(0xFF1C0F78)]),
+            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1C50A0), Color(0xFF0F3878)]),
             boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.45), blurRadius: 14)],
           ),
           child: Row(children: [
@@ -204,7 +204,7 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
           Text('${_seg ~/ 60}:${(_seg % 60).toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 14, color: lilas)),
           const SizedBox(height: 20),
           OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF8B6CFF))),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF6CA3FF))),
             onPressed: () => Navigator.of(context).maybePop(),
             icon: const Icon(Icons.close_rounded),
             label: const Text('Cancelar busca'),
@@ -328,7 +328,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF16104A),
+          backgroundColor: const Color(0xFF10274A),
           title: const Text('Desistir do duelo?'),
           content: const Text('Sair agora conta como derrota por abandono.'),
           actions: [
@@ -405,7 +405,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xFF1B1462), border: Border.all(color: const Color(0xFF8B6CFF))),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xFF143362), border: Border.all(color: const Color(0xFF6CA3FF))),
             child: Text('Você $eu × $ele ${op['nick'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
           ),
         ]),
@@ -448,7 +448,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
       const Text('A sala expira se ninguém entrar em 15 minutos.', textAlign: TextAlign.center, style: TextStyle(color: lilas)),
       const SizedBox(height: 16),
       OutlinedButton.icon(
-        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF8B6CFF))),
+        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF6CA3FF))),
         onPressed: _sair,
         icon: const Icon(Icons.logout),
         label: const Text('Fechar sala'),
@@ -461,9 +461,9 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
     final eu = (v['eu'] as Map?) ?? const {}, op = (v['op'] as Map?) ?? const {};
     Widget jogador(String nome, bool pronto, String sub) => Expanded(
           child: _cartao(
-            borda: pronto ? const Color(0xFF26D07C) : const Color(0xFF6A4FE6),
+            borda: pronto ? const Color(0xFF26D07C) : const Color(0xFF4F88E6),
             child: Column(children: [
-              Icon(Icons.person_rounded, size: 40, color: pronto ? const Color(0xFF26D07C) : const Color(0xFFB59BFF)),
+              Icon(Icons.person_rounded, size: 40, color: pronto ? const Color(0xFF26D07C) : const Color(0xFF9BBFFF)),
               Text(nome, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
               Text(pronto ? 'Pronto!' : sub, style: TextStyle(color: pronto ? const Color(0xFF8DF5C1) : lilas)),
             ]),
@@ -548,11 +548,11 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       gradient: _ind == i['id'] ? const LinearGradient(colors: [Color(0xFFF2B84B), Color(0xFFD98E1F)]) : null,
-                      color: _ind == i['id'] ? null : const Color(0xFF1B1462),
-                      border: Border.all(color: _ind == i['id'] ? const Color(0xFFFFE08A) : const Color(0xFF6A4FE6), width: 1.5),
+                      color: _ind == i['id'] ? null : const Color(0xFF143362),
+                      border: Border.all(color: _ind == i['id'] ? const Color(0xFFFFE08A) : const Color(0xFF4F88E6), width: 1.5),
                     ),
                     child: Row(children: [
-                      Icon(iconesInd[(_meta[i['id']] as Map?)?['icone']] ?? Icons.analytics_rounded, size: 20, color: _ind == i['id'] ? const Color(0xFF2A1A00) : const Color(0xFFB59BFF)),
+                      Icon(iconesInd[(_meta[i['id']] as Map?)?['icone']] ?? Icons.analytics_rounded, size: 20, color: _ind == i['id'] ? const Color(0xFF2A1A00) : const Color(0xFF9BBFFF)),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -682,7 +682,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
           SizedBox(
             height: 52,
             child: FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF5B4BD6), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4B82D6), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
               onPressed: t < 0.7
                   ? null
                   : () => setState(() {
@@ -709,7 +709,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0xCC1B1462), border: Border.all(color: const Color(0x668B6CFF))),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0xCC143362), border: Border.all(color: const Color(0x666CA3FF))),
       child: Column(children: [
         Text('${x['nome']} · $quem', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFFFD66B))),
         const SizedBox(height: 4),
@@ -766,7 +766,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0xCC1B1462), border: Border.all(color: const Color(0x668B6CFF))),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0xCC143362), border: Border.all(color: const Color(0x666CA3FF))),
             child: Row(children: [
               CartaTk(tk: '${(r['eu'] as Map)['tk']}', largura: 40),
               const SizedBox(width: 6),
@@ -795,13 +795,13 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
     ]);
   }
 
-  Widget _cartao({required Widget child, Color borda = const Color(0xFF6A4FE6)}) => Container(
+  Widget _cartao({required Widget child, Color borda = const Color(0xFF4F88E6)}) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: borda, width: 2),
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231388), Color(0xFF160B5E)]),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF134188), Color(0xFF0B2C5E)]),
           boxShadow: [BoxShadow(color: borda.withValues(alpha: 0.4), blurRadius: 12)],
         ),
         child: child,
@@ -819,14 +819,14 @@ class _Fundo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF0A0A5A), Color(0xFF1C0870), Color(0xFF14054E), Color(0xFF050038)],
+              colors: [Color(0xFF0A0A5A), Color(0xFF082F70), Color(0xFF05204E), Color(0xFF001738)],
               stops: [0, 0.35, 0.7, 1],
             ),
           ),
@@ -854,10 +854,10 @@ Widget _aviso(String t) => Container(
 
 Widget _caixaTexto(String t, String s) => Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x558B6CFF)), color: const Color(0xCC140E3A)),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x556CA3FF)), color: const Color(0xCC0E1F3A)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(t, style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
         const SizedBox(height: 6),
-        Text(s, style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFFEDE9FF))),
+        Text(s, style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFFE9F1FF))),
       ]),
     );

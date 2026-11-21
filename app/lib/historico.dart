@@ -15,7 +15,7 @@ class HistoricoTela extends StatefulWidget {
   State<HistoricoTela> createState() => _HistoricoTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 const _verde = Color(0xFF26D07C);
 const _vermelho = Color(0xFFFF5A7A);
 const _ouro = Color(0xFFF2B84B);
@@ -55,7 +55,7 @@ class _HistoricoTelaState extends State<HistoricoTela> {
     final itens = ((d?[_jogo] as List?) ?? const []).cast<Map>();
     final res = ((d?['resumo'] as Map?)?[_jogo] as Map?) ?? const {};
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         RefreshIndicator(
@@ -86,7 +86,7 @@ class _HistoricoTelaState extends State<HistoricoTela> {
                   if (itens.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(20),
-                      decoration: _caixa(const Color(0xFF6A4FE6), 'arena'),
+                      decoration: _caixa(const Color(0xFF4F88E6), 'arena'),
                       child: Column(children: [
                         const Icon(Icons.sports_esports_rounded, color: Colors.white, size: 40),
                         const SizedBox(height: 6),
@@ -110,16 +110,16 @@ class _HistoricoTelaState extends State<HistoricoTela> {
   BoxDecoration _caixa(Color cor, [String? arte]) => BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cor.withValues(alpha: 0.9), width: 1.6),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.5)!, Color.lerp(cor, const Color(0xFF120850), 0.8)!]),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.5)!, Color.lerp(cor, const Color(0xFF082450), 0.8)!]),
         image: arte == null ? null : arteCartao(arte, opacidade: 0.4),
         boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.3), blurRadius: 12)],
       );
 
   Widget _abas() => Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xCC160B5E), border: Border.all(color: const Color(0xFF6A4FE6))),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xCC0B2C5E), border: Border.all(color: const Color(0xFF4F88E6))),
         child: Row(children: [
-          for (final (id, rot, cor) in const [('trade', 'Trade Battle', Color(0xFF26D07C)), ('ticker', 'Ticker Battle', Color(0xFF8B6CFF))])
+          for (final (id, rot, cor) in const [('trade', 'Trade Battle', Color(0xFF26D07C)), ('ticker', 'Ticker Battle', Color(0xFF6CA3FF))])
             Expanded(
               child: Pressionavel(
                 aoTocar: () => setState(() {
@@ -156,7 +156,7 @@ class _HistoricoTelaState extends State<HistoricoTela> {
         );
     final melhor = r['melhor'];
     return Row(children: [
-      item(Icons.sports_esports_rounded, const Color(0xFF8B6CFF), '${r['total'] ?? 0}', 'Partidas'),
+      item(Icons.sports_esports_rounded, const Color(0xFF6CA3FF), '${r['total'] ?? 0}', 'Partidas'),
       item(Icons.emoji_events_rounded, _verde, '${r['vitoria'] ?? 0}', 'Vitórias'),
       if (_jogo == 'ticker') item(Icons.handshake_rounded, _ouro, '${r['empate'] ?? 0}', 'Empates'),
       if (_jogo == 'ticker') item(Icons.close_rounded, _vermelho, '${r['derrota'] ?? 0}', 'Derrotas'),
@@ -174,7 +174,7 @@ class _HistoricoTelaState extends State<HistoricoTela> {
   Widget _selo(String t, Color c) => Container(
         margin: const EdgeInsets.only(left: 4),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x99120850), border: Border.all(color: c)),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x99082450), border: Border.all(color: c)),
         child: Text(t, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: c)),
       );
 
@@ -250,7 +250,7 @@ class _HistoricoTelaState extends State<HistoricoTela> {
               Container(
                 margin: const EdgeInsets.only(top: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0x66120850)),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0x66082450)),
                 child: Row(children: [
                   Text('${i + 1}ª', style: const TextStyle(fontWeight: FontWeight.w900, color: _ouro)),
                   const SizedBox(width: 8),

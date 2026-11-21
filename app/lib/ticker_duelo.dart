@@ -117,11 +117,11 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
       corpo = _disputa();
     }
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0828),
+      backgroundColor: const Color(0xFF081528),
       body: Stack(fit: StackFit.expand, children: [
         const DecoratedBox(
           decoration: BoxDecoration(
-            gradient: RadialGradient(center: Alignment(0, -0.3), radius: 1.2, colors: [Color(0xFF2A1690), Color(0xFF120A4E), Color(0xFF070420)]),
+            gradient: RadialGradient(center: Alignment(0, -0.3), radius: 1.2, colors: [Color(0xFF164590), Color(0xFF0A254E), Color(0xFF040F20)]),
           ),
         ),
         SafeArea(
@@ -146,7 +146,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
         const Spacer(),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xFF1B1462), border: Border.all(color: const Color(0xFF8B6CFF))),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xFF143362), border: Border.all(color: const Color(0xFF6CA3FF))),
           child: AnimatedBuilder(
             animation: _rev,
             builder: (ctx, _) {
@@ -229,7 +229,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
                       width: 54,
                       height: 54,
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xDD1B1462), border: Border.all(color: const Color(0xFFF2B84B), width: 2)),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xDD143362), border: Border.all(color: const Color(0xFFF2B84B), width: 2)),
                       child: const Text('?', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color(0xFFFFD66B))),
                     ),
                   ]),
@@ -265,12 +265,12 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
                     gradient: _ind == i ? const LinearGradient(colors: [Color(0xFFF2B84B), Color(0xFFD98E1F)]) : null,
-                    color: _ind == i ? null : const Color(0xFF1B1462),
-                    border: Border.all(color: _ind == i ? const Color(0xFFFFE08A) : const Color(0xFF6A4FE6), width: 1.5),
+                    color: _ind == i ? null : const Color(0xFF143362),
+                    border: Border.all(color: _ind == i ? const Color(0xFFFFE08A) : const Color(0xFF4F88E6), width: 1.5),
                     boxShadow: _ind == i ? const [BoxShadow(color: Color(0x88F2B84B), blurRadius: 12)] : null,
                   ),
                   child: Row(children: [
-                    Icon(iconesInd[_meta(i)['icone']] ?? Icons.analytics_rounded, size: 20, color: _ind == i ? const Color(0xFF2A1A00) : const Color(0xFFB59BFF)),
+                    Icon(iconesInd[_meta(i)['icone']] ?? Icons.analytics_rounded, size: 20, color: _ind == i ? const Color(0xFF2A1A00) : const Color(0xFF9BBFFF)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -294,9 +294,9 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0x331B1462), border: Border.all(color: const Color(0x668B6CFF))),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0x33143362), border: Border.all(color: const Color(0x666CA3FF))),
           child: Text('${_meta(_ind)['nome']}. ${_meta(_ind)['significa']} Regra: ${_meta(_ind)['regra']}',
-              style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFEDE9FF))),
+              style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFE9F1FF))),
         ),
       ],
       const SizedBox(height: 14),
@@ -399,15 +399,15 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
             opacity: ((t - 0.8) / 0.2).clamp(0.0, 1.0),
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0x331B1462), border: Border.all(color: const Color(0x668B6CFF))),
-              child: Text('Raio-X rápido · ${rx['nome']}. ${rx['significa']} ${rx['porque']}', style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFEDE9FF))),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0x33143362), border: Border.all(color: const Color(0x666CA3FF))),
+              child: Text('Raio-X rápido · ${rx['nome']}. ${rx['significa']} ${rx['porque']}', style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFE9F1FF))),
             ),
           ),
           const SizedBox(height: 14),
           SizedBox(
             height: 52,
             child: FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF5B4BD6), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4B82D6), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
               onPressed: t < 0.7 ? null : _proxima,
               icon: const Icon(Icons.arrow_forward_rounded),
               label: Text(ultima ? 'VER RESULTADO FINAL' : 'PRÓXIMA RODADA'),
@@ -466,7 +466,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
       ),
       const SizedBox(height: 8),
       OutlinedButton.icon(
-        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, minimumSize: const Size.fromHeight(46), side: const BorderSide(color: Color(0xFF8B6CFF))),
+        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, minimumSize: const Size.fromHeight(46), side: const BorderSide(color: Color(0xFF6CA3FF))),
         onPressed: () => Navigator.of(context).maybePop(),
         icon: const Icon(Icons.home_rounded),
         label: const Text('Voltar à central'),
@@ -483,7 +483,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
     final rx = (r['raio_x'] as Map?) ?? const {};
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xCC1B1462), border: Border.all(color: cor.withValues(alpha: 0.7))),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xCC143362), border: Border.all(color: cor.withValues(alpha: 0.7))),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
@@ -516,7 +516,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text.rich(TextSpan(children: [
                   TextSpan(text: '$t: ', style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
-                  TextSpan(text: '${rx[k] ?? ''}', style: const TextStyle(color: Color(0xFFEDE9FF))),
+                  TextSpan(text: '${rx[k] ?? ''}', style: const TextStyle(color: Color(0xFFE9F1FF))),
                 ]), style: const TextStyle(fontSize: 12.5, height: 1.35)),
               ),
           ],
@@ -548,7 +548,7 @@ class _Barra extends StatelessWidget {
         child: SizedBox(
           height: 12,
           child: Row(children: [
-            Expanded(flex: max(1, (a * 1000).round()), child: Container(color: const Color(0xFF8B6CFF))),
+            Expanded(flex: max(1, (a * 1000).round()), child: Container(color: const Color(0xFF6CA3FF))),
             Expanded(flex: max(1, ((1 - a) * 1000).round()), child: Container(color: const Color(0xFFF2B84B))),
           ]),
         ),

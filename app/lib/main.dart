@@ -23,8 +23,8 @@ class TickerHuntersApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const roxo = Color(0xFF7A5CFF);
-    const fundo = Color(0xFF0B0828);
+    const azul = Color(0xFF3B7BFF);
+    const fundo = Color(0xFF0A1638);
     return MaterialApp(
       title: 'TickerHunters',
       debugShowCheckedModeBanner: false,
@@ -32,7 +32,7 @@ class TickerHuntersApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: fundo,
-        colorScheme: ColorScheme.fromSeed(seedColor: roxo, brightness: Brightness.dark, surface: fundo),
+        colorScheme: ColorScheme.fromSeed(seedColor: azul, brightness: Brightness.dark, surface: fundo),
         // mesma letra do app antigo (Source Sans, a fonte padrão do Streamlit)
         textTheme: GoogleFonts.sourceSans3TextTheme(ThemeData(brightness: Brightness.dark).textTheme),
       ),

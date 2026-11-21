@@ -17,7 +17,7 @@ class EventosTela extends StatefulWidget {
   State<EventosTela> createState() => _EventosTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 const _verde = Color(0xFF26D07C);
 const _ouro = Color(0xFFF2B84B);
 
@@ -49,7 +49,7 @@ class _EventosTelaState extends State<EventosTela> {
   BoxDecoration _caixa(Color cor, [String? arte]) => BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cor.withValues(alpha: 0.9), width: 1.6),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.5)!, Color.lerp(cor, const Color(0xFF120850), 0.8)!]),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.5)!, Color.lerp(cor, const Color(0xFF082450), 0.8)!]),
         image: arte == null ? null : arteCartao(arte, opacidade: 0.42),
         boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.3), blurRadius: 12)],
       );
@@ -67,7 +67,7 @@ class _EventosTelaState extends State<EventosTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         RefreshIndicator(
@@ -114,7 +114,7 @@ class _EventosTelaState extends State<EventosTela> {
     final prox = p['proximo'] as Map?;
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: _caixa(const Color(0xFFB54BFF), 'loja'),
+      decoration: _caixa(const Color(0xFF4B7DFF), 'loja'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Icon(Icons.workspace_premium_rounded, color: _ouro, size: 30),
@@ -139,7 +139,7 @@ class _EventosTelaState extends State<EventosTela> {
                   height: 10,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
-                    color: i < feitos ? Color.lerp(const Color(0x55120850), _ouro, v) : const Color(0x55120850),
+                    color: i < feitos ? Color.lerp(const Color(0x55082450), _ouro, v) : const Color(0x55082450),
                     border: Border.all(color: _ouro.withValues(alpha: 0.5)),
                   ),
                 ),
@@ -195,7 +195,7 @@ class _EventosTelaState extends State<EventosTela> {
         bau['aberto'] == true
             ? _linha(Icons.redeem_rounded, _verde, 'Baú diário', 'Já aberto hoje. Volte amanhã!', '+${bau['valor']} TC')
             : _linha(Icons.redeem_rounded, _ouro, 'Baú diário', 'Disponível agora na Loja', null, acao: _loja, rotulo: 'Abrir'),
-      if (pend > 0) _linha(Icons.inventory_2_rounded, const Color(0xFF8B6CFF), 'Baús de progresso', '$pend ${pend == 1 ? 'baú esperando' : 'baús esperando'} por você', null, acao: _loja),
+      if (pend > 0) _linha(Icons.inventory_2_rounded, const Color(0xFF6CA3FF), 'Baús de progresso', '$pend ${pend == 1 ? 'baú esperando' : 'baús esperando'} por você', null, acao: _loja),
     ];
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
@@ -228,13 +228,13 @@ class _EventosTelaState extends State<EventosTela> {
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(value: (atual / alvo).clamp(0, 1).toDouble(), minHeight: 9, backgroundColor: const Color(0x55120850), color: ok ? _verde : const Color(0xFFFFD76A)),
+                child: LinearProgressIndicator(value: (atual / alvo).clamp(0, 1).toDouble(), minHeight: 9, backgroundColor: const Color(0x55082450), color: ok ? _verde : const Color(0xFFFFD76A)),
               ),
             ),
             const SizedBox(width: 8),
             Text(ok ? 'Feito!' : '${atual.round()} / ${alvo.round()}', style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
           ]),
-          const Align(alignment: Alignment.centerRight, child: Text('Ver todas as missões ›', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFB79CFF)))),
+          const Align(alignment: Alignment.centerRight, child: Text('Ver todas as missões ›', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF9CBFFF)))),
         ]),
       ),
     );

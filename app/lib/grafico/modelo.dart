@@ -22,10 +22,10 @@ enum Ferramenta {
   resistencia('Resistência', Icons.vertical_align_top_rounded, Color(0xFFFF4D6D), 'Toque no preço onde você acha que a alta vai travar.'),
   rompimento('Rompimento', Icons.open_in_full_rounded, Color(0xFFF2B84B), 'Toque no preço que você acha que vai ser rompido.'),
   alvo('Alvo', Icons.flag_rounded, Color(0xFF38B6FF), 'Toque no preço que você acha que vai ser alcançado.'),
-  tendencia('Tendência', Icons.show_chart_rounded, Color(0xFFB59BFF), 'Toque em dois pontos para traçar a linha de tendência.'),
+  tendencia('Tendência', Icons.show_chart_rounded, Color(0xFF9BBFFF), 'Toque em dois pontos para traçar a linha de tendência.'),
   zonaAlta('Zona ↑', Icons.crop_square_rounded, Color(0xFF26D07C), 'Toque em dois cantos: o preço entra na área e reage para CIMA.'),
   zonaBaixa('Zona ↓', Icons.crop_square_rounded, Color(0xFFFF4D6D), 'Toque em dois cantos: o preço entra na área e reage para BAIXO.'),
-  nota('Nota', Icons.sticky_note_2_rounded, Color(0xFFC9B8FF), 'Toque no gráfico para escrever uma anotação.'),
+  nota('Nota', Icons.sticky_note_2_rounded, Color(0xFFB8D2FF), 'Toque no gráfico para escrever uma anotação.'),
   apagar('Apagar', Icons.backspace_rounded, Color(0xFFFF8FA3), 'Toque num desenho para apagar.');
 
   const Ferramenta(this.rotulo, this.icone, this.cor, this.dica);

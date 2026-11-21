@@ -20,7 +20,7 @@ class PerfilTela extends StatefulWidget {
   State<PerfilTela> createState() => _PerfilTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 
 /// Imagem de avatar vinda do servidor: arquivo do app ("avatares/x.webp") ou data URI. Sem imagem, o mascote.
 Widget imagemAvatar(Object? img, {BoxFit fit = BoxFit.cover}) {
@@ -33,7 +33,7 @@ Widget imagemAvatar(Object? img, {BoxFit fit = BoxFit.cover}) {
   return Image.asset('assets/$t', fit: fit, errorBuilder: (_, __, ___) => mascote);
 }
 
-Color _hex(Object? h, [Color p = const Color(0xFF8B6CFF)]) {
+Color _hex(Object? h, [Color p = const Color(0xFF6CA3FF)]) {
   final s = '${h ?? ''}'.replaceFirst('#', '');
   final v = s.length == 6 ? int.tryParse(s, radix: 16) : null;
   return v == null ? p : Color(0xFF000000 | v);
@@ -97,7 +97,7 @@ class _AvatarRaridadeState extends State<AvatarRaridade> with SingleTickerProvid
             child: SizedBox(
               width: t - 8,
               height: t - 8,
-              child: ColoredBox(color: const Color(0xFF1B1545), child: imagemAvatar(widget.img)),
+              child: ColoredBox(color: const Color(0xFF152845), child: imagemAvatar(widget.img)),
             ),
           ),
         ],
@@ -148,7 +148,7 @@ class _PerfilTelaState extends State<PerfilTela> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16104A),
+        backgroundColor: const Color(0xFF10274A),
         title: const Text('Sair da sua conta neste aparelho?'),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
@@ -163,7 +163,7 @@ class _PerfilTelaState extends State<PerfilTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -242,7 +242,7 @@ class _PerfilTelaState extends State<PerfilTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFFF2B84B), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2E1CA0), Color(0xFF140A55)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1C50A0), Color(0xFF0A2755)]),
         boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 16)],
       ),
       child: Stack(
@@ -292,7 +292,7 @@ class _PerfilTelaState extends State<PerfilTela> {
                     ),
                     Text(
                       '${d['usuario']}'.isEmpty ? 'Escolha seu nome de usuário em Editar' : '@${d['usuario']}',
-                      style: const TextStyle(fontSize: 13.5, color: Color(0xFFB59BFF), fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontSize: 13.5, color: Color(0xFF9BBFFF), fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
                     Container(
@@ -329,7 +329,7 @@ class _PerfilTelaState extends State<PerfilTela> {
     final pct = ((nv['pct'] as num?) ?? 0).toDouble().clamp(0.0, 1.0);
     final falta = nv['maximo'] == true ? 'Nível máximo!' : 'faltam ${nv['falta'] ?? '—'} XP para o nível ${((nv['nivel'] as num?) ?? 0) + 1}';
     return _caixa(
-      cor: const Color(0xFFB54BFF),
+      cor: const Color(0xFF4B7DFF),
       marca: Icons.star_rounded,
       arte: 'seta',
       child: Column(
@@ -356,12 +356,12 @@ class _PerfilTelaState extends State<PerfilTela> {
               borderRadius: BorderRadius.circular(999),
               child: Stack(
                 children: [
-                  Container(height: 14, color: const Color(0x335B4BD6)),
+                  Container(height: 14, color: const Color(0x334B82D6)),
                   FractionallySizedBox(
                     widthFactor: v,
                     child: Container(
                       height: 14,
-                      decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF7B2FF7), Color(0xFFB54BFF), Color(0xFFFF6AD5)])),
+                      decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF2F71F7), Color(0xFF4B7DFF), Color(0xFFFF6AD5)])),
                     ),
                   ),
                 ],
@@ -503,7 +503,7 @@ class _PerfilTelaState extends State<PerfilTela> {
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(child: _jogo('Ticker Battle', '${pos(k['posicao'])} · ${k['vitorias'] ?? 0} vit.', const Color(0xFF8B6CFF))),
+              Expanded(child: _jogo('Ticker Battle', '${pos(k['posicao'])} · ${k['vitorias'] ?? 0} vit.', const Color(0xFF6CA3FF))),
             ],
           ),
         ],
@@ -515,7 +515,7 @@ class _PerfilTelaState extends State<PerfilTela> {
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
           children: [
-            Icon(ic, size: 18, color: const Color(0xFFB59BFF)),
+            Icon(ic, size: 18, color: const Color(0xFF9BBFFF)),
             const SizedBox(width: 6),
             Expanded(
               child: Text(t, style: const TextStyle(color: _lilas)),
@@ -627,7 +627,7 @@ class _PerfilTelaState extends State<PerfilTela> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: const RadialGradient(colors: [Color(0xFF3B2A9E), Color(0xFF1B1462)]),
+                          gradient: const RadialGradient(colors: [Color(0xFF2A579E), Color(0xFF143362)]),
                           border: Border.all(color: const Color(0xFFF2B84B), width: 2),
                           boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 8)],
                         ),
@@ -677,7 +677,7 @@ class _PerfilTelaState extends State<PerfilTela> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: tom.withValues(alpha: 0.8), width: 1.5),
-              gradient: LinearGradient(colors: [Color.lerp(tom, const Color(0xFF160B5E), 0.6)!, const Color(0xFF1C0F78)]),
+              gradient: LinearGradient(colors: [Color.lerp(tom, const Color(0xFF0B2C5E), 0.6)!, const Color(0xFF0F3878)]),
               image: arteCartao(arteDe(t), opacidade: 0.45),
             ),
             child: Row(
@@ -723,7 +723,7 @@ class _PerfilTelaState extends State<PerfilTela> {
 }
 
 /// Caixa de cada bloco do perfil, cada uma com a sua cor (para a tela não ficar toda azul) e um ícone grande e apagado no canto.
-Widget _caixa({required Widget child, Color cor = const Color(0xFF6A4FE6), IconData? marca, String? arte}) => Container(
+Widget _caixa({required Widget child, Color cor = const Color(0xFF4F88E6), IconData? marca, String? arte}) => Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -731,7 +731,7 @@ Widget _caixa({required Widget child, Color cor = const Color(0xFF6A4FE6), IconD
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.45)!, Color.lerp(cor, const Color(0xFF120850), 0.78)!],
+          colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.45)!, Color.lerp(cor, const Color(0xFF082450), 0.78)!],
         ),
         image: arte == null ? null : arteCartao(arte, opacidade: 0.5),
         boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.35), blurRadius: 14)],
@@ -825,9 +825,9 @@ class _EditarPerfilTelaState extends State<EditarPerfilTela> {
   Widget build(BuildContext context) {
     final rarCor = _hex(((_col?['itens'] as List?)?.cast<Map>().firstWhere((a) => a['id'] == _avatar, orElse: () => const {}) ?? const {})['cor'], _hex((widget.perfil['raridade'] as Map?)?['cor']));
     return Scaffold(
-      backgroundColor: const Color(0xFF110C3A),
+      backgroundColor: const Color(0xFF0C1E3A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF110C3A),
+        backgroundColor: const Color(0xFF0C1E3A),
         title: const Text('Editar perfil', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           TextButton(
@@ -909,7 +909,7 @@ class _EditarPerfilTelaState extends State<EditarPerfilTela> {
             labelText: rot,
             helperText: ajuda,
             filled: true,
-            fillColor: const Color(0xFF1B1462),
+            fillColor: const Color(0xFF143362),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           ),
         ),
@@ -933,7 +933,7 @@ class _EditarPerfilTelaState extends State<EditarPerfilTela> {
             scrollDirection: Axis.horizontal,
             children: [
               for (final (k, nome, cor) in [
-                ('todos', 'Todos', const Color(0xFF8B6CFF)),
+                ('todos', 'Todos', const Color(0xFF6CA3FF)),
                 for (final e in rar.entries) ('${e.key}', '${(e.value as Map)['nome']} ${(e.value as Map)['ok']}/${(e.value as Map)['total']}', _hex((e.value as Map)['cor'])),
               ])
                 Padding(
@@ -988,7 +988,7 @@ class _EditarPerfilTelaState extends State<EditarPerfilTela> {
                                     colorFilter: a['liberado'] == true
                                         ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
                                         : const ColorFilter.matrix([0.2, 0.2, 0.2, 0, 0, 0.2, 0.2, 0.2, 0, 0, 0.2, 0.2, 0.2, 0, 0, 0, 0, 0, 1, 0]),
-                                    child: ColoredBox(color: const Color(0xFF1B1545), child: imagemAvatar(a['img'])),
+                                    child: ColoredBox(color: const Color(0xFF152845), child: imagemAvatar(a['img'])),
                                   ),
                                 ),
                               ),
@@ -1037,8 +1037,8 @@ class _EditarPerfilTelaState extends State<EditarPerfilTela> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          color: const Color(0xFF1B1462),
-          border: Border.all(color: const Color(0x666A4FE6)),
+          color: const Color(0xFF143362),
+          border: Border.all(color: const Color(0x664F88E6)),
         ),
         child: Text('$rot: você ainda não tem. Troque seus Ticker Coins na Loja.', style: const TextStyle(color: _lilas)),
       );
@@ -1048,10 +1048,10 @@ class _EditarPerfilTelaState extends State<EditarPerfilTela> {
       decoration: InputDecoration(
         labelText: rot,
         filled: true,
-        fillColor: const Color(0xFF1B1462),
+        fillColor: const Color(0xFF143362),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      dropdownColor: const Color(0xFF1B1462),
+      dropdownColor: const Color(0xFF143362),
       items: [
         const DropdownMenuItem(value: null, child: Text('Nenhum')),
         for (final i in itens) DropdownMenuItem(value: '${i['id']}', child: Text('${i['nome']}')),
@@ -1073,22 +1073,22 @@ class _EditarPerfilTelaState extends State<EditarPerfilTela> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: const Color(0xFF1B1462),
-        border: Border.all(color: const Color(0x666A4FE6)),
+        color: const Color(0xFF143362),
+        border: Border.all(color: const Color(0x664F88E6)),
       ),
       child: Column(
         children: [
           DropdownButtonFormField<String>(
             initialValue: vis.containsKey(_priv['visivel']) ? '${_priv['visivel']}' : null,
             decoration: const InputDecoration(labelText: 'Quem vê meu perfil'),
-            dropdownColor: const Color(0xFF1B1462),
+            dropdownColor: const Color(0xFF143362),
             items: [for (final e in vis.entries) DropdownMenuItem(value: '${e.key}', child: Text('${e.value}'))],
             onChanged: (v) => setState(() => _priv['visivel'] = v),
           ),
           DropdownButtonFormField<String>(
             initialValue: ped.containsKey(_priv['pedidos']) ? '${_priv['pedidos']}' : null,
             decoration: const InputDecoration(labelText: 'Quem pode me pedir amizade'),
-            dropdownColor: const Color(0xFF1B1462),
+            dropdownColor: const Color(0xFF143362),
             items: [for (final e in ped.entries) DropdownMenuItem(value: '${e.key}', child: Text('${e.value}'))],
             onChanged: (v) => setState(() => _priv['pedidos'] = v),
           ),

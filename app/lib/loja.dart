@@ -21,10 +21,10 @@ class LojaTela extends StatefulWidget {
 
 const _verde = Color(0xFF2EE59D);
 const _ouro = Color(0xFFFFD66B);
-const _lila = Color(0xFFCFC8EE);
+const _lila = Color(0xFFC8D6EE);
 const _abas = [('Recompensas', Icons.star_rounded), ('Loja', Icons.storefront_rounded), ('Extrato', Icons.receipt_long_rounded)];
 
-Color _cor(Object? hex, [Color padrao = const Color(0xFF8B6CFF)]) {
+Color _cor(Object? hex, [Color padrao = const Color(0xFF6CA3FF)]) {
   final s = '${hex ?? ''}'.replaceFirst('#', '');
   if (s.length != 6) return padrao;
   final v = int.tryParse(s, radix: 16);
@@ -200,7 +200,7 @@ class _LojaTelaState extends State<LojaTela> {
             ),
           ),
           OutlinedButton(
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0x997A5CFF)), shape: const StadiumBorder()),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0x995C9AFF)), shape: const StadiumBorder()),
             onPressed: () => setState(() => _aba = 2),
             child: const Text('Meus itens'),
           ),
@@ -214,7 +214,7 @@ class _LojaTelaState extends State<LojaTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xCCF2B84B), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2A1E86), Color(0xFF140E4A)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1E4786), Color(0xFF0E264A)]),
         boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 16)],
       ),
       child: Row(
@@ -269,7 +269,7 @@ class _LojaTelaState extends State<LojaTela> {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: _aba == i ? const [Color(0xFF5BF5A0), Color(0xFF18DB7C)] : const [Color(0xD9281E78), Color(0xF2140E46)],
+                      colors: _aba == i ? const [Color(0xFF5BF5A0), Color(0xFF18DB7C)] : const [Color(0xD91E4278), Color(0xF20E2446)],
                     ),
                     border: _aba == i ? null : Border.all(color: const Color(0xFF1FC99A), width: 2),
                     boxShadow: [BoxShadow(color: _aba == i ? const Color(0xFF0F8F51) : const Color(0x99080628), offset: const Offset(0, 4))],
@@ -277,7 +277,7 @@ class _LojaTelaState extends State<LojaTela> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(_abas[i].$2, size: 18, color: _aba == i ? const Color(0xFF06361F) : const Color(0xFFB89CFF)),
+                      Icon(_abas[i].$2, size: 18, color: _aba == i ? const Color(0xFF06361F) : const Color(0xFF9CBFFF)),
                       const SizedBox(width: 5),
                       Flexible(
                         child: Text(_abas[i].$1,
@@ -375,7 +375,7 @@ class _LojaTelaState extends State<LojaTela> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xCCF2B84B), width: 2),
-          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2A1E86), Color(0xFF140E4A)]),
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1E4786), Color(0xFF0E264A)]),
         ),
         child: Column(
           children: [
@@ -435,7 +435,7 @@ class _LojaTelaState extends State<LojaTela> {
             const SizedBox(height: 14),
           ],
       const SizedBox(height: 16),
-      _secao('Minhas compras', Icons.shopping_bag_rounded, const Color(0xFFB89CFF)),
+      _secao('Minhas compras', Icons.shopping_bag_rounded, const Color(0xFF9CBFFF)),
       const SizedBox(height: 8),
       if (compras.isEmpty)
         _cartao(child: const Text('Nenhuma compra ainda. Escolha um item na vitrine para personalizar seu perfil.', style: TextStyle(color: _lila)))
@@ -468,7 +468,7 @@ class _LojaTelaState extends State<LojaTela> {
       botao = _botaoOuro('Trocar', _ocupado ? null : () => _trocar(it));
     }
     return _caixa(
-      borda: _cor(rar['cor'], const Color(0xFF5B4BD6)),
+      borda: _cor(rar['cor'], const Color(0xFF4B82D6)),
       etiqueta: '${rar['rotulo'] ?? ''}',
       topo: _Previa((it['previa'] as Map?)?.cast<String, dynamic>() ?? const {}),
       nome: '${it['nome']}',
@@ -507,7 +507,7 @@ class _LojaTelaState extends State<LojaTela> {
         ],
       ],
       const SizedBox(height: 16),
-      _secao('Histórico', Icons.history_rounded, const Color(0xFFB89CFF)),
+      _secao('Histórico', Icons.history_rounded, const Color(0xFF9CBFFF)),
       const SizedBox(height: 8),
       if (hist.isEmpty)
         _cartao(
@@ -570,14 +570,14 @@ class _LojaTelaState extends State<LojaTela> {
           String sub = '',
           int? preco,
           required Widget botao,
-          Color borda = const Color(0xFF5B4BD6),
+          Color borda = const Color(0xFF4B82D6),
           String etiqueta = ''}) =>
       Container(
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: borda.withValues(alpha: 0.85), width: 2),
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231A78), Color(0xFF120C46)]),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1A4078), Color(0xFF0C2346)]),
           boxShadow: [BoxShadow(color: borda.withValues(alpha: 0.3), blurRadius: 10)],
         ),
         child: Column(
@@ -626,7 +626,7 @@ class _LojaTelaState extends State<LojaTela> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: cores),
-              border: Border.all(color: cores.first == const Color(0x22FFFFFF) ? const Color(0x80C5B3FF) : const Color(0xD9FFD66B), width: 1.5),
+              border: Border.all(color: cores.first == const Color(0x22FFFFFF) ? const Color(0x80B3CFFF) : const Color(0xD9FFD66B), width: 1.5),
               boxShadow: [BoxShadow(color: sombra, offset: const Offset(0, 4))],
             ),
             child: Text(t,
@@ -658,8 +658,8 @@ class _LojaTelaState extends State<LojaTela> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x667A5CFF), width: 1.5),
-          color: const Color(0xFF1B1462),
+          border: Border.all(color: const Color(0x665C9AFF), width: 1.5),
+          color: const Color(0xFF143362),
         ),
         child: child,
       );
@@ -704,7 +704,7 @@ class _Previa extends StatelessWidget {
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: _cor(pl['fundo'], const Color(0xFF0D0A2E)),
+              color: _cor(pl['fundo'], const Color(0xFF0A192E)),
               border: Border.all(color: _cor(pl['borda'], cor), width: 2)),
           child: Column(
             children: [
@@ -765,7 +765,7 @@ class _ConfirmaCompra extends StatelessWidget {
     final falta = saldo - preco < 0;
     Widget linha(String a, String b, {bool fim = false}) => Container(
           padding: const EdgeInsets.symmetric(vertical: 6),
-          decoration: BoxDecoration(border: fim ? const Border(top: BorderSide(color: Color(0x4DC5B3FF))) : null),
+          decoration: BoxDecoration(border: fim ? const Border(top: BorderSide(color: Color(0x4DB3CFFF))) : null),
           child: Row(children: [
             Expanded(child: Text(a, style: const TextStyle(fontSize: 14.5, color: _lila))),
             Text(b, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _ouro)),
@@ -778,7 +778,7 @@ class _ConfirmaCompra extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: cor, width: 2),
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2A1E86), Color(0xFF120C46)]),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1E4786), Color(0xFF0C2346)]),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -817,7 +817,7 @@ class _ConfirmaCompra extends StatelessWidget {
               width: double.infinity,
               height: 46,
               child: OutlinedButton(
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0x80C5B3FF))),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0x80B3CFFF))),
                 onPressed: () => Navigator.of(context).pop(false),
                 child: const Text('Cancelar'),
               ),

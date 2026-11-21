@@ -387,8 +387,8 @@ class _Pintor extends CustomPainter {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     // marca d'água
-    _texto(canvas, 'TICKER HUNTER', Offset(pw / 2, h * 0.46), max(18, min(48, pw * 0.1)), const Color(0x12BEAAFF), centro: true, peso: FontWeight.w900);
-    _texto(canvas, w.tfNome, Offset(pw / 2, h * 0.46 + max(18, min(48, pw * 0.1)) * 0.8), 12, const Color(0x14BEAAFF), centro: true, peso: FontWeight.w800);
+    _texto(canvas, 'TICKER HUNTER', Offset(pw / 2, h * 0.46), max(18, min(48, pw * 0.1)), const Color(0x12AAC9FF), centro: true, peso: FontWeight.w900);
+    _texto(canvas, w.tfNome, Offset(pw / 2, h * 0.46 + max(18, min(48, pw * 0.1)) * 0.8), 12, const Color(0x14AAC9FF), centro: true, peso: FontWeight.w800);
 
     // grade e eixo de preços
     final passo = _passo((hi - lo) / 5);
@@ -398,7 +398,7 @@ class _Pintor extends CustomPainter {
     for (var p = (lo / passo).ceil() * passo; p < hi; p += passo) {
       final y = g._y(p);
       canvas.drawLine(Offset(0, y), Offset(pw, y), grade);
-      _texto(canvas, precoTxt(p), Offset(pw + 4, y), 10, const Color(0xFFCFC8EE));
+      _texto(canvas, precoTxt(p), Offset(pw + 4, y), 10, const Color(0xFFC8D6EE));
     }
 
     final bw = max(1.0, min(g._cw * 0.7, 14.0));
@@ -476,7 +476,7 @@ class _Pintor extends CustomPainter {
     final u = w.velas.last;
     final yu = g._y(u.c);
     _tracejada(canvas, yu, pw, const Color(0x66FFFFFF), [2, 3]);
-    _etiqueta(canvas, precoTxt(u.c), pw, yu, size.width, const Color(0xFFEDE9FF), const Color(0xFF110C2E));
+    _etiqueta(canvas, precoTxt(u.c), pw, yu, size.width, const Color(0xFFE9F1FF), const Color(0xFF0C192E));
 
     // desenhos
     final usados = <double>[];
@@ -530,7 +530,7 @@ class _Pintor extends CustomPainter {
         canvas.drawCircle(o, 4 + 3 * acende, Paint()..color = cor);
         final tp = _tp(d.texto ?? '', 11, Colors.white, FontWeight.w700);
         final bx = Rect.fromLTWH(min(o.dx - tp.width / 2 - 6, pw - tp.width - 12), o.dy - 26, tp.width + 12, 18);
-        canvas.drawRRect(RRect.fromRectAndRadius(bx, const Radius.circular(7)), Paint()..color = const Color(0xEE3C2C96));
+        canvas.drawRRect(RRect.fromRectAndRadius(bx, const Radius.circular(7)), Paint()..color = const Color(0xEE2C5596));
         tp.paint(canvas, Offset(bx.left + 6, bx.top + 2));
       } else {
         final alta = d.ferramenta == Ferramenta.zonaAlta;
@@ -563,7 +563,7 @@ class _Pintor extends CustomPainter {
           o = Offset(pw - 16, g._y(d.p2!) + 2);
         }
         final ok = res[k];
-        final cor = ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF8B6CFF));
+        final cor = ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF6CA3FF));
         final esc = t < 1 ? Curves.elasticOut.transform(t) : 1.0;
         canvas.save();
         canvas.translate(o.dx, o.dy);
@@ -598,7 +598,7 @@ class _Pintor extends CustomPainter {
       final v = w.velas[i];
       final dt = w.datas;
       final rot = dt != null && i < dt.length ? dt[i] : (diario ? 'Pregão ${v.d ?? i + 1}' : '${v.d != null ? 'D${v.d} ' : ''}${v.t}');
-      _texto(canvas, rot, Offset(x, size.height - 7), 9, const Color(0xFF9E96CE), centro: true);
+      _texto(canvas, rot, Offset(x, size.height - 7), 9, const Color(0xFF96ACCE), centro: true);
     }
     canvas.restore();
   }
