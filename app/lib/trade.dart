@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'animacoes.dart';
 import 'api.dart';
+import 'tour.dart';
 import 'navegacao.dart';
 import 'partida.dart';
 import 'sala.dart';
@@ -31,6 +32,8 @@ class _TradeTelaState extends State<TradeTela> {
   @override
   void initState() {
     super.initState();
+    Tour.evento('tela_trade');
+    if (Tour.passo.value != null) _corrida = 'rapida'; // tour guiado: a partida de treino é a mais curta
     _carregar();
   }
 
@@ -156,13 +159,13 @@ class _TradeTelaState extends State<TradeTela> {
                       child: Row(
                         children: [
                           Expanded(
-                            child: _cartaoModo(
+                            child: TourAlvo(id: 'trade_solo', child: _cartaoModo(
                               'tb_solo',
                               Duration.zero,
                               () => widget.jogarSolo != null
                                   ? widget.jogarSolo!(_corrida)
                                   : Navigator.of(context).push(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida))),
-                            ),
+                            )),
                           ),
                           const SizedBox(width: 6),
                           Expanded(

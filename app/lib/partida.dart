@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'api.dart';
+import 'tour.dart';
 import 'escudo.dart';
 import 'estrategia.dart';
 import 'mesa/mesa_host.dart';
@@ -119,6 +120,7 @@ class _PartidaTelaState extends State<PartidaTela> {
     }
     if (r['fim'] != null && !_fim) {
       _fim = true;
+      Tour.evento('partida'); // tour guiado: partida de treino terminada
       _fimDados = (r['fim'] as Map).cast<String, dynamic>();
       _relogio?.cancel();
       if (mounted) setState(() {});

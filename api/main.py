@@ -2589,3 +2589,64 @@ def carteira_conquistas(q: Quem = Depends(quem)) -> dict:
         banco.registrar_erro("api.carteira_conquistas", e)
         cs = []
     return {"itens": cs, "ok": sum(1 for c in cs if c.get("desbloqueada_em")), "total": len(cs)}
+
+
+# ------------------------------------------------------------------ Tour guiado do primeiro acesso (tour.py)
+CHAVE_TOUR = "tour"
+
+
+class TourPasso(BaseModel):
+    passo: int | None = None
+    marco: str | None = None
+    pular: bool = False
+    reiniciar: bool = False
+
+
+def _tour_marco_ok(q: "Quem", marco: str) -> bool:
+    """Confere no servidor os marcos que dá para conferir: aprender (uma lição feita) e comprar (uma compra na carteira)."""
+    try:
+        if marco == "aprender":
+            prog = ED.normalizar((banco.ler_dados(q.ator, q.email) or {}).get("edu_progresso"))
+            return bool(JO._jor(prog)["licoes"])
+        if marco == "comprar":
+            est = banco.comp_carteira_ler(q.ator) or {}
+            return any(isinstance(x, dict) and x.get("tipo") == "compra" for x in (est.get("ext") or [])) or bool(est.get("pos"))
+    except Exception as e:
+        banco.registrar_erro("api.tour_marco", e)
+        return False
+    return True
+
+
+@app.get("/tour")
+def tour_estado(q: Quem = Depends(quem)) -> dict:
+    """Onde o jogador parou no tour, os marcos cumpridos e os prêmios de cada marco."""
+    import tour as TO
+    doc = TO.sanear(banco.sis_estado_ler(q.email, CHAVE_TOUR))
+    return {**doc, "ativo": TO.ativo(doc), "premios": TO.PREMIOS}
+
+
+@app.post("/tour")
+def tour_passo(d: TourPasso, q: Quem = Depends(quem)) -> dict:
+    """Guarda o passo do tour; cumpre um marco (pagando o prêmio uma vez); pula ou recomeça o tour."""
+    import tour as TO
+    doc = banco.sis_estado_ler(q.email, CHAVE_TOUR)
+    ganho = 0
+    if d.reiniciar:
+        doc = TO.reiniciar(doc)
+    elif d.pular:
+        doc = TO.pular(doc)
+    else:
+        if d.marco is not None and d.marco not in TO.PREMIOS:
+            raise HTTPException(400, "Marco inválido.")
+        if d.marco is not None and not _tour_marco_ok(q, d.marco):
+            raise HTTPException(409, "Esse passo ainda não foi feito.")
+        doc, ganho = TO.avancar(doc, d.passo, d.marco)
+        if ganho:
+            try:
+                TC.creditar(q.conta.get("id"), ganho, "bonus:tour", f"Tour do primeiro acesso: {d.marco}", f"tour:{q.conta.get('id')}:{d.marco}", d.marco)
+            except Exception as e:
+                banco.registrar_erro("api.tour_premio", e)
+                ganho = 0
+    doc = TO.sanear(doc)
+    banco.sis_estado_gravar(q.email, CHAVE_TOUR, doc)
+    return {**doc, "ativo": TO.ativo(doc), "tc": ganho}

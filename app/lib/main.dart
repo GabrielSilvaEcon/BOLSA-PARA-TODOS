@@ -7,6 +7,7 @@ import 'api.dart';
 import 'config.dart';
 import 'login.dart';
 import 'navegacao.dart';
+import 'tour.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,8 @@ class TickerHuntersApp extends StatelessWidget {
         textTheme: GoogleFonts.sourceSans3TextTheme(ThemeData(brightness: Brightness.dark).textTheme),
       ),
       home: configurado ? const AberturaTela(depois: PortaDeEntrada()) : const _SemConfiguracao(),
+      // tour guiado do primeiro acesso: fica por cima de tudo (inclusive das telas cheias, como a lição)
+      builder: (context, child) => Stack(children: [child ?? const SizedBox.shrink(), const TourCamada()]),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'tour.dart';
 import 'aprender.dart' show FundoCidade;
 import 'carteira_extra.dart';
 import 'compra.dart';
@@ -73,6 +74,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
   @override
   void initState() {
     super.initState();
+    Tour.evento('tela_carteira');
     _carregar();
   }
 
@@ -114,6 +116,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
       MaterialPageRoute(builder: (_) => CompraTela(api: widget.api, ladoInicial: lado)),
     );
     if (ok == true) _carregar();
+    if (ok == true && lado == 'C') Tour.evento('compra'); // tour guiado: primeira compra
   }
 
   void _emBreve(String nome) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$nome: em breve no app novo')));
@@ -238,11 +241,11 @@ class _CarteiraTelaState extends State<CarteiraTela> {
       _resumo(),
       const SizedBox(height: 12),
       if (!comecou)
-        _comecarCartao(tema)
+        TourAlvo(id: 'cart_comprar', child: _comecarCartao(tema)) // tour guiado: primeiro ativar a carteira, depois comprar
       else
         Row(
           children: [
-            Expanded(child: _botaoJogo('Comprar', Icons.shopping_cart_outlined, const [Color(0xFF38E26B), Color(0xFF12A83C)], const Color(0xFF0B7A2B), () => _abrirCompra('C'))),
+            Expanded(child: TourAlvo(id: 'cart_comprar', child: _botaoJogo('Comprar', Icons.shopping_cart_outlined, const [Color(0xFF38E26B), Color(0xFF12A83C)], const Color(0xFF0B7A2B), () => _abrirCompra('C')))),
             const SizedBox(width: 12),
             Expanded(
               child: _botaoJogo('Vender', Icons.north_east, const [Color(0xFFFF5B5B), Color(0xFFD61F2C)], const Color(0xFFA0121D), temPos ? () => _abrirCompra('V') : null),
