@@ -1225,7 +1225,7 @@ def comp_apelido_livre(ator: Ator | None, apelido_k: str) -> bool:
 
 def sis_comp_todos(chave: str, limite: int = 5000) -> list[dict]:
     """[{email, dados}] de todas as contas para uma chave da competição. Só o fechamento diário e o próprio banco usam (sem Ator)."""
-    if chave not in ("comp_ordens", "comp_cart", "comp_ligas", "edu_liga", "jogos_placar", "perfil_jogador"):
+    if chave not in ("comp_ordens", "comp_cart", "comp_ligas", "edu_liga", "jogos_placar", "perfil_jogador", "trofeus"):
         raise ValueError("chave desconhecida")
     return [{"email": r["email"], "dados": _de_js(r["dados"])} for r in _selecionar("monitor_estado", {"chave": chave}, ["email", "dados"], limite=limite)]
 
