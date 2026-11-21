@@ -636,46 +636,179 @@ def ranking(jogo: str, metrica: str = "pts", q: Quem = Depends(quem)) -> dict:
         _erro(e)
 
 
-@app.get("/ranking/{jogo}/tela")
-def ranking_tela(jogo: str, q: Quem = Depends(quem)) -> dict:
-    """Tela Ranking Geral, igual à do app antigo (jogos_app.pagina_ranking): pódio, sua posição e a classificação (até 50),
-    com o nome do perfil, o avatar equipado e a variação de posição desde o início do dia. Nunca envia e-mail."""
+MESES = ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro")
+
+
+def _rk_perfis() -> dict:
+    """{email: perfil saneado} de todas as contas (uma consulta)."""
     import perfis as PF
-    if jogo not in J.JOGOS:
-        raise HTTPException(404, "jogo desconhecido")
     try:
-        placares = banco.sis_comp_todos(J.CH_PLACAR)
+        return {r["email"]: PF.sanear(r["dados"]) for r in banco.sis_comp_todos("perfil_jogador")}
+    except Exception:
+        return {}
+
+
+def _rk_amigos(q: "Quem") -> set[str] | None:
+    """Hashes de conta dos amigos (para o filtro Amigos)."""
+    import amigos as AM
+    try:
+        return {h for h, r in banco.social_relacoes(q.ator).items() if r["estado"] == AM.AMIGOS}
+    except Exception:
+        return set()
+
+
+def _rk_linha(pos: int, email: str, perfis: dict, eu_email: str, valor, extra: dict | None = None, apelido: str = "") -> dict:
+    p = perfis.get(email) or {}
+    eu = email == eu_email
+    visivel = (p.get("privacidade") or {}).get("visivel") != "ninguem"
+    nome = (p.get("nome") or p.get("usuario")) if (visivel or eu) else ""
+    av = p.get("avatar") if (visivel or eu) else ""
+    return {"pos": pos, "nome": nome or apelido or "Jogador", "usuario": p.get("usuario") if visivel else "", "valor": valor, "eu": eu,
+            "avatar_img": _avatar_img(av), **(extra or {})}
+
+
+@app.get("/trofeus")
+def trofeus_meus(q: Quem = Depends(quem)) -> dict:
+    """Troféus e divisão da conta logada nos dois jogos, a temporada (mês) e a tabela de divisões com os prêmios.
+    Se uma temporada acabou desde a última visita, vem também o resumo dela (uma vez só) para a tela de fim de temporada."""
+    import calendar
+    import trofeus as TF
+    doc = _trof_meu(q)
+    doc.pop("aviso_fim", None)
+    fim = next((v for k, v in sorted(doc["premios"].items(), reverse=True) if isinstance(v, dict) and not v.get("visto") and v.get("premio")), None)
+    if fim:                                                # a tela de fim de temporada aparece uma vez só
+        fim = dict(fim)
+        doc["premios"][fim["temp"]] = {**fim, "visto": True}
+        banco.sis_estado_gravar(q.email, CHAVE_TROFEUS, doc)
+    agora = _agora_brt()
+    ult_dia = calendar.monthrange(agora.year, agora.month)[1]
+    return {"temporada": {"id": doc["temp"], "rotulo": f"{MESES[agora.month - 1].capitalize()} de {agora.year}", "dias_restantes": ult_dia - agora.day + 1},
+            "jogos": {j: {"t": doc[j]["t"], "max": doc[j]["max"], "divisao": TF.divisao(doc[j]["t"])} for j in TF.JOGOS},
+            "divisoes": TF.tabela(), "fim_temporada": fim, "reset": TF.PISO_RESET}
+
+
+@app.get("/ranking/{jogo}/tela")
+def ranking_tela(jogo: str, filtro: str = "geral", periodo: str = "geral", q: Quem = Depends(quem)) -> dict:
+    """Central de rankings (aba Ranking): Trade Battle e Ticker Battle por TROFÉUS da temporada (com a divisão de cada um) e a Carteira
+    pelo retorno (geral, mês, semana ou ajustado ao risco), como no app antigo. filtro=amigos mostra só você e seus amigos. Sem e-mail."""
+    perfis = _rk_perfis()
+    amigos = _rk_amigos(q) if filtro == "amigos" else None
+    ok = (lambda email: email == q.email or banco._h_conta(email) in amigos) if amigos is not None else (lambda email: True)
+    if jogo == "carteira":
+        return _ranking_carteira(q, periodo, perfis, ok)
+    if jogo not in ("trade", "ticker"):
+        raise HTTPException(404, "jogo desconhecido")
+    import trofeus as TF
+    temp = _temporada()
+    linhas = []
+    try:
+        for r in banco.sis_comp_todos(CHAVE_TROFEUS):
+            d = TF.sanear(r["dados"], temp)[0]
+            if (d[jogo]["t"] > 0 or any(str(x).startswith(jogo + ":") for x in d["ids"])) and ok(r["email"]):
+                linhas.append((d[jogo]["t"], r["email"]))
     except Exception as e:
         _erro(e, 503)
-    rk = J.montar_ranking(jogo, placares, q.email)
-    try:                                                   # variação do dia: mesma base guardada que o app antigo usa
-        hoje = _agora_brt().date().isoformat()
-        chave = f"jogos_rk|{jogo}"
-        base, novo = J.base_do_dia(banco.cfg_ler(chave), hoje, rk)
-        if novo:
-            banco.cfg_gravar(chave, novo)
-        rk = J.montar_ranking(jogo, placares, q.email, base)
-    except Exception as e:
-        banco.registrar_erro("api.ranking_base", e)
-    email_de = {J.hash_conta(r.get("email", "")): r.get("email", "") for r in placares}
-    perfis = {}
-    try:
-        for r in banco.sis_comp_todos("perfil_jogador"):
-            perfis[r["email"]] = PF.sanear(r["dados"])
-    except Exception:
-        perfis = {}
-
-    def linha(x: dict) -> dict:
-        p = perfis.get(email_de.get(x["h"], "")) or {}
-        visivel = (p.get("privacidade") or {}).get("visivel") != "ninguem"
-        nome = (p.get("nome") or p.get("usuario")) if (visivel or x["eu"]) else ""
-        av = p.get("avatar") if (visivel or x["eu"]) else ""
-        return {"pos": x["pos"], "nome": nome or x["apelido"], "valor": x["valor"], "partidas": x.get("partidas", 0), "var": x.get("var"),
-                "eu": x["eu"], "avatar_img": _avatar_img(av)}
-
-    linhas = [linha(x) for x in rk["linhas"][:50]]
-    return {"jogo": jogo, "nome": J.NOME[jogo], "total": rk["total"], "linhas": linhas, "eu": linha(rk["eu"]) if rk.get("eu") else None,
+    linhas.sort(key=lambda x: (-x[0], x[1]))
+    saida = [_rk_linha(i, e, perfis, q.email, t, {"divisao": TF.divisao(t)}) for i, (t, e) in enumerate(linhas, 1)]
+    meu = next((x for x in saida if x["eu"]), None)
+    if not meu:
+        t = _trof_doc(q.email)[jogo]["t"]
+        meu = _rk_linha(None, q.email, perfis, q.email, t, {"divisao": TF.divisao(t)})
+    return {"jogo": jogo, "nome": J.NOME[jogo], "total": len(saida), "linhas": saida[:100], "eu": meu, "unidade": "troféus",
             "hora": _agora_brt().strftime("%H:%M")}
+
+
+def _ranking_carteira(q: "Quem", periodo: str, perfis: dict, ok) -> dict:
+    """Ranking da Carteira (competição do app antigo): retorno no período ou Sharpe (ajustado ao risco), com os mesmos participantes."""
+    import competicao as C
+    import ranking_parcial as RP
+    per = periodo if periodo in ("geral", "mes", "semana", "risco") else "geral"
+    listas, rotulo = RP.escolher(banco.comp_publico_ler("comp_ranking") or {})
+    email_de = {}
+    try:
+        for r in banco.sis_comp_todos("comp_ordens"):
+            ap = str(((r["dados"] or {}).get("apelido")) or "")
+            if ap:
+                email_de[ap] = r["email"]
+    except Exception:
+        pass
+    try:
+        meu_ap = str(C.sanear_perfil(banco.comp_ordens_ler(q.ator)).get("apelido") or "")
+    except Exception:
+        meu_ap = ""
+    saida = []
+    for x in listas.get(per) or []:
+        email = email_de.get(x.get("apelido"), "")
+        if not ok(email) and x.get("apelido") != meu_ap:
+            continue
+        valor = x.get("sh") if per == "risco" else round(float(x.get("ret") or 0) * 100, 2)
+        linha = _rk_linha(len(saida) + 1, email, perfis, q.email if x.get("apelido") != meu_ap else email, valor,
+                          {"dd": round(float(x.get("dd") or 0) * 100, 2), "dias": x.get("dias")}, apelido=x.get("apelido") or "")
+        linha["eu"] = x.get("apelido") == meu_ap
+        saida.append(linha)
+    return {"jogo": "carteira", "nome": "Carteira", "periodo": per, "total": len(saida), "linhas": saida[:100],
+            "eu": next((x for x in saida if x["eu"]), None), "unidade": "Sharpe" if per == "risco" else "% de retorno", "rotulo": rotulo,
+            "hora": _agora_brt().strftime("%H:%M")}
+
+
+# ------------------------------------------------------------------ troféus e temporadas (trofeus.py): só partidas online
+CHAVE_TROFEUS = "trofeus"
+
+
+def _temporada() -> str:
+    return _agora_brt().strftime("%Y-%m")
+
+
+def _trof_doc(email: str) -> dict:
+    """Troféus de outra conta (para a conta Elo): só leitura, já na temporada atual."""
+    import trofeus as TF
+    try:
+        return TF.sanear(banco.sis_estado_ler(email, CHAVE_TROFEUS), _temporada())[0]
+    except Exception:
+        return TF.vazio(_temporada())
+
+
+def _trof_meu(q: "Quem") -> dict:
+    """Troféus da conta logada, aplicando a virada de temporada (e pagando uma vez o prêmio da temporada que acabou)."""
+    import trofeus as TF
+    bruto = banco.sis_estado_ler(q.email, CHAVE_TROFEUS)
+    doc, fim = TF.sanear(bruto, _temporada())
+    if fim:
+        try:
+            TC.creditar(q.conta.get("id"), int(fim["premio"]), "bonus:temporada", f"Fim da temporada {fim['temp']}",
+                        f"trof:{q.conta.get('id')}:{fim['temp']}", fim["temp"])
+        except Exception as e:
+            banco.registrar_erro("api.trofeus_premio", e)
+    if fim or not bruto or (bruto or {}).get("temp") != doc["temp"]:
+        banco.sis_estado_gravar(q.email, CHAVE_TROFEUS, doc)
+    return doc
+
+
+def _trof_registrar(q: "Quem", jogo: str, pid: str, adversarios: list[str], placar: float) -> None:
+    """Troféus de UMA partida online, contra a média de troféus dos adversários. Guarda o último resultado para a tela de fim."""
+    import trofeus as TF
+    try:
+        doc = _trof_meu(q)
+        antes = TF.divisao(doc[jogo]["t"])
+        deles = [_trof_doc(e)[jogo]["t"] for e in adversarios if e and e != q.email] or [doc[jogo]["t"]]
+        doc, d = TF.registrar(doc, jogo, pid, sum(deles) / len(deles), placar)
+        if d is None:
+            return
+        depois = TF.divisao(doc[jogo]["t"])
+        doc["ult"] = {"jogo": jogo, "id": str(pid), "delta": d, "t": doc[jogo]["t"], "divisao": depois["nome"], "dv": depois,
+                      "resultado": "vitoria" if placar > 0.5 else ("empate" if placar == 0.5 else "derrota"),
+                      "subiu": depois["nivel"] > antes["nivel"], "caiu": depois["nivel"] < antes["nivel"]}
+        banco.sis_estado_gravar(q.email, CHAVE_TROFEUS, doc)
+    except Exception as e:
+        banco.registrar_erro("api.trofeus", e)
+
+
+def _trof_ultimo(q: "Quem", pid: str) -> dict | None:
+    try:
+        u = (banco.sis_estado_ler(q.email, CHAVE_TROFEUS) or {}).get("ult") or {}
+        return u if u.get("id") == str(pid) else None
+    except Exception:
+        return None
 
 
 def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -> None:
@@ -692,6 +825,14 @@ def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -
             banco.jogos_placar_gravar(q.ator, doc)
     except Exception as e:
         banco.registrar_erro("api.registrar_ranking", e)
+    try:
+        meu = next(x for x in fz["placar"] if x["voce"])
+        n = len(fz["placar"])
+        if n >= 2:
+            import trofeus as TF
+            _trof_registrar(q, "trade", pid, [j for j in p.get("jogadores") or [] if j != q.email], TF.placar_por_posicao(meu["pos"], n))
+    except Exception as e:
+        banco.registrar_erro("api.trofeus_trade", e)
     try:                                                   # histórico pessoal (solo e online), só para o jogador ver suas partidas
         import historico_jogos as HJ
         meu = next(x for x in fz["placar"] if x["voce"])
@@ -919,7 +1060,8 @@ def sala_ver(pid: str, q: Quem = Depends(quem)) -> dict:
     out = {"estado": "jogo", "id": pid, "fase": p["fase"], "tela": TG.args_mesa(v, p, {}, agora)}
     if p["fase"] == "fim" and v.get("final"):
         _registrar_ranking(q, pid, p, v["final"], v.get("resultado"))
-        out["fim"] = {"xp": _pagar_xp(q, pid, (v["final"] or {}).get("xp") or {}), "placar": (v["final"] or {}).get("placar")}
+        out["fim"] = {"xp": _pagar_xp(q, pid, (v["final"] or {}).get("xp") or {}), "placar": (v["final"] or {}).get("placar"),
+                      "trofeus": _trof_ultimo(q, pid)}
     return out
 
 
@@ -1170,6 +1312,14 @@ def _tk_on_registrar(q: Quem, v: dict) -> None:
             banco.jogos_placar_gravar(q.ator, doc)
     except Exception as e:
         banco.registrar_erro("api.ticker_online_placar", e)
+    try:
+        import battle_online_dados as BOD
+        jog = ((BOD._partida_row(v["id"]) or {}).get("dados") or {}).get("jog") or {}
+        outros = [(jog.get(k) or {}).get("email") for k in ("a", "b")]
+        _trof_registrar(q, "ticker", v["id"], [e for e in outros if e and e != q.email],
+                        {"vitoria": 1.0, "empate": 0.5, "derrota": 0.0}[f["resultado"]])
+    except Exception as e:
+        banco.registrar_erro("api.trofeus_ticker", e)
 
 
 def _tk_on_visao(q: Quem, v: dict) -> dict:
@@ -1187,7 +1337,7 @@ def _tk_on_visao(q: Quem, v: dict) -> dict:
         regs.append({"n": r["n"], "eu": r["eu"], "op": r["op"], "venc": r["venc"], "motivo": r.get("motivo") or "", "cmp": cmp, "lado": v["lado"]})
     _tk_on_registrar(q, v)
     return {**{k: v.get(k) for k in ("id", "fase", "lado", "rod", "rodadas", "eu", "op", "placar", "final", "encerrada")}, "cartas": cartas, "reg": regs,
-            "indicadores": _tk_meta()}
+            "indicadores": _tk_meta(), "trofeus": _trof_ultimo(q, v.get("id")) if v.get("encerrada") else None}
 
 
 @app.post("/ticker/online/fila")

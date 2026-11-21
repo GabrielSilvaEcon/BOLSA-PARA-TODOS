@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'api.dart';
+import 'escudo.dart';
 import 'estrategia.dart';
 import 'mesa/mesa_host.dart';
 import 'navegacao.dart';
@@ -118,6 +119,14 @@ class _PartidaTelaState extends State<PartidaTela> {
       _fimDados = (r['fim'] as Map).cast<String, dynamic>();
       _relogio?.cancel();
       if (mounted) setState(() {});
+      final tr = _fimDados?['trofeus'];
+      if (tr is Map && mounted) {
+        // partida online: primeiro a tela de troféus (vitória/derrota e a barra da divisão), depois o relatório
+        ResultadoTrofeusTela.abrir(context, tr).then((_) {
+          if (mounted) _abrirResultado();
+        });
+        return;
+      }
       _abrirResultado();
     }
   }
@@ -396,9 +405,7 @@ class _CarregandoState extends State<_Carregando> with SingleTickerProviderState
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 400),
               child: Text(
-                _demorando
-                    ? 'O servidor está acordando. Na primeira partida do dia\npode levar até 1 minuto.'
-                    : 'Sorteando um gráfico real da B3.',
+                _demorando ? 'O servidor está acordando. Na primeira partida do dia\npode levar até 1 minuto.' : 'Sorteando um gráfico real da B3.',
                 key: ValueKey(_demorando),
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13.5, height: 1.35, color: Color(0xFFCFC8EE)),
