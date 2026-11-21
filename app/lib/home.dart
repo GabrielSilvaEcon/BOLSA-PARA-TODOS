@@ -143,32 +143,37 @@ class _HomeTelaState extends State<HomeTela> {
           ),
           SafeArea(
             child: LayoutBuilder(builder: (ctx, c) {
+              // Telas grandes (tablet) mostram a mesma composição do celular, ampliada: monta numa largura de celular e escala.
               const fixo = 60 + 72 + 232 + 70 + 3 * 8 + 12.0;
-              final alt = math.max(c.maxHeight, fixo + 170);
+              final k = math.max(1.0, math.min(c.maxWidth / 400, c.maxHeight / 700));
+              final wl = math.min(c.maxWidth / k, 520.0);
+              final hl = math.max(c.maxHeight / k, fixo + 170);
+              final conteudo = SizedBox(
+                width: wl,
+                height: hl,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+                  child: _carregando && _eu == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : _erro != null && _eu == null
+                          ? _erroTela()
+                          : Column(children: [
+                              Entrada(ordem: 0, child: _topo()),
+                              Expanded(child: _heroi()),
+                              Entrada(ordem: 1, child: _jogos()),
+                              const SizedBox(height: 8),
+                              Entrada(ordem: 2, child: _meio()),
+                              const SizedBox(height: 8),
+                              Entrada(ordem: 3, child: _Convite(abrir: _abrir, api: widget.api, pedidos: ((_home?['amigos'] as Map?)?['pedidos'] as num?)?.toInt() ?? 0)),
+                            ]),
+                ),
+              );
               return RefreshIndicator(
                 onRefresh: _carregar,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: 640, minHeight: alt, maxHeight: alt),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-                        child: _carregando && _eu == null
-                            ? const Center(child: CircularProgressIndicator())
-                            : _erro != null && _eu == null
-                                ? _erroTela()
-                                : Column(children: [
-                                    Entrada(ordem: 0, child: _topo()),
-                                    Expanded(child: _heroi()),
-                                    Entrada(ordem: 1, child: _jogos()),
-                                    const SizedBox(height: 8),
-                                    Entrada(ordem: 2, child: _meio()),
-                                    const SizedBox(height: 8),
-                                    Entrada(ordem: 3, child: _Convite(abrir: _abrir, api: widget.api, pedidos: ((_home?['amigos'] as Map?)?['pedidos'] as num?)?.toInt() ?? 0)),
-                                  ]),
-                      ),
-                    ),
+                    child: SizedBox(width: wl * k, height: hl * k, child: k == 1 ? conteudo : FittedBox(fit: BoxFit.fill, child: conteudo)),
                   ),
                 ),
               );
@@ -535,7 +540,7 @@ class _HomeTelaState extends State<HomeTela> {
             left: 0,
             right: 0,
             bottom: 0,
-            top: 56,
+            top: 62,
             child: ColorFiltered(
               colorFilter: alta ? const ColorFilter.mode(Colors.transparent, BlendMode.dst) : const ColorFilter.matrix([1.1, 0, 0, 0, 0, 0, 0.45, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 0, 1, 0]),
               child: Image.asset('assets/home/touro_mercado.webp', fit: BoxFit.cover, alignment: Alignment.bottomRight),
