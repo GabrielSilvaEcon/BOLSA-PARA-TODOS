@@ -1850,7 +1850,14 @@ def home(q: Quem = Depends(quem)) -> dict:
         dsd = {"jogou": bool(meu), "terminou": meu.get("nota") is not None, "nota": meu.get("nota"), "termina_em": int((fim - agora).total_seconds())}
     except Exception:
         dsd = None
-    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen, "desafio": dsd}
+    try:                                                   # o topo da Home: a melhor divisão entre os dois jogos e a melhor nota do desafio
+        import trofeus as TF
+        doc = _trof_meu(q)
+        jogo = max(TF.JOGOS, key=lambda j: doc[j]["t"])
+        comp = {"jogo": jogo, "t": doc[jogo]["t"], "divisao": TF.divisao(doc[jogo]["t"]), "desafio_max": doc.get("dsd_max")}
+    except Exception:
+        comp = None
+    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen, "desafio": dsd, "competicao": comp}
 
 
 # ------------------------------------------------------------------ Histórico de partidas e Missões
@@ -2295,7 +2302,12 @@ def _desafio_nota(q: "Quem", dia: str, pid: str, fz: dict) -> None:
         chave = CHAVE_DSD.format(dia=dia, h=banco._h_conta(q.email))
         r = banco.cfg_ler(chave) or {}
         if r.get("pid") == pid and r.get("nota") is None:
-            banco.cfg_gravar(chave, {**r, "nota": round(float(meu["pontos"]), 1), "fim": time.strftime("%Y-%m-%dT%H:%M:%S")})
+            nota = round(float(meu["pontos"]), 1)
+            banco.cfg_gravar(chave, {**r, "nota": nota, "fim": time.strftime("%Y-%m-%dT%H:%M:%S")})
+            doc = _trof_meu(q)
+            if nota > float(doc.get("dsd_max", float("-inf"))):
+                doc["dsd_max"] = nota
+                banco.sis_estado_gravar(q.email, CHAVE_TROFEUS, doc)
     except Exception as e:
         banco.registrar_erro("api.desafio_nota", e)
 
@@ -2526,3 +2538,39 @@ def torneio_inscrever(q: Quem = Depends(quem)) -> dict:
 def social_revanche(d: SocialAlvo, jogo: str = "ticker", q: Quem = Depends(quem)) -> dict:
     """Revanche: o mesmo desafio PvP direto de /social/desafiar, para o adversário da última partida (só entre amigos)."""
     return social_desafiar(SocialDesafio(h=d.h, jogo=jogo), q)
+
+
+# ------------------------------------------------------------------ Carteira: extrato de operações e conquistas (atalhos "Mais da sua carteira")
+@app.get("/carteira/historico")
+def carteira_historico(q: Quem = Depends(quem)) -> dict:
+    """Extrato da carteira virtual (o mesmo 'ext' do app antigo): compras, vendas, proventos, desdobramentos e ordens recusadas,
+    do mais novo para o mais antigo, com o nome e o logo de cada ativo."""
+    import ativos_jogo as A
+    est = banco.comp_carteira_ler(q.ator) or {}
+    itens = []
+    for x in reversed((est.get("ext") or [])[-200:]):
+        if not isinstance(x, dict):
+            continue
+        tk = str(x.get("t") or "")
+        try:
+            rot = A.rotulo(tk)
+        except Exception:
+            rot = tk
+        itens.append({**{k: x.get(k) for k in ("d", "tipo", "t", "q", "p", "v", "r", "m")}, "rotulo": rot, "logo": _logo_ativo(tk)})
+    compras = sum(1 for x in itens if x["tipo"] in ("compra", "aporte"))
+    vendas = [x for x in itens if x["tipo"] == "venda"]
+    return {"itens": itens, "resumo": {"compras": compras, "vendas": len(vendas), "resultado_vendas": round(sum(float(x.get("r") or 0) for x in vendas), 2),
+                                        "proventos": round(sum(float(x.get("v") or 0) for x in itens if x["tipo"] == "provento"), 2)}}
+
+
+@app.get("/carteira/conquistas")
+def carteira_conquistas(q: Quem = Depends(quem)) -> dict:
+    """Conquistas da carteira (wallet_game do app antigo): as desbloqueadas com a data e as que faltam, com a recompensa."""
+    try:
+        import wallet_game as W
+        res = W.avaliar(q.email, q.conta.get("id"), registrar_visita=False)
+        cs = [{k: c.get(k) for k in ("id", "nome", "descricao", "emblema", "cor", "recompensa", "desbloqueada_em")} for c in res.get("conquistas") or []]
+    except Exception as e:
+        banco.registrar_erro("api.carteira_conquistas", e)
+        cs = []
+    return {"itens": cs, "ok": sum(1 for c in cs if c.get("desbloqueada_em")), "total": len(cs)}

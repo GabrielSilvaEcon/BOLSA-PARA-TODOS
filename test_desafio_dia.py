@@ -36,5 +36,7 @@ def test_mesmo_grafico_uma_tentativa_e_ranking(dois, monkeypatch):
     assert c1 == c2                                                         # o mesmo gráfico para todos
     d = ana.get("/desafio").json()
     assert d["jogaram"] == 2 and d["meu"]["terminou"] and d["meu"]["pos"] in (1, 2) and d["meu"]["de"] == 2
+    h = ana.get("/home").json()["competicao"]
+    assert h["divisao"]["nome"] == "Bronze" and h["desafio_max"] == d["meu"]["nota"]       # melhor nota no topo da Home
     rk = ana.get("/desafio/ranking").json()
     assert rk["total"] == 2 and len(rk["linhas"]) == 2 and any(x["eu"] for x in rk["linhas"])

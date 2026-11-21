@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'carteira_extra.dart';
 import 'compra.dart';
 import 'missoes.dart';
 import 'navegacao.dart';
@@ -742,7 +743,11 @@ class _CarteiraTelaState extends State<CarteiraTela> {
               if (i > 0) const SizedBox(width: 6),
               Expanded(
                 child: GestureDetector(
-                  onTap: () => _emBreve(rotulo),
+                  onTap: () => switch (rotulo) {
+                    'Histórico' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HistoricoCarteiraTela(api: widget.api))),
+                    'Conquistas' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ConquistasCarteiraTela(api: widget.api))),
+                    _ => _emBreve(rotulo),
+                  },
                   child: Container(
                     height: 70,
                     decoration: _cvCard.copyWith(borderRadius: BorderRadius.circular(16)),
