@@ -79,7 +79,7 @@ class _SocialTelaState extends State<SocialTela> {
   String _valorTxt(Map x) {
     if (_jogo == 'trade') {
       final p = (x['trade'] as Map?)?['pts'];
-      return p is num ? p.toStringAsFixed(1).replaceAll('.', ',') : '—';
+      return p is num ? (p.abs() < 0.05 ? 0.0 : p).toStringAsFixed(1).replaceAll('.', ',') : '—';
     }
     final v = (x['ticker'] as Map?)?['v'];
     return v is num ? '$v' : '—';
@@ -161,6 +161,7 @@ class _SocialTelaState extends State<SocialTela> {
             child: Stack(clipBehavior: Clip.none, children: [
               Container(
                 height: 92,
+                width: double.infinity,
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
@@ -241,7 +242,7 @@ class _SocialTelaState extends State<SocialTela> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${c['nome']} te desafiou!', style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
-              Text('${c['jogo_nome']} · sala ${c['codigo']}', style: const TextStyle(fontSize: 12, color: _lilas)),
+              Text('Desafio de ${c['jogo_nome']} · aceite para começar', style: const TextStyle(fontSize: 12, color: _lilas)),
             ]),
           ),
           IconButton(onPressed: () => _post('/social/convite/recusar', {'h': c['h']}), icon: const Icon(Icons.close_rounded, color: Colors.white70)),
@@ -251,7 +252,7 @@ class _SocialTelaState extends State<SocialTela> {
               final r = await _post('/social/convite/entrar', {'h': c['h']});
               if (r != null) _abrirSala('${r['jogo']}', r['id']);
             },
-            child: const Text('Entrar'),
+            child: const Text('Aceitar'),
           ),
         ]),
         arte: 'arena',
@@ -436,10 +437,14 @@ class _SocialTelaState extends State<SocialTela> {
   }
 
   Future<void> _desafiar(Map a, String jogo) async {
-    final r = await _post('/social/desafiar', {'h': a['h'], 'jogo': jogo});
-    if (r == null) return;
-    _aviso('Desafio enviado! Sala ${r['codigo']}: ${a['nome']} recebe o convite.');
-    _abrirSala(jogo, r['id']);
+    final r = await Navigator.of(context).push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: widget.api, amigo: a, jogo: jogo, euImg: (_d?['eu'] as Map?)?['avatar_img'])));
+    if (!mounted) return;
+    if (r != null && r['estado'] == 'aceito') {
+      _abrirSala('${r['jogo']}', r['id']);
+    } else if (r != null && r['msg'] != null) {
+      _aviso('${r['msg']}');
+    }
+    _carregar();
   }
 
   void _mais(Map a) => showModalBottomSheet<void>(
@@ -705,4 +710,154 @@ class _BuscaState extends State<_Busca> {
           ),
         ]),
       );
+}
+
+/// Quem desafia espera aqui: os dois avatares frente a frente, o relógio de 3 minutos e o botão Cancelar. Quando o amigo aceita, a tela
+/// fecha e a partida abre direto; se ele recusar ou o tempo acabar, volta com o aviso.
+class _Desafiando extends StatefulWidget {
+  const _Desafiando({required this.api, required this.amigo, required this.jogo, this.euImg});
+  final Api api;
+  final Object? euImg;
+  final Map amigo;
+  final String jogo;
+
+  @override
+  State<_Desafiando> createState() => _DesafiandoState();
+}
+
+class _DesafiandoState extends State<_Desafiando> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulso = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+  bool _ativo = true;
+  int _resta = 180;
+  String? _erro;
+
+  @override
+  void initState() {
+    super.initState();
+    _comecar();
+  }
+
+  @override
+  void dispose() {
+    _ativo = false;
+    _pulso.dispose();
+    super.dispose();
+  }
+
+  Future<void> _comecar() async {
+    try {
+      await widget.api.post('/social/desafiar', {'h': widget.amigo['h'], 'jogo': widget.jogo});
+    } catch (e) {
+      if (mounted) setState(() => _erro = e.toString());
+      return;
+    }
+    while (_ativo && mounted) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (!_ativo || !mounted) return;
+      try {
+        final r = await widget.api.get('/social/desafio?h=${widget.amigo['h']}');
+        final e = '${r['estado']}';
+        if (e == 'aceito') {
+          _ativo = false;
+          if (mounted) Navigator.of(context).pop(r);
+          return;
+        }
+        if (e == 'recusado' || e == 'expirado') {
+          _ativo = false;
+          await _cancelar(msg: e == 'recusado' ? '${widget.amigo['nome']} recusou o desafio.' : 'O desafio expirou: ${widget.amigo['nome']} não respondeu a tempo.');
+          return;
+        }
+        if (mounted && r['resta'] is num) setState(() => _resta = (r['resta'] as num).toInt());
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _cancelar({String? msg}) async {
+    _ativo = false;
+    try {
+      await widget.api.post('/social/desafio/cancelar', {'h': widget.amigo['h']});
+    } catch (_) {}
+    if (mounted) Navigator.of(context).pop({'estado': 'cancelado', 'msg': msg ?? 'Desafio cancelado.'});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nomeJogo = widget.jogo == 'trade' ? 'Trade Battle' : 'Ticker Battle';
+    final cor = widget.jogo == 'trade' ? _verde : const Color(0xFFB54BFF);
+    Widget lado(Object? img, String nome) => Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 104,
+            height: 104,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.7), blurRadius: 22)],
+              color: const Color(0xFF1B1545),
+            ),
+            child: ClipOval(child: imagemAvatar(img)),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+              width: 120,
+              child: Text(nome, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white))),
+        ]);
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (feito, _) {
+        if (!feito) _cancelar();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF140A55),
+        body: Stack(fit: StackFit.expand, children: [
+          Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover),
+          Container(color: const Color(0xAA0B0930)),
+          SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: _erro != null
+                    ? Column(mainAxisSize: MainAxisSize.min, children: [
+                        Text(_erro!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, color: Colors.white)),
+                        const SizedBox(height: 14),
+                        FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Voltar')),
+                      ])
+                    : Column(mainAxisSize: MainAxisSize.min, children: [
+                        Text('DESAFIO · ${nomeJogo.toUpperCase()}', style: TextStyle(fontSize: 15, letterSpacing: 2, fontWeight: FontWeight.w900, color: cor)),
+                        const SizedBox(height: 26),
+                        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          lado(widget.euImg, 'Você'),
+                          AnimatedBuilder(
+                            animation: _pulso,
+                            builder: (ctx, _) => Transform.scale(
+                              scale: 1 + 0.15 * _pulso.value,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 10),
+                                child: Text('VS', style: TextStyle(fontSize: 38, fontWeight: FontWeight.w900, color: _ouro, shadows: [Shadow(color: Color(0xAAF2B84B), blurRadius: 16)])),
+                              ),
+                            ),
+                          ),
+                          lado(widget.amigo['avatar_img'], '${widget.amigo['nome']}'),
+                        ]),
+                        const SizedBox(height: 30),
+                        Text('Aguardando ${widget.amigo['nome']} aceitar…', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+                        const SizedBox(height: 6),
+                        Text('A partida começa assim que o desafio for aceito · ${_resta ~/ 60}:${(_resta % 60).toString().padLeft(2, '0')}',
+                            textAlign: TextAlign.center, style: const TextStyle(color: _lilas)),
+                        const SizedBox(height: 18),
+                        SizedBox(width: 220, child: LinearProgressIndicator(value: _resta / 180, minHeight: 6, color: cor, backgroundColor: const Color(0x55120850))),
+                        const SizedBox(height: 26),
+                        OutlinedButton.icon(
+                          onPressed: () => _cancelar(),
+                          style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white70), minimumSize: const Size(200, 48)),
+                          icon: const Icon(Icons.close_rounded),
+                          label: const Text('Cancelar desafio'),
+                        ),
+                      ]),
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
 }

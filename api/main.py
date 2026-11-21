@@ -1942,9 +1942,14 @@ def social_perfil(h: str, q: Quem = Depends(quem)) -> dict:
     return {**{k: v for k, v in pub.items() if k != "foto"}, "h": h, "rel": alvo["rel"], "avatar_img": _avatar_img(av), "restrito": False}
 
 
+CHAVE_DESAFIO = "dsf|{de}|{para}"       # o desafio PvP pendente de `de` para `para`: {jogo, id} da partida escondida
+DESAFIO_VALIDO_S = 180                   # quem desafia espera no máximo 3 minutos
+
+
 @app.post("/social/desafiar")
 def social_desafiar(d: SocialDesafio, q: Quem = Depends(quem)) -> dict:
-    """Batalha amistosa: cria a sala privada pelo fluxo normal do jogo e manda o convite ao amigo. Devolve a sala para o app abrir."""
+    """Desafio PvP direto: cria a partida online escondida (o mesmo motor da sala privada, sem código na tela) e manda o convite ao
+    amigo. Quem desafia espera em GET /social/desafio; quando o amigo aceita, a partida começa sozinha para os dois."""
     import amigos as AM
     rel = (_social_erro(banco.social_relacoes, q.ator).get(d.h) or {}).get("estado")
     if rel != AM.AMIGOS:
@@ -1952,32 +1957,88 @@ def social_desafiar(d: SocialDesafio, q: Quem = Depends(quem)) -> dict:
     if d.jogo == "trade":
         corrida = d.corrida if d.corrida in TB.CORRIDAS else NovaSala().corrida
         s = _sala(OL.criar_sala, q.email, TB.CORRIDAS[corrida]["tf"], _agora(), TB.FORMATO_PADRAO, corrida)
-        sid = s.get("id")
-        cod = (s.get("sala") or {}).get("codigo") or s.get("codigo") or ""
     elif d.jogo == "ticker":
         import battle_online_dados as BOD
         s = _tk_on(BOD.criar_sala, q.email)
-        sid, cod = s.get("id"), s.get("codigo") or ""
     else:
         raise HTTPException(400, "Jogo inválido.")
+    sid, cod = s.get("id"), s.get("codigo") or ""
     if not cod:
         raise HTTPException(400, "Você já está em uma partida em andamento. Termine ou saia dela para desafiar.")
     _social_erro(banco.convite_jogo_enviar, q.ator, d.h, d.jogo, cod)
-    return {"jogo": d.jogo, "id": sid, "codigo": cod}
+    banco.cfg_gravar(CHAVE_DESAFIO.format(de=banco._h_conta(q.email), para=d.h), {"jogo": d.jogo, "id": sid, "em": time.time()})
+    return {"jogo": d.jogo, "id": sid}
+
+
+def _desafio_fase(jogo: str, pid: str, email: str) -> str:
+    """'aguardando' (ninguém entrou ainda), 'comecou' (a partida está valendo) ou 'cancelada'."""
+    if jogo == "trade":
+        b = _sala(OL.ler, pid, email, _agora())
+        if b.get("estado") == "cancelada":
+            return "cancelada"
+        return "comecou" if b.get("estado") == "jogo" else "aguardando"
+    import battle_online_dados as BOD
+    v = _tk_on(BOD.ler, pid, email)
+    f = v.get("fase")
+    return "aguardando" if f == "aguardando" else ("cancelada" if f == "cancelada" else "comecou")
+
+
+@app.get("/social/desafio")
+def social_desafio(h: str, q: Quem = Depends(quem)) -> dict:
+    """Situação do desafio que a conta logada mandou para `h`: aguardando, aceito (a partida começou), recusado ou expirado."""
+    eu = banco._h_conta(q.email)
+    dsf = banco.cfg_ler(CHAVE_DESAFIO.format(de=eu, para=_social_erro(banco._hash_ok, h))) or {}
+    if not dsf.get("id"):
+        return {"estado": "expirado"}
+    if dsf.get("recusado"):
+        return {"estado": "recusado", "jogo": dsf["jogo"], "id": dsf["id"]}
+    fase = _desafio_fase(dsf["jogo"], dsf["id"], q.email)
+    if fase == "comecou":
+        return {"estado": "aceito", "jogo": dsf["jogo"], "id": dsf["id"]}
+    if fase == "cancelada" or time.time() - float(dsf.get("em") or 0) > DESAFIO_VALIDO_S:
+        return {"estado": "expirado", "jogo": dsf["jogo"], "id": dsf["id"]}
+    return {"estado": "aguardando", "jogo": dsf["jogo"], "id": dsf["id"], "resta": max(0, int(DESAFIO_VALIDO_S - (time.time() - float(dsf.get("em") or 0))))}
+
+
+@app.post("/social/desafio/cancelar")
+def social_desafio_cancelar(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
+    """Quem desafiou desiste (ou o tempo acabou): fecha a partida escondida e apaga o convite."""
+    eu, outro = banco._h_conta(q.email), _social_erro(banco._hash_ok, d.h)
+    chave = CHAVE_DESAFIO.format(de=eu, para=outro)
+    dsf = banco.cfg_ler(chave) or {}
+    if dsf.get("id"):
+        try:
+            if _desafio_fase(dsf["jogo"], dsf["id"], q.email) == "aguardando":
+                if dsf["jogo"] == "trade":
+                    _sala(OL.sair, dsf["id"], q.email, _agora())
+                else:
+                    import battle_online_dados as BOD
+                    _tk_on(BOD.sair, dsf["id"], q.email)
+        except HTTPException:
+            pass
+    banco.cfg_apagar(chave)
+    banco.cfg_apagar(f"cvj|{outro}|{eu}")
+    return {"ok": True}
 
 
 @app.post("/social/convite/entrar")
 def social_convite_entrar(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
-    """Entra na sala do amigo que mandou o convite (pelo "entrar com código" de cada jogo) e apaga o convite."""
+    """Aceitar o desafio: entra na partida do amigo e ela começa na hora para os dois (sem sala de espera nem código)."""
     cv = next((c for c in _social_erro(banco.convites_recebidos, q.ator) if c["h"] == d.h), None)
     if not cv:
-        raise HTTPException(400, "Esse convite expirou.")
+        raise HTTPException(400, "Esse desafio expirou.")
     try:
         if cv["jogo"] == "trade":
             s = _sala(OL.entrar_na_sala, q.email, cv["codigo"], _agora())
+            criador = (((OL._row(s["id"]) or {}).get("dados") or {}).get("sala") or {}).get("criador")
+            _sala(OL.iniciar, s["id"], criador, _agora())
         else:
             import battle_online_dados as BOD
             s = _tk_on(BOD.entrar_na_sala, q.email, cv["codigo"])
+            dados = (BOD._partida_row(s["id"]) or {}).get("dados") or {}
+            for e in (q.email, ((dados.get("jog") or {}).get("a") or {}).get("email")):
+                if e:
+                    _tk_on(BOD.estou_pronto, s["id"], e)
     finally:
         banco.convite_apagar(q.ator, d.h)
     return {"jogo": cv["jogo"], "id": s.get("id")}
@@ -1985,5 +2046,11 @@ def social_convite_entrar(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
 
 @app.post("/social/convite/recusar")
 def social_convite_recusar(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
+    """Recusar o desafio: avisa quem desafiou (que está esperando) e apaga o convite."""
+    eu, de = banco._h_conta(q.email), _social_erro(banco._hash_ok, d.h)
+    chave = CHAVE_DESAFIO.format(de=de, para=eu)
+    dsf = banco.cfg_ler(chave)
+    if dsf:
+        banco.cfg_gravar(chave, {**dsf, "recusado": True})
     _social_erro(banco.convite_apagar, q.ator, d.h)
     return {"ok": True}
