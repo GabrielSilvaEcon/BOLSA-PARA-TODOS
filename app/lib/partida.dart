@@ -15,12 +15,15 @@ import 'relatorio.dart';
 /// cria a partida (`POST /trade/solo`) ou entra na da sala (`/trade/salas/{id}`), consulta o andamento a cada segundo e manda as jogadas
 /// (`/estrategia` e `/acao`). No fim, abre o relatório da partida (o mesmo do app antigo).
 class PartidaTela extends StatefulWidget {
-  const PartidaTela({super.key, required this.api, this.corrida = 'intermediaria', this.salaId});
+  const PartidaTela({super.key, required this.api, this.corrida = 'intermediaria', this.salaId, this.inicio});
   final Api api;
   final String corrida;
 
   /// Partida de uma sala com amigos (já criada e iniciada). Sem ela, é a partida solo.
   final String? salaId;
+
+  /// Rota que cria a partida solo no lugar de /trade/solo (ex.: '/desafio/jogar', o gráfico do Desafio do dia).
+  final String? inicio;
 
   @override
   State<PartidaTela> createState() => _PartidaTelaState();
@@ -70,7 +73,7 @@ class _PartidaTelaState extends State<PartidaTela> {
   Future<void> _iniciar() async {
     try {
       final sala = widget.salaId;
-      final r = sala == null ? await widget.api.post('/trade/solo', {'corrida': widget.corrida}) : await widget.api.get('/trade/salas/$sala');
+      final r = sala == null ? await widget.api.post(widget.inicio ?? '/trade/solo', {'corrida': widget.corrida}) : await widget.api.get('/trade/salas/$sala');
       if (mounted) setState(() => _pid = sala ?? r['id']?.toString());
       _aplicar(r);
       _relogio = Timer.periodic(const Duration(seconds: 1), (_) => _consultar());
