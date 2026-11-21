@@ -19,7 +19,7 @@ class DesafioTela extends StatefulWidget {
 }
 
 const _ouro = Color(0xFFF2B84B);
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 
 String contagem(int s) {
   final h = s ~/ 3600, m = (s % 3600) ~/ 60, x = s % 60;
@@ -85,7 +85,7 @@ class _DesafioTelaState extends State<DesafioTela> {
     final meu = d?['meu'] as Map?;
     final terminou = meu?['terminou'] == true;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover),
         Container(color: const Color(0xBF0B0930)),
@@ -120,10 +120,10 @@ class _DesafioTelaState extends State<DesafioTela> {
     );
   }
 
-  Widget _faixa(Widget child, {Color borda = const Color(0xFF6A4FE6)}) => Container(
+  Widget _faixa(Widget child, {Color borda = const Color(0xFF4F88E6)}) => Container(
         margin: const EdgeInsets.only(top: 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0xE61B1462), border: Border.all(color: borda, width: 1.6)),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0xE6143362), border: Border.all(color: borda, width: 1.6)),
         child: child,
       );
 
@@ -151,9 +151,9 @@ class _DesafioTelaState extends State<DesafioTela> {
           child: Container(
             height: 76,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0xE61B1462), border: Border.all(color: const Color(0xFF8B6CFF), width: 1.6)),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0xE6143362), border: Border.all(color: const Color(0xFF6CA3FF), width: 1.6)),
             child: Row(children: [
-              const Icon(Icons.groups_rounded, color: Color(0xFFB59BFF), size: 34),
+              const Icon(Icons.groups_rounded, color: Color(0xFF9BBFFF), size: 34),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -208,7 +208,7 @@ class _DesafioTelaState extends State<DesafioTela> {
       padding: EdgeInsets.symmetric(vertical: destaque ? 14 : 10, horizontal: 6),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: destaque ? const Color(0xE66B3A12) : const Color(0xE61B1462),
+        color: destaque ? const Color(0xE66B3A12) : const Color(0xE6143362),
         border: Border.all(color: cor, width: 1.6),
       ),
       child: Column(children: [
@@ -236,7 +236,7 @@ class _DesafioTelaState extends State<DesafioTela> {
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          color: const Color(0xE6160B5E),
+          color: const Color(0xE60B2C5E),
           border: Border.all(color: _ouro, width: 2),
           boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 18)],
         ),
@@ -275,8 +275,8 @@ class _DesafioTelaState extends State<DesafioTela> {
                 padding: const EdgeInsets.symmetric(vertical: 9),
                 decoration: BoxDecoration(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                  color: _filtro == id ? const Color(0xFF6A3BE0) : const Color(0xE61B1462),
-                  border: Border.all(color: const Color(0xFF8B6CFF)),
+                  color: _filtro == id ? const Color(0xFF3B75E0) : const Color(0xE6143362),
+                  border: Border.all(color: const Color(0xFF6CA3FF)),
                 ),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(ic, color: _filtro == id ? _ouro : Colors.white, size: 20),
@@ -289,7 +289,7 @@ class _DesafioTelaState extends State<DesafioTela> {
       ]),
       Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: const Color(0xE6160B5E), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)), border: Border.all(color: const Color(0xFF8B6CFF))),
+        decoration: BoxDecoration(color: const Color(0xE60B2C5E), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)), border: Border.all(color: const Color(0xFF6CA3FF))),
         child: Column(children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(6, 2, 6, 6),
@@ -310,7 +310,7 @@ class _DesafioTelaState extends State<DesafioTela> {
       const SizedBox(height: 12),
       Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0xE6160B5E), border: Border.all(color: _ouro, width: 1.4)),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0xE60B2C5E), border: Border.all(color: _ouro, width: 1.4)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Row(children: [
             Text('🎁', style: TextStyle(fontSize: 22)),
@@ -324,7 +324,7 @@ class _DesafioTelaState extends State<DesafioTela> {
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0x55120850), border: Border.all(color: const Color(0x886A4FE6))),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0x55082450), border: Border.all(color: const Color(0x884F88E6))),
                   child: Column(children: [
                     Text('${p['rotulo']}', style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -340,7 +340,7 @@ class _DesafioTelaState extends State<DesafioTela> {
       ),
       const SizedBox(height: 12),
       _faixa(Row(children: [
-        const Icon(Icons.calendar_month_rounded, color: Color(0xFFB59BFF), size: 34),
+        const Icon(Icons.calendar_month_rounded, color: Color(0xFF9BBFFF), size: 34),
         const SizedBox(width: 10),
         const Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -359,7 +359,7 @@ class _DesafioTelaState extends State<DesafioTela> {
   Widget _linha(Map x) {
     final eu = x['eu'] == true;
     final pos = (x['pos'] as num?)?.toInt() ?? 0;
-    final cor = switch (pos) { 1 => _ouro, 2 => const Color(0xFFC0C7D4), 3 => const Color(0xFFCD7F32), _ => const Color(0xFF8B6CFF) };
+    final cor = switch (pos) { 1 => _ouro, 2 => const Color(0xFFC0C7D4), 3 => const Color(0xFFCD7F32), _ => const Color(0xFF6CA3FF) };
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
@@ -382,7 +382,7 @@ class _DesafioTelaState extends State<DesafioTela> {
     return Container(
       width: tam,
       height: tam,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF1B1545), border: Border.all(color: cor, width: 2)),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF152845), border: Border.all(color: cor, width: 2)),
       child: ClipOval(
         child: t == null
             ? reserva
@@ -395,7 +395,7 @@ class _DesafioTelaState extends State<DesafioTela> {
 
   void _regras() => showModalBottomSheet<void>(
         context: context,
-        backgroundColor: const Color(0xFF16104A),
+        backgroundColor: const Color(0xFF10274A),
         builder: (ctx) => const Padding(
           padding: EdgeInsets.fromLTRB(18, 18, 18, 28),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [

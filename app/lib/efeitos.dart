@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 /// Tudo é só apresentação: quem sorteia e credita é o servidor. Com "reduzir movimento" do sistema, mostra direto o estado final.
 
 const rotRaridade = {'comum': 'Comum', 'raro': 'Raro', 'epico': 'Épico', 'lendario': 'Lendário'};
-const corRaridade = {'comum': Color(0xFF9FB2C8), 'raro': Color(0xFF4DA3FF), 'epico': Color(0xFFB06BFF), 'lendario': Color(0xFFFFB938)};
+const corRaridade = {'comum': Color(0xFF9FB2C8), 'raro': Color(0xFF4DA3FF), 'epico': Color(0xFF6B99FF), 'lendario': Color(0xFFFFB938)};
 
 /// Carrega antes as imagens da comemoração (para o baú não aparecer em branco no primeiro quadro).
 void precarregarEfeitos(BuildContext context) {
@@ -108,7 +108,7 @@ class _BauAnimadoState extends State<BauAnimado> with TickerProviderStateMixin {
             gradient: RadialGradient(
               center: const Alignment(0, -0.5),
               radius: 1.25,
-              colors: [Color.lerp(const Color(0xFF2A1E86), cor, 0.30 * luz)!, const Color(0xFF15104F), const Color(0xFF0D0A33)],
+              colors: [Color.lerp(const Color(0xFF1E4786), cor, 0.30 * luz)!, const Color(0xFF15104F), const Color(0xFF0D0A33)],
               stops: const [0, 0.55, 1],
             ),
             boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.25 + 0.35 * luz), blurRadius: 18 + 16 * luz)],
@@ -142,7 +142,7 @@ class _BauAnimadoState extends State<BauAnimado> with TickerProviderStateMixin {
                               fontSize: 30,
                               fontWeight: FontWeight.w900,
                               fontStyle: FontStyle.italic,
-                              color: Color(0xFFEDE9FF),
+                              color: Color(0xFFE9F1FF),
                               shadows: [Shadow(color: Color(0x995BF5A0), blurRadius: 14)],
                             ),
                           ),
@@ -212,7 +212,7 @@ class _BauAnimadoState extends State<BauAnimado> with TickerProviderStateMixin {
                                         ),
                                         Text(widget.rotulo,
                                             textAlign: TextAlign.center,
-                                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFFBDB5E6))),
+                                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFFB5C8E6))),
                                       ],
                                     ),
                                   ),

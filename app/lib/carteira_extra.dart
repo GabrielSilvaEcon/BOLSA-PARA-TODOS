@@ -6,7 +6,7 @@ import 'aprender.dart' show FundoCidade;
 import 'arte_cartao.dart';
 
 /// Atalhos "Mais da sua carteira": o extrato de operações e as conquistas da carteira virtual (as mesmas do app antigo).
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 const _verde = Color(0xFF26D07C);
 const _vermelho = Color(0xFFFF5A7A);
 const _ouro = Color(0xFFF2B84B);
@@ -28,7 +28,7 @@ String _data(Object? d) {
 }
 
 Widget _base(BuildContext context, String titulo, Widget? corpo, String? erro, Future<void> Function() recarregar, List<Widget> Function() itens) => Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         RefreshIndicator(
@@ -83,7 +83,7 @@ class _HistoricoCarteiraTelaState extends State<HistoricoCarteiraTela> {
     'compra': (Icons.add_shopping_cart_rounded, Color(0xFF4F9BFF), 'Compra'),
     'venda': (Icons.sell_rounded, Color(0xFFF2B84B), 'Venda'),
     'provento': (Icons.payments_rounded, Color(0xFF26D07C), 'Provento'),
-    'desdobramento': (Icons.call_split_rounded, Color(0xFFB54BFF), 'Desdobramento'),
+    'desdobramento': (Icons.call_split_rounded, Color(0xFF4B7DFF), 'Desdobramento'),
     'recusada': (Icons.block_rounded, Color(0xFFFF5A7A), 'Ordem recusada'),
   };
 
@@ -125,7 +125,7 @@ class _HistoricoCarteiraTelaState extends State<HistoricoCarteiraTela> {
           Entrada(
             ordem: 1 + i.clamp(0, 12),
             child: Builder(builder: (ctx) {
-              final (ic, cor, rot) = _visual['${x['tipo']}'] ?? (Icons.receipt_long_rounded, const Color(0xFF8B6CFF), '${x['tipo']}');
+              final (ic, cor, rot) = _visual['${x['tipo']}'] ?? (Icons.receipt_long_rounded, const Color(0xFF6CA3FF), '${x['tipo']}');
               final res = x['r'];
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -133,7 +133,7 @@ class _HistoricoCarteiraTelaState extends State<HistoricoCarteiraTela> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: cor.withValues(alpha: 0.85), width: 1.5),
-                  gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.6)!, const Color(0xEE120850)]),
+                  gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.6)!, const Color(0xEE082450)]),
                   image: arteCartao(arteDe('${x['tipo']}'), opacidade: 0.3),
                 ),
                 child: Row(children: [
@@ -220,7 +220,7 @@ class _ConquistasCarteiraTelaState extends State<ConquistasCarteiraTela> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _ouro, width: 2),
-              gradient: const LinearGradient(colors: [Color(0xFF6B3A12), Color(0xFF2A1046)]),
+              gradient: const LinearGradient(colors: [Color(0xFF6B3A12), Color(0xFF102046)]),
               image: arteCartao('loja', opacidade: 0.4),
             ),
             child: Row(children: [
@@ -232,7 +232,7 @@ class _ConquistasCarteiraTelaState extends State<ConquistasCarteiraTela> {
                   const SizedBox(height: 6),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(value: total == 0 ? 0 : ok / total, minHeight: 9, backgroundColor: const Color(0x55120850), color: _ouro),
+                    child: LinearProgressIndicator(value: total == 0 ? 0 : ok / total, minHeight: 9, backgroundColor: const Color(0x55082450), color: _ouro),
                   ),
                 ]),
               ),
@@ -254,8 +254,8 @@ class _ConquistasCarteiraTelaState extends State<ConquistasCarteiraTela> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: feita ? cor : const Color(0xFF6A4FE6), width: feita ? 2 : 1.2),
-                    gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF160B5E), feita ? 0.5 : 0.8)!, const Color(0xEE120850)]),
+                    border: Border.all(color: feita ? cor : const Color(0xFF4F88E6), width: feita ? 2 : 1.2),
+                    gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF0B2C5E), feita ? 0.5 : 0.8)!, const Color(0xEE082450)]),
                     boxShadow: [if (feita) BoxShadow(color: cor.withValues(alpha: 0.4), blurRadius: 12)],
                   ),
                   child: Row(children: [

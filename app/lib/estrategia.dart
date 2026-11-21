@@ -89,7 +89,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
     final t = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16104A),
+        backgroundColor: const Color(0xFF10274A),
         title: const Text('Anotação', style: TextStyle(fontWeight: FontWeight.w900)),
         content: TextField(
           controller: campo,
@@ -135,7 +135,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
     final a = widget.args;
     final cf = (a['confirmados'] as Map?) ?? const {};
     return ColoredBox(
-      color: const Color(0xFF0B0828),
+      color: const Color(0xFF081528),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
@@ -166,8 +166,8 @@ class _EstrategiaViewState extends State<EstrategiaView> {
     return Row(
       children: [
         Material(
-          color: const Color(0xFF1B1462),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF5B4BD6))),
+          color: const Color(0xFF143362),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF4B82D6))),
           child: IconButton(onPressed: widget.aoVoltar, icon: const Icon(Icons.arrow_back_rounded, color: Colors.white), tooltip: 'Voltar'),
         ),
         const SizedBox(width: 10),
@@ -176,7 +176,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('${a['ticker'] ?? 'Ativo oculto'}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
-              Text('${a['tf_nome'] ?? ''} · sua estratégia', style: const TextStyle(fontSize: 12, color: Color(0xFFBDB5E6))),
+              Text('${a['tf_nome'] ?? ''} · sua estratégia', style: const TextStyle(fontSize: 12, color: Color(0xFFB5C8E6))),
             ],
           ),
         ),
@@ -201,8 +201,8 @@ class _EstrategiaViewState extends State<EstrategiaView> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF5B4BD6), width: 2),
-        boxShadow: const [BoxShadow(color: Color(0x805B4BD6), blurRadius: 14)],
+        border: Border.all(color: const Color(0xFF4B82D6), width: 2),
+        boxShadow: const [BoxShadow(color: Color(0x804B82D6), blurRadius: 14)],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -210,7 +210,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
           fit: StackFit.expand,
           children: [
             Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover),
-            const ColoredBox(color: Color(0x99060226)),
+            const ColoredBox(color: Color(0x99021026)),
             if (_velas.isEmpty)
               const Center(child: CircularProgressIndicator())
             else
@@ -244,7 +244,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
       child: Text(t,
           key: ValueKey(t),
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _aviso.isNotEmpty ? const Color(0xFFFFD66B) : const Color(0xFFCFC8EE))),
+          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _aviso.isNotEmpty ? const Color(0xFFFFD66B) : const Color(0xFFC8D6EE))),
     );
   }
 
@@ -260,7 +260,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
           ],
           PopupMenuButton<String>(
             tooltip: 'Indicadores',
-            color: const Color(0xFF1B1462),
+            color: const Color(0xFF143362),
             onSelected: (k) => setState(() => _ind.contains(k) ? _ind.remove(k) : _ind.add(k)),
             itemBuilder: (ctx) => [
               for (final (k, t) in const [('vol', 'Volume'), ('mm20', 'Média 20'), ('mm50', 'Média 50'), ('mm200', 'Média 200')])
@@ -271,11 +271,11 @@ class _EstrategiaViewState extends State<EstrategiaView> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF7868FF), width: 1.5),
-                color: const Color(0xFF1B1462),
+                border: Border.all(color: const Color(0xFF68A4FF), width: 1.5),
+                color: const Color(0xFF143362),
               ),
               child: const Row(children: [
-                Icon(Icons.insights_rounded, size: 18, color: Color(0xFFB59BFF)),
+                Icon(Icons.insights_rounded, size: 18, color: Color(0xFF9BBFFF)),
                 SizedBox(width: 5),
                 Text('Indicadores', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
               ]),
@@ -295,7 +295,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
         padding: const EdgeInsets.symmetric(horizontal: 11),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          color: on ? f.cor : const Color(0xFF1B1462),
+          color: on ? f.cor : const Color(0xFF143362),
           border: Border.all(color: f.cor.withValues(alpha: on ? 1 : 0.6), width: 1.5),
           boxShadow: on ? [BoxShadow(color: f.cor.withValues(alpha: 0.55), blurRadius: 12)] : null,
         ),
@@ -326,7 +326,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 gradient: on ? LinearGradient(colors: [cor, Color.lerp(cor, Colors.black, 0.25)!]) : null,
-                color: on ? null : const Color(0xFF1B1462),
+                color: on ? null : const Color(0xFF143362),
                 border: Border.all(color: cor.withValues(alpha: on ? 1 : 0.55), width: 2),
                 boxShadow: on ? [BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 14)] : null,
               ),
@@ -349,8 +349,8 @@ class _EstrategiaViewState extends State<EstrategiaView> {
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF6A4FE6), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231388), Color(0xFF160B5E)]),
+        border: Border.all(color: const Color(0xFF4F88E6), width: 2),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF134188), Color(0xFF0B2C5E)]),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -358,7 +358,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
           Row(children: [
             botao('alta', 'Subir', Icons.trending_up_rounded, const Color(0xFF26D07C)),
             const SizedBox(width: 7),
-            botao('aguardar', 'Aguardar', Icons.pause_rounded, const Color(0xFF9B8CFF)),
+            botao('aguardar', 'Aguardar', Icons.pause_rounded, const Color(0xFF8CB9FF)),
             const SizedBox(width: 7),
             botao('baixa', 'Cair', Icons.trending_down_rounded, const Color(0xFFFF4D6D)),
           ]),

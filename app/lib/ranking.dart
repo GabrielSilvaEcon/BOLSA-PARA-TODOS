@@ -25,7 +25,7 @@ class RankingTela extends StatefulWidget {
 final rankingPedido = ValueNotifier<String?>(null);
 
 const _ouro = Color(0xFFF2B84B);
-const _lila = Color(0xFFBDB5E6);
+const _lila = Color(0xFFB5C8E6);
 
 class _RankingTelaState extends State<RankingTela> {
   String _jogo = 'trade';
@@ -117,7 +117,7 @@ class _RankingTelaState extends State<RankingTela> {
     final resto = linhas.length > 3 ? linhas.sublist(3) : const <Map<String, dynamic>>[];
     final euFora = eu != null && (eu['pos'] == null || (eu['pos'] as num) > 3 + resto.length);
     return Scaffold(
-      backgroundColor: const Color(0xFF110C2E),
+      backgroundColor: const Color(0xFF0C192E),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -231,7 +231,7 @@ class _RankingTelaState extends State<RankingTela> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: cor, width: 2),
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF2A1A6E), 0.55)!, const Color(0xFF120850)]),
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF1A3A6E), 0.55)!, const Color(0xFF082450)]),
           boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 18)],
         ),
         child: Row(children: [
@@ -256,7 +256,7 @@ class _RankingTelaState extends State<RankingTela> {
                 curve: Curves.easeOutCubic,
                 builder: (ctx, v, _) => ClipRRect(
                   borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(value: v, minHeight: 9, backgroundColor: const Color(0x55120850), color: cor),
+                  child: LinearProgressIndicator(value: v, minHeight: 9, backgroundColor: const Color(0x55082450), color: cor),
                 ),
               ),
               const SizedBox(height: 4),
@@ -275,7 +275,7 @@ class _RankingTelaState extends State<RankingTela> {
     showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF1B1462),
+        backgroundColor: const Color(0xFF143362),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: _ouro, width: 2)),
         child: Padding(
           padding: const EdgeInsets.all(18),
@@ -319,7 +319,7 @@ class _RankingTelaState extends State<RankingTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _ouro, width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF6B3A12), Color(0xFF2A1046)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF6B3A12), Color(0xFF102046)]),
         boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 18)],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -345,7 +345,7 @@ class _RankingTelaState extends State<RankingTela> {
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0x55120850), border: Border.all(color: const Color(0x88F2B84B))),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0x55082450), border: Border.all(color: const Color(0x88F2B84B))),
                 child: Column(children: [
                   Text(['🥇', '🥈', '🥉'][i], style: const TextStyle(fontSize: 20)),
                   Text('$p TC', style: const TextStyle(fontWeight: FontWeight.w900, color: _ouro)),
@@ -393,9 +393,9 @@ class _RankingTelaState extends State<RankingTela> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              gradient: on ? const LinearGradient(colors: [Color(0xFF7C5CFF), Color(0xFFB06BFF)]) : null,
-              color: on ? null : const Color(0xFF1B1442),
-              border: Border.all(color: on ? const Color(0xFFB9A8FF) : const Color(0x558B6CFF)),
+              gradient: on ? const LinearGradient(colors: [Color(0xFF5C99FF), Color(0xFF6B99FF)]) : null,
+              color: on ? null : const Color(0xFF142642),
+              border: Border.all(color: on ? const Color(0xFFA8C9FF) : const Color(0x556CA3FF)),
             ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
@@ -438,17 +438,17 @@ class _RankingTelaState extends State<RankingTela> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF5B4BD6), width: 2),
-          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1B1470), Color(0xFF0E0840)]),
-          boxShadow: const [BoxShadow(color: Color(0x665B4BD6), blurRadius: 12)],
+          border: Border.all(color: const Color(0xFF4B82D6), width: 2),
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1B1470), Color(0xFF081E40)]),
+          boxShadow: const [BoxShadow(color: Color(0x664B82D6), blurRadius: 12)],
         ),
-        child: Text(texto, style: const TextStyle(fontSize: 12.8, height: 1.35, color: Color(0xFFD9D4F7))),
+        child: Text(texto, style: const TextStyle(fontSize: 12.8, height: 1.35, color: Color(0xFFD4E2F7))),
       );
 
   Widget _vazio(String texto) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x8C8B6CFF), width: 1.5)),
-        child: Text(texto, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13.8, color: Color(0xFFD9D4F7))),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x8C6CA3FF), width: 1.5)),
+        child: Text(texto, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13.8, color: Color(0xFFD4E2F7))),
       );
 
   Widget _sec(String t, String? extra) => Padding(
@@ -496,7 +496,7 @@ class _RankingTelaState extends State<RankingTela> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [cores[k], const Color(0xE6140C40)]),
+                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [cores[k], const Color(0xE60C2040)]),
                         boxShadow: [BoxShadow(color: cores[k], blurRadius: 14)],
                       ),
                       child: Text('${top[ordem[k]]['pos']}', style: const TextStyle(fontSize: 25.6, fontWeight: FontWeight.w900, color: Colors.white)),
@@ -514,8 +514,8 @@ class _RankingTelaState extends State<RankingTela> {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF5B4BD6), width: 2),
-          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF17114A), Color(0xFF0A0720)], stops: [0, 0.9]),
+          border: Border.all(color: const Color(0xFF4B82D6), width: 2),
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF11284A), Color(0xFF071120)], stops: [0, 0.9]),
         ),
         child: Column(children: [for (final (i, x) in linhas.indexed) _linha(x, primeira: i == 0)]),
       );
@@ -540,7 +540,7 @@ class _RankingTelaState extends State<RankingTela> {
           : BoxDecoration(border: primeira ? null : const Border(top: BorderSide(color: Color(0x14FFFFFF)))),
       child: Row(children: [
         SizedBox(width: 30, child: Text(x['pos'] == null ? '—' : '${x['pos']}', style: const TextStyle(fontWeight: FontWeight.w900, color: _lila))),
-        _avatar(x['avatar_img'], 32, const Color(0xFF6C5CFF), 1.5),
+        _avatar(x['avatar_img'], 32, const Color(0xFF5C9DFF), 1.5),
         const SizedBox(width: 8),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -552,7 +552,7 @@ class _RankingTelaState extends State<RankingTela> {
         if (dv != null) Padding(padding: const EdgeInsets.only(right: 6), child: Escudo.de(dv, tamanho: 28)),
         Container(
           padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0x55120850)),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0x55082450)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             _icone(),
             const SizedBox(width: 3),
@@ -571,7 +571,7 @@ class _RankingTelaState extends State<RankingTela> {
       height: tam,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFF1B1545),
+        color: const Color(0xFF152845),
         boxShadow: [BoxShadow(color: cor, spreadRadius: aro), if (aro > 2) BoxShadow(color: cor, blurRadius: 14)],
       ),
       child: ClipOval(
@@ -599,7 +599,7 @@ class DivisoesTela extends StatelessWidget {
     final atual = divs.lastIndexWhere((d) => meus >= ((d['min'] as num?) ?? 0));
     final dias = ((t['temporada'] as Map?)?['dias_restantes']) ?? '—';
     return Scaffold(
-      backgroundColor: const Color(0xFF110C2E),
+      backgroundColor: const Color(0xFF0C192E),
       body: Stack(fit: StackFit.expand, children: [
         Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover),
         Container(color: const Color(0xB30B0930)),
@@ -632,8 +632,8 @@ class DivisoesTela extends StatelessWidget {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            color: const Color(0xE61B1462),
-                            border: Border.all(color: const Color(0xFF6A4FE6), width: 1.5),
+                            color: const Color(0xE6143362),
+                            border: Border.all(color: const Color(0xFF4F88E6), width: 1.5),
                           ),
                           child: Row(children: [
                             const Icon(Icons.emoji_events_rounded, color: _ouro, size: 30),
@@ -670,7 +670,7 @@ class DivisoesTela extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: aqui ? Colors.white : cor.withValues(alpha: 0.85), width: aqui ? 2.5 : 1.6),
-                                  gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.55)!, const Color(0xF0120850)]),
+                                  gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.55)!, const Color(0xF0082450)]),
                                   boxShadow: [BoxShadow(color: cor.withValues(alpha: aqui ? 0.8 : 0.35), blurRadius: aqui ? 20 : 10)],
                                 ),
                                 child: Row(children: [
@@ -723,9 +723,9 @@ class DivisoesTela extends StatelessWidget {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xE61B1462), border: Border.all(color: const Color(0xFF6A4FE6))),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xE6143362), border: Border.all(color: const Color(0xFF4F88E6))),
                       child: Row(children: [
-                        const Icon(Icons.calendar_month_rounded, color: Color(0xFFB59BFF)),
+                        const Icon(Icons.calendar_month_rounded, color: Color(0xFF9BBFFF)),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -748,9 +748,9 @@ class DivisoesTela extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          gradient: const LinearGradient(colors: [Color(0xFF9B6BFF), Color(0xFF6A3BE0)]),
+                          gradient: const LinearGradient(colors: [Color(0xFF6B9EFF), Color(0xFF3B75E0)]),
                           border: Border.all(color: Colors.white70, width: 1.5),
-                          boxShadow: const [BoxShadow(color: Color(0xFF3A1E8A), offset: Offset(0, 4))],
+                          boxShadow: const [BoxShadow(color: Color(0xFF1E458A), offset: Offset(0, 4))],
                         ),
                         child: const Text('BORA SUBIR\nDE DIVISÃO?', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white)),
                       ),

@@ -160,7 +160,7 @@ class _CompraTelaState extends State<CompraTela> {
           colors: [Color(0xFF28245C), Color(0xFF16134A)],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF7A5CFF), width: 1.5),
+        border: Border.all(color: const Color(0xFF5C9AFF), width: 1.5),
       ),
       child: child,
     );

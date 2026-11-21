@@ -18,7 +18,7 @@ class CenarioTela extends StatefulWidget {
   State<CenarioTela> createState() => _CenarioTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 const _verde = Color(0xFF26D07C);
 const _vermelho = Color(0xFFFF5A7A);
 const _ouro = Color(0xFFF2B84B);
@@ -59,7 +59,7 @@ class _CenarioTelaState extends State<CenarioTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         RefreshIndicator(
@@ -125,7 +125,7 @@ class _CenarioTelaState extends State<CenarioTela> {
   BoxDecoration _caixa(Color cor, [String? arte]) => BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cor.withValues(alpha: 0.9), width: 1.6),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.5)!, Color.lerp(cor, const Color(0xFF120850), 0.8)!]),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.5)!, Color.lerp(cor, const Color(0xFF082450), 0.8)!]),
         image: arte == null ? null : arteCartao(arte, opacidade: 0.42),
         boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.3), blurRadius: 12)],
       );
@@ -167,7 +167,7 @@ class _CenarioTelaState extends State<CenarioTela> {
   }
 
   static const _visual = {
-    'selic_meta': (Icons.account_balance_rounded, Color(0xFF8B6CFF), 'cofre'),
+    'selic_meta': (Icons.account_balance_rounded, Color(0xFF6CA3FF), 'cofre'),
     'ipca_12m': (Icons.shopping_cart_rounded, Color(0xFFFF8A3D), 'moedas'),
     'juro_real': (Icons.trending_up_rounded, Color(0xFF26D07C), 'seta'),
     'dolar': (Icons.attach_money_rounded, Color(0xFF2BC4A0), 'moedas'),
@@ -187,7 +187,7 @@ class _CenarioTelaState extends State<CenarioTela> {
         return Wrap(spacing: 8, runSpacing: 8, children: [
           for (final p in ps)
             Builder(builder: (ctx) {
-              final (ic, cor, arte) = _visual['${p['id']}'] ?? (Icons.insights_rounded, const Color(0xFF8B6CFF), 'cidade');
+              final (ic, cor, arte) = _visual['${p['id']}'] ?? (Icons.insights_rounded, const Color(0xFF6CA3FF), 'cidade');
               final aberto = _aberto == p['id'];
               final serie = [for (final x in (p['serie'] as List? ?? const [])) (x as num).toDouble()];
               return SizedBox(
@@ -297,7 +297,7 @@ class _CenarioTelaState extends State<CenarioTela> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('${s['nome']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: Colors.white)),
-                    if ('${s['motivo'] ?? ''}'.isNotEmpty) Text('${s['motivo']}', style: const TextStyle(fontSize: 11.5, color: Color(0xFFE6E1FF))),
+                    if ('${s['motivo'] ?? ''}'.isNotEmpty) Text('${s['motivo']}', style: const TextStyle(fontSize: 11.5, color: Color(0xFFE1ECFF))),
                   ]),
                 ),
               ]),

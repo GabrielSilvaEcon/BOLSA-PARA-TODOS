@@ -19,7 +19,7 @@ class SalaTela extends StatefulWidget {
 }
 
 const _rotuloCorrida = {'rapida': 'Rápida', 'intermediaria': 'Intermediária', 'longa': 'Longa'};
-const _lila = Color(0xFFD9D4F7);
+const _lila = Color(0xFFD4E2F7);
 
 class _SalaTelaState extends State<SalaTela> {
   Map<String, dynamic>? _sala;
@@ -96,7 +96,7 @@ class _SalaTelaState extends State<SalaTela> {
   Widget build(BuildContext context) {
     final s = _sala;
     return Scaffold(
-      backgroundColor: const Color(0xFF110C2E),
+      backgroundColor: const Color(0xFF0C192E),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -120,8 +120,8 @@ class _SalaTelaState extends State<SalaTela> {
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0x998B6CFF), width: 2),
-                      boxShadow: const [BoxShadow(color: Color(0x808B6CFF), blurRadius: 18)],
+                      border: Border.all(color: const Color(0x996CA3FF), width: 2),
+                      boxShadow: const [BoxShadow(color: Color(0x806CA3FF), blurRadius: 18)],
                     ),
                     child: ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/jogos/trade_hero.webp')),
                   ),
@@ -218,7 +218,7 @@ class _SalaTelaState extends State<SalaTela> {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  const Icon(Icons.person, color: Color(0xFFB59BFF)),
+                  const Icon(Icons.person, color: Color(0xFF9BBFFF)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text('${j['nick'] ?? ''}${j['voce'] == true ? ' (você)' : ''}',
@@ -233,13 +233,13 @@ class _SalaTelaState extends State<SalaTela> {
     );
   }
 
-  Widget _cartao({required Widget child, Color borda = const Color(0xFF5B4BD6)}) => Container(
+  Widget _cartao({required Widget child, Color borda = const Color(0xFF4B82D6)}) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: borda, width: 2),
-          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1B1470), Color(0xFF0E0840)]),
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1B1470), Color(0xFF081E40)]),
           boxShadow: [BoxShadow(color: borda.withValues(alpha: 0.4), blurRadius: 12)],
         ),
         child: child,

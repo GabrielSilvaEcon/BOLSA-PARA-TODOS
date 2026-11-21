@@ -19,9 +19,9 @@ class AprenderTela extends StatefulWidget {
   State<AprenderTela> createState() => _AprenderTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 
-Color _hex(Object? h, [Color p = const Color(0xFF8B6CFF)]) {
+Color _hex(Object? h, [Color p = const Color(0xFF6CA3FF)]) {
   final s = '${h ?? ''}'.replaceFirst('#', '');
   final v = s.length == 6 ? int.tryParse(s, radix: 16) : null;
   return v == null ? p : Color(0xFF000000 | v);
@@ -114,7 +114,7 @@ class _AprenderTelaState extends State<AprenderTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFFF2B84B), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2E1CA0), Color(0xFF140A55)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1C50A0), Color(0xFF0A2755)]),
         boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 16)],
       ),
       child: Stack(
@@ -143,7 +143,7 @@ class _AprenderTelaState extends State<AprenderTela> {
                       curve: Curves.easeOutCubic,
                       builder: (ctx, v, _) => ClipRRect(
                         borderRadius: BorderRadius.circular(999),
-                        child: LinearProgressIndicator(value: v, minHeight: 12, backgroundColor: const Color(0x335B4BD6), color: const Color(0xFF26D07C)),
+                        child: LinearProgressIndicator(value: v, minHeight: 12, backgroundColor: const Color(0x334B82D6), color: const Color(0xFF26D07C)),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -202,7 +202,7 @@ class _AprenderTelaState extends State<AprenderTela> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFFF8A3D), width: 2),
-            gradient: const LinearGradient(colors: [Color(0xFF5A2A20), Color(0xFF2A1046)]),
+            gradient: const LinearGradient(colors: [Color(0xFF5A2A20), Color(0xFF102046)]),
           ),
           child: Row(
             children: [
@@ -360,8 +360,8 @@ class _AprenderTelaState extends State<AprenderTela> {
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: const Color(0xE0160E52),
-            border: Border.all(color: (feita || prox ? anel : const Color(0xFF6A4FE6)).withValues(alpha: 0.7)),
+            color: const Color(0xE00E2952),
+            border: Border.all(color: (feita || prox ? anel : const Color(0xFF4F88E6)).withValues(alpha: 0.7)),
           ),
           child: Text(
             '${l['titulo']}',
@@ -379,7 +379,7 @@ class _AprenderTelaState extends State<AprenderTela> {
     final feita = l['estado'] == 'concluida';
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF16104A),
+      backgroundColor: const Color(0xFF10274A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
@@ -418,7 +418,7 @@ class _AprenderTelaState extends State<AprenderTela> {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(46),
                   foregroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF8B6CFF)),
+                  side: const BorderSide(color: Color(0xFF6CA3FF)),
                 ),
                 onPressed: () {
                   Navigator.of(ctx).pop();
@@ -459,14 +459,14 @@ class FundoCidade extends StatelessWidget {
   Widget build(BuildContext context) => Stack(
         fit: StackFit.expand,
         children: [
-          const ColoredBox(color: Color(0xFF140A55)),
+          const ColoredBox(color: Color(0xFF0A2755)),
           Image.asset('assets/aprender/fundo.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xCC0A0A5A), Color(0x33140A55), Color(0x44140A55), Color(0xCC050038)],
+                colors: [Color(0xCC0A0A5A), Color(0x330A2755), Color(0x440A2755), Color(0xCC001738)],
                 stops: [0, 0.3, 0.7, 1],
               ),
             ),
@@ -538,7 +538,7 @@ class _Caminho extends CustomPainter {
       c.drawPath(
         p,
         Paint()
-          ..color = feitos[i] ? const Color(0xFFF2B84B) : const Color(0xAA8B6CFF)
+          ..color = feitos[i] ? const Color(0xFFF2B84B) : const Color(0xAA6CA3FF)
           ..style = PaintingStyle.stroke
           ..strokeWidth = feitos[i] ? 7 : 4
           ..strokeCap = StrokeCap.round,
@@ -664,7 +664,7 @@ class _AulaTelaState extends State<AulaTela> {
                 if (item)
                   const TextSpan(
                     text: '•  ',
-                    style: TextStyle(color: Color(0xFFB59BFF), fontWeight: FontWeight.w900),
+                    style: TextStyle(color: Color(0xFF9BBFFF), fontWeight: FontWeight.w900),
                   ),
                 for (final (i, p) in partes.indexed)
                   TextSpan(
@@ -673,7 +673,7 @@ class _AulaTelaState extends State<AulaTela> {
                   ),
               ],
             ),
-            style: const TextStyle(fontSize: 15, height: 1.45, color: Color(0xFFEDE9FF)),
+            style: const TextStyle(fontSize: 15, height: 1.45, color: Color(0xFFE9F1FF)),
           ),
         ),
       );
@@ -685,9 +685,9 @@ class _AulaTelaState extends State<AulaTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF110C3A),
+      backgroundColor: const Color(0xFF0C1E3A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF110C3A),
+        backgroundColor: const Color(0xFF0C1E3A),
         title: const Text('Aula', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: d == null
@@ -817,7 +817,7 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0E0A33),
+      backgroundColor: const Color(0xFF0A1A33),
       body: SafeArea(
         child: _fim != null
             ? _Fim(fim: _fim!, aoFechar: () => Navigator.of(context).maybePop())
@@ -882,7 +882,7 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
               curve: Curves.easeOutCubic,
               builder: (ctx, v, _) => ClipRRect(
                 borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(value: v, minHeight: 14, backgroundColor: const Color(0x335B4BD6), color: const Color(0xFF26D07C)),
+                child: LinearProgressIndicator(value: v, minHeight: 14, backgroundColor: const Color(0x334B82D6), color: const Color(0xFF26D07C)),
               ),
             ),
           ),
@@ -905,7 +905,7 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
       children: [
         Text(
           rotulo.toUpperCase(),
-          style: const TextStyle(fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.w900, color: Color(0xFFB59BFF)),
+          style: const TextStyle(fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.w900, color: Color(0xFF9BBFFF)),
         ),
         const SizedBox(height: 6),
         Row(
@@ -918,8 +918,8 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  color: const Color(0xFF1B1462),
-                  border: Border.all(color: const Color(0xFF6A4FE6)),
+                  color: const Color(0xFF143362),
+                  border: Border.all(color: const Color(0xFF4F88E6)),
                 ),
                 child: Text(
                   '${ex['pergunta']}',
@@ -955,9 +955,9 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              color: sel ? const Color(0xFF3B2A9E) : const Color(0xFF1B1462),
-              border: Border.all(color: sel ? const Color(0xFFB59BFF) : const Color(0xFF4A3BAA), width: 2),
-              boxShadow: [BoxShadow(color: sel ? const Color(0xFF7B63F0) : const Color(0xFF0B0828), offset: const Offset(0, 4))],
+              color: sel ? const Color(0xFF2A579E) : const Color(0xFF143362),
+              border: Border.all(color: sel ? const Color(0xFF9BBFFF) : const Color(0xFF3B66AA), width: 2),
+              boxShadow: [BoxShadow(color: sel ? const Color(0xFF6399F0) : const Color(0xFF081528), offset: const Offset(0, 4))],
             ),
             child: Row(
               children: [
@@ -983,8 +983,8 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF6A4FE6), width: 1.5),
-          color: const Color(0x221B1462),
+          border: Border.all(color: const Color(0xFF4F88E6), width: 1.5),
+          color: const Color(0x22143362),
         ),
         child: Wrap(
           spacing: 6,
@@ -995,7 +995,7 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
                 padding: EdgeInsets.all(8),
                 child: Text('Toque nos itens na ordem certa', style: TextStyle(color: _lilas)),
               ),
-            for (final (k, i) in _ordem.indexed) ActionChip(label: Text('${k + 1}. $i'), backgroundColor: const Color(0xFF3B2A9E), onPressed: travado ? null : () => setState(() => _ordem.remove(i))),
+            for (final (k, i) in _ordem.indexed) ActionChip(label: Text('${k + 1}. $i'), backgroundColor: const Color(0xFF2A579E), onPressed: travado ? null : () => setState(() => _ordem.remove(i))),
           ],
         ),
       ),
@@ -1003,7 +1003,7 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
       Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: [for (final i in sobra) ActionChip(label: Text(i), backgroundColor: const Color(0xFF1B1462), onPressed: travado ? null : () => setState(() => _ordem.add(i)))],
+        children: [for (final i in sobra) ActionChip(label: Text(i), backgroundColor: const Color(0xFF143362), onPressed: travado ? null : () => setState(() => _ordem.add(i)))],
       ),
     ];
   }
@@ -1011,7 +1011,7 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
   Widget _paresW(Map ex, bool travado) {
     final esq = ((ex['esquerda'] as List?) ?? const []).cast<String>();
     final dir = ((ex['direita'] as List?) ?? const []).cast<String>();
-    const cores = [Color(0xFF26D07C), Color(0xFF38B6FF), Color(0xFFF2B84B), Color(0xFFFF6AD5), Color(0xFFB59BFF)];
+    const cores = [Color(0xFF26D07C), Color(0xFF38B6FF), Color(0xFFF2B84B), Color(0xFFFF6AD5), Color(0xFF9BBFFF)];
     Color? corDe(String e) => _pares.containsKey(e) ? cores[esq.indexOf(e) % cores.length] : null;
     Widget bloco(String t, Color? cor, bool sel, VoidCallback? f) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -1022,8 +1022,8 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: cor?.withValues(alpha: 0.22) ?? (sel ? const Color(0xFF3B2A9E) : const Color(0xFF1B1462)),
-                border: Border.all(color: cor ?? (sel ? const Color(0xFFB59BFF) : const Color(0xFF4A3BAA)), width: 2),
+                color: cor?.withValues(alpha: 0.22) ?? (sel ? const Color(0xFF2A579E) : const Color(0xFF143362)),
+                border: Border.all(color: cor ?? (sel ? const Color(0xFF9BBFFF) : const Color(0xFF3B66AA)), width: 2),
               ),
               child: Text(
                 t,
@@ -1143,7 +1143,7 @@ class _LicaoTelaState extends State<LicaoTela> with TickerProviderStateMixin {
             if ('${r['explicacao']}'.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('${r['explicacao']}', style: const TextStyle(color: Color(0xFFEDE9FF), height: 1.35)),
+                child: Text('${r['explicacao']}', style: const TextStyle(color: Color(0xFFE9F1FF), height: 1.35)),
               ),
             if (!ok)
               const Padding(
@@ -1239,7 +1239,7 @@ class _FimState extends State<_Fim> with SingleTickerProviderStateMixin {
                 const SizedBox(height: 12),
                 if (f['meta_nova'] == true) _faixa('🎯 Meta do dia batida!', const Color(0xFF26D07C)),
                 if (subiu) _faixa('⬆️ Você subiu para o nível ${f['nivel_depois']}!', const Color(0xFFF2B84B)),
-                for (final c in conq) _faixa('🏅 Conquista nova: $c', const Color(0xFFB59BFF)),
+                for (final c in conq) _faixa('🏅 Conquista nova: $c', const Color(0xFF9BBFFF)),
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 54,

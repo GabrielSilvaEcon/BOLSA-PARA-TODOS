@@ -15,14 +15,14 @@ class AjudaTela extends StatefulWidget {
   State<AjudaTela> createState() => _AjudaTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 
 // (seção, ícone, cor, arte, [(pergunta, resposta)])
 const _faq = [
   (
     'Começando',
     Icons.rocket_launch_rounded,
-    Color(0xFF8B6CFF),
+    Color(0xFF6CA3FF),
     'velas',
     [
       (
@@ -139,7 +139,7 @@ class _AjudaTelaState extends State<AjudaTela> {
     final termos = (_termos ?? const <Map>[]).where((t) => _bate('${t['termo']} ${t['oque']}')).toList();
     var ordem = 0;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         Center(
@@ -153,8 +153,8 @@ class _AjudaTelaState extends State<AjudaTela> {
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
-                  color: const Color(0xE6160B5E),
-                  border: Border.all(color: const Color(0xFF8B6CFF), width: 1.6),
+                  color: const Color(0xE60B2C5E),
+                  border: Border.all(color: const Color(0xFF6CA3FF), width: 1.6),
                 ),
                 child: TextField(
                   controller: _busca,
@@ -163,9 +163,9 @@ class _AjudaTelaState extends State<AjudaTela> {
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 14),
-                    prefixIcon: Icon(Icons.search_rounded, color: Color(0xFFB59BFF)),
+                    prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF9BBFFF)),
                     hintText: 'Busque: ranking, preço justo, P/L…',
-                    hintStyle: TextStyle(color: Color(0xFF9C93D6), fontWeight: FontWeight.w500),
+                    hintStyle: TextStyle(color: Color(0xFF93ADD6), fontWeight: FontWeight.w500),
                   ),
                 ),
               ),
@@ -186,7 +186,7 @@ class _AjudaTelaState extends State<AjudaTela> {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: cor.withValues(alpha: 0.9), width: 1.6),
                         gradient: LinearGradient(
-                            begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.5)!, Color.lerp(cor, const Color(0xFF120850), 0.8)!]),
+                            begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.5)!, Color.lerp(cor, const Color(0xFF082450), 0.8)!]),
                         image: arteCartao(arte, opacidade: 0.35),
                       ),
                       child: Column(children: [
@@ -231,7 +231,7 @@ class _AjudaTelaState extends State<AjudaTela> {
               Expanded(child: Text(p, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: Colors.white))),
               Icon(aberto ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: Colors.white),
             ]),
-            if (aberto) Padding(padding: const EdgeInsets.only(top: 6), child: Text(r, style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFF0EDFF)))),
+            if (aberto) Padding(padding: const EdgeInsets.only(top: 6), child: Text(r, style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFEDF4FF)))),
           ]),
         ),
       ),
@@ -250,8 +250,8 @@ class _AjudaTelaState extends State<AjudaTela> {
           padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: const Color(0xD9201070),
-            border: Border.all(color: aberto ? const Color(0xFFFFD27A) : const Color(0xFF6A4FE6), width: 1.4),
+            color: const Color(0xD9103570),
+            border: Border.all(color: aberto ? const Color(0xFFFFD27A) : const Color(0xFF4F88E6), width: 1.4),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [

@@ -19,7 +19,7 @@ class MercadoTela extends StatefulWidget {
   State<MercadoTela> createState() => _MercadoTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 const _verde = Color(0xFF26D07C);
 const _vermelho = Color(0xFFFF5A7A);
 const _ouro = Color(0xFFF2B84B);
@@ -38,9 +38,9 @@ String _num(num v, int casas) {
 String _brl(Object? v) => v is num ? 'R\$ ${_num(v, 2)}' : '—';
 String _pct(Object? v, {bool sinal = false}) => v is num ? '${sinal && v >= 0 ? '+' : ''}${_num(v, 2)}%' : '—';
 
-Color _corFaixa(String? f) => switch (f) { 'bom' => _verde, 'medio' => _ouro, 'ruim' => _vermelho, _ => const Color(0xFF8C86B8) };
+Color _corFaixa(String? f) => switch (f) { 'bom' => _verde, 'medio' => _ouro, 'ruim' => _vermelho, _ => const Color(0xFF869AB8) };
 
-BoxDecoration _caixa([Color borda = const Color(0xFF6A4FE6), String? arte]) => BoxDecoration(
+BoxDecoration _caixa([Color borda = const Color(0xFF4F88E6), String? arte]) => BoxDecoration(
       image: arte == null ? null : arteCartao(arte),
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: borda, width: 1.6),
@@ -49,8 +49,8 @@ BoxDecoration _caixa([Color borda = const Color(0xFF6A4FE6), String? arte]) => B
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color.lerp(borda.withValues(alpha: 1), const Color(0xFF160B5E), 0.5)!.withValues(alpha: 0.95),
-          Color.lerp(borda.withValues(alpha: 1), const Color(0xFF120850), 0.8)!.withValues(alpha: 0.95)
+          Color.lerp(borda.withValues(alpha: 1), const Color(0xFF0B2C5E), 0.5)!.withValues(alpha: 0.95),
+          Color.lerp(borda.withValues(alpha: 1), const Color(0xFF082450), 0.8)!.withValues(alpha: 0.95)
         ],
       ),
       boxShadow: [BoxShadow(color: borda.withValues(alpha: 0.3), blurRadius: 12)],
@@ -59,14 +59,14 @@ BoxDecoration _caixa([Color borda = const Color(0xFF6A4FE6), String? arte]) => B
 Widget _titulo(String t, {IconData? ic}) => Padding(
       padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
       child: Row(children: [
-        if (ic != null) ...[Icon(ic, color: const Color(0xFFB59BFF), size: 20), const SizedBox(width: 6)],
+        if (ic != null) ...[Icon(ic, color: const Color(0xFF9BBFFF), size: 20), const SizedBox(width: 6)],
         Text(t, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
       ]),
     );
 
 /// Cor de cada setor nas linhas das empresas.
 Color _corSetor(String s) {
-  const cores = [Color(0xFF8B6CFF), Color(0xFF2BA7C9), Color(0xFF26D07C), Color(0xFFF2B84B), Color(0xFFFF6B8A), Color(0xFFFF8A3D), Color(0xFFB54BFF), Color(0xFF4F9BFF)];
+  const cores = [Color(0xFF6CA3FF), Color(0xFF2BA7C9), Color(0xFF26D07C), Color(0xFFF2B84B), Color(0xFFFF6B8A), Color(0xFFFF8A3D), Color(0xFF4B7DFF), Color(0xFF4F9BFF)];
   return cores[s.codeUnits.fold<int>(0, (a, b) => a + b) % cores.length];
 }
 
@@ -109,8 +109,8 @@ Widget logoAtivo(Object? logo, String tk, {double tam = 44}) => Container(
       height: tam,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const RadialGradient(colors: [Color(0xFF3B2A9E), Color(0xFF1B1462)]),
-        border: Border.all(color: const Color(0xFF8B6CFF), width: 1.5),
+        gradient: const RadialGradient(colors: [Color(0xFF2A579E), Color(0xFF143362)]),
+        border: Border.all(color: const Color(0xFF6CA3FF), width: 1.5),
       ),
       alignment: Alignment.center,
       padding: EdgeInsets.all(tam * 0.16),
@@ -204,7 +204,7 @@ class _MercadoTelaState extends State<MercadoTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         RefreshIndicator(
@@ -248,9 +248,9 @@ class _MercadoTelaState extends State<MercadoTela> {
   Widget _campoBusca() => Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          color: const Color(0xE6160B5E),
-          border: Border.all(color: const Color(0xFF8B6CFF), width: 1.6),
-          boxShadow: const [BoxShadow(color: Color(0x558B6CFF), blurRadius: 14)],
+          color: const Color(0xE60B2C5E),
+          border: Border.all(color: const Color(0xFF6CA3FF), width: 1.6),
+          boxShadow: const [BoxShadow(color: Color(0x556CA3FF), blurRadius: 14)],
         ),
         child: TextField(
           controller: _busca,
@@ -261,7 +261,7 @@ class _MercadoTelaState extends State<MercadoTela> {
           decoration: InputDecoration(
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
-            prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFB59BFF)),
+            prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF9BBFFF)),
             suffixIcon: _busca.text.isEmpty
                 ? null
                 : IconButton(
@@ -271,7 +271,7 @@ class _MercadoTelaState extends State<MercadoTela> {
                       _digitou('');
                     }),
             hintText: 'Busque uma empresa: Petrobras, VALE3, bancos…',
-            hintStyle: const TextStyle(color: Color(0xFF9C93D6), fontWeight: FontWeight.w500),
+            hintStyle: const TextStyle(color: Color(0xFF93ADD6), fontWeight: FontWeight.w500),
           ),
         ),
       );
@@ -281,7 +281,7 @@ class _MercadoTelaState extends State<MercadoTela> {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(6),
-      decoration: _caixa(const Color(0xFF6A4FE6), 'cidade'),
+      decoration: _caixa(const Color(0xFF4F88E6), 'cidade'),
       child: _buscando && r.isEmpty
           ? const Padding(padding: EdgeInsets.all(14), child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))))
           : r.isEmpty
@@ -293,7 +293,7 @@ class _MercadoTelaState extends State<MercadoTela> {
   static const _arteHoje = {'Ibovespa': 'velas', 'Dólar': 'moedas', 'Bitcoin': 'cofre', 'Índice do medo': 'touro'};
 
   static const _visualHoje = {
-    'Ibovespa': (Icons.show_chart_rounded, Color(0xFF8B6CFF)),
+    'Ibovespa': (Icons.show_chart_rounded, Color(0xFF6CA3FF)),
     'Dólar': (Icons.attach_money_rounded, Color(0xFF26D07C)),
     'Bitcoin': (Icons.currency_bitcoin_rounded, Color(0xFFF7931A)),
     'Índice do medo': (Icons.psychology_rounded, Color(0xFFFF6B8A)),
@@ -309,7 +309,7 @@ class _MercadoTelaState extends State<MercadoTela> {
               width: w,
               height: 104,
               child: Builder(builder: (ctx) {
-                final (ic, cor) = _visualHoje['${it['rotulo']}'] ?? (Icons.insights_rounded, const Color(0xFF8B6CFF));
+                final (ic, cor) = _visualHoje['${it['rotulo']}'] ?? (Icons.insights_rounded, const Color(0xFF6CA3FF));
                 final v = it['var'];
                 final nota = '${it['nota'] ?? ''}';
                 final corVar = v is num
@@ -325,7 +325,7 @@ class _MercadoTelaState extends State<MercadoTela> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: cor, width: 1.6),
                     gradient:
-                        LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.35)!, Color.lerp(cor, const Color(0xFF120850), 0.8)!]),
+                        LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.35)!, Color.lerp(cor, const Color(0xFF082450), 0.8)!]),
                     image: arteCartao(_arteHoje['${it['rotulo']}'] ?? 'velas', opacidade: 0.5),
                     boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.4), blurRadius: 14)],
                   ),
@@ -348,7 +348,7 @@ class _MercadoTelaState extends State<MercadoTela> {
                         Container(
                           margin: const EdgeInsets.only(top: 2),
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x99120850), border: Border.all(color: corVar)),
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x99082450), border: Border.all(color: corVar)),
                           child: Text(nota.isNotEmpty ? nota : _pct(v, sinal: true), style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: corVar)),
                         ),
                       ]),
@@ -361,7 +361,7 @@ class _MercadoTelaState extends State<MercadoTela> {
       });
 
   static const _iconeTipo = {
-    'acoes': (Icons.candlestick_chart_rounded, Color(0xFF8B6CFF)),
+    'acoes': (Icons.candlestick_chart_rounded, Color(0xFF6CA3FF)),
     'fundos': (Icons.apartment_rounded, Color(0xFF2BA7C9)),
     'rf': (Icons.account_balance_rounded, Color(0xFF3DDC97)),
     'cripto': (Icons.currency_bitcoin_rounded, Color(0xFFF2B84B)),
@@ -371,7 +371,7 @@ class _MercadoTelaState extends State<MercadoTela> {
   Widget _tipos(List<Map> tipos) => Wrap(spacing: 8, runSpacing: 8, children: [
         for (final t in tipos)
           LayoutBuilder(builder: (ctx, c) {
-            final (ic, cor) = _iconeTipo['${t['id']}'] ?? (Icons.category_rounded, const Color(0xFF8B6CFF));
+            final (ic, cor) = _iconeTipo['${t['id']}'] ?? (Icons.category_rounded, const Color(0xFF6CA3FF));
             final pronto = t['pronto'] == true;
             final w = (MediaQuery.sizeOf(ctx).width.clamp(0, 720) - 32) / 2;
             return SizedBox(
@@ -387,7 +387,7 @@ class _MercadoTelaState extends State<MercadoTela> {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
-                      gradient: LinearGradient(colors: [Color.lerp(cor, Colors.black, 0.25)!, Color.lerp(cor, const Color(0xFF140A55), 0.7)!]),
+                      gradient: LinearGradient(colors: [Color.lerp(cor, Colors.black, 0.25)!, Color.lerp(cor, const Color(0xFF0A2755), 0.7)!]),
                       image: arteCartao(const {'acoes': 'velas', 'fundos': 'cidade', 'rf': 'cofre', 'cripto': 'moedas', 'macro': 'seta'}['${t['id']}'] ?? 'cidade', opacidade: 0.55),
                       border: Border.all(color: Color.lerp(cor, Colors.white, 0.35)!, width: 1.4),
                       boxShadow: [BoxShadow(color: cor.withValues(alpha: pronto ? 0.45 : 0.15), blurRadius: 12)],
@@ -488,7 +488,7 @@ class _AcaoTelaState extends State<AcaoTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         RefreshIndicator(
@@ -563,7 +563,7 @@ class _AcaoTelaState extends State<AcaoTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _ouro, width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2E1CA0), Color(0xFF140A55)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1C50A0), Color(0xFF0A2755)]),
         image: arteCartao('touro', opacidade: 0.5),
         boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 16)],
       ),
@@ -620,8 +620,8 @@ class _AcaoTelaState extends State<AcaoTela> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
-                  color: _periodo == id ? const Color(0xFF8B6CFF) : const Color(0x332E1CA0),
-                  border: Border.all(color: const Color(0xFF8B6CFF)),
+                  color: _periodo == id ? const Color(0xFF6CA3FF) : const Color(0x331C50A0),
+                  border: Border.all(color: const Color(0xFF6CA3FF)),
                 ),
                 child: Text(rot, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
@@ -707,7 +707,7 @@ class _AcaoTelaState extends State<AcaoTela> {
               Text('${c['nivel_divida']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white)),
             ]),
           ),
-        if ('${c['nota'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${c['nota']}', style: const TextStyle(fontSize: 11.5, color: Color(0xFFB8B0E8)))),
+        if ('${c['nota'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${c['nota']}', style: const TextStyle(fontSize: 11.5, color: Color(0xFFB0C6E8)))),
       ]),
     );
   }
@@ -732,7 +732,7 @@ class _AcaoTelaState extends State<AcaoTela> {
               _BarraMargem(margem: margem.toDouble(), alvo: ((pj['margem_alvo'] as num?) ?? 20).toDouble(), cor: cor),
             ],
             const SizedBox(height: 6),
-            Text('${m['aviso'] ?? m['como'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFFB8B0E8))),
+            Text('${m['aviso'] ?? m['como'] ?? ''}', style: const TextStyle(fontSize: 11, color: Color(0xFFB0C6E8))),
           ]),
         ),
       );
@@ -802,7 +802,7 @@ class _BarraMargem extends StatelessWidget {
       return SizedBox(
         height: 12,
         child: Stack(children: [
-          Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x335B4BD6))),
+          Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x334B82D6))),
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: pos(margem)),
             duration: const Duration(milliseconds: 1000),
@@ -910,7 +910,7 @@ class _CriptoTelaState extends State<CriptoTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         RefreshIndicator(
@@ -978,7 +978,7 @@ class _CriptoTelaState extends State<CriptoTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFFF7931A), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF5A2A6E), Color(0xFF140A55)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2A3B6E), Color(0xFF0A2755)]),
         image: arteCartao('moedas', opacidade: 0.5),
         boxShadow: const [BoxShadow(color: Color(0x66F7931A), blurRadius: 16)],
       ),
@@ -1010,7 +1010,7 @@ class _CriptoTelaState extends State<CriptoTela> {
 
   Widget _variacoes(Map d) {
     Widget item(String t, Object? v, {bool dinheiro = false}) {
-      final cor = dinheiro ? const Color(0xFF8B6CFF) : (v is num ? (v >= 0 ? _verde : _vermelho) : const Color(0xFF8C86B8));
+      final cor = dinheiro ? const Color(0xFF6CA3FF) : (v is num ? (v >= 0 ? _verde : _vermelho) : const Color(0xFF869AB8));
       return Expanded(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -1109,7 +1109,7 @@ class _CriptoTelaState extends State<CriptoTela> {
               Text('${l[1]}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: Colors.white)),
             ]),
           ),
-        if ('${c['nota'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${c['nota']}', style: const TextStyle(fontSize: 11, color: Color(0xFFB8B0E8)))),
+        if ('${c['nota'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${c['nota']}', style: const TextStyle(fontSize: 11, color: Color(0xFFB0C6E8)))),
       ]),
     );
   }

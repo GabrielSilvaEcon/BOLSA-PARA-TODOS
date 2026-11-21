@@ -73,12 +73,12 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     final xp = ((widget.fim['xp'] as Map?)?['xp'] as num?)?.toInt();
     final nota = (_lt['nota'] as num?)?.toDouble();
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0828),
+      backgroundColor: const Color(0xFF081528),
       body: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover),
-          const ColoredBox(color: Color(0xB3060226)),
+          const ColoredBox(color: Color(0xB3021026)),
           SafeArea(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 20),
@@ -120,8 +120,8 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
                     height: 48,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(999),
-                      color: const Color(0xCC1B1462),
-                      border: Border.all(color: const Color(0xFF8B6CFF), width: 2),
+                      color: const Color(0xCC143362),
+                      border: Border.all(color: const Color(0xFF6CA3FF), width: 2),
                     ),
                     child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Icon(Icons.bar_chart_rounded, color: Colors.white),
@@ -202,7 +202,7 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFF2B84B), width: 2),
-          gradient: const LinearGradient(colors: [Color(0xFF2A1E86), Color(0xFF140E4A)]),
+          gradient: const LinearGradient(colors: [Color(0xFF1E4786), Color(0xFF0E264A)]),
           boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 16)],
         ),
         child: Row(children: [
@@ -210,10 +210,10 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('O ativo era', style: TextStyle(fontSize: 12, color: Color(0xFFCFC8EE))),
+              const Text('O ativo era', style: TextStyle(fontSize: 12, color: Color(0xFFC8D6EE))),
               Text('${rev['ticker'] ?? '—'}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFFFFD66B))),
               Text('${rev['nome'] ?? ''} · ${rev['de'] ?? ''} a ${rev['ate'] ?? ''} · ${rev['tf_nome'] ?? ''}',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFCFC8EE))),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFC8D6EE))),
             ]),
           ),
         ]),
@@ -228,22 +228,22 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     Widget chip(IconData ic, String t, String v, Color c, {String? nota}) => Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0xFF1B1462), border: Border.all(color: c.withValues(alpha: 0.6))),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0xFF143362), border: Border.all(color: c.withValues(alpha: 0.6))),
             child: Column(children: [
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(ic, size: 16, color: c),
                 const SizedBox(width: 4),
-                Text(t, style: const TextStyle(fontSize: 11.5, color: Color(0xFFDCD6FF), fontWeight: FontWeight.w700)),
+                Text(t, style: const TextStyle(fontSize: 11.5, color: Color(0xFFD6E6FF), fontWeight: FontWeight.w700)),
               ]),
               const SizedBox(height: 2),
               FittedBox(child: Text(v, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: c))),
-              if (nota != null) Text(nota, style: const TextStyle(fontSize: 10, color: Color(0xFFBDB5E6))),
+              if (nota != null) Text(nota, style: const TextStyle(fontSize: 10, color: Color(0xFFB5C8E6))),
             ]),
           ),
         );
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: const Color(0xCC160B5E), border: Border.all(color: cor.withValues(alpha: 0.7), width: 2)),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: const Color(0xCC0B2C5E), border: Border.all(color: cor.withValues(alpha: 0.7), width: 2)),
       child: Column(children: [
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: pts),
@@ -260,13 +260,13 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
             ),
           ]),
         ),
-        const Text('70% operação · 30% leitura', style: TextStyle(fontSize: 11.5, color: Color(0xFFBDB5E6))),
+        const Text('70% operação · 30% leitura', style: TextStyle(fontSize: 11.5, color: Color(0xFFB5C8E6))),
         const SizedBox(height: 10),
         Row(children: [
           chip(Icons.bar_chart_rounded, 'Lucro', pnl == null ? '—' : '${_moeda(pnl)}${pct == null ? '' : ' (${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(2).replaceAll('.', ',')}%)'}',
               (pnl ?? 0) >= 0 ? const Color(0xFF26D07C) : const Color(0xFFFF4D6D)),
           const SizedBox(width: 6),
-          chip(Icons.track_changes_rounded, 'Desenhos', nota == null ? '—' : '${nota.toStringAsFixed(0)}/100', const Color(0xFFB59BFF)),
+          chip(Icons.track_changes_rounded, 'Desenhos', nota == null ? '—' : '${nota.toStringAsFixed(0)}/100', const Color(0xFF9BBFFF)),
           const SizedBox(width: 6),
           chip(Icons.star_rounded, 'XP', xp == null ? '—' : '+$xp', const Color(0xFFFFD66B), nota: xp == 0 ? 'limite do dia' : null),
         ]),
@@ -280,11 +280,11 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     Navigator.of(context).push(MaterialPageRoute(
       fullscreenDialog: true,
       builder: (ctx) => Scaffold(
-        backgroundColor: const Color(0xFF0B0828),
+        backgroundColor: const Color(0xFF081528),
         body: SafeArea(
           child: Stack(children: [
             Positioned.fill(child: Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover)),
-            const Positioned.fill(child: ColoredBox(color: Color(0xB3060226))),
+            const Positioned.fill(child: ColoredBox(color: Color(0xB3021026))),
             Positioned.fill(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(6, 44, 6, 6),
@@ -323,20 +323,20 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
       height: 360,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF5B4BD6), width: 2),
-        boxShadow: const [BoxShadow(color: Color(0x665B4BD6), blurRadius: 14)],
+        border: Border.all(color: const Color(0xFF4B82D6), width: 2),
+        boxShadow: const [BoxShadow(color: Color(0x664B82D6), blurRadius: 14)],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: ColoredBox(
-          color: const Color(0x99060226),
+          color: const Color(0x99021026),
           child: _velas.isEmpty
               ? const SizedBox()
               : Column(children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 6, 2, 0),
                     child: Row(children: [
-                      const Icon(Icons.candlestick_chart_rounded, color: Color(0xFFB59BFF), size: 20),
+                      const Icon(Icons.candlestick_chart_rounded, color: Color(0xFF9BBFFF), size: 20),
                       const SizedBox(width: 6),
                       const Expanded(child: Text('O gráfico real da partida', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
                       IconButton(
@@ -376,9 +376,9 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     if (_itens.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xCC1B1462), border: Border.all(color: const Color(0x667A5CFF))),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xCC143362), border: Border.all(color: const Color(0x665C9AFF))),
         child: const Text('Na próxima partida, desenhe sua leitura na estratégia (suporte, resistência, zona…): cada desenho que se confirmar soma na nota.',
-            style: TextStyle(color: Color(0xFFCFC8EE), height: 1.35)),
+            style: TextStyle(color: Color(0xFFC8D6EE), height: 1.35)),
       );
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -399,7 +399,7 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              color: const Color(0xCC1B1462),
+              color: const Color(0xCC143362),
               border: Border.all(color: _cor(x['ok']).withValues(alpha: 0.7)),
             ),
             child: Row(children: [
@@ -419,5 +419,5 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     ]);
   }
 
-  Color _cor(Object? ok) => ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF8B6CFF));
+  Color _cor(Object? ok) => ok == true ? const Color(0xFF26D07C) : (ok == false ? const Color(0xFFFF4D6D) : const Color(0xFF6CA3FF));
 }

@@ -29,7 +29,7 @@ class CarteiraTela extends StatefulWidget {
 
 // ------------------------------------------------------------------ cores e textos do app antigo
 const _branco = Color(0xFFF4F6FF);
-const _lila = Color(0xFFC9C2F2);
+const _lila = Color(0xFFC2D5F2);
 const _verde = Color(0xFF3DDC97);
 const _vermelho = Color(0xFFFF5B6E);
 
@@ -37,7 +37,7 @@ const _vermelho = Color(0xFFFF5B6E);
 const _corClasse = {
   'acao': Color(0xFF3DA9FF),
   'fii': Color(0xFF2EE5D0),
-  'etf': Color(0xFFB06BFF),
+  'etf': Color(0xFF6B99FF),
   'cripto': Color(0xFFFFB020),
   'fundo': Color(0xFF3DDC6A),
   'rf': Color(0xFF8BA6FF),
@@ -433,10 +433,10 @@ class _CarteiraTelaState extends State<CarteiraTela> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: on ? const [Color(0xFF4A2FB0), Color(0xFF25157A)] : const [Color(0xFF1C2366), Color(0xFF121646)],
+                colors: on ? const [Color(0xFF2F5FB0), Color(0xFF153C7A)] : const [Color(0xFF1C2366), Color(0xFF121646)],
               ),
-              border: Border.all(color: on ? const Color(0xFFB06BFF) : const Color(0xFF2B3A8C), width: on ? 2 : 1.5),
-              boxShadow: on ? const [BoxShadow(color: Color(0xFFB06BFF), blurRadius: 14, spreadRadius: -2)] : null,
+              border: Border.all(color: on ? const Color(0xFF6B99FF) : const Color(0xFF2B3A8C), width: on ? 2 : 1.5),
+              boxShadow: on ? const [BoxShadow(color: Color(0xFF6B99FF), blurRadius: 14, spreadRadius: -2)] : null,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -530,7 +530,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
   // ---- 6. cartão de um ativo
   Widget _cartaoAtivo(Map<String, dynamic> p) {
     final classe = (p['classe'] as String?) ?? 'acao';
-    final cor = _corClasse[classe] ?? const Color(0xFF8B6CFF);
+    final cor = _corClasse[classe] ?? const Color(0xFF6CA3FF);
     final rot = (p['nome'] as String?) ?? (p['id'] as String?) ?? '—';
     final codigo = rot.contains(' · ') ? rot.split(' · ').last : rot;
     final nome = rot.contains(' · ') ? rot.split(' · ').first : (classe == 'rf' ? 'título de renda fixa' : '');

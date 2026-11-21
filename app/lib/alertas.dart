@@ -64,7 +64,7 @@ class _AlertasTelaState extends State<AlertasTela> {
       case 'media':
         return const Color(0xFFF5B841);
       default:
-        return const Color(0xFF7A5CFF);
+        return const Color(0xFF5C9AFF);
     }
   }
 
