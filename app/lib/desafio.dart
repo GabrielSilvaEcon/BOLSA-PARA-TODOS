@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'animacoes.dart';
+import 'aprender.dart' show FundoCidade;
 import 'api.dart';
 import 'partida.dart';
 
@@ -87,7 +88,7 @@ class _DesafioTelaState extends State<DesafioTela> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
-        Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover),
+        const FundoCidade(),
         Container(color: const Color(0xBF0B0930)),
         SafeArea(
           child: Center(

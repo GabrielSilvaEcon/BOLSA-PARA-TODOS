@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'animacoes.dart';
+import 'aprender.dart' show FundoCidade;
 import 'api.dart';
 import 'escudo.dart';
 import 'navegacao.dart';
@@ -121,7 +122,7 @@ class _RankingTelaState extends State<RankingTela> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/jogos/fundo_batalha.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const FundoCidade(),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

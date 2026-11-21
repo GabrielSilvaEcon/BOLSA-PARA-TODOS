@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'aprender.dart' show FundoCidade;
 import 'carteira_extra.dart';
 import 'compra.dart';
 import 'missoes.dart';
@@ -191,7 +192,7 @@ class _CarteiraTelaState extends State<CarteiraTela> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/carteira/fundo_carteira.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const FundoCidade(),
           Container(color: const Color(0x990B0930)),
           RefreshIndicator(
             onRefresh: _carregar,

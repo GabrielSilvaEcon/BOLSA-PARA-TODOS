@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'api.dart';
+import 'aprender.dart' show FundoCidade;
 import 'partida.dart';
 
 /// Sala de espera do Trade Battle com amigos (como no app antigo, trader_battle_app._frag_sala): o código para passar aos amigos,
@@ -100,7 +101,7 @@ class _SalaTelaState extends State<SalaTela> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/jogos/fundo_batalha.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          const FundoCidade(),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

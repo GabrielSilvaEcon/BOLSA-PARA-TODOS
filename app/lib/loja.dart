@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'aprender.dart' show FundoCidade;
 import 'efeitos.dart';
 import 'navegacao.dart';
 
@@ -131,7 +132,7 @@ class _LojaTelaState extends State<LojaTela> {
       fit: StackFit.expand,
       children: [
         const ColoredBox(color: Color(0xFF0D0A33)),
-        Image.asset('assets/loja/fundo_loja.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
+        const FundoCidade(),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(

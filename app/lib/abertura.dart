@@ -22,11 +22,11 @@ class AberturaTela extends StatefulWidget {
 }
 
 const _imagens = [
-  'assets/home/fundo_home.png', 'assets/home/arena.webp', 'assets/home/btn_jogar.webp', 'assets/home/btn_carteira.webp',
-  'assets/home/btn_mercado.webp', 'assets/home/mascote_principal.webp', 'assets/home/moeda_tc.webp', 'assets/home/touro.webp',
-  'assets/home/trofeu.webp', 'assets/home/cofre.webp', 'assets/cabecalho/coroa.webp', 'assets/cabecalho/mais.webp',
-  'assets/cabecalho/moedas.webp', 'assets/cabecalho/touro.webp', 'assets/nav/inicio.webp', 'assets/nav/jogos.webp',
-  'assets/nav/aprender.webp', 'assets/nav/ranking.webp', 'assets/nav/loja.webp', 'assets/nav/mascote.webp',
+  'assets/home/cidade_dia.webp', 'assets/home/urso_joinha.webp', 'assets/home/placa_desafio.webp', 'assets/home/btn_trade.webp',
+  'assets/home/btn_ticker.webp', 'assets/home/touro_mercado.webp', 'assets/home/banner_urso.webp', 'assets/home/louro.webp',
+  'assets/home/ic_moeda.webp', 'assets/home/ic_trofeu.webp', 'assets/home/ic_engrenagem.webp', 'assets/home/ic_grafico.webp',
+  'assets/home/mascote_principal.webp', 'assets/cabecalho/coroa.webp', 'assets/cabecalho/mais.webp', 'assets/nav/inicio.webp',
+  'assets/nav/jogos.webp', 'assets/nav/aprender.webp', 'assets/nav/ranking.webp', 'assets/nav/loja.webp',
   'assets/mascote.webp', 'assets/fundo_login.webp',
 ];
 
