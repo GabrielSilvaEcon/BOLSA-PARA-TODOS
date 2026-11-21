@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -17,13 +18,12 @@ import 'social.dart';
 import 'ticker.dart';
 import 'trade.dart';
 
-/// Tela inicial em formato de "arena", sem rolagem (cabe numa tela):
-///   1. faixa do nome: apelido, botão Amigos (com os pedidos) e o Ticker Pass
-///   2. letreiro com os indicadores do dia (IBOV, dólar, BTC, medo); toque abre o Cenário
-///   3. a liga no centro: o escudo da divisão do jogo escolhido, troféus e a barra até a próxima (toque abre o Ranking)
-///      laterais: Cenário, Torneio e Carteira à esquerda; Missões, Deck do Ticker e Mercado à direita
-///   4. faixa de evento: o Desafio do dia com a contagem
-///   5. JOGAR: o cartão da esquerda troca o jogo (Trade ou Ticker), o botão grande abre o jogo e o Duelo desafia um amigo
+/// Tela inicial no estilo de jogo mobile (fundo da cidade de dia, painéis azul-marinho e dourado), sem rolagem:
+///   1. placa do jogador (divisão, nome e Ticker Pass) e o quadro dos indicadores do dia (passam de dois em dois)
+///   2. o urso do joinha e a placa do Desafio do dia (contagem e se você já jogou)
+///   3. os botões grandes do Trade Battle e do Ticker Battle
+///   4. atalhos (Cenário, Torneio, Carteira, Missões, Amigos), a liga no centro e, à direita, o Mercado e a melhor nota do Desafio
+///   5. faixa do Duelo: desafie um amigo
 /// Dados: `GET /eu` (nome, passe) e `GET /home` (indicadores, missões, cenário, desafio, troféus, torneio e pedidos de amizade).
 class HomeTela extends StatefulWidget {
   const HomeTela({super.key, required this.api});
@@ -33,16 +33,43 @@ class HomeTela extends StatefulWidget {
   State<HomeTela> createState() => _HomeTelaState();
 }
 
-const _verde = Color(0xFF26D07C);
-const _vermelho = Color(0xFFFF5A7A);
-const _ouro = Color(0xFFF2B84B);
-const _lilas = Color(0xFFD9D4F7);
+const _verde = Color(0xFF2EE88A);
+const _vermelho = Color(0xFFFF5A6E);
+const _ouro = Color(0xFFF7C84A);
+const _ouroEscuro = Color(0xFF8A4E00);
+const _azulBorda = Color(0xFF3A6FD8);
+const _texto2 = Color(0xFFBFD3FF);
+
+/// Painel azul-marinho translúcido, o "vidro" de todos os blocos da tela.
+BoxDecoration _painel({Color borda = _azulBorda, double raio = 18}) => BoxDecoration(
+      borderRadius: BorderRadius.circular(raio),
+      gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xEB16306A), Color(0xF00B1A44)]),
+      border: Border.all(color: borda, width: 1.6),
+      boxShadow: const [BoxShadow(color: Color(0x88000814), offset: Offset(0, 4), blurRadius: 8)],
+    );
+
+/// Título de jogo: letras grossas em itálico com degradê (branco→dourado), contorno escuro e sombra.
+Widget _tituloJogo(String t, double tam, {List<Color> cores = const [Colors.white, Color(0xFFFFE27A), Color(0xFFF5A623)]}) {
+  final estilo = TextStyle(fontSize: tam, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, height: 1.0, letterSpacing: 0.5);
+  return Stack(children: [
+    Text(t,
+        style: estilo.copyWith(
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = tam / 6
+              ..color = const Color(0xFF1A1030))),
+    ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (r) => LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: cores).createShader(r),
+      child: Text(t, style: estilo.copyWith(color: Colors.white)),
+    ),
+  ]);
+}
 
 class _HomeTelaState extends State<HomeTela> {
   Map<String, dynamic>? _eu, _home;
   String? _erro;
   bool _carregando = true;
-  String? _jogo; // jogo escolhido no cartão da esquerda do JOGAR (começa no que tem mais troféus)
 
   @override
   void initState() {
@@ -61,7 +88,6 @@ class _HomeTelaState extends State<HomeTela> {
         setState(() {
           _eu = r[0];
           _home = r[1];
-          _jogo ??= '${(_home?['competicao'] as Map?)?['jogo'] ?? 'trade'}';
         });
       }
     } catch (e) {
@@ -81,7 +107,9 @@ class _HomeTelaState extends State<HomeTela> {
     return e.contains('@') ? e.split('@').first : 'Jogador';
   }
 
-  String get _j => _jogo ?? 'trade';
+  Map get _comp => (_home?['competicao'] as Map?) ?? const {};
+  String get _jogo => '${_comp['jogo'] ?? 'trade'}';
+  Map get _div => (_comp['divisao'] as Map?) ?? const {};
 
   /// Abre uma tela e, na volta, relê a Home (missões, troféus e o desafio podem ter mudado).
   Future<void> _abrir(Widget t) async {
@@ -92,25 +120,25 @@ class _HomeTelaState extends State<HomeTela> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0B1638),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/home/fundo_home.png', fit: BoxFit.cover, alignment: Alignment.topCenter),
+          Image.asset('assets/home/cidade_dia.webp', fit: BoxFit.cover, alignment: Alignment.topCenter),
           const DecoratedBox(
             decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment(0, -0.15),
-                radius: 0.9,
-                colors: [Color(0x885B2BC8), Color(0xCC140A55), Color(0xEE0B0930)],
-                stops: [0, 0.55, 1],
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x330B1638), Color(0x000B1638), Color(0xB00B1638), Color(0xF00B1638)],
+                stops: [0, 0.25, 0.5, 0.72],
               ),
             ),
           ),
           SafeArea(
             child: LayoutBuilder(builder: (ctx, c) {
-              // Cabe numa tela; em telas muito baixas a arena fica com altura mínima e a página rola.
-              const fixo = 62 + 30 + 72 + 92 + 4 * 8 + 16.0;
-              final alt = math.max(c.maxHeight, fixo + 300);
+              const fixo = 56 + 74 + 236 + 70 + 4 * 8 + 12.0;
+              final alt = math.max(c.maxHeight, fixo + 170);
               return RefreshIndicator(
                 onRefresh: _carregar,
                 child: SingleChildScrollView(
@@ -119,21 +147,19 @@ class _HomeTelaState extends State<HomeTela> {
                     child: ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: 640, minHeight: alt, maxHeight: alt),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
                         child: _carregando && _eu == null
                             ? const Center(child: CircularProgressIndicator())
                             : _erro != null && _eu == null
                                 ? _erroTela()
                                 : Column(children: [
-                                    Entrada(ordem: 0, child: _faixaNome()),
+                                    Entrada(ordem: 0, child: _topo()),
+                                    Expanded(child: _heroi()),
+                                    Entrada(ordem: 1, child: _jogos()),
                                     const SizedBox(height: 8),
-                                    Entrada(ordem: 0, child: _letreiro()),
+                                    Entrada(ordem: 2, child: _meio()),
                                     const SizedBox(height: 8),
-                                    Expanded(child: _arena()),
-                                    const SizedBox(height: 8),
-                                    Entrada(ordem: 2, child: _evento()),
-                                    const SizedBox(height: 8),
-                                    Entrada(ordem: 3, child: _batalha()),
+                                    Entrada(ordem: 3, child: _duelo()),
                                   ]),
                       ),
                     ),
@@ -147,331 +173,349 @@ class _HomeTelaState extends State<HomeTela> {
     );
   }
 
-  // ---- 1. faixa do nome: apelido, Amigos e Ticker Pass
-  Widget _faixaNome() {
+  // ---- 1. placa do jogador e indicadores do dia
+  Widget _topo() {
     final p = (_eu?['passe'] as Map?) ?? const {};
     final total = (p['total'] as num?)?.toInt() ?? 0, feitos = (p['feitos'] as num?)?.toInt() ?? 0;
     final pct = total == 0 ? 0.0 : (p['completo'] == true ? 1.0 : ((feitos + ((p['pct'] as num?) ?? 0).toDouble()) / total).clamp(0.0, 1.0));
-    final pedidos = ((_home?['amigos'] as Map?)?['pedidos'] as num?)?.toInt() ?? 0;
-    final dv = ((((_home?['competicao'] as Map?)?['jogos'] as Map?)?[_j] as Map?)?['divisao'] as Map?) ?? const {};
+    final itens = ((_home?['hoje'] as List?) ?? const []).cast<Map>();
     return SizedBox(
-      height: 62,
+      height: 56,
       child: Row(children: [
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(_nome,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Colors.black87, offset: Offset(0, 2), blurRadius: 3)])),
-            Text('Divisão ${dv['nome'] ?? 'Bronze'} · ${_j == 'ticker' ? 'Ticker Battle' : 'Trade Battle'}',
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color.lerp(Escudo.corDe(dv['cor']), Colors.white, 0.4))),
-          ]),
-        ),
-        _bolha(
-          icone: Icons.people_alt_rounded,
-          cores: const [Color(0xFF6FD3FF), Color(0xFF2A6BE0)],
-          rotulo: 'Amigos',
-          aviso: pedidos > 0 ? '$pedidos' : null,
-          tamanho: 48,
-          aoTocar: () => _abrir(SocialTela(api: widget.api)),
+          flex: 11,
+          child: Pressionavel(
+            aoTocar: () => abrirAba(2),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
+              decoration: _painel(raio: 28),
+              child: Row(children: [
+                Escudo.de(_div, tamanho: 46),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Text(_nome, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                    Row(children: [
+                      const Text('👑 ', style: TextStyle(fontSize: 11)),
+                      Text('${_div['nome'] ?? 'Bronze'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _ouro)),
+                      const SizedBox(width: 6),
+                      Expanded(child: _barra(pct, const [Color(0xFFFFE27A), Color(0xFFF5A623)], altura: 6)),
+                      Text(' $feitos/$total', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: _texto2)),
+                    ]),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
         ),
         const SizedBox(width: 8),
-        Pressionavel(
-          aoTocar: () => abrirAba(2),
-          child: Container(
-            width: 132,
-            padding: const EdgeInsets.fromLTRB(9, 6, 9, 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFD66B), Color(0xFFE09A1E)]),
-              border: Border.all(color: const Color(0xFF8A4E00), width: 2),
-              boxShadow: const [BoxShadow(color: Color(0x88F2B84B), blurRadius: 12)],
-            ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-              const FittedBox(child: Text('TICKER PASS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5, color: Color(0xFF3B2600)))),
-              const SizedBox(height: 3),
-              Row(children: [
-                const Icon(Icons.workspace_premium_rounded, color: Color(0xFF5A2E00), size: 16),
-                const SizedBox(width: 3),
-                Text(total == 0 ? '—' : '$feitos/$total', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: Color(0xFF3B2600))),
-                const SizedBox(width: 5),
-                Expanded(child: _barra(pct, const [Color(0xFF7C3AED), Color(0xFFB06BFF)], fundo: const Color(0x553B2600), altura: 7)),
+        Expanded(
+          flex: 10,
+          child: Pressionavel(
+            aoTocar: () => _abrir(CenarioTela(api: widget.api)),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+              decoration: _painel(raio: 16),
+              child: Row(children: [
+                const Icon(Icons.insights_rounded, color: _verde, size: 26),
+                const SizedBox(width: 6),
+                Expanded(child: itens.isEmpty ? const Text('Cotações já voltam', style: TextStyle(fontSize: 11, color: _texto2)) : _Indicadores(itens: itens)),
               ]),
-            ]),
+            ),
           ),
         ),
       ]),
     );
   }
 
-  // ---- 2. letreiro com os indicadores do dia
-  static const _curto = {'Ibovespa': 'IBOV', 'Dólar': 'DÓLAR', 'Bitcoin': 'BTC', 'Índice do medo': 'MEDO'};
-
-  Widget _letreiro() {
-    final itens = ((_home?['hoje'] as List?) ?? const []).cast<Map>();
-    final partes = <Widget>[
-      for (final it in itens)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Builder(builder: (_) {
-            final v = it['var'];
-            final cor = v is num ? (v >= 0 ? _verde : _vermelho) : _ouro;
-            return Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('${_curto['${it['rotulo']}'] ?? it['rotulo']} ', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _lilas)),
-              Text('${it['valor']} ', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
-              Text(v is num ? '${v >= 0 ? '▲' : '▼'} ${v.abs().toStringAsFixed(2).replaceAll('.', ',')}%' : '${it['nota'] ?? ''}',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: cor)),
-            ]);
-          }),
-        ),
-    ];
-    return Pressionavel(
-      aoTocar: () => _abrir(CenarioTela(api: widget.api)),
-      child: Container(
-        height: 30,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          color: const Color(0xCC0B0930),
-          border: Border.all(color: const Color(0xFF26E0FF), width: 1.2),
-          boxShadow: const [BoxShadow(color: Color(0x4426E0FF), blurRadius: 10)],
-        ),
-        child: partes.isEmpty ? const Center(child: Text('Cotações do dia voltam assim que a fonte responder', style: TextStyle(fontSize: 11.5, color: _lilas))) : _Letreiro(children: partes),
-      ),
-    );
-  }
-
-  // ---- 3. arena: a liga no centro e os atalhos nas laterais
-  Widget _arena() {
-    final comp = (_home?['competicao'] as Map?) ?? const {};
-    final g = ((comp['jogos'] as Map?)?[_j] as Map?) ?? (comp['jogo'] == _j ? comp : const {});
-    final dv = (g['divisao'] as Map?) ?? const {};
-    final cor = Escudo.corDe(dv['cor']);
-    final prox = dv['prox'] as Map?;
-    final m = (_home?['missoes'] as Map?) ?? const {};
-    final faltam = math.max(0, ((m['total'] as num?)?.toInt() ?? 0) - ((m['feitas'] as num?)?.toInt() ?? 0));
-    final trn = (_home?['torneio'] as Map?) ?? const {};
-    final cen = '${((_home?['cenario'] as Map?) ?? const {})['veredito'] ?? ''}';
-    final (cenAviso, cenCor) = switch (cen) {
-      'BOM' => ('▲', _verde),
-      'RUIM' => ('▼', _vermelho),
-      'NEUTRO' => ('≈', _ouro),
-      _ => (null, _ouro),
-    };
-    Widget coluna(List<Widget> filhos) => SizedBox(
-          width: 74,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 440),
-              child: Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [for (final (i, f) in filhos.indexed) Entrada(ordem: 1 + i, child: f)]),
-            ),
-          ),
-        );
+  // ---- 2. o urso e a placa do Desafio do dia
+  Widget _heroi() {
+    final d = (_home?['desafio'] as Map?) ?? const {};
+    final s = (d['termina_em'] as num?)?.toInt() ?? 0;
+    final (txt, ic, cor) = d['terminou'] == true
+        ? ('Você já jogou hoje!', Icons.check_circle_rounded, _verde)
+        : d['jogou'] == true
+            ? ('Termine sua tentativa!', Icons.play_circle_fill_rounded, _ouro)
+            : ('Valendo TC! Jogue agora', Icons.bolt_rounded, _ouro);
     return LayoutBuilder(builder: (ctx, c) {
-      final escudo = math.min(c.maxWidth - 2 * 74 - 16, c.maxHeight - 100).clamp(90.0, 270.0);
-      return Row(children: [
-        coluna([
-          _bolha(
-              icone: Icons.public_rounded,
-              cores: const [Color(0xFF4FE0F0), Color(0xFF0E6E8A)],
-              rotulo: 'Cenário',
-              aviso: cenAviso,
-              corAviso: cenCor,
-              aoTocar: () => _abrir(CenarioTela(api: widget.api))),
-          _bolha(
-              icone: Icons.emoji_events_rounded,
-              cores: const [Color(0xFFFF8A5B), Color(0xFFC0306B)],
-              rotulo: 'Torneio',
-              aviso: trn['aberto'] == true ? (trn['inscrito'] == true ? '✓' : '!') : null,
-              corAviso: trn['inscrito'] == true ? _verde : _vermelho,
-              pulsar: trn['aberto'] == true && trn['inscrito'] != true,
-              aoTocar: () => _abrir(RankingTela(api: widget.api, unico: 'torneio'))),
-          _bolha(icone: Icons.account_balance_wallet_rounded, cores: const [Color(0xFF6BFF8A), Color(0xFF128A4C)], rotulo: 'Carteira', aoTocar: () => _abrir(CarteiraTela(api: widget.api))),
-        ]),
-        Expanded(
+      final h = c.maxHeight;
+      final placaL = math.min(c.maxWidth * 0.56, 330.0);
+      return Stack(clipBehavior: Clip.none, children: [
+        Positioned(
+          left: -6,
+          bottom: -6,
+          height: math.min(h + 6, c.maxWidth * 0.78),
+          child: Flutua(altura: 5, periodo: const Duration(milliseconds: 3200), child: Image.asset('assets/home/urso_joinha.webp', fit: BoxFit.contain)),
+        ),
+        Positioned(
+          right: 0,
+          top: math.max(4, h * 0.08),
+          width: placaL,
           child: Pressionavel(
-            aoTocar: () {
-              rankingPedido.value = _j;
-              abrirAba(3);
-            },
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              SizedBox(
-                width: escudo,
-                height: escudo,
-                child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-                  // halo da divisão atrás do escudo (fora do layout, não empurra o resto)
-                  OverflowBox(
-                    maxWidth: escudo * 1.3,
-                    maxHeight: escudo * 1.3,
-                    child: Container(
-                      width: escudo * 1.3,
-                      height: escudo * 1.3,
-                      decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [cor.withValues(alpha: 0.55), cor.withValues(alpha: 0)])),
-                    ),
+            aoTocar: () => _abrir(DesafioTela(api: widget.api)),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Stack(alignment: Alignment.center, children: [
+                Image.asset('assets/home/placa_desafio.webp', width: placaL, fit: BoxFit.contain),
+                Padding(
+                  padding: EdgeInsets.only(top: placaL * 0.08),
+                  child: FittedBox(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      _tituloJogo('DESAFIO', placaL * 0.12, cores: const [Colors.white, Color(0xFFD6E6FF)]),
+                      _tituloJogo('DO DIA', placaL * 0.12),
+                    ]),
                   ),
-                  Flutua(altura: 6, child: Escudo.de(dv, tamanho: escudo)),
-                ]),
-              ),
-              Transform.translate(
-                offset: const Offset(0, -10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFE08A), Color(0xFFE09A1E)]),
-                    border: Border.all(color: const Color(0xFF8A4E00), width: 2),
-                    boxShadow: const [BoxShadow(color: Colors.black54, offset: Offset(0, 3), blurRadius: 4)],
-                  ),
-                  child: Text('${dv['nome'] ?? 'Bronze'}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF3B2600))),
-                ),
-              ),
-              Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.emoji_events_rounded, color: _ouro, size: 20),
-                const SizedBox(width: 4),
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: ((g['t'] as num?) ?? 0).toDouble()),
-                  duration: const Duration(milliseconds: 900),
-                  builder: (ctx, v, _) => Text('${v.round()} troféus', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
                 ),
               ]),
-              const SizedBox(height: 5),
-              SizedBox(width: math.min(200, c.maxWidth - 2 * 74 - 16), child: _barra(((dv['pct'] as num?) ?? 0).toDouble(), [cor, Color.lerp(cor, Colors.white, 0.4)!])),
-              const SizedBox(height: 3),
-              Text(prox == null ? 'Divisão máxima!' : 'Faltam ${dv['falta'] ?? '—'} para ${prox['nome']}', style: const TextStyle(fontSize: 11.5, color: _lilas)),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF6B3A12), Color(0xFF3E1F08)]),
+                  border: Border.all(color: _ouro, width: 1.6),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.schedule_rounded, color: _ouro, size: 20),
+                  const SizedBox(width: 6),
+                  Text(contagem(s), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFFFFE27A))),
+                ]),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: _painel(raio: 14),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(ic, color: cor, size: 18),
+                  const SizedBox(width: 6),
+                  Flexible(child: Text(txt, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white))),
+                ]),
+              ),
             ]),
           ),
         ),
-        coluna([
-          _bolha(
-              icone: Icons.assignment_turned_in_rounded,
-              cores: const [Color(0xFFFFE08A), Color(0xFFE0861E)],
-              rotulo: 'Missões',
-              aviso: faltam > 0 ? '$faltam' : null,
-              aoTocar: () => _abrir(MissoesTela(api: widget.api))),
-          _bolha(icone: Icons.style_rounded, cores: const [Color(0xFFC08BFF), Color(0xFF6A2BD0)], rotulo: 'Deck', aoTocar: _deck),
-          _bolha(icone: Icons.candlestick_chart_rounded, cores: const [Color(0xFF7FB2FF), Color(0xFF2A4BD0)], rotulo: 'Mercado', aoTocar: () => _abrir(MercadoTela(api: widget.api))),
-        ]),
       ]);
     });
   }
 
-  /// Atalho para montar o deck do Ticker Battle (a tela do baralho precisa dos dados da central do Ticker).
-  Future<void> _deck() async {
-    try {
-      final d = await widget.api.get('/ticker/central');
-      if (!mounted) return;
-      await _abrir(BaralhoTela(api: widget.api, central: d));
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não consegui abrir o deck agora. Tente de novo.')));
-    }
-  }
-
-  /// Botão redondo das laterais: ícone num círculo colorido com borda dourada, o nome embaixo e um aviso no canto.
-  Widget _bolha({
-    required IconData icone,
-    required List<Color> cores,
-    required String rotulo,
-    required VoidCallback aoTocar,
-    String? aviso,
-    Color corAviso = _vermelho,
-    bool pulsar = false,
-    double tamanho = 56,
-  }) {
-    final circulo = Container(
-      width: tamanho,
-      height: tamanho,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: cores),
-        border: Border.all(color: _ouro, width: 2.5),
-        boxShadow: [BoxShadow(color: cores.last.withValues(alpha: 0.6), blurRadius: 12), const BoxShadow(color: Colors.black54, offset: Offset(0, 3), blurRadius: 3)],
-      ),
-      child: Icon(icone, color: Colors.white, size: tamanho * 0.52, shadows: const [Shadow(color: Colors.black54, offset: Offset(0, 2), blurRadius: 2)]),
-    );
-    return Semantics(
-      button: true,
-      label: rotulo,
-      child: Pressionavel(
-        aoTocar: aoTocar,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Stack(clipBehavior: Clip.none, children: [
-            pulsar ? Flutua(altura: 3, periodo: const Duration(milliseconds: 1400), child: circulo) : circulo,
-            if (pulsar) Positioned.fill(child: Pulso(cor: corAviso, raio: tamanho / 2)),
-            if (aviso != null)
-              Positioned(
-                right: -4,
-                top: -4,
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 22),
-                  height: 22,
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: corAviso, borderRadius: BorderRadius.circular(11), border: Border.all(color: Colors.white, width: 1.5)),
-                  child: Text(aviso, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
-                ),
-              ),
-          ]),
-          if (tamanho >= 56) ...[
-            const SizedBox(height: 3),
-            Text(rotulo, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Colors.black, offset: Offset(0, 1), blurRadius: 2)])),
-          ],
+  // ---- 3. botões grandes dos dois jogos
+  Widget _jogos() => SizedBox(
+        height: 74,
+        child: Row(children: [
+          Expanded(child: _botaoJogo('assets/home/btn_trade.webp', 'TRADE', 'BATTLE', () => _abrir(TradeTela(api: widget.api)), 0)),
+          const SizedBox(width: 8),
+          Expanded(child: _botaoJogo('assets/home/btn_ticker.webp', 'TICKER', 'BATTLE', () => _abrir(TickerTela(api: widget.api)), 1)),
         ]),
-      ),
-    );
-  }
+      );
 
-  Widget _barra(double v, List<Color> cores, {Color fundo = const Color(0x40FFFFFF), double altura = 9}) => TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: v.clamp(0.0, 1.0)),
-        duration: const Duration(milliseconds: 1100),
-        curve: Curves.easeOutCubic,
-        builder: (ctx, x, _) => ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: Stack(children: [
-            Container(height: altura, color: fundo),
-            FractionallySizedBox(widthFactor: x, child: Container(height: altura, decoration: BoxDecoration(gradient: LinearGradient(colors: cores)))),
+  Widget _botaoJogo(String arte, String l1, String l2, VoidCallback f, int i) => Pressionavel(
+        aoTocar: f,
+        child: Reflexo(
+          raio: 14,
+          atraso: Duration(milliseconds: 900 * i),
+          child: Stack(fit: StackFit.expand, children: [
+            Image.asset(arte, fit: BoxFit.fill),
+            Positioned(
+              left: 0,
+              right: 6,
+              top: 0,
+              bottom: 0,
+              child: Row(children: [
+                const Spacer(flex: 9),
+                Expanded(
+                  flex: 11,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      _tituloJogo(l1, 22, cores: const [Colors.white, Color(0xFFDDE8FF)]),
+                      _tituloJogo(l2, 22),
+                    ]),
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 30, shadows: [Shadow(color: Colors.black54, offset: Offset(0, 2))]),
+              ]),
+            ),
           ]),
         ),
       );
 
-  // ---- 4. faixa de evento: Desafio do dia
-  Widget _evento() {
-    final d = (_home?['desafio'] as Map?) ?? const {};
-    final s = (d['termina_em'] as num?)?.toInt() ?? 0;
-    final (txt, cor) = d['terminou'] == true
-        ? ('Feito! Nota ${d['nota'] is num ? (d['nota'] as num).toStringAsFixed(1).replaceAll('.', ',') : ''}', _verde)
-        : d['jogou'] == true
-            ? ('Termine sua tentativa!', _ouro)
-            : ('Você ainda não jogou hoje', _ouro);
+  // ---- 4. atalhos, liga e cartões da direita
+  Widget _meio() {
+    final m = (_home?['missoes'] as Map?) ?? const {};
+    final faltam = math.max(0, ((m['total'] as num?)?.toInt() ?? 0) - ((m['feitas'] as num?)?.toInt() ?? 0));
+    final trn = (_home?['torneio'] as Map?) ?? const {};
+    final pedidos = ((_home?['amigos'] as Map?)?['pedidos'] as num?)?.toInt() ?? 0;
+    Widget arte(String a) => Image.asset(a, width: 30, height: 30, fit: BoxFit.contain);
+    Widget emoji(String e) => SizedBox(width: 30, child: Text(e, textAlign: TextAlign.center, style: const TextStyle(fontSize: 22)));
+    final atalhos = <(Widget, String, String?, VoidCallback)>[
+      (arte('assets/home/ic_cenario.webp'), 'Cenário', null, () => _abrir(CenarioTela(api: widget.api))),
+      (arte('assets/home/ic_torneio.webp'), 'Torneio', trn['aberto'] == true ? (trn['inscrito'] == true ? '✓' : '!') : null, () => _abrir(RankingTela(api: widget.api, unico: 'torneio'))),
+      (emoji('💰'), 'Carteira', null, () => _abrir(CarteiraTela(api: widget.api))),
+      (arte('assets/home/ic_missoes.webp'), 'Missões', faltam > 0 ? '$faltam' : null, () => _abrir(MissoesTela(api: widget.api))),
+      (emoji('👥'), 'Amigos', pedidos > 0 ? '$pedidos' : null, () => _abrir(SocialTela(api: widget.api))),
+    ];
+    return SizedBox(
+      height: 236,
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(
+          flex: 30,
+          child: Column(children: [
+            for (final (i, (ic, rot, aviso, f)) in atalhos.indexed) ...[
+              if (i > 0) const SizedBox(height: 4),
+              Expanded(
+                child: Pressionavel(
+                  aoTocar: f,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: _painel(raio: 12),
+                    child: Row(children: [
+                      ic,
+                      const SizedBox(width: 6),
+                      Expanded(
+                          child: FittedBox(
+                              fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(rot, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Colors.white)))),
+                      if (aviso != null)
+                        Container(
+                          constraints: const BoxConstraints(minWidth: 20),
+                          height: 20,
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration:
+                              BoxDecoration(color: aviso == '✓' ? const Color(0xFF12A85A) : const Color(0xFFE5243B), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.4)),
+                          child: Text(aviso, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white)),
+                        ),
+                    ]),
+                  ),
+                ),
+              ),
+            ],
+          ]),
+        ),
+        const SizedBox(width: 6),
+        Expanded(flex: 38, child: _liga()),
+        const SizedBox(width: 6),
+        Expanded(
+          flex: 32,
+          child: Column(children: [
+            Expanded(flex: 13, child: _mercado()),
+            const SizedBox(height: 6),
+            Expanded(flex: 10, child: _melhorNota()),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _liga() {
+    final dv = _div;
+    final cor = Escudo.corDe(dv['cor']);
+    final prox = dv['prox'] as Map?;
+    return Pressionavel(
+      aoTocar: () {
+        rankingPedido.value = _jogo;
+        abrirAba(3);
+      },
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+        decoration: _painel(),
+        child: Column(children: [
+          Expanded(
+            child: Stack(alignment: Alignment.center, children: [
+              Container(decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [cor.withValues(alpha: 0.5), cor.withValues(alpha: 0)]))),
+              Flutua(altura: 4, child: LayoutBuilder(builder: (ctx, c) => Escudo.de(dv, tamanho: math.min(c.maxHeight, c.maxWidth) * 0.95))),
+            ]),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFD66B), Color(0xFFD9861A)]),
+              border: Border.all(color: _ouroEscuro, width: 1.6),
+            ),
+            child: FittedBox(fit: BoxFit.scaleDown, child: Text('${dv['nome'] ?? 'Bronze'}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF4A2800)))),
+          ),
+          const SizedBox(height: 5),
+          FittedBox(
+            child: Row(children: [
+              const Icon(Icons.emoji_events_rounded, color: _ouro, size: 18),
+              const SizedBox(width: 3),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: ((_comp['t'] as num?) ?? 0).toDouble()),
+                duration: const Duration(milliseconds: 900),
+                builder: (ctx, v, _) => Text('${v.round()} troféus', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 4),
+          _barra(((dv['pct'] as num?) ?? 0).toDouble(), const [Color(0xFFFFE27A), Color(0xFFF5A623)], altura: 9, minimo: 0.06),
+          const SizedBox(height: 3),
+          FittedBox(child: Text(prox == null ? 'Divisão máxima!' : 'Faltam ${dv['falta'] ?? '—'} para ${prox['nome']}', style: const TextStyle(fontSize: 11, color: _texto2))),
+          Text(_jogo == 'ticker' ? 'Ticker Battle' : 'Trade Battle', style: const TextStyle(fontSize: 10, color: _texto2)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _mercado() {
+    final itens = ((_home?['hoje'] as List?) ?? const []).cast<Map>();
+    final ibov = itens.where((x) => x['rotulo'] == 'Ibovespa').firstOrNull;
+    final v = ibov?['var'];
+    final alta = v is! num || v >= 0;
+    final cor = alta ? _verde : _vermelho;
+    return Pressionavel(
+      aoTocar: () => _abrir(MercadoTela(api: widget.api)),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: _painel(borda: alta ? const Color(0xFF2FB874) : const Color(0xFFD8475A)),
+        child: Stack(fit: StackFit.expand, children: [
+          Positioned.fill(
+            child: ColorFiltered(
+              colorFilter: alta ? const ColorFilter.mode(Colors.transparent, BlendMode.dst) : const ColorFilter.matrix([1, 0, 0, 0, 0, 0, 0.55, 0, 0, 0, 0, 0, 0.6, 0, 0, 0, 0, 0, 1, 0]),
+              child: Image.asset('assets/home/touro_mercado.webp', fit: BoxFit.cover, alignment: Alignment.bottomRight),
+            ),
+          ),
+          const DecoratedBox(
+              decoration: BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xF20B1A44), Color(0xCC0B1A44), Color(0x000B1A44)], stops: [0, 0.45, 0.8]))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              FittedBox(child: Text(v is num ? (alta ? 'Mercado em Alta' : 'Mercado em Baixa') : 'Mercado', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white))),
+              if (v is num)
+                FittedBox(
+                  child: Row(children: [
+                    Icon(alta ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: cor, size: 24),
+                    const SizedBox(width: 3),
+                    Text('${alta ? '+' : ''}${v.toStringAsFixed(2).replaceAll('.', ',')}%',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: cor, shadows: const [Shadow(color: Colors.black87, offset: Offset(0, 2), blurRadius: 3)])),
+                  ]),
+                ),
+              const Text('Ibovespa hoje', style: TextStyle(fontSize: 10, color: _texto2)),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _melhorNota() {
+    final n = _comp['desafio_max'];
     return Pressionavel(
       aoTocar: () => _abrir(DesafioTela(api: widget.api)),
       child: Container(
-        height: 72,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFF2A50B), width: 2),
-          gradient: const LinearGradient(colors: [Color(0xFF5A2BC8), Color(0xFF2A1278)]),
-          boxShadow: const [BoxShadow(color: Color(0x77F2A50B), blurRadius: 14)],
-        ),
-        child: Stack(children: [
-          Positioned(left: -4, bottom: -18, child: Image.asset('assets/ranking/urso_aponta.webp', height: 96)),
-          Positioned(
-            left: 86,
-            right: 10,
-            top: 6,
-            bottom: 6,
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+        decoration: _painel(),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const FittedBox(child: Text('Sua Melhor Pontuação', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white))),
+          Expanded(
             child: Row(children: [
-              Expanded(flex: 5, child: Image.asset('assets/ranking/desafio_titulo.webp', fit: BoxFit.contain, alignment: Alignment.centerLeft)),
-              const SizedBox(width: 6),
+              Image.asset('assets/home/ic_torneio.webp', height: 32),
+              const SizedBox(width: 4),
               Expanded(
-                flex: 6,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                    const Icon(Icons.schedule_rounded, color: _ouro, size: 16),
-                    const SizedBox(width: 4),
-                    Text(contagem(s), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _ouro)),
-                  ]),
-                  FittedBox(child: Text(txt, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: cor))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                  FittedBox(child: Text(n is num ? n.toStringAsFixed(1).replaceAll('.', ',') : '—', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _ouro))),
+                  const FittedBox(child: Text('no Desafio do Dia', style: TextStyle(fontSize: 10, color: _texto2))),
                 ]),
               ),
             ]),
@@ -481,96 +525,73 @@ class _HomeTelaState extends State<HomeTela> {
     );
   }
 
-  // ---- 5. JOGAR: troca de jogo, botão grande e Duelo
-  Widget _batalha() {
-    final ticker = _j == 'ticker';
-    return SizedBox(
-      height: 92,
-      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Pressionavel(
-          aoTocar: () => setState(() => _jogo = ticker ? 'trade' : 'ticker'),
-          child: Container(
-            width: 84,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF6FD3FF), width: 2),
-              color: const Color(0xFF1A3A9E),
-              boxShadow: const [BoxShadow(color: Colors.black54, offset: Offset(0, 4), blurRadius: 4)],
-            ),
-            child: Stack(fit: StackFit.expand, children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (w, a) => ScaleTransition(scale: a, child: FadeTransition(opacity: a, child: w)),
-                child: Image.asset(ticker ? 'assets/jogos/ticker_hero.webp' : 'assets/jogos/trade_hero.webp',
-                    key: ValueKey(_j), fit: BoxFit.cover, alignment: ticker ? const Alignment(-0.55, 0) : Alignment.center),
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  color: const Color(0xCC0B0930),
-                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 15),
-                    SizedBox(width: 2),
-                    Text('Trocar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white)),
+  // ---- 5. faixa do Duelo
+  Widget _duelo() => Pressionavel(
+        aoTocar: () => _abrir(SocialTela(api: widget.api)),
+        child: Container(
+          height: 70,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: const LinearGradient(colors: [Color(0xFF1C4FB8), Color(0xFF12307A), Color(0xFF0E2257)]),
+            border: Border.all(color: _ouro, width: 1.8),
+            boxShadow: const [BoxShadow(color: Color(0x66F7C84A), blurRadius: 12)],
+          ),
+          child: Stack(children: [
+            Positioned(left: -4, bottom: -22, child: Image.asset('assets/ranking/urso_aponta.webp', height: 100)),
+            Positioned(
+              left: 92,
+              right: 8,
+              top: 0,
+              bottom: 0,
+              child: Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                    FittedBox(child: _tituloJogo('BORA DUELAR?', 20)),
+                    const SizedBox(height: 2),
+                    const FittedBox(child: Text('Desafie um amigo e vale troféus!', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white))),
                   ]),
                 ),
-              ),
-            ]),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Pressionavel(
-            aoTocar: () => _abrir(ticker ? TickerTela(api: widget.api) : TradeTela(api: widget.api)),
-            child: Reflexo(
-              raio: 18,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFE27A), Color(0xFFF5A623), Color(0xFFE08A12)]),
-                  border: Border.all(color: const Color(0xFF8A4E00), width: 2.5),
-                  boxShadow: const [BoxShadow(color: Color(0xFF8A4E00), offset: Offset(0, 5)), BoxShadow(color: Color(0x88F2B84B), blurRadius: 16)],
-                ),
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Text('JOGAR',
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: Colors.white, shadows: [
-                        Shadow(color: Color(0xFF8A4E00), offset: Offset(0, 3)),
-                        Shadow(color: Color(0xFF8A4E00), offset: Offset(0, -1), blurRadius: 2),
-                      ])),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    child: Text(ticker ? 'Ticker Battle' : 'Trade Battle', key: ValueKey(_j), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF5A2E00))),
+                const SizedBox(width: 6),
+                Reflexo(
+                  raio: 14,
+                  intervalo: const Duration(milliseconds: 3000),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFE27A), Color(0xFFF5A623)]),
+                      border: Border.all(color: _ouroEscuro, width: 2),
+                      boxShadow: const [BoxShadow(color: _ouroEscuro, offset: Offset(0, 3))],
+                    ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('Duelo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF4A2800))),
+                      Icon(Icons.chevron_right_rounded, color: Color(0xFF4A2800)),
+                    ]),
                   ),
-                ]),
-              ),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      );
+
+  Widget _barra(double v, List<Color> cores, {double altura = 9, double minimo = 0}) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: math.max(minimo, v.clamp(0.0, 1.0))),
+        duration: const Duration(milliseconds: 1100),
+        curve: Curves.easeOutCubic,
+        builder: (ctx, x, _) => Container(
+          height: altura,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xFF07112E), border: Border.all(color: const Color(0x553A6FD8))),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(widthFactor: x, child: Container(decoration: BoxDecoration(gradient: LinearGradient(colors: cores)))),
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        Pressionavel(
-          aoTocar: () => _abrir(SocialTela(api: widget.api)),
-          child: Container(
-            width: 84,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFF6B8A), Color(0xFFC0304B)]),
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: const [BoxShadow(color: Colors.black54, offset: Offset(0, 4), blurRadius: 4)],
-            ),
-            child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text('⚔️', style: TextStyle(fontSize: 34)),
-              Text('Duelo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Colors.black54, offset: Offset(0, 2))])),
-              Text('desafie um amigo', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Colors.white)),
-            ]),
-          ),
-        ),
-      ]),
-    );
-  }
+      );
 
   Widget _erroTela() => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -582,43 +603,64 @@ class _HomeTelaState extends State<HomeTela> {
       );
 }
 
-/// Letreiro que passa da direita para a esquerda sem parar (os itens repetidos lado a lado).
-class _Letreiro extends StatefulWidget {
-  const _Letreiro({required this.children});
-  final List<Widget> children;
+/// Quadro dos indicadores: mostra dois por vez (IBOV e Dólar, depois BTC e Medo) e troca a cada 4 segundos, deslizando.
+class _Indicadores extends StatefulWidget {
+  const _Indicadores({required this.itens});
+  final List<Map> itens;
 
   @override
-  State<_Letreiro> createState() => _LetreiroState();
+  State<_Indicadores> createState() => _IndicadoresState();
 }
 
-class _LetreiroState extends State<_Letreiro> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 18))..repeat();
-  final _chave = GlobalKey();
-  double _largura = 0;
+class _IndicadoresState extends State<_Indicadores> {
+  static const _curto = {'Ibovespa': 'IBOV', 'Dólar': 'Dólar', 'Bitcoin': 'BTC', 'Índice do medo': 'Medo'};
+  int _pag = 0;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted && widget.itens.length > 2) setState(() => _pag = (_pag + 1) % ((widget.itens.length + 1) ~/ 2));
+    });
+  }
 
   @override
   void dispose() {
-    _c.dispose();
+    _t?.cancel();
     super.dispose();
+  }
+
+  Widget _linha(Map it) {
+    final v = it['var'];
+    final cor = v is num ? (v >= 0 ? _verde : _vermelho) : _ouro;
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(children: [
+        Text('${_curto['${it['rotulo']}'] ?? it['rotulo']} ', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: Colors.white)),
+        Text('${it['valor']} ', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _texto2)),
+        Text(v is num ? '${v >= 0 ? '▲ +' : '▼ '}${v.toStringAsFixed(2).replaceAll('.', ',')}%' : '${it['nota'] ?? ''}', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: cor)),
+      ]),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final w = (_chave.currentContext?.findRenderObject() as RenderBox?)?.size.width ?? 0;
-      if (mounted && w != _largura) setState(() => _largura = w);
-    });
-    final linha = Row(key: _chave, mainAxisSize: MainAxisSize.min, children: widget.children);
+    final par = widget.itens.skip(_pag * 2).take(2).toList();
     return ClipRect(
-      child: OverflowBox(
-        alignment: Alignment.centerLeft,
-        maxWidth: double.infinity,
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (ctx, child) => Transform.translate(offset: Offset(-_c.value * _largura, 0), child: child),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [linha, Row(mainAxisSize: MainAxisSize.min, children: widget.children), Row(mainAxisSize: MainAxisSize.min, children: widget.children)]),
-        ),
+        child: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 450),
+      transitionBuilder: (w, a) => SlideTransition(
+        position: Tween(begin: const Offset(0, 0.6), end: Offset.zero).animate(a),
+        child: FadeTransition(opacity: a, child: w),
       ),
-    );
+      child: Column(
+        key: ValueKey(_pag),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [for (final it in par) _linha(it)],
+      ),
+    ));
   }
 }
