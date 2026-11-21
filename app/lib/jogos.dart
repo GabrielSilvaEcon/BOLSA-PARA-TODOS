@@ -4,6 +4,7 @@ import 'ajuda.dart';
 import 'api.dart';
 import 'eventos.dart';
 import 'historico.dart';
+import 'social.dart';
 import 'navegacao.dart';
 import 'ticker.dart';
 import 'trade.dart';
@@ -481,6 +482,7 @@ class _JogosTelaState extends State<JogosTela> {
                 'Ranking' => abrirAba(3),
                 'Eventos' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EventosTela(api: widget.api))),
                 'Ajuda' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AjudaTela(api: widget.api))),
+                'Amigos' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocialTela(api: widget.api))),
                 _ => _emBreve(rot),
               },
               child: Container(
