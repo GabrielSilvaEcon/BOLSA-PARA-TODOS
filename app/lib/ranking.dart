@@ -28,7 +28,7 @@ class _RankingTelaState extends State<RankingTela> {
   String _jogo = 'trade';
   String _filtro = 'geral';
   String _periodo = 'geral';
-  Map<String, dynamic>? _d, _t;
+  Map<String, dynamic>? _d, _t, _tor;
   bool _carregando = true;
   bool _falhou = false;
 
@@ -67,6 +67,7 @@ class _RankingTelaState extends State<RankingTela> {
         widget.api.get(_jogo == 'desafio' ? '/desafio/ranking?filtro=$_filtro' : '/ranking/$_jogo/tela?filtro=$_filtro&periodo=$_periodo'),
         if (_t == null) widget.api.get('/trofeus'),
       ]);
+      if (_jogo == 'torneio') _tor = await widget.api.get('/torneio');
       if (!mounted) return;
       setState(() {
         _d = rs[0];
@@ -137,24 +138,35 @@ class _RankingTelaState extends State<RankingTela> {
                   children: [
                     if ((_jogo == 'trade' || _jogo == 'ticker') && _t != null) Entrada(ordem: 0, child: _minhaDivisao()),
                     if (_jogo == 'desafio') Entrada(ordem: 0, child: Image.asset('assets/ranking/desafio_titulo.webp', height: 170)),
+                    if (_jogo == 'torneio') Entrada(ordem: 0, child: _torneio()),
+                    if (_jogo == 'semana')
+                      Entrada(
+                        ordem: 0,
+                        child: _card('Semana dos amigos: troféus ganhos nesta semana, nos dois jogos, entre você e seus amigos. Zera na segunda '
+                            '(daqui a ${_d?['zera_em_dias'] ?? '—'} dias). O 1º da semana passada usa a coroa 👑 por 7 dias.'),
+                      ),
                     if (_jogo == 'carteira') ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/jogos/banner_ranking.webp', fit: BoxFit.cover)),
                     const SizedBox(height: 10),
                     _abas(),
                     const SizedBox(height: 8),
-                    _filtros(),
+                    if (_jogo != 'semana') _filtros(),
                     const SizedBox(height: 10),
                     if (_carregando && _d == null)
                       const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator()))
                     else if (_falhou && _d == null)
                       _vazio('O ranking não carregou agora. Tente de novo em instantes.')
                     else if (total == 0) ...[
-                      _vazio(_jogo == 'desafio'
-                          ? 'Ninguém terminou o Desafio do dia de hoje ainda. Seja o primeiro!'
-                          : _jogo == 'carteira'
-                              ? 'Ainda não há participantes neste ranking. Ele mostra quem tem a carteira ativa há alguns pregões.'
-                              : _filtro == 'amigos'
-                                  ? 'Nenhum amigo seu jogou online nesta temporada ainda. Desafie alguém!'
-                                  : 'Ninguém jogou online nesta temporada ainda. Seja o primeiro a ganhar troféus!'),
+                      _vazio(_jogo == 'torneio'
+                          ? 'Ninguém pontuou no torneio deste fim de semana ainda. Inscreva-se e jogue online!'
+                          : _jogo == 'semana'
+                              ? 'Adicione amigos para disputar a semana com eles.'
+                              : _jogo == 'desafio'
+                                  ? 'Ninguém terminou o Desafio do dia de hoje ainda. Seja o primeiro!'
+                                  : _jogo == 'carteira'
+                                      ? 'Ainda não há participantes neste ranking. Ele mostra quem tem a carteira ativa há alguns pregões.'
+                                      : _filtro == 'amigos'
+                                          ? 'Nenhum amigo seu jogou online nesta temporada ainda. Desafie alguém!'
+                                          : 'Ninguém jogou online nesta temporada ainda. Seja o primeiro a ganhar troféus!'),
                       const SizedBox(height: 8),
                       if (_jogo == 'trade' || _jogo == 'ticker')
                         FilledButton.icon(onPressed: () => abrirAba(1), icon: const Icon(Icons.play_arrow_rounded), label: Text('Jogar ${_d?['nome'] ?? ''} online')),
@@ -166,6 +178,8 @@ class _RankingTelaState extends State<RankingTela> {
                             'semana' => 'Retorno da carteira virtual nesta semana.',
                             _ => 'Retorno da carteira virtual desde o início.',
                           },
+                        'torneio' => 'Classificação do torneio: soma das suas 5 melhores partidas online do fim de semana.',
+                        'semana' => 'Saldo de troféus nesta semana (vitórias somam, derrotas tiram).',
                         'desafio' => 'O mesmo gráfico para todos, uma tentativa por dia. A nota é a pontuação da partida. Top 10 e top 100 ganham TC no dia seguinte.',
                         _ => 'Troféus da temporada: vencer partidas online dá troféus e perder tira. Vencer quem tem mais troféus vale mais.',
                       }),
@@ -280,6 +294,84 @@ class _RankingTelaState extends State<RankingTela> {
     );
   }
 
+  // ---- torneio de fim de semana: estado, inscrição, seus pontos e prêmios
+  Widget _torneio() {
+    final t = _tor;
+    if (t == null) return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator()));
+    final aberto = t['aberto'] == true, inscrito = t['inscrito'] == true;
+    final s = (t['segundos'] as num?)?.toInt() ?? 0;
+    final tempo = s >= 86400 ? '${s ~/ 86400}d ${(s % 86400) ~/ 3600}h' : '${s ~/ 3600}h ${(s % 3600) ~/ 60}min';
+    final premios = ((t['premios'] as List?) ?? const []).cast<num>();
+    final ant = t['premio_anterior'] as Map?;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _ouro, width: 2),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF6B3A12), Color(0xFF2A1046)]),
+        boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 18)],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Text('🏆', style: TextStyle(fontSize: 34)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('TORNEIO DE FIM DE SEMANA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+              Text(aberto ? 'Aberto! Termina em $tempo' : 'Abre na sexta · faltam $tempo', style: TextStyle(fontWeight: FontWeight.w800, color: aberto ? const Color(0xFF6BFF8A) : _lila)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        Text(
+            'De sexta a domingo, valem as suas ${t['conta']} melhores partidas online (os troféus ganhos em cada uma; perder não tira pontos). '
+            '${t['inscritos'] ?? 0} inscritos.',
+            style: const TextStyle(fontSize: 12.5, color: Colors.white)),
+        const SizedBox(height: 8),
+        Row(children: [
+          for (final (i, p) in premios.indexed)
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0x55120850), border: Border.all(color: const Color(0x88F2B84B))),
+                child: Column(children: [
+                  Text(['🥇', '🥈', '🥉'][i], style: const TextStyle(fontSize: 20)),
+                  Text('$p TC', style: const TextStyle(fontWeight: FontWeight.w900, color: _ouro)),
+                ]),
+              ),
+            ),
+        ]),
+        const SizedBox(height: 10),
+        if (inscrito)
+          Text('Você está inscrito · ${t['pontos'] ?? 0} pontos em ${t['partidas'] ?? 0} partidas', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6BFF8A)))
+        else if (aberto)
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12A83C), minimumSize: const Size.fromHeight(48)),
+              onPressed: () async {
+                try {
+                  await widget.api.post('/torneio/inscrever');
+                  _tor = null;
+                  _carregar();
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                }
+              },
+              icon: const Icon(Icons.how_to_reg_rounded),
+              label: const Text('Inscrever-me no torneio'),
+            ),
+          )
+        else
+          const Text('As inscrições abrem na sexta-feira.', style: TextStyle(color: _lila)),
+        if (ant != null)
+          Padding(
+              padding: const EdgeInsets.only(top: 8), child: Text('Fim de semana passado: ${ant['pos']}º lugar, +${ant['tc']} TC!', style: const TextStyle(fontWeight: FontWeight.w900, color: _ouro))),
+      ]),
+    );
+  }
+
   // ---- abas e filtros
   Widget _chip(String rot, bool on, VoidCallback f, {double altura = 40}) => Expanded(
         child: GestureDetector(
@@ -302,11 +394,20 @@ class _RankingTelaState extends State<RankingTela> {
         ),
       );
 
-  Widget _abas() => Row(children: [
-        for (final (i, (id, rot)) in const [('trade', 'Trade'), ('ticker', 'Ticker'), ('carteira', 'Carteira'), ('desafio', 'Desafio')].indexed) ...[
-          if (i > 0) const SizedBox(width: 6),
-          _chip(rot, _jogo == id, () => _trocar(jogo: id)),
-        ],
+  Widget _abas() => Column(children: [
+        Row(children: [
+          for (final (i, (id, rot)) in const [('trade', 'Trade'), ('ticker', 'Ticker'), ('carteira', 'Carteira')].indexed) ...[
+            if (i > 0) const SizedBox(width: 6),
+            _chip(rot, _jogo == id, () => _trocar(jogo: id)),
+          ],
+        ]),
+        const SizedBox(height: 6),
+        Row(children: [
+          for (final (i, (id, rot)) in const [('desafio', 'Desafio do dia'), ('torneio', 'Torneio'), ('semana', 'Semana 👑')].indexed) ...[
+            if (i > 0) const SizedBox(width: 6),
+            _chip(rot, _jogo == id, () => _trocar(jogo: id)),
+          ],
+        ]),
       ]);
 
   Widget _filtros() => Row(children: [
@@ -432,7 +533,8 @@ class _RankingTelaState extends State<RankingTela> {
         const SizedBox(width: 8),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${x['nome'] ?? ''}${eu ? ' (você)' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+            Text('${x['coroa'] == true ? '👑 ' : ''}${x['nome'] ?? ''}${eu ? ' (você)' : ''}',
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
             if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.6, fontWeight: FontWeight.w600, color: _lila)),
           ]),
         ),
