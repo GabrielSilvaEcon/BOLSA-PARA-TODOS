@@ -7,6 +7,7 @@ import 'animacoes.dart';
 import 'api.dart';
 import 'arte_cartao.dart';
 import 'navegacao.dart';
+import 'tour.dart';
 
 /// Aprender (a Jornada do app antigo: jornada.py e jornada_player.py): trilha de unidades com lições curtas no estilo Duolingo.
 /// Nada fica trancado; o erro volta ao fim da fila (sem vidas) e vai para a revisão. XP só por estudar.
@@ -58,9 +59,18 @@ class _AprenderTelaState extends State<AprenderTela> {
         builder: (_) => LicaoTela(api: widget.api, licao: lid),
       ),
     );
-    _carregar();
+    await _carregar();
     saldoMudou.value++; // XP e moedas novos no cabeçalho
+    // tour guiado: a lição voltou concluída
+    for (final u in ((_d?['mapa'] as List?) ?? const []).cast<Map>()) {
+      for (final l in ((u['licoes'] as List?) ?? const []).cast<Map>()) {
+        if ('${l['id']}' == lid && l['estado'] == 'concluida') Tour.evento('licao');
+      }
+    }
   }
+
+  /// Marca um elemento para o tour guiado (sem id, devolve o próprio elemento).
+  Widget _alvo(String? id, Widget w) => id == null ? w : TourAlvo(id: id, child: w);
 
   Future<void> _aula(String aid) => Navigator.of(context).push(
         MaterialPageRoute(
@@ -305,7 +315,7 @@ class _AprenderTelaState extends State<AprenderTela> {
     final feita = est == 'concluida', prox = est == 'proxima';
     final img = _iconeLicao['${l['id']}'];
     final anel = feita ? const Color(0xFFF2B84B) : (prox ? const Color(0xFF2EE88A) : const Color(0xFF4F7BFF));
-    final bola = Pressionavel(
+    final bola = _alvo(prox ? 'aprender_proxima' : null, Pressionavel(
       aoTocar: () => _opcoes(l),
       child: Stack(
         clipBehavior: Clip.none,
@@ -351,7 +361,7 @@ class _AprenderTelaState extends State<AprenderTela> {
             ),
         ],
       ),
-    );
+    ));
     return Column(
       children: [
         prox ? _Pulsando(cor: const Color(0xFF12A83C), child: bola) : bola,

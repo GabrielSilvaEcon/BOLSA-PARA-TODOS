@@ -7,6 +7,7 @@ import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade;
 import 'arte_cartao.dart';
+import 'tour.dart';
 
 /// Mercado (botão Mercado da Home; a área Analisar do app antigo): Mercado hoje, busca de empresas, tipos de ativo e ações
 /// populares. Cada ação abre a AcaoTela com preço, gráfico, resumo em palavras simples, preço justo e indicadores.
@@ -132,6 +133,7 @@ class _MercadoTelaState extends State<MercadoTela> {
   @override
   void initState() {
     super.initState();
+    Tour.evento('tela_mercado');
     _carregar();
   }
 
@@ -229,7 +231,8 @@ class _MercadoTelaState extends State<MercadoTela> {
                   _titulo('Explorar por tipo', ic: Icons.explore_rounded),
                   Entrada(ordem: 2, child: _tipos(((d['tipos'] as List?) ?? const []).cast<Map>())),
                   KeyedSubtree(key: _chaveAcoes, child: _titulo('Ações populares', ic: Icons.local_fire_department_rounded)),
-                  for (final (i, e) in ((d['populares'] as List?) ?? const []).cast<Map>().indexed) Entrada(ordem: 3 + i, child: _linhaEmpresa(e)),
+                  for (final (i, e) in ((d['populares'] as List?) ?? const []).cast<Map>().indexed)
+                    Entrada(ordem: 3 + i, child: i == 0 ? TourAlvo(id: 'mercado_acao', child: _linhaEmpresa(e)) : _linhaEmpresa(e)),
                   if (((d['criptos'] as List?) ?? const []).isNotEmpty) ...[
                     KeyedSubtree(key: _chaveCripto, child: _titulo('Criptomoedas', ic: Icons.currency_bitcoin_rounded)),
                     for (final (i, e) in ((d['criptos'] as List?) ?? const []).cast<Map>().indexed) Entrada(ordem: 4 + i, child: _linhaEmpresa(e)),
@@ -455,6 +458,7 @@ class _AcaoTelaState extends State<AcaoTela> {
   @override
   void initState() {
     super.initState();
+    Tour.evento('tela_acao');
     _carregar();
   }
 
@@ -524,7 +528,8 @@ class _AcaoTelaState extends State<AcaoTela> {
                   const SizedBox(height: 10),
                   Entrada(ordem: 1, child: _grafico()),
                   _titulo('Em palavras simples', ic: Icons.lightbulb_rounded),
-                  for (final (i, c) in ((d['resumo'] as List?) ?? const []).cast<Map>().indexed) Entrada(ordem: 2 + i, child: _cartaoResumo(c)),
+                  for (final (i, c) in ((d['resumo'] as List?) ?? const []).cast<Map>().indexed)
+                    Entrada(ordem: 2 + i, child: i < 2 ? TourAlvo(id: i == 0 ? 'acao_preco' : 'acao_saude', child: _cartaoResumo(c)) : _cartaoResumo(c)),
                   _titulo('Preço justo', ic: Icons.gps_fixed_rounded),
                   Entrada(ordem: 5, child: _precoJusto((d['preco_justo'] as Map?) ?? const {})),
                   _titulo('Indicadores', ic: Icons.analytics_rounded),

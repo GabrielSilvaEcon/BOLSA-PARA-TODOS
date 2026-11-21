@@ -4,6 +4,7 @@ import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade;
 import 'arte_cartao.dart';
+import 'tour.dart';
 
 /// Central de Ajuda (atalho da aba Jogos): perguntas frequentes sobre cada parte do app novo e o glossário de termos do mercado
 /// (o mesmo glossário central do app antigo, vindo do servidor). Uma busca filtra as perguntas e os termos ao mesmo tempo.
@@ -167,6 +168,33 @@ class _AjudaTelaState extends State<AjudaTela> {
                     hintText: 'Busque: ranking, preço justo, P/L…',
                     hintStyle: TextStyle(color: Color(0xFF93ADD6), fontWeight: FontWeight.w500),
                   ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // tour guiado do primeiro acesso, de novo (os prêmios já recebidos não se repetem)
+              Pressionavel(
+                aoTocar: () {
+                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  Tour.rever();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: const LinearGradient(colors: [Color(0xFF1A3A80), Color(0xFF0B1A47)]),
+                    border: Border.all(color: const Color(0xFFF7C84A), width: 1.6),
+                  ),
+                  child: Row(children: [
+                    Image.asset('assets/home/urso_joinha.webp', height: 46),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Rever o tour guiado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFF7C84A))),
+                        Text('O Hunter mostra de novo o caminho: aprender, analisar, comprar e jogar.', style: TextStyle(fontSize: 12.5, color: Colors.white)),
+                      ]),
+                    ),
+                    const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFF7C84A), size: 32),
+                  ]),
                 ),
               ),
               for (final (secao, ic, cor, arte, perguntas) in _faq)

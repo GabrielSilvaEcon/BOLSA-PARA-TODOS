@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'alertas.dart';
 import 'api.dart';
 import 'navegacao.dart';
+import 'tour.dart';
 
 /// Cabeçalho fixo do app, no visual da arte do jogo: barra roxa com moldura dourada e cantos recortados.
 ///   · avatar no aro dourado com a coroa + "Nível N" + barra de XP
@@ -140,7 +141,7 @@ class CabecalhoState extends State<Cabecalho> {
             // moedas
             Expanded(
               flex: 96,
-              child: _caixa(
+              child: TourAlvo(id: 'cab_moedas', child: _caixa(
                 icone: 'assets/home/ic_moeda.webp',
                 texto: Text.rich(
                   TextSpan(children: [
@@ -150,7 +151,7 @@ class CabecalhoState extends State<Cabecalho> {
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
                 mais: () => abrirAba(4),
-              ),
+              )),
             ),
             const SizedBox(width: 5),
             // troféus (do jogo em que está melhor)
