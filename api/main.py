@@ -1854,10 +1854,19 @@ def home(q: Quem = Depends(quem)) -> dict:
         import trofeus as TF
         doc = _trof_meu(q)
         jogo = max(TF.JOGOS, key=lambda j: doc[j]["t"])
-        comp = {"jogo": jogo, "t": doc[jogo]["t"], "divisao": TF.divisao(doc[jogo]["t"]), "desafio_max": doc.get("dsd_max")}
+        comp = {"jogo": jogo, "t": doc[jogo]["t"], "divisao": TF.divisao(doc[jogo]["t"]), "desafio_max": doc.get("dsd_max"),
+                "jogos": {j: {"t": doc[j]["t"], "divisao": TF.divisao(doc[j]["t"])} for j in TF.JOGOS}}
+        st = _torneio_status()
+        t = doc.get("trn") or {}
+        trn = {"aberto": st["aberto"], "segundos": st.get("segundos"), "inscrito": bool(t.get("id") == st["id"] and t.get("insc"))}
     except Exception:
-        comp = None
-    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen, "desafio": dsd, "competicao": comp}
+        comp, trn = None, None
+    try:                                                   # pedidos de amizade esperando resposta (bolinha no botão Amigos)
+        import amigos as AM
+        pedidos = sum(1 for r in (banco.social_relacoes(q.ator) or {}).values() if r.get("estado") == AM.RECEBIDA)
+    except Exception:
+        pedidos = 0
+    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen, "desafio": dsd, "competicao": comp, "torneio": trn, "amigos": {"pedidos": pedidos}}
 
 
 # ------------------------------------------------------------------ Histórico de partidas e Missões

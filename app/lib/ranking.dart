@@ -11,8 +11,11 @@ import 'navegacao.dart';
 /// abaixo, Trade Battle e Ticker Battle por troféus da temporada e a Carteira pelo retorno (geral, mês, semana ou risco),
 /// cada um com Geral ou Amigos, pódio, sua posição e a classificação. Troféus só mudam em partidas online.
 class RankingTela extends StatefulWidget {
-  const RankingTela({super.key, required this.api});
+  const RankingTela({super.key, required this.api, this.unico});
   final Api api;
+
+  /// Abre só um ranking, sem as abas e com o botão de voltar (o Torneio, que mora na tela inicial).
+  final String? unico;
 
   @override
   State<RankingTela> createState() => _RankingTelaState();
@@ -35,12 +38,13 @@ class _RankingTelaState extends State<RankingTela> {
   @override
   void initState() {
     super.initState();
-    final p = rankingPedido.value;
+    if (widget.unico != null) _jogo = widget.unico!;
+    final p = widget.unico != null ? null : rankingPedido.value;
     if (p != null) {
       _jogo = p;
       rankingPedido.value = null;
     }
-    rankingPedido.addListener(_pedido);
+    if (widget.unico == null) rankingPedido.addListener(_pedido);
     _carregar();
   }
 
@@ -136,6 +140,11 @@ class _RankingTelaState extends State<RankingTela> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
                   children: [
+                    if (widget.unico != null)
+                      Row(children: [
+                        IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
+                        const Text('Torneio de fim de semana', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
+                      ]),
                     if ((_jogo == 'trade' || _jogo == 'ticker') && _t != null) Entrada(ordem: 0, child: _minhaDivisao()),
                     if (_jogo == 'desafio') Entrada(ordem: 0, child: Image.asset('assets/ranking/desafio_titulo.webp', height: 170)),
                     if (_jogo == 'torneio') Entrada(ordem: 0, child: _torneio()),
@@ -147,8 +156,10 @@ class _RankingTelaState extends State<RankingTela> {
                       ),
                     if (_jogo == 'carteira') ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset('assets/jogos/banner_ranking.webp', fit: BoxFit.cover)),
                     const SizedBox(height: 10),
-                    _abas(),
-                    const SizedBox(height: 8),
+                    if (widget.unico == null) ...[
+                      _abas(),
+                      const SizedBox(height: 8),
+                    ],
                     if (_jogo != 'semana') _filtros(),
                     const SizedBox(height: 10),
                     if (_carregando && _d == null)
@@ -403,7 +414,7 @@ class _RankingTelaState extends State<RankingTela> {
         ]),
         const SizedBox(height: 6),
         Row(children: [
-          for (final (i, (id, rot)) in const [('desafio', 'Desafio do dia'), ('torneio', 'Torneio'), ('semana', 'Semana 👑')].indexed) ...[
+          for (final (i, (id, rot)) in const [('desafio', 'Desafio do dia'), ('semana', 'Semana 👑')].indexed) ...[
             if (i > 0) const SizedBox(width: 6),
             _chip(rot, _jogo == id, () => _trocar(jogo: id)),
           ],
