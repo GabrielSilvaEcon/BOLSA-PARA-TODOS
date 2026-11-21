@@ -1763,3 +1763,227 @@ def ajuda_glossario(q: Quem = Depends(quem)) -> dict:
     """Os termos do glossário central do app (o mesmo dos tooltips do app antigo): o que é e para que serve."""
     import glossario as GL
     return {"termos": [{"termo": k, "oque": v[0], "pra_que": v[1]} for k, v in sorted(GL.GLOSSARIO.items(), key=lambda x: x[0].lower())]}
+
+
+# ------------------------------------------------------------------ Social (atalho Amigos da aba Jogos): amigos, pedidos, classificação e desafios
+# As regras são as do app antigo (amigos.py + banco.py, seção "Amigos"): tudo parte da conta logada, a outra ponta é um hash de conta
+# (nunca o e-mail) que só o servidor resolve, e bloqueio esconde os perfis nos dois sentidos.
+class SocialAlvo(BaseModel):
+    h: str
+
+
+class SocialPedido(BaseModel):
+    usuario: str
+
+
+class SocialResposta(BaseModel):
+    h: str
+    aceitar: bool
+
+
+class SocialDenuncia(BaseModel):
+    h: str
+    motivo: str
+    texto: str = ""
+
+
+class SocialDesafio(BaseModel):
+    h: str
+    jogo: str                     # trade | ticker
+    corrida: str | None = None    # só no Trade Battle (padrão: a primeira duração do jogo)
+
+
+def _social_erro(fn, *a):
+    import amigos as AM
+    try:
+        return fn(*a)
+    except (AM.ErroAmigos, ValueError) as e:
+        raise HTTPException(400, str(e) or "Pedido inválido.")
+    except banco.SemPermissao as e:
+        raise HTTPException(403, str(e))
+
+
+def _social_cartao(h: str, email: str, doc: dict, placares: dict, ativos: dict, amigo: bool) -> dict | None:
+    """Linha da lista: nome, @usuario, avatar, nível (se mostra), atividade (só amigos) e o placar dos dois jogos (se mostra)."""
+    import amigos as AM
+    import perfis as PF
+    from datetime import datetime, timezone
+    p = PF.sanear(doc)
+    if not p["usuario"]:
+        return None
+    pv = p["privacidade"]
+    x = {"h": h, "usuario": p["usuario"], "nome": p["nome"] or p["usuario"], "avatar_img": _avatar_img(p["avatar"] if p["avatar"] != PF.FOTO else PF.AVATAR_PADRAO)}
+    if pv["mostrar_nivel"]:
+        try:
+            x["nivel"] = NV.nivel_de(PF.progresso((banco.sis_dados_de(email) or {}).get("edu_progresso"))["xp"])
+        except Exception:
+            x["nivel"] = None
+    if amigo:
+        x["atividade"] = AM.atividade(ativos.get(email), datetime.now(timezone.utc))
+    if pv["mostrar_jogos"]:
+        d = J.sanear(placares.get(email))
+        x["trade"] = {"pts": d[J.TRADE]["pts"], "vitorias": d[J.TRADE]["vitorias"], "partidas": d[J.TRADE]["partidas"]}
+        x["ticker"] = {"v": d[J.TICKER]["v"], "e": d[J.TICKER]["e"], "d": d[J.TICKER]["d"]}
+    return x
+
+
+@app.get("/social")
+def social(q: Quem = Depends(quem)) -> dict:
+    """Tudo da tela Social: eu, amigos (com atividade e placar), pedidos recebidos e enviados e convites para jogar ainda válidos."""
+    import amigos as AM
+    from datetime import datetime, timedelta, timezone
+    a = q.ator
+    rel = _social_erro(banco.social_relacoes, a)
+    mapa = banco.sis_perfis_por_hash()
+    placares = {r["email"]: r["dados"] for r in banco.sis_comp_todos(J.CH_PLACAR)}
+    try:
+        ativos = banco.sis_ativos_desde((datetime.now(timezone.utc) - timedelta(days=7)).isoformat(timespec="seconds"))
+    except Exception:
+        ativos = {}
+    eu_h = banco._h_conta(q.email)
+    out = {"eu": None, "amigos": [], "recebidos": [], "enviados": [], "convites": []}
+    if eu_h in mapa:
+        out["eu"] = _social_cartao(eu_h, q.email, mapa[eu_h][1], placares, ativos, False)
+    for h, r in rel.items():
+        if h not in mapa:
+            continue
+        c = _social_cartao(h, mapa[h][0], mapa[h][1], placares, ativos, r["estado"] == AM.AMIGOS)
+        if c:
+            {AM.AMIGOS: out["amigos"], AM.RECEBIDA: out["recebidos"], AM.ENVIADA: out["enviados"]}[r["estado"]].append(c)
+    try:
+        for cv in banco.convites_recebidos(a):
+            de = next((x for x in out["amigos"] if x["h"] == cv["h"]), None)
+            if de:
+                out["convites"].append({"h": cv["h"], "usuario": de["usuario"], "nome": de["nome"], "avatar_img": de["avatar_img"],
+                                        "jogo": cv["jogo"], "jogo_nome": AM.JOGOS_CONVITE.get(cv["jogo"], cv["jogo"]), "codigo": cv["codigo"]})
+    except Exception:
+        pass
+    return out
+
+
+@app.get("/social/buscar")
+def social_buscar(texto: str = "", q: Quem = Depends(quem)) -> dict:
+    """Jogadores pelo nome ou @usuario (sem quem bloqueou ou foi bloqueado, sem perfis invisíveis e sem a própria conta)."""
+    import amigos as AM
+    import perfis as PF
+    t = (texto or "").strip()[:30]
+    if len(t.lstrip("@")) < 2:
+        return {"itens": []}
+    a = q.ator
+    eu = banco._h_conta(q.email)
+    rel = _social_erro(banco.social_relacoes, a)
+    esconder = set(banco.social_bloqueados(a)) | banco.social_bloqueado_por(a) | {eu}
+    itens = []
+    for h, (email, doc) in banco.sis_perfis_por_hash().items():
+        p = PF.sanear(doc)
+        if h in esconder or not p["usuario"] or p["privacidade"]["visivel"] == "ninguem":
+            continue
+        itens.append({"h": h, "usuario": p["usuario"], "nome": p["nome"] or p["usuario"],
+                      "avatar_img": _avatar_img(p["avatar"] if p["avatar"] != PF.FOTO else PF.AVATAR_PADRAO),
+                      "estado": (rel.get(h) or {}).get("estado")})
+    return {"itens": AM.buscar(itens, t)[:15]}
+
+
+@app.post("/social/pedir")
+def social_pedir(d: SocialPedido, q: Quem = Depends(quem)) -> dict:
+    r = _social_erro(banco.amigo_pedir, q.ator, d.usuario.strip().lstrip("@"))
+    return {"ok": True, "resultado": r, "msg": "Agora vocês são amigos!" if r == "aceito" else "Pedido de amizade enviado."}
+
+
+@app.post("/social/responder")
+def social_responder(d: SocialResposta, q: Quem = Depends(quem)) -> dict:
+    if not _social_erro(banco.amigo_responder, q.ator, d.h, d.aceitar):
+        raise HTTPException(400, "Esse pedido não existe mais.")
+    return {"ok": True}
+
+
+@app.post("/social/remover")
+def social_remover(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
+    """Desfaz a amizade, cancela o pedido enviado ou recusa o recebido."""
+    _social_erro(banco.amigo_remover, q.ator, d.h)
+    return {"ok": True}
+
+
+@app.post("/social/bloquear")
+def social_bloquear(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
+    _social_erro(banco.bloquear, q.ator, d.h)
+    return {"ok": True}
+
+
+@app.post("/social/denunciar")
+def social_denunciar(d: SocialDenuncia, q: Quem = Depends(quem)) -> dict:
+    ok = _social_erro(banco.denunciar, q.ator, d.h, d.motivo, d.texto)
+    return {"ok": True, "msg": "Denúncia enviada. Obrigado por avisar." if ok else "Você já denunciou este perfil hoje."}
+
+
+@app.get("/social/perfil/{h}")
+def social_perfil(h: str, q: Quem = Depends(quem)) -> dict:
+    """Perfil de outro jogador, filtrado pela privacidade dele (perfis.publico; amigos veem mais)."""
+    import amigos as AM
+    import perfis as PF
+    par = banco.sis_perfis_por_hash().get(str(h))
+    if not par:
+        raise HTTPException(404, "Jogador não encontrado.")
+    email, doc = par
+    alvo = _social_erro(banco.perfil_alvo, q.ator, PF.sanear(doc)["usuario"])
+    if not alvo:
+        raise HTTPException(404, "Este perfil não está disponível.")
+    amigo = alvo["rel"] == AM.AMIGOS
+    p = PF.sanear(doc)
+    if not alvo["completo"]:
+        return {**PF.restrito(doc), "h": h, "rel": alvo["rel"], "avatar_img": _avatar_img(PF.restrito(doc)["avatar"]), "restrito": True}
+    prog = PF.progresso((banco.sis_dados_de(email) or {}).get("edu_progresso"))
+    try:
+        placar = J.sanear(banco.sis_comp_todos(J.CH_PLACAR) and next((r["dados"] for r in banco.sis_comp_todos(J.CH_PLACAR) if r["email"] == email), None))
+    except Exception:
+        placar = J.sanear(None)
+    pub = PF.publico(doc, "", prog, PF.jogos(placar, None, None), amigo=amigo, estat=J.estatisticas(placar)) or PF.restrito(doc)
+    av = p["avatar"] if p["avatar"] != PF.FOTO else PF.AVATAR_PADRAO
+    return {**{k: v for k, v in pub.items() if k != "foto"}, "h": h, "rel": alvo["rel"], "avatar_img": _avatar_img(av), "restrito": False}
+
+
+@app.post("/social/desafiar")
+def social_desafiar(d: SocialDesafio, q: Quem = Depends(quem)) -> dict:
+    """Batalha amistosa: cria a sala privada pelo fluxo normal do jogo e manda o convite ao amigo. Devolve a sala para o app abrir."""
+    import amigos as AM
+    rel = (_social_erro(banco.social_relacoes, q.ator).get(d.h) or {}).get("estado")
+    if rel != AM.AMIGOS:
+        raise HTTPException(400, "Você só pode desafiar amigos.")
+    if d.jogo == "trade":
+        corrida = d.corrida if d.corrida in TB.CORRIDAS else NovaSala().corrida
+        s = _sala(OL.criar_sala, q.email, TB.CORRIDAS[corrida]["tf"], _agora(), TB.FORMATO_PADRAO, corrida)
+        sid = s.get("id")
+        cod = (s.get("sala") or {}).get("codigo") or s.get("codigo") or ""
+    elif d.jogo == "ticker":
+        import battle_online_dados as BOD
+        s = _tk_on(BOD.criar_sala, q.email)
+        sid, cod = s.get("id"), s.get("codigo") or ""
+    else:
+        raise HTTPException(400, "Jogo inválido.")
+    if not cod:
+        raise HTTPException(400, "Você já está em uma partida em andamento. Termine ou saia dela para desafiar.")
+    _social_erro(banco.convite_jogo_enviar, q.ator, d.h, d.jogo, cod)
+    return {"jogo": d.jogo, "id": sid, "codigo": cod}
+
+
+@app.post("/social/convite/entrar")
+def social_convite_entrar(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
+    """Entra na sala do amigo que mandou o convite (pelo "entrar com código" de cada jogo) e apaga o convite."""
+    cv = next((c for c in _social_erro(banco.convites_recebidos, q.ator) if c["h"] == d.h), None)
+    if not cv:
+        raise HTTPException(400, "Esse convite expirou.")
+    try:
+        if cv["jogo"] == "trade":
+            s = _sala(OL.entrar_na_sala, q.email, cv["codigo"], _agora())
+        else:
+            import battle_online_dados as BOD
+            s = _tk_on(BOD.entrar_na_sala, q.email, cv["codigo"])
+    finally:
+        banco.convite_apagar(q.ator, d.h)
+    return {"jogo": cv["jogo"], "id": s.get("id")}
+
+
+@app.post("/social/convite/recusar")
+def social_convite_recusar(d: SocialAlvo, q: Quem = Depends(quem)) -> dict:
+    _social_erro(banco.convite_apagar, q.ator, d.h)
+    return {"ok": True}
