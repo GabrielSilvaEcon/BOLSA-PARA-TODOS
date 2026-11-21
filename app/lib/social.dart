@@ -10,6 +10,19 @@ import 'ticker.dart';
 import 'ticker_online.dart';
 import 'trade.dart';
 
+/// Desafio PvP direto a um amigo, de qualquer tela (ex.: Revanche no fim da partida): abre a espera "VS" e, se ele aceitar,
+/// a partida (Trade Battle na sala, Ticker Battle no duelo online).
+Future<void> desafiarAmigo(BuildContext context, Api api, Map amigo, String jogo, {Object? euImg}) async {
+  final nav = Navigator.of(context, rootNavigator: true);
+  final msg = ScaffoldMessenger.maybeOf(context);
+  final r = await nav.push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: api, amigo: amigo, jogo: jogo, euImg: euImg)));
+  if (r != null && r['estado'] == 'aceito' && r['id'] != null) {
+    await nav.push(MaterialPageRoute(builder: (_) => r['jogo'] == 'trade' ? SalaTela(api: api, salaId: '${r['id']}') : PartidaOnlineTela(api: api, pid: '${r['id']}')));
+  } else if (r != null && r['msg'] != null) {
+    msg?.showSnackBar(SnackBar(content: Text('${r['msg']}')));
+  }
+}
+
 /// Social (atalho Amigos da aba Jogos): convites para jogar e pedidos de amizade no topo; a lista dos amigos em "On-line" (ativos hoje)
 /// e "Classificação" (pontos do Trade Battle ou vitórias do Ticker Battle, com você no meio); tocar num amigo abre um balão com
 /// Ver perfil e Batalha amistosa (cria a sala privada e manda o convite). Embaixo: Jogo rápido e Adicionar amigos.
@@ -365,8 +378,20 @@ class _SocialTelaState extends State<SocialTela> {
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(eu ? '${a['nome']} (você)' : '${a['nome']}',
+            Text('${a['coroa'] == true ? '👑 ' : ''}${eu ? '${a['nome']} (você)' : '${a['nome']}'}',
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF2A1A6E))),
+            if (a['rival'] == true || a['h2h'] is Map)
+              Row(children: [
+                if (a['rival'] == true)
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), color: const Color(0xFFE5243B)),
+                    child: const Text('RIVAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white)),
+                  ),
+                if (a['h2h'] is Map)
+                  Text('Você ${(a['h2h'] as Map)['v'] ?? 0} × ${(a['h2h'] as Map)['d'] ?? 0}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF6A3BE0))),
+              ]),
             Text(['@${a['usuario']}', if (a['nivel'] != null) 'Nível ${a['nivel']}'].join(' · '),
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9A6A10))),
           ]),

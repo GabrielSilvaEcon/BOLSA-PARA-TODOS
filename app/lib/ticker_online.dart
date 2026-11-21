@@ -727,7 +727,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
     if (!_trofMostrado && v['trofeus'] is Map) {
       _trofMostrado = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ResultadoTrofeusTela.abrir(context, v['trofeus'] as Map);
+        if (mounted) ResultadoTrofeusTela.abrir(context, v['trofeus'] as Map, api: widget.api);
       });
     }
     final f = (v['final'] as Map?) ?? const {};

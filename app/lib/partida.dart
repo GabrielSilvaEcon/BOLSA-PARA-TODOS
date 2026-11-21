@@ -125,7 +125,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       final tr = _fimDados?['trofeus'];
       if (tr is Map && mounted) {
         // partida online: primeiro a tela de troféus (vitória/derrota e a barra da divisão), depois o relatório
-        ResultadoTrofeusTela.abrir(context, tr).then((_) {
+        ResultadoTrofeusTela.abrir(context, tr, api: widget.api).then((_) {
           if (mounted) _abrirResultado();
         });
         return;
