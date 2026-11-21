@@ -30,7 +30,6 @@ class Cabecalho extends StatefulWidget {
 Map<String, dynamic>? euInicial;
 
 const _ouro = Color(0xFFFFC93C);
-const _ouroEscuro = Color(0xFFE9A80C);
 
 class CabecalhoState extends State<Cabecalho> {
   Map<String, dynamic>? _eu = euInicial;
@@ -69,45 +68,33 @@ class CabecalhoState extends State<Cabecalho> {
     final nivel = _eu?['nivel'] as Map?;
     final pct = ((nivel?['pct'] as num?) ?? 0).toDouble().clamp(0.0, 1.0);
     final moedas = _eu?['moedas'];
-    final pos = ((_eu?['ranking'] as Map?) ?? const {})['pos'];
+    final trofeus = _eu?['trofeus'];
     final alertas = _eu?['alertas'];
     final nAlertas = alertas is num ? alertas.toInt() : 0;
+    final noNivel = nivel?['xp_no_nivel'], faixa = nivel?['xp_faixa'];
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 16, 6, 8),
+      padding: const EdgeInsets.fromLTRB(8, 18, 8, 8),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1C0E55), Color(0xFF0E0B2E)],
-        ),
+        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF0A1A45), Color(0xFF0E2560)]),
+        border: Border(bottom: BorderSide(color: Color(0x553A6FD8))),
       ),
-      child: Container(
-        height: 58,
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
-        decoration: ShapeDecoration(
-          shape: const BeveledRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-            side: BorderSide(color: _ouroEscuro, width: 2),
-          ),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF4B2AB8), Color(0xFF2A1680)],
-          ),
-          shadows: const [BoxShadow(color: Color(0x88FFB020), blurRadius: 14, spreadRadius: -4)],
-        ),
+      child: SizedBox(
+        height: 52,
         child: Row(
           children: [
-            // nível: avatar no aro dourado com a coroa, "Nível N" e a barra de XP
+            // nível: avatar no aro dourado com a coroa, "Nível N", barra de XP e "xp / próximo"
             Expanded(
               flex: 150,
               child: GestureDetector(
                 onTap: _falhou ? atualizar : widget.abrirPerfil,
-                child: Row(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.centerLeft,
                   children: [
-                    _avatar(_eu?['avatar_img']),
-                    const SizedBox(width: 6),
-                    Expanded(
+                    Container(
+                      margin: const EdgeInsets.only(left: 22),
+                      padding: const EdgeInsets.fromLTRB(32, 4, 10, 4),
+                      decoration: _pilula(),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,144 +103,114 @@ class CabecalhoState extends State<Cabecalho> {
                             nivel == null ? (_falhou ? 'Toque p/ atualizar' : 'Nível —') : 'Nível ${nivel['nivel']}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 15, height: 1, fontWeight: FontWeight.w900, color: Colors.white),
+                            style: const TextStyle(fontSize: 14, height: 1, fontWeight: FontWeight.w900, color: Colors.white),
                           ),
                           const SizedBox(height: 5),
-                          Container(
-                            height: 9,
-                            alignment: Alignment.centerLeft,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF120A3A),
-                              borderRadius: BorderRadius.circular(99),
-                              border: Border.all(color: const Color(0xFF6B4BE0)),
-                            ),
-                            child: FractionallySizedBox(
-                              widthFactor: pct,
+                          Row(children: [
+                            Expanded(
                               child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(99),
-                                  gradient: const LinearGradient(colors: [Color(0xFF16E0FF), Color(0xFF7CF7FF)]),
+                                height: 8,
+                                alignment: Alignment.centerLeft,
+                                decoration: BoxDecoration(color: const Color(0xFF061131), borderRadius: BorderRadius.circular(99), border: Border.all(color: const Color(0xFF2B4F9E))),
+                                child: FractionallySizedBox(
+                                  widthFactor: pct,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(99),
+                                      gradient: const LinearGradient(colors: [Color(0xFF2F7BFF), Color(0xFF5BC8FF)]),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                            if (noNivel is num && faixa is num && faixa > 0) ...[
+                              const SizedBox(width: 5),
+                              Text('${_inteiro(noNivel)}/${_inteiro(faixa)}', style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: Color(0xFFD6E2FF))),
+                            ],
+                          ]),
                         ],
                       ),
                     ),
+                    _avatar(_eu?['avatar_img']),
                   ],
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 5),
             // moedas
             Expanded(
-              flex: 112,
+              flex: 96,
               child: _caixa(
-                child: Row(
-                  children: [
-                    Image.asset('assets/cabecalho/moedas.webp', width: 28, height: 28),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: moedas is num ? _inteiro(moedas) : '—',
-                                style: const TextStyle(fontSize: 19, color: _ouro),
-                              ),
-                              const TextSpan(text: ' TC', style: TextStyle(fontSize: 13, color: Colors.white)),
-                            ],
-                          ),
-                          style: const TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
-                    _mais(() => abrirAba(4)),
-                  ],
+                icone: 'assets/home/ic_moeda.webp',
+                texto: Text.rich(
+                  TextSpan(children: [
+                    TextSpan(text: moedas is num ? _inteiro(moedas) : '—', style: const TextStyle(fontSize: 17, color: Colors.white)),
+                    const TextSpan(text: ' tc', style: TextStyle(fontSize: 13, color: Colors.white)),
+                  ]),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
+                mais: () => abrirAba(4),
               ),
             ),
-            const SizedBox(width: 4),
-            // ranking
+            const SizedBox(width: 5),
+            // troféus (do jogo em que está melhor)
             Expanded(
-              flex: 100,
+              flex: 92,
               child: _caixa(
-                child: Row(
-                  children: [
-                    Image.asset('assets/cabecalho/touro.webp', width: 28, height: 28),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          pos == null ? '—' : '#$pos',
-                          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: _ouro),
-                        ),
-                      ),
-                    ),
-                    _mais(() => abrirAba(3)),
-                  ],
-                ),
+                icone: 'assets/home/ic_trofeu.webp',
+                texto: Text(trofeus is num ? _inteiro(trofeus) : '—', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: _ouro)),
+                mais: () => abrirAba(3),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
             // sino
             SizedBox(
-              width: 46,
+              width: 38,
               child: Stack(
                 clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
-                  Positioned.fill(
-                    child: Container(
-                      decoration: ShapeDecoration(
-                        shape: const BeveledRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8)),
-                          side: BorderSide(color: Color(0xFF8B6CFF), width: 1.5),
-                        ),
-                        color: const Color(0xFF2E1890),
-                      ),
-                      child: IconButton(
-                        tooltip: 'Alertas',
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.notifications_none_rounded, size: 30, color: Colors.white),
-                        onPressed: () async {
-                          if (widget.abrirAlertas != null) {
-                            await widget.abrirAlertas!();
-                          } else {
-                            await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AlertasTela(api: widget.api)));
-                          }
-                          atualizar();
-                        },
+                  GestureDetector(
+                    onTap: () async {
+                      if (widget.abrirAlertas != null) {
+                        await widget.abrirAlertas!();
+                      } else {
+                        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AlertasTela(api: widget.api)));
+                      }
+                      atualizar();
+                    },
+                    child: Semantics(
+                      button: true,
+                      label: 'Alertas',
+                      child: ShaderMask(
+                        blendMode: BlendMode.srcIn,
+                        shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.white, Color(0xFF9CC4FF)]).createShader(r),
+                        child: const Icon(Icons.notifications_rounded, size: 36, shadows: [Shadow(color: Color(0xAA000000), offset: Offset(0, 2), blurRadius: 3)]),
                       ),
                     ),
                   ),
                   if (nAlertas > 0)
                     Positioned(
-                      top: -8,
-                      right: -4,
+                      top: 2,
+                      right: -2,
                       child: IgnorePointer(
                         child: Container(
-                          constraints: const BoxConstraints(minWidth: 20),
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE53950),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
-                          child: Text(
-                            nAlertas > 99 ? '99+' : '$nAlertas',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
-                          ),
+                          constraints: const BoxConstraints(minWidth: 18),
+                          height: 18,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(color: const Color(0xFFE5243B), borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white, width: 1.5)),
+                          child: Text(nAlertas > 9 ? '9+' : '$nAlertas', style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900)),
                         ),
                       ),
                     ),
                 ],
               ),
+            ),
+            // engrenagem: perfil e configurações
+            GestureDetector(
+              onTap: widget.abrirPerfil,
+              child: Semantics(button: true, label: 'Perfil e configurações', child: Image.asset('assets/home/ic_engrenagem.webp', width: 36, height: 36)),
             ),
           ],
         ),
@@ -261,30 +218,33 @@ class CabecalhoState extends State<Cabecalho> {
     );
   }
 
-  /// Caixa das moedas e do ranking: cantos recortados, fundo roxo e borda dourada.
-  Widget _caixa({required Widget child}) {
+  /// Cápsula azul-marinho das informações do topo (nível, moedas, troféus).
+  BoxDecoration _pilula() => BoxDecoration(
+        borderRadius: BorderRadius.circular(99),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF15306E), Color(0xFF0A1A45)]),
+        border: Border.all(color: const Color(0xFF2E5AB0), width: 1.4),
+        boxShadow: const [BoxShadow(color: Color(0x66000000), offset: Offset(0, 2), blurRadius: 4)],
+      );
+
+  /// Cápsula das moedas e dos troféus: ícone, valor e o botão verde "+".
+  Widget _caixa({required String icone, required Widget texto, required VoidCallback mais}) {
     return Container(
-      height: double.infinity,
-      padding: const EdgeInsets.fromLTRB(5, 2, 3, 2),
-      decoration: ShapeDecoration(
-        shape: const BeveledRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-          side: BorderSide(color: Color(0xCCFFB23C), width: 1.5),
-        ),
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF3A209A), Color(0xFF241270)],
-        ),
-      ),
-      child: child,
+      height: 40,
+      padding: const EdgeInsets.fromLTRB(3, 2, 3, 2),
+      decoration: _pilula(),
+      child: Row(children: [
+        Image.asset(icone, width: 30, height: 30),
+        const SizedBox(width: 3),
+        Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: texto)),
+        _mais(mais),
+      ]),
     );
   }
 
   /// Botão verde "+" da arte (abre a Loja ou o Ranking).
   Widget _mais(VoidCallback acao) => GestureDetector(
         onTap: acao,
-        child: Image.asset('assets/cabecalho/mais.webp', width: 24, height: 24),
+        child: Image.asset('assets/cabecalho/mais.webp', width: 28, height: 28),
       );
 
   /// 1234 vira "1.234".
@@ -324,8 +284,7 @@ class CabecalhoState extends State<Cabecalho> {
                 child: texto == null
                     ? mascote
                     : texto.startsWith('data:')
-                        ? Image.memory(base64Decode(texto.substring(texto.indexOf(',') + 1)), fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => mascote)
+                        ? Image.memory(base64Decode(texto.substring(texto.indexOf(',') + 1)), fit: BoxFit.cover, errorBuilder: (_, __, ___) => mascote)
                         : Image.asset('assets/$texto', fit: BoxFit.cover, errorBuilder: (_, __, ___) => mascote),
               ),
             ),

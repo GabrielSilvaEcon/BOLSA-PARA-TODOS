@@ -40,6 +40,7 @@ def test_mesmo_grafico_uma_tentativa_e_ranking(dois, monkeypatch):
     h = hm["competicao"]
     assert h["divisao"]["nome"] == "Bronze" and h["desafio_max"] == d["meu"]["nota"]       # melhor nota no topo da Home
     assert set(h["jogos"]) == {"trade", "ticker"} and h["jogos"]["ticker"]["divisao"]["nome"] == "Bronze"   # a liga dos dois jogos
+    assert ana.get("/eu").json()["trofeus"] == 0                                     # cápsula do troféu no cabeçalho
     assert set(hm["torneio"]) == {"aberto", "segundos", "inscrito"} and hm["amigos"]["pedidos"] == 0
     rk = ana.get("/desafio/ranking").json()
     assert rk["total"] == 2 and len(rk["linhas"]) == 2 and any(x["eu"] for x in rk["linhas"])
