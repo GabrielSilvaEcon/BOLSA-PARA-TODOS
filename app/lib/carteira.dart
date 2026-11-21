@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'compra.dart';
 import 'missoes.dart';
+import 'navegacao.dart';
+import 'ranking.dart';
 
 /// Carteira igual à do app antigo (carteira_game.py + carteira_visual.py), com as mesmas medidas e cores:
 ///   1. cartão "Carteira" com o valor total e a variação desde o último fechamento
@@ -663,7 +665,11 @@ class _CarteiraTelaState extends State<CarteiraTela> {
           else
             const Text('Você entra no ranking no próximo fechamento.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _lila)),
           const Spacer(),
-          _link('Ver classificação →', () => _emBreve('Classificação')),
+          _link('Ver classificação →', () {
+            rankingPedido.value = 'carteira';
+            Navigator.of(context).popUntil((r) => r.isFirst);
+            abrirAba(3);
+          }),
         ],
       ),
     );

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'animacoes.dart';
 import 'api.dart';
+import 'escudo.dart';
 import 'ticker.dart';
 
 /// Ticker Battle ONLINE: encontrar um adversário na fila ou jogar com um amigo (sala com código).
@@ -23,8 +24,7 @@ class OnlineTela extends StatefulWidget {
 class _OnlineTelaState extends State<OnlineTela> {
   bool _ocupado = false;
 
-  Future<void> _abrirPartida(String id) =>
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PartidaOnlineTela(api: widget.api, pid: id)));
+  Future<void> _abrirPartida(String id) => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PartidaOnlineTela(api: widget.api, pid: id)));
 
   Future<void> _acao(Future<void> Function() f) async {
     if (_ocupado) return;
@@ -97,7 +97,8 @@ class _OnlineTelaState extends State<OnlineTela> {
           Entrada(ordem: 3, child: _botao(Icons.login_rounded, 'Entrar com código', 'Digite o código que o amigo passou', const Color(0xFFF2B84B), _entrarCodigo)),
         ],
         const SizedBox(height: 14),
-        _caixaTexto('Como funciona online',
+        _caixaTexto(
+            'Como funciona online',
             'Os dois escolhem a carta e o indicador ao mesmo tempo, em segredo. Quando os dois confirmam, as cartas são reveladas. '
                 'Se escolheram o mesmo indicador, vence o melhor valor. Se escolheram indicadores diferentes, cada um precisa vencer o '
                 'indicador que escolheu: se só um vencer, ele leva a rodada; se os dois vencerem (ou os dois perderem), empata. '
@@ -222,17 +223,23 @@ class _Radar extends CustomPainter {
   void paint(Canvas c, Size s) {
     final o = s.center(Offset.zero), r = s.width / 2;
     for (var k = 1; k <= 3; k++) {
-      c.drawCircle(o, r * k / 3, Paint()
-        ..color = const Color(0x5526D07C)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5);
+      c.drawCircle(
+          o,
+          r * k / 3,
+          Paint()
+            ..color = const Color(0x5526D07C)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5);
     }
     final a = v * 2 * pi;
-    c.drawArc(Rect.fromCircle(center: o, radius: r), a - 0.9, 0.9, true, Paint()
-      ..shader = SweepGradient(startAngle: a - 0.9, endAngle: a, colors: const [Color(0x0026D07C), Color(0x9926D07C)]).createShader(Rect.fromCircle(center: o, radius: r)));
-    c.drawLine(o, o + Offset(cos(a), sin(a)) * r, Paint()
-      ..color = const Color(0xFF5BF5A0)
-      ..strokeWidth = 2.5);
+    c.drawArc(Rect.fromCircle(center: o, radius: r), a - 0.9, 0.9, true,
+        Paint()..shader = SweepGradient(startAngle: a - 0.9, endAngle: a, colors: const [Color(0x0026D07C), Color(0x9926D07C)]).createShader(Rect.fromCircle(center: o, radius: r)));
+    c.drawLine(
+        o,
+        o + Offset(cos(a), sin(a)) * r,
+        Paint()
+          ..color = const Color(0xFF5BF5A0)
+          ..strokeWidth = 2.5);
     final pulso = (v * 2) % 1;
     c.drawCircle(o, 10 + 18 * pulso, Paint()..color = const Color(0xFF26D07C).withValues(alpha: 0.5 * (1 - pulso)));
     c.drawCircle(o, 9, Paint()..color = const Color(0xFF26D07C));
@@ -258,6 +265,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
   bool _ocupado = false;
   String? _carta, _ind;
   int _vistas = 0; // quantas rodadas já foram reveladas na tela
+  bool _trofMostrado = false; // a tela de troféus aparece uma vez, quando o resultado aparece
   Map<String, dynamic>? _revelando;
   late final AnimationController _rev = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
 
@@ -369,7 +377,8 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
         titulo: 'Duelo Online',
         aoVoltar: _sair,
         acima: v == null || v['fase'] == 'aguardando' ? null : _topo(v),
-        child: AnimatedSwitcher(duration: const Duration(milliseconds: 300), child: KeyedSubtree(key: ValueKey('${v?['fase']}${v?['rod']}$_revelando${(v?['eu'] as Map?)?['escolha'] != null}'), child: corpo)),
+        child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300), child: KeyedSubtree(key: ValueKey('${v?['fase']}${v?['rod']}$_revelando${(v?['eu'] as Map?)?['escolha'] != null}'), child: corpo)),
       ),
     );
   }
@@ -543,13 +552,12 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
                       border: Border.all(color: _ind == i['id'] ? const Color(0xFFFFE08A) : const Color(0xFF6A4FE6), width: 1.5),
                     ),
                     child: Row(children: [
-                      Icon(iconesInd[(_meta[i['id']] as Map?)?['icone']] ?? Icons.analytics_rounded, size: 20,
-                          color: _ind == i['id'] ? const Color(0xFF2A1A00) : const Color(0xFFB59BFF)),
+                      Icon(iconesInd[(_meta[i['id']] as Map?)?['icone']] ?? Icons.analytics_rounded, size: 20, color: _ind == i['id'] ? const Color(0xFF2A1A00) : const Color(0xFFB59BFF)),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('${(_meta[i['id']] as Map?)?['nome'] ?? i['id']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontWeight: FontWeight.w900, color: _ind == i['id'] ? const Color(0xFF2A1A00) : Colors.white)),
+                          Text('${(_meta[i['id']] as Map?)?['nome'] ?? i['id']}',
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, color: _ind == i['id'] ? const Color(0xFF2A1A00) : Colors.white)),
                           Text('Você: ${i['txt']}', style: TextStyle(fontSize: 11, color: _ind == i['id'] ? const Color(0xFF3B2600) : lilas)),
                         ]),
                       ),
@@ -586,7 +594,12 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
     final op = (v['op'] as Map?) ?? const {};
     return ListView(padding: const EdgeInsets.fromLTRB(12, 8, 12, 24), children: [
       Row(children: [
-        Expanded(child: Column(children: [CartaTk(tk: '${e['tk']}', largura: 128), const SizedBox(height: 4), Text('${(_meta[e['ind']] as Map?)?['nome'] ?? e['ind']}', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFFFD66B)))])),
+        Expanded(
+            child: Column(children: [
+          CartaTk(tk: '${e['tk']}', largura: 128),
+          const SizedBox(height: 4),
+          Text('${(_meta[e['ind']] as Map?)?['nome'] ?? e['ind']}', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFFFD66B)))
+        ])),
         SizedBox(width: 62, child: Flutua(altura: 4, child: Image.asset('assets/ticker/vs.webp'))),
         Expanded(
           child: Column(children: [
@@ -599,8 +612,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
       const SizedBox(height: 16),
       const Center(child: SizedBox(width: 36, height: 36, child: CircularProgressIndicator())),
       const SizedBox(height: 8),
-      Text('Jogada confirmada! Aguardando ${op['nick'] ?? 'o adversário'}…', textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+      Text('Jogada confirmada! Aguardando ${op['nick'] ?? 'o adversário'}…', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
       const Text('Se o adversário não confirmar em 3 minutos, você vence por tempo.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, color: lilas)),
     ]);
   }
@@ -712,6 +724,12 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
 
   // ---------------------------------------------------------------- resultado
   Widget _resultado(Map v) {
+    if (!_trofMostrado && v['trofeus'] is Map) {
+      _trofMostrado = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ResultadoTrofeusTela.abrir(context, v['trofeus'] as Map);
+      });
+    }
     final f = (v['final'] as Map?) ?? const {};
     final res = '${f['resultado']}';
     final motivo = '${f['motivo']}';
@@ -753,7 +771,8 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
               CartaTk(tk: '${(r['eu'] as Map)['tk']}', largura: 40),
               const SizedBox(width: 6),
               Expanded(
-                child: Text('Rodada ${r['n']}: ${(r['cmp'] as List).map((x) => '${(x as Map)['nome']} ${r['lado'] == 'a' ? x['txt_a'] : x['txt_b']} × ${r['lado'] == 'a' ? x['txt_b'] : x['txt_a']}').join(' · ')}',
+                child: Text(
+                    'Rodada ${r['n']}: ${(r['cmp'] as List).map((x) => '${(x as Map)['nome']} ${r['lado'] == 'a' ? x['txt_a'] : x['txt_b']} × ${r['lado'] == 'a' ? x['txt_b'] : x['txt_a']}').join(' · ')}',
                     style: const TextStyle(fontSize: 12.5, color: Colors.white)),
               ),
               CartaTk(tk: '${(r['op'] as Map)['tk']}', largura: 40),
