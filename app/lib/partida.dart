@@ -227,14 +227,14 @@ class _PartidaTelaState extends State<PartidaTela> {
               height: MediaQuery.of(ctx).size.height * 0.86,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFF7A5CFF), width: 2),
+                border: Border.all(color: const Color(0xFF5C9AFF), width: 2),
                 gradient: const RadialGradient(
                   center: Alignment.topCenter,
                   radius: 1.2,
-                  colors: [Color(0xFF3B2A9E), Color(0xFF1A1258), Color(0xFF0D0A33)],
+                  colors: [Color(0xFF2A579E), Color(0xFF122E58), Color(0xFF0D0A33)],
                   stops: [0, 0.45, 1],
                 ),
-                boxShadow: const [BoxShadow(color: Color(0x8C7A5CFF), blurRadius: 30)],
+                boxShadow: const [BoxShadow(color: Color(0x8C5C9AFF), blurRadius: 30)],
               ),
               child: ClipRRect(borderRadius: BorderRadius.circular(20), child: RelatorioView(html).widget()),
             ),
@@ -242,8 +242,8 @@ class _PartidaTelaState extends State<PartidaTela> {
               top: 8,
               right: 8,
               child: Material(
-                color: const Color(0xFF4B2FD6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFB79CFF), width: 2)),
+                color: const Color(0xFF2F6FD6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF9CBFFF), width: 2)),
                 child: IconButton(
                   tooltip: 'Fechar',
                   icon: const Icon(Icons.close, color: Colors.white),
@@ -262,7 +262,7 @@ class _PartidaTelaState extends State<PartidaTela> {
   Widget build(BuildContext context) {
     if (_erroInicio != null) {
       return Scaffold(
-        backgroundColor: const Color(0xFF110C2E),
+        backgroundColor: const Color(0xFF0C192E),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -281,7 +281,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       );
     }
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0828),
+      backgroundColor: const Color(0xFF081528),
       body: Stack(
         children: [
           Positioned.fill(child: SafeArea(child: _mesa.widget())),
@@ -370,7 +370,7 @@ class _CarregandoState extends State<_Carregando> with SingleTickerProviderState
   Widget build(BuildContext context) {
     const cores = [Color(0xFF26D07C), Color(0xFFFF4D6D)];
     return ColoredBox(
-      color: const Color(0xF20B0828),
+      color: const Color(0xF2081528),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -411,7 +411,7 @@ class _CarregandoState extends State<_Carregando> with SingleTickerProviderState
                 _demorando ? 'O servidor está acordando. Na primeira partida do dia\npode levar até 1 minuto.' : 'Sorteando um gráfico real da B3.',
                 key: ValueKey(_demorando),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13.5, height: 1.35, color: Color(0xFFCFC8EE)),
+                style: const TextStyle(fontSize: 13.5, height: 1.35, color: Color(0xFFC8D6EE)),
               ),
             ),
           ],

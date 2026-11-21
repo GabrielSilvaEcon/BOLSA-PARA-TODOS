@@ -21,7 +21,7 @@ class TradeTela extends StatefulWidget {
   State<TradeTela> createState() => _TradeTelaState();
 }
 
-const _lila = Color(0xFFD9D4F7);
+const _lila = Color(0xFFD4E2F7);
 
 class _TradeTelaState extends State<TradeTela> {
   Map<String, dynamic>? _d;
@@ -53,7 +53,7 @@ class _TradeTelaState extends State<TradeTela> {
   Future<void> _criarSala() async {
     final criar = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: const Color(0xFF16104A),
+      backgroundColor: const Color(0xFF10274A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
@@ -91,7 +91,7 @@ class _TradeTelaState extends State<TradeTela> {
     final codigo = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16104A),
+        backgroundColor: const Color(0xFF10274A),
         title: const Text('Entrar em uma Sala', style: TextStyle(fontWeight: FontWeight.w900)),
         content: TextField(
           controller: campo,
@@ -125,7 +125,7 @@ class _TradeTelaState extends State<TradeTela> {
     final semGraficos = atual != null && ((atual['reais'] as num?) ?? 0) < 1;
     final ativa = _d?['ativa'] != null;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -134,7 +134,7 @@ class _TradeTelaState extends State<TradeTela> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF0A0A5A), Color(0xFF1C0870), Color(0xFF14054E), Color(0xFF050038)],
+                colors: [Color(0xFF0A0A5A), Color(0xFF082F70), Color(0xFF05204E), Color(0xFF001738)],
                 stops: [0, 0.35, 0.7, 1],
               ),
             ),
@@ -237,7 +237,7 @@ class _TradeTelaState extends State<TradeTela> {
                           style: TextStyle(fontSize: 17, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
                       SizedBox(height: 3),
                       Text('Defina o tempo da sua batalha!',
-                          style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Color(0xFFD9D4F7), shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
+                          style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Color(0xFFD4E2F7), shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
                     ],
                   ),
                 ),
@@ -252,8 +252,8 @@ class _TradeTelaState extends State<TradeTela> {
   // ---- as três durações, no visual da arte (azul, dourado e roxo). A escolhida cresce, pulsa e ganha o ✓; as outras ficam mais apagadas.
   static const _estilos = {
     'rapida': ('tb_ic_rapida', Color(0xFF3FA2FF), [Color(0xFF2050D8), Color(0xFF141C78)]),
-    'intermediaria': ('tb_ic_inter', Color(0xFFFFC93C), [Color(0xFF5B3A16), Color(0xFF2A1640)]),
-    'longa': ('tb_ic_longa', Color(0xFFB083FF), [Color(0xFF4A2BB8), Color(0xFF22126E)]),
+    'intermediaria': ('tb_ic_inter', Color(0xFFFFC93C), [Color(0xFF5B3A16), Color(0xFF162340)]),
+    'longa': ('tb_ic_longa', Color(0xFF83ACFF), [Color(0xFF2B5FB8), Color(0xFF12356E)]),
   };
 
   Widget _duracoes(List<Map<String, dynamic>> corridas) {
@@ -308,9 +308,9 @@ class _TradeTelaState extends State<TradeTela> {
                     const SizedBox(height: 1),
                     FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text('Gráfico de ${c['grafico']}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFE4DEFF))),
+                      child: Text('Gráfico de ${c['grafico']}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFDEEBFF))),
                     ),
-                    Text('~${c['minutos']} min', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFE4DEFF))),
+                    Text('~${c['minutos']} min', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFDEEBFF))),
                   ],
                 ),
               ),
@@ -370,9 +370,9 @@ class _TradeTelaState extends State<TradeTela> {
       padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF6A4FE6), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231388), Color(0xFF160B5E)]),
-        boxShadow: const [BoxShadow(color: Color(0x666A4FE6), blurRadius: 14)],
+        border: Border.all(color: const Color(0xFF4F88E6), width: 2),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF134188), Color(0xFF0B2C5E)]),
+        boxShadow: const [BoxShadow(color: Color(0x664F88E6), blurRadius: 14)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,12 +387,12 @@ class _TradeTelaState extends State<TradeTela> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF120852), border: Border.all(color: const Color(0x406A4FE6))),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF082552), border: Border.all(color: const Color(0x404F88E6))),
             child: IntrinsicHeight(
               child: Row(
                 children: [
                   for (final (i, (ic, b, t)) in itens.indexed) ...[
-                    if (i > 0) const VerticalDivider(width: 1, thickness: 1, color: Color(0x596A4FE6)),
+                    if (i > 0) const VerticalDivider(width: 1, thickness: 1, color: Color(0x594F88E6)),
                     Expanded(
                       child: Column(
                         children: [
@@ -402,7 +402,7 @@ class _TradeTelaState extends State<TradeTela> {
                             fit: BoxFit.scaleDown,
                             child: Text(b, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Colors.white)),
                           ),
-                          Text(t, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, height: 1.2, color: Color(0xFFBDB5E6))),
+                          Text(t, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, height: 1.2, color: Color(0xFFB5C8E6))),
                         ],
                       ),
                     ),
@@ -430,7 +430,7 @@ class _TradeTelaState extends State<TradeTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFF2B84B), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0x29F2B84B), Color(0xF0120C38)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0x29F2B84B), Color(0xF00C1D38)]),
       ),
       child: Row(
         children: [
@@ -441,7 +441,7 @@ class _TradeTelaState extends State<TradeTela> {
                 Text('ⓘ Gráficos em preparação', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFC93C))),
                 SizedBox(height: 4),
                 Text('Os gráficos reais desta duração ainda estão sendo preparados. Tente outra duração ou volte mais tarde.',
-                    style: TextStyle(fontSize: 12.5, height: 1.35, color: Color(0xFFEDE9FF))),
+                    style: TextStyle(fontSize: 12.5, height: 1.35, color: Color(0xFFE9F1FF))),
               ],
             ),
           ),
@@ -461,13 +461,13 @@ class _TradeTelaState extends State<TradeTela> {
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFF6A4FE6), width: 2),
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2E1CA0), Color(0xFF1C0F78)]),
-          boxShadow: const [BoxShadow(color: Color(0x806A4FE6), blurRadius: 14)],
+          border: Border.all(color: const Color(0xFF4F88E6), width: 2),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1C50A0), Color(0xFF0F3878)]),
+          boxShadow: const [BoxShadow(color: Color(0x804F88E6), blurRadius: 14)],
         ),
         child: Row(
           children: [
-            const Icon(Icons.login_rounded, size: 30, color: Color(0xFFE4DEFF)),
+            const Icon(Icons.login_rounded, size: 30, color: Color(0xFFDEEBFF)),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -477,7 +477,7 @@ class _TradeTelaState extends State<TradeTela> {
                   Text(ativa ? 'Voltar para sua sala/partida' : 'Entrar em uma Sala',
                       style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
                   if (!ativa)
-                    const Text('Digite o código de um amigo', style: TextStyle(fontSize: 12.2, fontWeight: FontWeight.w500, color: Color(0xFFC9C2FF))),
+                    const Text('Digite o código de um amigo', style: TextStyle(fontSize: 12.2, fontWeight: FontWeight.w500, color: Color(0xFFC2DAFF))),
                 ],
               ),
             ),
@@ -498,7 +498,7 @@ class _TradeTelaState extends State<TradeTela> {
           padding: const EdgeInsets.fromLTRB(4, 16, 0, 8),
           child: Row(
             children: [
-              const Icon(Icons.bar_chart_rounded, size: 30, color: Color(0xFFB59BFF)),
+              const Icon(Icons.bar_chart_rounded, size: 30, color: Color(0xFF9BBFFF)),
               const SizedBox(width: 6),
               const Expanded(
                 child: Text('Ranking do Trade Battle', maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -510,8 +510,8 @@ class _TradeTelaState extends State<TradeTela> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFF7B63F0), width: 1.5),
-                    color: const Color(0x661C0F78),
+                    border: Border.all(color: const Color(0xFF6399F0), width: 1.5),
+                    color: const Color(0x660F3878),
                   ),
                   child: const Text('Ver ranking completo ›', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
@@ -529,8 +529,8 @@ class _TradeTelaState extends State<TradeTela> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF6A4FE6), width: 1.5),
-              gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF241A86), Color(0xFF150F55)]),
+              border: Border.all(color: const Color(0xFF4F88E6), width: 1.5),
+              gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1A4586), Color(0xFF0F2B55)]),
             ),
             child: Row(
               children: [
@@ -538,7 +538,7 @@ class _TradeTelaState extends State<TradeTela> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text('${rk['nome'] ?? 'Você'} · de ${rk['total']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13.8, fontWeight: FontWeight.w700, color: Color(0xFFEDE9FF))),
+                      style: const TextStyle(fontSize: 13.8, fontWeight: FontWeight.w700, color: Color(0xFFE9F1FF))),
                 ),
                 Text(_pts(rk['valor']), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6BFF8A))),
               ],
@@ -561,8 +561,8 @@ class _TradeTelaState extends State<TradeTela> {
       margin: const EdgeInsets.only(top: 6),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x558B6CFF)),
-        color: const Color(0xCC140E3A),
+        border: Border.all(color: const Color(0x556CA3FF)),
+        color: const Color(0xCC0E1F3A),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -599,7 +599,7 @@ class _TradeTelaState extends State<TradeTela> {
                 'aconteceram e executam no preço ou, se o preço saltar além dele, no preço do salto; cada execução paga a taxa da B3 (cerca de 0,03%). '
                 'No fim, o resultado (lucro ou prejuízo) volta para a sua Carteira.\n\nVocê ganha XP pela colocação e pela pontuação positiva (até $xp '
                 'partidas por dia). Jogo educativo: nenhuma ordem real, nada de recomendação de investimento.',
-                style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFFEDE9FF)),
+                style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFFE9F1FF)),
               ),
             ),
         ],

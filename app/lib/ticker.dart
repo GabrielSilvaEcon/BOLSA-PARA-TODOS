@@ -17,7 +17,7 @@ class TickerTela extends StatefulWidget {
   State<TickerTela> createState() => _TickerTelaState();
 }
 
-const lilas = Color(0xFFD9D4F7);
+const lilas = Color(0xFFD4E2F7);
 
 /// Ícone do indicador (os mesmos nomes do app antigo).
 const iconesInd = {
@@ -108,7 +108,7 @@ class _TickerTelaState extends State<TickerTela> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -118,7 +118,7 @@ class _TickerTelaState extends State<TickerTela> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF0A0A5A), Color(0xFF1C0870), Color(0xFF14054E), Color(0xFF050038)],
+                colors: [Color(0xFF0A0A5A), Color(0xFF082F70), Color(0xFF05204E), Color(0xFF001738)],
                 stops: [0, 0.35, 0.7, 1],
               ),
             ),
@@ -130,7 +130,7 @@ class _TickerTelaState extends State<TickerTela> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0x330A0630), Color(0x8C0A0630), Color(0x8C0A0630), Color(0x330A0630)],
+                colors: [Color(0x33061730), Color(0x8C061730), Color(0x8C061730), Color(0x33061730)],
                 stops: [0, 0.3, 0.75, 1],
               ),
             ),
@@ -259,13 +259,13 @@ class _TickerTelaState extends State<TickerTela> {
         padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: ok ? const Color(0xFF6A4FE6) : const Color(0xFFF2B84B), width: 2),
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2E1CA0), Color(0xFF1C0F78)]),
-          boxShadow: const [BoxShadow(color: Color(0x806A4FE6), blurRadius: 14)],
+          border: Border.all(color: ok ? const Color(0xFF4F88E6) : const Color(0xFFF2B84B), width: 2),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1C50A0), Color(0xFF0F3878)]),
+          boxShadow: const [BoxShadow(color: Color(0x804F88E6), blurRadius: 14)],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.style_rounded, size: 30, color: Color(0xFFE4DEFF)),
+            const Icon(Icons.style_rounded, size: 30, color: Color(0xFFDEEBFF)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -296,7 +296,7 @@ class _TickerTelaState extends State<TickerTela> {
       Padding(
         padding: const EdgeInsets.fromLTRB(4, 16, 0, 8),
         child: Row(children: [
-          const Icon(Icons.bar_chart_rounded, size: 30, color: Color(0xFFB59BFF)),
+          const Icon(Icons.bar_chart_rounded, size: 30, color: Color(0xFF9BBFFF)),
           const SizedBox(width: 6),
           const Expanded(
             child: Text('Ranking do Ticker Battle', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
@@ -307,8 +307,8 @@ class _TickerTelaState extends State<TickerTela> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: const Color(0xFF7B63F0), width: 1.5),
-                color: const Color(0x661C0F78),
+                border: Border.all(color: const Color(0xFF6399F0), width: 1.5),
+                color: const Color(0x660F3878),
               ),
               child: const Text('Ver ranking completo ›', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
@@ -334,23 +334,23 @@ class _TickerTelaState extends State<TickerTela> {
             SizedBox(height: 34, child: Center(child: ic)),
             const SizedBox(height: 4),
             FittedBox(fit: BoxFit.scaleDown, child: Text(b, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Colors.white))),
-            Text(t, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, height: 1.2, color: Color(0xFFBDB5E6))),
+            Text(t, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, height: 1.2, color: Color(0xFFB5C8E6))),
           ]),
         );
     Widget img(String a) => ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.asset(a, height: 34));
-    Widget sep() => const VerticalDivider(width: 1, thickness: 1, color: Color(0x596A4FE6));
+    Widget sep() => const VerticalDivider(width: 1, thickness: 1, color: Color(0x594F88E6));
     Widget quadro(List<Widget> filhos) => Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF120852), border: Border.all(color: const Color(0x406A4FE6))),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF082552), border: Border.all(color: const Color(0x404F88E6))),
           child: IntrinsicHeight(child: Row(children: filhos)),
         );
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF6A4FE6), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231388), Color(0xFF160B5E)]),
-        boxShadow: const [BoxShadow(color: Color(0x666A4FE6), blurRadius: 14)],
+        border: Border.all(color: const Color(0xFF4F88E6), width: 2),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF134188), Color(0xFF0B2C5E)]),
+        boxShadow: const [BoxShadow(color: Color(0x664F88E6), blurRadius: 14)],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Padding(
@@ -387,7 +387,7 @@ class _TickerTelaState extends State<TickerTela> {
 
   // ---- Como funciona (mesmo bloco da tela do Trade Battle)
   Widget _como(Map d) => Container(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x558B6CFF)), color: const Color(0xCC140E3A)),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x556CA3FF)), color: const Color(0xCC0E1F3A)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           InkWell(
             onTap: () => setState(() => _comoAberto = !_comoAberto),
@@ -410,19 +410,19 @@ class _TickerTelaState extends State<TickerTela> {
                 'regra fixa e pública, sem olhar os seus valores. Cada indicador tem a sua regra (maior vence, menor vence ou menor positivo vence). '
                 'Valores iguais empatam a rodada. Cada carta joga uma vez. Vence quem ganhar mais rodadas.\n\n'
                 'Jogo educativo: dados reais, nenhuma recomendação de investimento. Duelos contra o sistema não pagam XP nem moedas.',
-                style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFFEDE9FF)),
+                style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFFE9F1FF)),
               ),
             ),
         ]),
       );
 }
 
-Widget _caixa({required Widget child, Color borda = const Color(0xFF6A4FE6)}) => Container(
+Widget _caixa({required Widget child, Color borda = const Color(0xFF4F88E6)}) => Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: borda, width: 2),
-        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF231388), Color(0xFF160B5E)]),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF134188), Color(0xFF0B2C5E)]),
         boxShadow: [BoxShadow(color: borda.withValues(alpha: 0.35), blurRadius: 12)],
       ),
       child: child,
@@ -461,7 +461,7 @@ class CartaTk extends StatelessWidget {
               errorBuilder: (_, __, ___) => Container(
                 width: largura,
                 height: largura * 1.34,
-                color: const Color(0xFF2A1E86),
+                color: const Color(0xFF1E4786),
                 alignment: Alignment.center,
                 child: Text(tk, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
               ),
@@ -470,7 +470,7 @@ class CartaTk extends StatelessWidget {
           if (travada)
             Positioned.fill(
               child: Container(
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(largura * 0.08), color: const Color(0xAA0B0828)),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(largura * 0.08), color: const Color(0xAA081528)),
                 child: const Icon(Icons.lock_rounded, color: Colors.white70, size: 30),
               ),
             ),
@@ -536,7 +536,7 @@ class _BaralhoTelaState extends State<BaralhoTela> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF16104A),
+      backgroundColor: const Color(0xFF10274A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => DraggableScrollableSheet(
         expand: false,
@@ -558,7 +558,7 @@ class _BaralhoTelaState extends State<BaralhoTela> {
             FilledButton.icon(
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
-                backgroundColor: no ? const Color(0xFF5B4BD6) : const Color(0xFF12A83C),
+                backgroundColor: no ? const Color(0xFF4B82D6) : const Color(0xFF12A83C),
                 textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
               ),
               onPressed: (!no && (c['jogavel'] != true || _deck.length >= _max))
@@ -586,7 +586,7 @@ class _BaralhoTelaState extends State<BaralhoTela> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(iconesInd[m['icone']] ?? Icons.analytics_rounded, size: 18, color: const Color(0xFFB59BFF)),
+          Icon(iconesInd[m['icone']] ?? Icons.analytics_rounded, size: 18, color: const Color(0xFF9BBFFF)),
           const SizedBox(width: 6),
           Expanded(child: Text('${m['nome'] ?? i['id']}', style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
           Text('${i['txt']}', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFFD66B))),
@@ -598,7 +598,7 @@ class _BaralhoTelaState extends State<BaralhoTela> {
           curve: Curves.easeOutCubic,
           builder: (ctx, f, _) => ClipRRect(
             borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(value: f, minHeight: 7, backgroundColor: const Color(0x335B4BD6), color: const Color(0xFF8B6CFF)),
+            child: LinearProgressIndicator(value: f, minHeight: 7, backgroundColor: const Color(0x334B82D6), color: const Color(0xFF6CA3FF)),
           ),
         ),
         Text('${m['regra'] ?? ''}', style: const TextStyle(fontSize: 11.5, color: lilas)),
@@ -609,9 +609,9 @@ class _BaralhoTelaState extends State<BaralhoTela> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0828),
+      backgroundColor: const Color(0xFF081528),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF110C3A),
+        backgroundColor: const Color(0xFF0C1E3A),
         title: const Text('Meu baralho', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: Column(children: [

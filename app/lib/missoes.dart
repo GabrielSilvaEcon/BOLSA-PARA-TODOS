@@ -17,7 +17,7 @@ class MissoesTela extends StatefulWidget {
   State<MissoesTela> createState() => _MissoesTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 const _verde = Color(0xFF26D07C);
 const _ouro = Color(0xFFF2B84B);
 
@@ -60,7 +60,7 @@ class _MissoesTelaState extends State<MissoesTela> {
     ];
     var ordem = 0;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         RefreshIndicator(
@@ -170,7 +170,7 @@ class _MissoesTelaState extends State<MissoesTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _ouro, width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF6B3A12), Color(0xFF2A1046)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF6B3A12), Color(0xFF102046)]),
         image: arteCartao('moedas', opacidade: 0.4),
         boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 16)],
       ),
@@ -195,7 +195,7 @@ class _MissoesTelaState extends State<MissoesTela> {
           item(Icons.local_fire_department_rounded, const Color(0xFFFF8A3D), '$of ${of == 1 ? 'dia' : 'dias'}', 'Sequência'),
           item(Icons.bolt_rounded, const Color(0xFFFFC93C), '${est['xp_hoje'] ?? 0}', 'XP hoje'),
           item(Icons.task_alt_rounded, _verde, '${p['missoes'] ?? 0}', 'pts missões'),
-          item(Icons.emoji_events_rounded, const Color(0xFFB54BFF), '${p['desafio'] ?? 0}', 'pts desafio'),
+          item(Icons.emoji_events_rounded, const Color(0xFF4B7DFF), '${p['desafio'] ?? 0}', 'pts desafio'),
         ]),
       ]),
     );
@@ -210,7 +210,7 @@ class _MissoesTelaState extends State<MissoesTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: c.withValues(alpha: 0.9), width: 1.6),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(c, const Color(0xFF160B5E), 0.5)!, Color.lerp(c, const Color(0xFF120850), 0.8)!]),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(c, const Color(0xFF0B2C5E), 0.5)!, Color.lerp(c, const Color(0xFF082450), 0.8)!]),
         image: arteCartao(arte, opacidade: 0.4),
         boxShadow: [BoxShadow(color: c.withValues(alpha: 0.3), blurRadius: 12)],
       ),
@@ -229,7 +229,7 @@ class _MissoesTelaState extends State<MissoesTela> {
             Container(
               margin: const EdgeInsets.only(left: 4),
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x99120850), border: Border.all(color: _ouro)),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x99082450), border: Border.all(color: _ouro)),
               child: Text(p, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: _ouro)),
             ),
         ]),
@@ -244,7 +244,7 @@ class _MissoesTelaState extends State<MissoesTela> {
               curve: Curves.easeOutCubic,
               builder: (ctx, v, _) => ClipRRect(
                 borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(value: v, minHeight: 9, backgroundColor: const Color(0x55120850), color: ok ? _verde : const Color(0xFFFFD76A)),
+                child: LinearProgressIndicator(value: v, minHeight: 9, backgroundColor: const Color(0x55082450), color: ok ? _verde : const Color(0xFFFFD76A)),
               ),
             ),
           ),

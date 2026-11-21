@@ -117,7 +117,7 @@ class _AberturaTelaState extends State<AberturaTela> with TickerProviderStateMix
   Widget _tela() {
     return Scaffold(
       key: const ValueKey('abertura'),
-      backgroundColor: const Color(0xFF1B0A63),
+      backgroundColor: const Color(0xFF0A2C63),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -147,7 +147,7 @@ class _AberturaTelaState extends State<AberturaTela> with TickerProviderStateMix
                           style: const TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFFF1EEFF),
+                            color: Color(0xFFEEF4FF),
                             shadows: [Shadow(color: Color(0xCC000000), blurRadius: 8)],
                           ),
                         ),
@@ -186,9 +186,9 @@ class _Barra extends StatelessWidget {
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
-                  color: const Color(0xFF0C0630),
+                  color: const Color(0xFF061630),
                   border: Border.all(color: const Color(0xFFE9A84B), width: 2),
-                  boxShadow: [BoxShadow(color: const Color(0xFFB54BFF).withValues(alpha: 0.45 + 0.2 * brilho), blurRadius: 16)],
+                  boxShadow: [BoxShadow(color: const Color(0xFF4B7DFF).withValues(alpha: 0.45 + 0.2 * brilho), blurRadius: 16)],
                 ),
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -197,7 +197,7 @@ class _Barra extends StatelessWidget {
                       width: cheio,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(999),
-                        gradient: const LinearGradient(colors: [Color(0xFF7B2FF7), Color(0xFFB54BFF), Color(0xFFFF6AD5)]),
+                        gradient: const LinearGradient(colors: [Color(0xFF2F71F7), Color(0xFF4B7DFF), Color(0xFFFF6AD5)]),
                       ),
                     ),
                     // faísca na ponta

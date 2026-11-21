@@ -35,7 +35,7 @@ class SocialTela extends StatefulWidget {
   State<SocialTela> createState() => _SocialTelaState();
 }
 
-const _lilas = Color(0xFFD9D4F7);
+const _lilas = Color(0xFFD4E2F7);
 const _verde = Color(0xFF26D07C);
 const _vermelho = Color(0xFFFF5A7A);
 const _ouro = Color(0xFFF2B84B);
@@ -113,7 +113,7 @@ class _SocialTelaState extends State<SocialTela> {
     final enviados = ((d?['enviados'] as List?) ?? const []).cast<Map>();
     var ordem = 0;
     return Scaffold(
-      backgroundColor: const Color(0xFF140A55),
+      backgroundColor: const Color(0xFF0A2755),
       body: Stack(fit: StackFit.expand, children: [
         const FundoCidade(),
         SafeArea(
@@ -211,7 +211,7 @@ class _SocialTelaState extends State<SocialTela> {
         boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 14)],
       ),
       child: Row(children: [
-        botao(Icons.sports_esports_rounded, 'Convites', const Color(0xFF7B2FF7), nConv,
+        botao(Icons.sports_esports_rounded, 'Convites', const Color(0xFF2F71F7), nConv,
             () => _aviso(nConv == 0 ? 'Nenhum convite agora. Quando um amigo te desafiar, aparece aqui.' : 'Os convites estão logo abaixo.')),
         botao(Icons.person_add_alt_1_rounded, 'Pedidos', const Color(0xFF2BA7C9), nPed, () => _aviso(nPed == 0 ? 'Nenhum pedido de amizade novo.' : 'Os pedidos estão logo abaixo.')),
         botao(Icons.search_rounded, 'Procurar', const Color(0xFF12A83C), 0, _adicionar),
@@ -223,7 +223,7 @@ class _SocialTelaState extends State<SocialTela> {
         Container(
           width: tam,
           height: tam,
-          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2), color: const Color(0xFF1B1545)),
+          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2), color: const Color(0xFF152845)),
           child: ClipOval(child: imagemAvatar(x['avatar_img'])),
         ),
         if (online)
@@ -240,7 +240,7 @@ class _SocialTelaState extends State<SocialTela> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: cor, width: 1.6),
-          gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF160B5E), 0.45)!, Color.lerp(cor, const Color(0xFF120850), 0.8)!]),
+          gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF0B2C5E), 0.45)!, Color.lerp(cor, const Color(0xFF082450), 0.8)!]),
           image: arte == null ? null : arteCartao(arte, opacidade: 0.35),
           boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.35), blurRadius: 12)],
         ),
@@ -248,7 +248,7 @@ class _SocialTelaState extends State<SocialTela> {
       );
 
   Widget _convite(Map c) => _caixa(
-        const Color(0xFF7B2FF7),
+        const Color(0xFF2F71F7),
         Row(children: [
           _avatar(c),
           const SizedBox(width: 10),
@@ -296,18 +296,18 @@ class _SocialTelaState extends State<SocialTela> {
     Widget divisor(String t) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(children: [
-            const Expanded(child: Divider(color: Color(0x66B59BFF), thickness: 2)),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: Text(t, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFFE6DEFF)))),
-            const Expanded(child: Divider(color: Color(0x66B59BFF), thickness: 2)),
+            const Expanded(child: Divider(color: Color(0x669BBFFF), thickness: 2)),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: Text(t, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFFDEEAFF)))),
+            const Expanded(child: Divider(color: Color(0x669BBFFF), thickness: 2)),
           ]),
         );
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF5B3BD6), Color(0xFF34209A)]),
-        border: Border.all(color: const Color(0xFF8B6CFF), width: 2),
-        boxShadow: const [BoxShadow(color: Color(0x668B6CFF), blurRadius: 16)],
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3B75D6), Color(0xFF204F9A)]),
+        border: Border.all(color: const Color(0xFF6CA3FF), width: 2),
+        boxShadow: const [BoxShadow(color: Color(0x666CA3FF), blurRadius: 16)],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
@@ -323,7 +323,7 @@ class _SocialTelaState extends State<SocialTela> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: _jogo == id ? (id == 'trade' ? _verde : const Color(0xFFB54BFF)) : const Color(0x55120850),
+                    color: _jogo == id ? (id == 'trade' ? _verde : const Color(0xFF4B7DFF)) : const Color(0x55082450),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
                   ),
                   child: Text(rot, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
@@ -357,15 +357,15 @@ class _SocialTelaState extends State<SocialTela> {
 
   Widget _linha(Map a, {int? pos, bool online = false, bool toque = false, Widget? fim}) {
     final eu = a['_eu'] == true;
-    final corPos = switch (pos) { 1 => _ouro, 2 => const Color(0xFFC0C7D4), 3 => const Color(0xFFCD7F32), _ => const Color(0xFF8B6CFF) };
+    final corPos = switch (pos) { 1 => _ouro, 2 => const Color(0xFFC0C7D4), 3 => const Color(0xFFCD7F32), _ => const Color(0xFF6CA3FF) };
     final cartao = Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: eu ? const [Color(0xFFFFE9B0), Color(0xFFE6C068)] : const [Color(0xFFE9E6FF), Color(0xFFC9C2F0)]),
+        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: eu ? const [Color(0xFFFFE9B0), Color(0xFFE6C068)] : const [Color(0xFFE6F0FF), Color(0xFFC2D4F0)]),
         border: Border.all(color: eu ? _ouro : Colors.white, width: 1.5),
-        boxShadow: const [BoxShadow(color: Color(0x66120850), offset: Offset(0, 3))],
+        boxShadow: const [BoxShadow(color: Color(0x66082450), offset: Offset(0, 3))],
       ),
       child: Row(children: [
         if (pos != null)
@@ -379,7 +379,7 @@ class _SocialTelaState extends State<SocialTela> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${a['coroa'] == true ? '👑 ' : ''}${eu ? '${a['nome']} (você)' : '${a['nome']}'}',
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF2A1A6E))),
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF1A3A6E))),
             if (a['rival'] == true || a['h2h'] is Map)
               Row(children: [
                 if (a['rival'] == true)
@@ -390,7 +390,7 @@ class _SocialTelaState extends State<SocialTela> {
                     child: const Text('RIVAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white)),
                   ),
                 if (a['h2h'] is Map)
-                  Text('Você ${(a['h2h'] as Map)['v'] ?? 0} × ${(a['h2h'] as Map)['d'] ?? 0}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF6A3BE0))),
+                  Text('Você ${(a['h2h'] as Map)['v'] ?? 0} × ${(a['h2h'] as Map)['d'] ?? 0}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF3B75E0))),
               ]),
             Text(['@${a['usuario']}', if (a['nivel'] != null) 'Nível ${a['nivel']}'].join(' · '),
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9A6A10))),
@@ -399,7 +399,7 @@ class _SocialTelaState extends State<SocialTela> {
         fim ??
             Container(
               padding: const EdgeInsets.fromLTRB(6, 3, 10, 3),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0xFF6B6195)),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0xFF617595)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(_jogo == 'trade' ? Icons.emoji_events_rounded : Icons.military_tech_rounded, color: _ouro, size: 22),
                 const SizedBox(width: 4),
@@ -442,17 +442,17 @@ class _SocialTelaState extends State<SocialTela> {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               _avatar(a, tam: 60),
               const SizedBox(height: 6),
-              Text('${a['nome']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF2A1A6E))),
-              Text('@${a['usuario']}', style: const TextStyle(color: Color(0xFF6A5AA8))),
+              Text('${a['nome']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Color(0xFF1A3A6E))),
+              Text('@${a['usuario']}', style: const TextStyle(color: Color(0xFF5A77A8))),
               botao('Ver perfil', Icons.person_rounded, _azul, () => _verPerfil(a)),
               botao('Desafiar no Trade Battle', Icons.candlestick_chart_rounded, const Color(0xFF12A83C), () => _desafiar(a, 'trade')),
-              botao('Desafiar no Ticker Battle', Icons.style_rounded, const Color(0xFF7B2FF7), () => _desafiar(a, 'ticker')),
+              botao('Desafiar no Ticker Battle', Icons.style_rounded, const Color(0xFF2F71F7), () => _desafiar(a, 'ticker')),
               TextButton(
                 onPressed: () {
                   Navigator.of(dctx).pop();
                   _mais(a);
                 },
-                child: const Text('Mais opções', style: TextStyle(color: Color(0xFF6A5AA8))),
+                child: const Text('Mais opções', style: TextStyle(color: Color(0xFF5A77A8))),
               ),
             ]),
           ),
@@ -474,7 +474,7 @@ class _SocialTelaState extends State<SocialTela> {
 
   void _mais(Map a) => showModalBottomSheet<void>(
         context: context,
-        backgroundColor: const Color(0xFF16104A),
+        backgroundColor: const Color(0xFF10274A),
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
         builder: (ctx) => SafeArea(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -511,7 +511,7 @@ class _SocialTelaState extends State<SocialTela> {
     const motivos = {'nome': 'Nome ou foto ofensivos', 'bio': 'Biografia ofensiva', 'golpe': 'Golpe, spam ou divulgação', 'trapaca': 'Trapaça nos jogos', 'outro': 'Outro motivo'};
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF16104A),
+      backgroundColor: const Color(0xFF10274A),
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Padding(padding: EdgeInsets.all(14), child: Text('Por que você quer denunciar?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white))),
@@ -532,7 +532,7 @@ class _SocialTelaState extends State<SocialTela> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF16104A),
+      backgroundColor: const Color(0xFF10274A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => FutureBuilder<Map<String, dynamic>>(
         future: widget.api.get('/social/perfil/${a['h']}'),
@@ -568,7 +568,7 @@ class _SocialTelaState extends State<SocialTela> {
                 const SizedBox(height: 14),
                 Row(children: [
                   dado(t['pontos'] is num ? (t['pontos'] as num).toStringAsFixed(1).replaceAll('.', ',') : '0', 'pts Trade', _verde),
-                  dado('${k['vitorias'] ?? 0}', 'vitórias Ticker', const Color(0xFFB54BFF)),
+                  dado('${k['vitorias'] ?? 0}', 'vitórias Ticker', const Color(0xFF4B7DFF)),
                   if (cq != null) dado('${cq['ok']}/${cq['total']}', 'conquistas', _ouro),
                 ]),
               ],
@@ -583,15 +583,15 @@ class _SocialTelaState extends State<SocialTela> {
   Widget _rodape() => Container(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         decoration: const BoxDecoration(
-          color: Color(0xEE2A1A7E),
-          border: Border(top: BorderSide(color: Color(0xFF8B6CFF), width: 1.5)),
+          color: Color(0xEE1A407E),
+          border: Border(top: BorderSide(color: Color(0xFF6CA3FF), width: 1.5)),
         ),
         child: Row(children: [
           Expanded(
             child: _botaoGrande('Jogo rápido', Icons.bolt_rounded, const Color(0xFF2E8BFF), () {
               showModalBottomSheet<void>(
                 context: context,
-                backgroundColor: const Color(0xFF16104A),
+                backgroundColor: const Color(0xFF10274A),
                 builder: (ctx) => SafeArea(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     const Padding(padding: EdgeInsets.all(14), child: Text('Qual jogo?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white))),
@@ -604,7 +604,7 @@ class _SocialTelaState extends State<SocialTela> {
                       },
                     ),
                     ListTile(
-                      leading: const Icon(Icons.style_rounded, color: Color(0xFFB54BFF)),
+                      leading: const Icon(Icons.style_rounded, color: Color(0xFF4B7DFF)),
                       title: const Text('Ticker Battle', style: TextStyle(color: Colors.white)),
                       onTap: () {
                         Navigator.of(ctx).pop();
@@ -644,7 +644,7 @@ class _SocialTelaState extends State<SocialTela> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF16104A),
+      backgroundColor: const Color(0xFF10274A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => _Busca(
           api: widget.api,
@@ -699,10 +699,10 @@ class _BuscaState extends State<_Busca> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFF241A6E),
-              prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFFB59BFF)),
+              fillColor: const Color(0xFF1A3B6E),
+              prefixIcon: const Icon(Icons.alternate_email_rounded, color: Color(0xFF9BBFFF)),
               hintText: 'Nome ou @usuario',
-              hintStyle: const TextStyle(color: Color(0xFF9C93D6)),
+              hintStyle: const TextStyle(color: Color(0xFF93ADD6)),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
             ),
           ),
@@ -714,7 +714,7 @@ class _BuscaState extends State<_Busca> {
               for (final x in _itens)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(backgroundColor: const Color(0xFF1B1545), child: ClipOval(child: imagemAvatar(x['avatar_img']))),
+                  leading: CircleAvatar(backgroundColor: const Color(0xFF152845), child: ClipOval(child: imagemAvatar(x['avatar_img']))),
                   title: Text('${x['nome']}', style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
                   subtitle: Text('@${x['usuario']}', style: const TextStyle(color: _lilas)),
                   trailing: switch (_pedidos.contains('${x['usuario']}') ? 'enviada' : x['estado']) {
@@ -808,7 +808,7 @@ class _DesafiandoState extends State<_Desafiando> with SingleTickerProviderState
   @override
   Widget build(BuildContext context) {
     final nomeJogo = widget.jogo == 'trade' ? 'Trade Battle' : 'Ticker Battle';
-    final cor = widget.jogo == 'trade' ? _verde : const Color(0xFFB54BFF);
+    final cor = widget.jogo == 'trade' ? _verde : const Color(0xFF4B7DFF);
     Widget lado(Object? img, String nome) => Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 104,
@@ -817,7 +817,7 @@ class _DesafiandoState extends State<_Desafiando> with SingleTickerProviderState
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 3),
               boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.7), blurRadius: 22)],
-              color: const Color(0xFF1B1545),
+              color: const Color(0xFF152845),
             ),
             child: ClipOval(child: imagemAvatar(img)),
           ),
@@ -832,7 +832,7 @@ class _DesafiandoState extends State<_Desafiando> with SingleTickerProviderState
         if (!feito) _cancelar();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF140A55),
+        backgroundColor: const Color(0xFF0A2755),
         body: Stack(fit: StackFit.expand, children: [
           Image.asset('assets/jogos/fundo_arena.webp', fit: BoxFit.cover),
           Container(color: const Color(0xAA0B0930)),
@@ -869,7 +869,7 @@ class _DesafiandoState extends State<_Desafiando> with SingleTickerProviderState
                         Text('A partida começa assim que o desafio for aceito · ${_resta ~/ 60}:${(_resta % 60).toString().padLeft(2, '0')}',
                             textAlign: TextAlign.center, style: const TextStyle(color: _lilas)),
                         const SizedBox(height: 18),
-                        SizedBox(width: 220, child: LinearProgressIndicator(value: _resta / 180, minHeight: 6, color: cor, backgroundColor: const Color(0x55120850))),
+                        SizedBox(width: 220, child: LinearProgressIndicator(value: _resta / 180, minHeight: 6, color: cor, backgroundColor: const Color(0x55082450))),
                         const SizedBox(height: 26),
                         OutlinedButton.icon(
                           onPressed: () => _cancelar(),

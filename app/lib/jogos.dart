@@ -20,9 +20,9 @@ class JogosTela extends StatefulWidget {
 }
 
 const _verde = Color(0xFF34E85E);
-const _roxo = Color(0xFF8B6CFF);
+const _roxo = Color(0xFF6CA3FF);
 const _ouro = Color(0xFFF2B84B);
-const _lila = Color(0xFFD9D4F7);
+const _lila = Color(0xFFD4E2F7);
 
 class _JogosTelaState extends State<JogosTela> {
   Map<String, dynamic>? _d;
@@ -48,12 +48,12 @@ class _JogosTelaState extends State<JogosTela> {
     showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF16104A),
+        backgroundColor: const Color(0xFF10274A),
         title: const Text('Como funciona', style: TextStyle(fontWeight: FontWeight.w900)),
         content: const SingleChildScrollView(
           child: Text.rich(
             TextSpan(
-              style: TextStyle(fontSize: 14, height: 1.4, color: Color(0xFFEDE9FF)),
+              style: TextStyle(fontSize: 14, height: 1.4, color: Color(0xFFE9F1FF)),
               children: [
                 TextSpan(text: 'Trade Battle', style: TextStyle(fontWeight: FontWeight.w900)),
                 TextSpan(
@@ -79,7 +79,7 @@ class _JogosTelaState extends State<JogosTela> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF110C2E),
+      backgroundColor: const Color(0xFF0C192E),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -124,7 +124,7 @@ class _JogosTelaState extends State<JogosTela> {
                               cor: _roxo,
                               arte: 'assets/jogos/ticker_hero.webp',
                               frase: 'Mostre seu conhecimento e suba no ranking!',
-                              botao: const [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+                              botao: const [Color(0xFF5C92F6), Color(0xFF2862D9)],
                               texto: Colors.white,
                               acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TickerTela(api: widget.api))),
                             ),
@@ -141,7 +141,7 @@ class _JogosTelaState extends State<JogosTela> {
                           ),
                           GestureDetector(
                             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HistoricoTela(api: widget.api))),
-                            child: const Text('Ver detalhes ›', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFB79CFF))),
+                            child: const Text('Ver detalhes ›', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF9CBFFF))),
                           ),
                         ],
                       ),
@@ -165,7 +165,7 @@ class _JogosTelaState extends State<JogosTela> {
     return Container(
       constraints: const BoxConstraints(minHeight: 138),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B0828),
+        color: const Color(0xFF081528),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: _verde.withValues(alpha: 0.6), width: 2),
         boxShadow: [BoxShadow(color: _verde.withValues(alpha: 0.22), blurRadius: 20)],
@@ -195,7 +195,7 @@ class _JogosTelaState extends State<JogosTela> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [const Color(0xFF0E0940), const Color(0xFF0E0940).withValues(alpha: 0)],
+                    colors: [const Color(0xFF091F40), const Color(0xFF091F40).withValues(alpha: 0)],
                     stops: const [0.34, 0.74],
                   ),
                 ),
@@ -234,7 +234,7 @@ class _JogosTelaState extends State<JogosTela> {
                       style: const TextStyle(fontSize: 22.7, height: 1.12, fontWeight: FontWeight.w900, color: Colors.white),
                     ),
                     const SizedBox(height: 6),
-                    const Text('Teste suas habilidades e evolua.', style: TextStyle(fontSize: 12.8, height: 1.32, color: Color(0xFFE6E1FF))),
+                    const Text('Teste suas habilidades e evolua.', style: TextStyle(fontSize: 12.8, height: 1.32, color: Color(0xFFE1ECFF))),
                     const SizedBox(height: 14),
                     GestureDetector(
                       onTap: _comoFunciona,
@@ -242,7 +242,7 @@ class _JogosTelaState extends State<JogosTela> {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(999),
-                          gradient: const LinearGradient(colors: [Color(0xFF5B3BE0), Color(0xFF3A22B0)]),
+                          gradient: const LinearGradient(colors: [Color(0xFF3B79E0), Color(0xFF2258B0)]),
                           border: Border.all(color: _roxo),
                         ),
                         child: const Row(
@@ -284,7 +284,7 @@ class _JogosTelaState extends State<JogosTela> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF0A0630),
+              color: const Color(0xFF061730),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
               border: Border(top: BorderSide(color: cor, width: 2), left: BorderSide(color: cor, width: 2), right: BorderSide(color: cor, width: 2)),
             ),
@@ -298,9 +298,9 @@ class _JogosTelaState extends State<JogosTela> {
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
                       decoration: const BoxDecoration(
-                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF160F55), Color(0xFF0B0738)]),
+                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF0F2B55), Color(0xFF0B0738)]),
                       ),
-                      child: Text(frase, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.2, height: 1.3, fontWeight: FontWeight.w700, color: Color(0xFFEDE9FF))),
+                      child: Text(frase, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.2, height: 1.3, fontWeight: FontWeight.w700, color: Color(0xFFE9F1FF))),
                     ),
                   ),
                 ],
@@ -344,11 +344,11 @@ class _JogosTelaState extends State<JogosTela> {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: fogo ? const Color(0x80FF8C3C) : const Color(0x738B6CFF), width: 1.5),
+              border: Border.all(color: fogo ? const Color(0x80FF8C3C) : const Color(0x736CA3FF), width: 1.5),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: fogo ? const [Color(0xFF3A1A2A), Color(0xFF1A0F30)] : const [Color(0xFF1B1460), Color(0xFF100B3E)],
+                colors: fogo ? const [Color(0xFF3A1A2A), Color(0xFF0F1A30)] : const [Color(0xFF143360), Color(0xFF0B1F3E)],
               ),
             ),
             child: Column(
@@ -360,7 +360,7 @@ class _JogosTelaState extends State<JogosTela> {
                   fit: BoxFit.scaleDown,
                   child: Text(val, style: const TextStyle(fontSize: 16.8, fontWeight: FontWeight.w900, color: Colors.white)),
                 ),
-                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.9, color: Color(0xFFBDB5E6))),
+                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.9, color: Color(0xFFB5C8E6))),
               ],
             ),
           ),
@@ -389,7 +389,7 @@ class _JogosTelaState extends State<JogosTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _ouro, width: 2),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF21184F), Color(0xFF120C3A)]),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF182D4F), Color(0xFF0C1E3A)]),
         boxShadow: [BoxShadow(color: _ouro.withValues(alpha: 0.25), blurRadius: 16)],
       ),
       child: ClipRRect(
@@ -419,7 +419,7 @@ class _JogosTelaState extends State<JogosTela> {
                       children: [
                         const Text('Desafio da Semana', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFC93C))),
                         const SizedBox(height: 2),
-                        Text('${d['texto'] ?? ''}', style: const TextStyle(fontSize: 12.8, height: 1.3, color: Color(0xFFEDE9FF))),
+                        Text('${d['texto'] ?? ''}', style: const TextStyle(fontSize: 12.8, height: 1.3, color: Color(0xFFE9F1FF))),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -487,14 +487,14 @@ class _JogosTelaState extends State<JogosTela> {
                 padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0x738B6CFF), width: 1.5),
-                  gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1B1460), Color(0xFF100B3E)]),
+                  border: Border.all(color: const Color(0x736CA3FF), width: 1.5),
+                  gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF143360), Color(0xFF0B1F3E)]),
                 ),
                 child: Column(
                   children: [
                     Text(ic, style: const TextStyle(fontSize: 22.4, height: 1.1)),
                     const SizedBox(height: 5),
-                    Text(rot, style: const TextStyle(fontSize: 12.2, fontWeight: FontWeight.w800, color: Color(0xFFEDE9FF))),
+                    Text(rot, style: const TextStyle(fontSize: 12.2, fontWeight: FontWeight.w800, color: Color(0xFFE9F1FF))),
                   ],
                 ),
               ),
