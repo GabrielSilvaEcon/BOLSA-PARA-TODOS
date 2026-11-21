@@ -4,7 +4,6 @@ import 'ajuda.dart';
 import 'api.dart';
 import 'eventos.dart';
 import 'historico.dart';
-import 'social.dart';
 import 'navegacao.dart';
 import 'ticker.dart';
 import 'trade.dart';
@@ -67,7 +66,7 @@ class _JogosTelaState extends State<JogosTela> {
                     text: ' · Você ganha XP pela colocação e pela pontuação, e ele nunca é negativo. O dinheiro do Trade Battle é só o lucro ou '
                         'prejuízo das suas operações, na sua carteira.\n\n'),
                 TextSpan(text: 'Ranking', style: TextStyle(fontWeight: FontWeight.w900)),
-                TextSpan(text: ' · Cada jogo tem o seu ranking. Desafie amigos em Meus Amigos e acompanhe eventos e recompensas.'),
+                TextSpan(text: ' · Cada jogo tem o seu ranking. Desafie amigos pelo botão Amigos da tela inicial e acompanhe eventos e recompensas.'),
               ],
             ),
           ),
@@ -471,7 +470,7 @@ class _JogosTelaState extends State<JogosTela> {
 
   // ---- atalhos: Ranking, Amigos, Eventos, Ajuda
   Widget _atalhos() {
-    const itens = [('👑', 'Ranking'), ('👥', 'Amigos'), ('🎁', 'Eventos'), ('📖', 'Ajuda')];
+    const itens = [('👑', 'Ranking'), ('🎁', 'Eventos'), ('📖', 'Ajuda')];
     return Row(
       children: [
         for (final (i, (ic, rot)) in itens.indexed) ...[
@@ -482,7 +481,6 @@ class _JogosTelaState extends State<JogosTela> {
                 'Ranking' => abrirAba(3),
                 'Eventos' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EventosTela(api: widget.api))),
                 'Ajuda' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AjudaTela(api: widget.api))),
-                'Amigos' => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocialTela(api: widget.api))),
                 _ => _emBreve(rot),
               },
               child: Container(
