@@ -7,6 +7,7 @@ import 'aprender.dart';
 import 'api.dart';
 import 'cabecalho.dart';
 import 'home.dart';
+import 'tour.dart';
 import 'loja.dart';
 import 'perfil.dart';
 import 'jogos.dart';
@@ -55,6 +56,7 @@ class _PrincipalState extends State<Principal> {
     abaPedida.addListener(_trocarPedida);
     modoJogo.addListener(_redesenhar);
     conferirVersaoSempre(); // aviso de APK novo (só no app instalado)
+    Tour.iniciar(widget.api); // tour guiado do primeiro acesso (só se ainda não foi feito nem pulado)
   }
 
   @override
@@ -85,6 +87,7 @@ class _PrincipalState extends State<Principal> {
   }
 
   void _tocar(int i) {
+    Tour.evento('aba_$i');
     if (i == _aba) {
       _chaves[i].currentState?.popUntil((r) => r.isFirst); // tocar na aba aberta volta para o começo dela
       return;
@@ -141,9 +144,13 @@ class _PrincipalState extends State<Principal> {
                   index: _aba,
                   children: [
                     for (var i = 0; i < _itens.length; i++)
-                      Navigator(
-                        key: _chaves[i],
-                        onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => _raiz(i)),
+                      // só a aba aberta fica "ativa" (animações e os alvos do tour guiado)
+                      TickerMode(
+                        enabled: i == _aba,
+                        child: Navigator(
+                          key: _chaves[i],
+                          onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => _raiz(i)),
+                        ),
                       ),
                   ],
                 ),
@@ -208,7 +215,9 @@ class _PrincipalState extends State<Principal> {
   Widget _botao(int i) {
     final ativo = i == _aba;
     final (rotulo, arte, _) = _itens[i];
-    return Semantics(
+    return TourAlvo(
+      id: 'nav_$i',
+      child: Semantics(
       button: true,
       selected: ativo,
       label: rotulo,
@@ -262,6 +271,7 @@ class _PrincipalState extends State<Principal> {
           ),
         ),
       ),
+    ),
     );
   }
 }

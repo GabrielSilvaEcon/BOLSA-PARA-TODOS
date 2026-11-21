@@ -16,6 +16,7 @@ import 'navegacao.dart';
 import 'ranking.dart' show RankingTela, rankingPedido;
 import 'social.dart';
 import 'ticker.dart';
+import 'tour.dart';
 import 'trade.dart';
 
 /// Tela inicial (a "capa" do jogo), igual à arte de referência, sem rolagem:
@@ -116,6 +117,9 @@ class _HomeTelaState extends State<HomeTela> {
   String get _jogo => '${_comp['jogo'] ?? 'trade'}';
   Map get _div => (_comp['divisao'] as Map?) ?? const {};
   List<Map> get _hoje => ((_home?['hoje'] as List?) ?? const []).cast<Map>();
+
+  /// Marca um elemento para o tour guiado (sem id, devolve o próprio elemento).
+  Widget _alvo(String? id, Widget w) => id == null ? w : TourAlvo(id: id, child: w);
 
   /// Abre uma tela e, na volta, relê a Home (missões, troféus e o desafio podem ter mudado).
   Future<void> _abrir(Widget t) async {
@@ -284,7 +288,7 @@ class _HomeTelaState extends State<HomeTela> {
             aoTocar: () => _abrir(DesafioTela(api: widget.api)),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Stack(alignment: Alignment.center, children: [
-                Image.asset('assets/home/placa_desafio.webp', width: placaL, fit: BoxFit.contain),
+                TourAlvo(id: 'home_desafio', child: Image.asset('assets/home/placa_desafio.webp', width: placaL, fit: BoxFit.contain)),
                 Padding(
                   padding: EdgeInsets.only(top: placaL * 0.09),
                   child: FittedBox(
@@ -341,7 +345,7 @@ class _HomeTelaState extends State<HomeTela> {
   Widget _jogos() => SizedBox(
         height: 72,
         child: Row(children: [
-          Expanded(child: _botaoJogo('assets/home/btn_trade.webp', 'TRADE', 'BATTLE', () => _abrir(TradeTela(api: widget.api)), 0)),
+          Expanded(child: TourAlvo(id: 'home_trade', child: _botaoJogo('assets/home/btn_trade.webp', 'TRADE', 'BATTLE', () => _abrir(TradeTela(api: widget.api)), 0))),
           const SizedBox(width: 8),
           Expanded(child: _botaoJogo('assets/home/btn_ticker.webp', 'TICKER', 'BATTLE', () => _abrir(TickerTela(api: widget.api)), 1)),
         ]),
@@ -403,7 +407,7 @@ class _HomeTelaState extends State<HomeTela> {
               for (final (i, (arte, rot, aviso, f)) in itens.indexed) ...[
                 if (i > 0) const SizedBox(height: 4),
                 Expanded(
-                  child: Pressionavel(
+                  child: _alvo(rot == 'Carteira' ? 'home_carteira' : null, Pressionavel(
                     aoTocar: f,
                     child: Stack(clipBehavior: Clip.none, children: [
                       Container(
@@ -439,19 +443,19 @@ class _HomeTelaState extends State<HomeTela> {
                           ),
                         ),
                     ]),
-                  ),
+                  )),
                 ),
               ],
             ]),
           ),
         ),
         const SizedBox(width: 6),
-        Expanded(flex: 38, child: _liga()),
+        Expanded(flex: 38, child: TourAlvo(id: 'home_liga', child: _liga())),
         const SizedBox(width: 6),
         Expanded(
           flex: 33,
           child: Column(children: [
-            Expanded(flex: 13, child: _mercado()),
+            Expanded(flex: 13, child: TourAlvo(id: 'home_mercado', child: _mercado())),
             const SizedBox(height: 6),
             Expanded(flex: 10, child: _melhorNota()),
           ]),
