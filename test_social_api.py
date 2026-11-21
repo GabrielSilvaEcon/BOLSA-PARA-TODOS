@@ -46,18 +46,39 @@ def test_fluxo_de_amizade_e_desafio(dois):
     h_bia = s["amigos"][0]["h"]
     p = ana.get(f"/social/perfil/{h_bia}").json()
     assert p["usuario"] == "bia_h" and p["rel"] == "amigos" and not p["restrito"]
-    d = ana.post("/social/desafiar", json={"h": h_bia, "jogo": "ticker"}).json()
-    assert d["id"] and d["codigo"]
-    cv = bia.get("/social").json()["convites"]
-    assert len(cv) == 1 and cv[0]["jogo"] == "ticker" and cv[0]["usuario"] == "ana_h"
-    e = bia.post("/social/convite/entrar", json={"h": cv[0]["h"]}).json()
-    assert e["jogo"] == "ticker" and e["id"] == d["id"]
-    assert bia.get("/social").json()["convites"] == []
-    t = ana.post("/social/desafiar", json={"h": h_bia, "jogo": "trade"})
-    assert t.status_code == 200 and t.json()["id"] and t.json()["codigo"]
-    e2 = bia.post("/social/convite/entrar", json={"h": cv[0]["h"]}).json()
-    assert e2["jogo"] == "trade" and e2["id"] == t.json()["id"]
+    h_ana = bia.get("/social").json()["amigos"][0]["h"]
+    for jogo in ("ticker", "trade"):
+        d = ana.post("/social/desafiar", json={"h": h_bia, "jogo": jogo}).json()
+        assert d["id"] and "codigo" not in d
+        assert ana.get("/social/desafio", params={"h": h_bia}).json()["estado"] == "aguardando"
+        cv = bia.get("/social").json()["convites"]
+        assert len(cv) == 1 and cv[0]["jogo"] == jogo and cv[0]["usuario"] == "ana_h"
+        e = bia.post("/social/convite/entrar", json={"h": h_ana}).json()
+        assert e["jogo"] == jogo and e["id"] == d["id"]
+        st = ana.get("/social/desafio", params={"h": h_bia}).json()
+        assert st["estado"] == "aceito" and st["id"] == d["id"]          # a partida começou sozinha para os dois
+        if jogo == "ticker":
+            assert ana.get(f"/ticker/online/{d['id']}").json()["fase"] == "em_jogo"
+        else:
+            assert ana.get(f"/trade/salas/{d['id']}").json()["estado"] == "jogo"
+        assert bia.get("/social").json()["convites"] == []
+        ana.post("/social/desafio/cancelar", json={"h": h_bia})
 
+
+def test_desafio_recusado_e_cancelado(dois):
+    ana, bia = dois
+    h_bia = ana.get("/social/buscar", params={"texto": "bia"}).json()["itens"][0]["h"]
+    ana.post("/social/pedir", json={"usuario": "bia_h"})
+    h_ana = bia.get("/social").json()["recebidos"][0]["h"]
+    bia.post("/social/responder", json={"h": h_ana, "aceitar": True})
+    ana.post("/social/desafiar", json={"h": h_bia, "jogo": "ticker"})
+    assert bia.post("/social/convite/recusar", json={"h": h_ana}).status_code == 200
+    assert ana.get("/social/desafio", params={"h": h_bia}).json()["estado"] == "recusado"
+    assert ana.post("/social/desafio/cancelar", json={"h": h_bia}).status_code == 200
+    assert ana.get("/social/desafio", params={"h": h_bia}).json()["estado"] == "expirado"
+    ana.post("/social/desafiar", json={"h": h_bia, "jogo": "ticker"})                   # a primeira foi fechada: dá para desafiar de novo
+    ana.post("/social/desafio/cancelar", json={"h": h_bia})
+    assert bia.get("/social").json()["convites"] == []
 
 def test_nao_desafia_quem_nao_e_amigo_e_bloqueio_esconde(dois):
     ana, bia = dois
