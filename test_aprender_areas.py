@@ -44,3 +44,18 @@ def test_rotas(cli):
     assert [x["id"] for x in c["certificacoes"]] == ["cpa", "cpro_r", "cpro_i"]
     assert cli.get("/aprender/area/xyz").status_code == 404
     assert cli.post("/aprender/licao/revisao:trading").status_code == 400
+
+
+def test_fase2_educacao_financeira_e_cartoes():
+    import edu_conteudo as E
+    import educacao as ED
+    fin = AA.mapa_area({}, "financas")
+    assert [u["id"] for u in fin] == ["u_inicio", "uf_orc", "uf_cartao", "uf_dividas", "uf_patrimonio"]   # "Primeiros passos" continua primeiro
+    assert [u["id"] for u in AA.mapa_area({}, "cartoes")] == ["uc_intro", "uc_pontos", "uc_uso"]
+    novas = [l for l in J.LICOES if l["unidade"].startswith(("uf_", "uc_"))]
+    assert len(novas) == 24
+    for l in novas:
+        for modo in ("iniciante", "intermediario", "avancado"):                # toda aula nova tem o texto inteiro em todo modo
+            assert len(ED.texto_aula(E.POR_ID[l["aula"]], modo)) > 300, (l["id"], modo)
+    assert AA.nivel("lf_rotativo") == "intermediario" and AA.nivel("lf_salario") == "iniciante"
+    assert not any(a["id"].startswith(("af_", "ac_")) for a in E.AULAS)

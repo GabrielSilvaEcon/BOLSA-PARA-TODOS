@@ -96,6 +96,18 @@ LICOES = [
 from jornada_conteudo_mais import LICOES_MAIS   # lições da Etapa 5 (um arquivo à parte para não crescer demais)
 LICOES.extend(LICOES_MAIS)
 
+# ---- áreas novas do Aprender (aprender_areas.py): cada arquivo traz as suas unidades (com "area"), lições e aulas.
+# As aulas entram só no índice edu_conteudo.POR_ID (para /aprender/aula), sem mexer na lista de aulas da biblioteca antiga.
+import edu_conteudo as _E  # noqa: E402
+import aprender_cartoes as _AC  # noqa: E402
+import aprender_financas as _AF  # noqa: E402
+
+for _m in (_AF, _AC):
+    UNIDADES.extend(_m.UNIDADES)
+    LICOES.extend(_m.LICOES)
+    _E.POR_ID.update({_a["id"]: _a for _a in _m.AULAS})
+NIVEIS_NOVOS = {**_AF.NIVEIS, **_AC.NIVEIS}
+
 # ---- índices (ids dos exercícios são gerados: <lição>_<n>)
 for _l in LICOES:
     for _i, _e in enumerate(_l["exercicios"], 1):
