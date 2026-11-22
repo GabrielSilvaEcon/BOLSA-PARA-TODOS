@@ -216,8 +216,8 @@ class Tour {
     if (ModalRoute.of(c)?.isCurrent == false) return null;
     final ro = c.findRenderObject();
     if (ro is! RenderBox || !ro.attached || !ro.hasSize) return null;
-    final o = ro.localToGlobal(Offset.zero);
-    return o & ro.size;
+    // posição E tamanho já com a escala da tela (no tablet a tela inicial é montada em tamanho de celular e ampliada)
+    return MatrixUtils.transformRect(ro.getTransformTo(null), Offset.zero & ro.size);
   }
 }
 
