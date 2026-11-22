@@ -1635,7 +1635,26 @@ def aprender(q: Quem = Depends(quem)) -> dict:
     r = JO.resumo(p)
     ne = NV.estado(r["xp"])
     s = _apr_sessao(q)
-    return {"resumo": r, "nivel": ne, "mapa": JO.mapa(p), "em_andamento": bool(s and not JO.terminada(s))}
+    import aprender_areas as AA
+    j = JO._jor(p)
+    # "mapa" (todas as unidades) continua para os apps antigos; o app novo usa "areas" e abre cada área em /aprender/area/{id}
+    return {"resumo": r, "nivel": ne, "mapa": JO.mapa(p), "em_andamento": bool(s and not JO.terminada(s)), "areas": AA.resumo_areas(j["licoes"], j["erros"])}
+
+
+@app.get("/aprender/area/{area}")
+def aprender_area(area: str, cert: str | None = None, q: Quem = Depends(quem)) -> dict:
+    """Uma área do Aprender: as trilhas dela (com a próxima lição contada dentro da área) e os erros que esperam revisão ali.
+    Em Certificações sem `cert`, devolve a lista de certificações; com `cert`, as trilhas daquela certificação."""
+    import aprender_areas as AA
+    a = AA.AREA_POR_ID.get(area)
+    if not a or (cert is not None and cert not in AA.CERT_POR_ID):
+        raise HTTPException(404, "área não encontrada")
+    _, p = _prog_estudo(q)
+    j = JO._jor(p)
+    out = {"area": a, "cert": AA.CERT_POR_ID.get(cert) if cert else None, "erros": len(AA.erros_da_area(j["erros"], area, cert))}
+    if area == "certificacoes" and cert is None:
+        return {**out, "certificacoes": AA.certificacoes(j["licoes"]), "mapa": []}
+    return {**out, "mapa": AA.mapa_area(j["licoes"], area, cert)}
 
 
 @app.get("/aprender/aula/{aid}")
@@ -1657,6 +1676,16 @@ def aprender_comecar(lid: str, q: Quem = Depends(quem)) -> dict:
         s = JO.iniciar_revisao(p)
         if not s:
             raise HTTPException(400, "Nada para revisar agora. Bom trabalho!")
+    elif lid.startswith("revisao:"):                     # revisão só de uma área (e certificação): revisao:<area>[:<cert>]
+        import aprender_areas as AA
+        partes = lid.split(":")
+        area, cert = partes[1], (partes[2] if len(partes) > 2 else None)
+        if area not in AA.AREA_POR_ID:
+            raise HTTPException(404, "área não encontrada")
+        _, p = _prog_estudo(q)
+        s = AA.iniciar_revisao_area(JO._jor(p)["erros"], area, cert, JO.TAM_REVISAO)
+        if not s:
+            raise HTTPException(400, "Nada para revisar nesta área. Bom trabalho!")
     else:
         s = JO.iniciar_sessao(lid)
         if not s:
