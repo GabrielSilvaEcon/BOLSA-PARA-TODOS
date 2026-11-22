@@ -52,35 +52,15 @@ class _AprenderTelaState extends State<AprenderTela> {
     }
   }
 
-  Future<void> _abrir(String lid) async {
-    // a lição abre em tela cheia (por cima do cabeçalho e da barra de baixo), para nenhum toque sair dela sem querer
-    await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(
-        builder: (_) => LicaoTela(api: widget.api, licao: lid),
-      ),
-    );
-    await _carregar();
-    saldoMudou.value++; // XP e moedas novos no cabeçalho
-    // tour guiado: a lição voltou concluída
-    for (final u in ((_d?['mapa'] as List?) ?? const []).cast<Map>()) {
-      for (final l in ((u['licoes'] as List?) ?? const []).cast<Map>()) {
-        if ('${l['id']}' == lid && l['estado'] == 'concluida') Tour.evento('licao');
-      }
-    }
+  Future<void> _entrar(Map a) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AreaTela(api: widget.api, area: '${a['id']}', titulo: '${a['titulo']}')));
+    _carregar();
   }
-
-  /// Marca um elemento para o tour guiado (sem id, devolve o próprio elemento).
-  Widget _alvo(String? id, Widget w) => id == null ? w : TourAlvo(id: id, child: w);
-
-  Future<void> _aula(String aid) => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => AulaTela(api: widget.api, aula: aid),
-        ),
-      );
 
   @override
   Widget build(BuildContext context) {
     final d = _d;
+    final areas = ((d?['areas'] as List?) ?? const []).cast<Map>();
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -93,17 +73,25 @@ class _AprenderTelaState extends State<AprenderTela> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(10, 10, 10, 30),
                 children: [
-                  if (d == null && _erro == null)
-                    const Padding(
-                      padding: EdgeInsets.all(40),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
+                  if (d == null && _erro == null) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
                   if (d == null && _erro != null) Text(_erro!, style: const TextStyle(color: Colors.white)),
                   if (d != null) ...[
                     Entrada(ordem: 0, child: _topo(d)),
-                    const SizedBox(height: 10),
-                    if (((d['resumo'] as Map)['erros'] as num? ?? 0) > 0) Entrada(ordem: 1, child: _revisao(d)),
-                    for (final (k, u) in ((d['mapa'] as List?) ?? const []).cast<Map>().indexed) Entrada(ordem: 2 + k, child: _unidade(u, k)),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(4, 16, 4, 8),
+                      child: Row(children: [
+                        Icon(Icons.explore_rounded, color: Color(0xFFF2B84B)),
+                        SizedBox(width: 6),
+                        Text('Escolha o seu caminho', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Colors.white)),
+                      ]),
+                    ),
+                    LayoutBuilder(builder: (ctx, c) {
+                      final col = c.maxWidth >= 600 ? 3 : 2;
+                      final w = (c.maxWidth - 10 * (col - 1)) / col;
+                      return Wrap(spacing: 10, runSpacing: 10, children: [
+                        for (final (i, a) in areas.indexed) SizedBox(width: w, child: Entrada(ordem: 1 + i, child: TourAlvo(id: 'area_${a['id']}', child: _CardArea(a: a, aoTocar: () => _entrar(a))))),
+                      ]);
+                    }),
                   ],
                 ],
               ),
@@ -200,13 +188,273 @@ class _AprenderTelaState extends State<AprenderTela> {
           ),
         ),
       );
+}
 
-  Widget _revisao(Map d) {
-    final n = ((d['resumo'] as Map)['erros'] as num).toInt();
+/// Card de uma área na tela inicial do Aprender: arte, ícone grande, nome, descrição, progresso e avisos.
+class _CardArea extends StatelessWidget {
+  const _CardArea({required this.a, required this.aoTocar});
+  final Map a;
+  final VoidCallback aoTocar;
+
+  @override
+  Widget build(BuildContext context) {
+    final cor = _hex(a['cor']);
+    final feitas = (a['feitas'] as num?)?.toInt() ?? 0, total = (a['total'] as num?)?.toInt() ?? 0;
+    final erros = (a['erros'] as num?)?.toInt() ?? 0;
+    final breve = a['em_breve'] == true;
+    return Pressionavel(
+      aoTocar: aoTocar,
+      child: Container(
+        height: 176,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(cor, const Color(0xFF0B1A47), 0.35)!, const Color(0xFF0B1A47)]),
+          border: Border.all(color: Color.lerp(cor, Colors.white, 0.25)!, width: 2),
+          image: arteCartao('${a['arte']}', opacidade: 0.4),
+          boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 16), const BoxShadow(color: Color(0x99000814), offset: Offset(0, 4), blurRadius: 6)],
+        ),
+        child: Stack(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [Color.lerp(cor, Colors.white, 0.35)!, cor]),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.7), blurRadius: 12)],
+                ),
+                child: Text('${a['icone']}', style: const TextStyle(fontSize: 26)),
+              ),
+              const SizedBox(height: 8),
+              Text('${a['titulo']}',
+                  maxLines: 2,
+                  style: const TextStyle(fontSize: 16, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Colors.black54, offset: Offset(0, 1), blurRadius: 2)])),
+              const SizedBox(height: 2),
+              Expanded(child: Text('${a['descricao']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, height: 1.2, color: Color(0xFFD4E2F7)))),
+              if (breve)
+                const Text('Em breve', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: Color(0xFFF2B84B)))
+              else ...[
+                Row(children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(value: total == 0 ? 0 : feitas / total, minHeight: 7, backgroundColor: const Color(0x55000814), color: cor),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text('$feitas/$total', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Colors.white)),
+                ]),
+              ],
+            ]),
+          ),
+          if (erros > 0)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xFFFF8A3D), border: Border.all(color: Colors.white, width: 1.4)),
+                child: Text('↻ $erros', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white)),
+              ),
+            ),
+          if (!breve && total > 0 && feitas == total) const Positioned(right: 8, top: 8, child: Text('🏅', style: TextStyle(fontSize: 26))),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Tela de uma área (um "mundo" do Aprender): as trilhas daquela área, com voltar para o Aprender.
+/// Em Certificações, primeiro a lista de certificações; cada certificação abre as suas trilhas e o seu simulado.
+class AreaTela extends StatefulWidget {
+  const AreaTela({super.key, required this.api, required this.area, required this.titulo, this.cert});
+  final Api api;
+  final String area, titulo;
+  final String? cert;
+
+  @override
+  State<AreaTela> createState() => _AreaTelaState();
+}
+
+class _AreaTelaState extends State<AreaTela> {
+  Map<String, dynamic>? _d;
+  String? _erro;
+
+  @override
+  void initState() {
+    super.initState();
+    Tour.evento('tela_area_${widget.area}');
+    _carregar();
+  }
+
+  Future<void> _carregar() async {
+    try {
+      final r = await widget.api.get('/aprender/area/${widget.area}${widget.cert == null ? '' : '?cert=${widget.cert}'}');
+      if (mounted) {
+        setState(() {
+          _d = r;
+          _erro = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _erro = e.toString());
+    }
+  }
+
+  Future<void> _abrir(String lid) async {
+    // a lição abre em tela cheia (por cima do cabeçalho e da barra de baixo), para nenhum toque sair dela sem querer
+    await Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (_) => LicaoTela(api: widget.api, licao: lid)));
+    await _carregar();
+    saldoMudou.value++; // XP e moedas novos no cabeçalho
+    // tour guiado: a lição voltou concluída
+    for (final u in ((_d?['mapa'] as List?) ?? const []).cast<Map>()) {
+      for (final l in ((u['licoes'] as List?) ?? const []).cast<Map>()) {
+        if ('${l['id']}' == lid && l['estado'] == 'concluida') Tour.evento('licao');
+      }
+    }
+  }
+
+  /// Marca um elemento para o tour guiado (sem id, devolve o próprio elemento).
+  Widget _alvo(String? id, Widget w) => id == null ? w : TourAlvo(id: id, child: w);
+
+  Future<void> _aula(String aid) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AulaTela(api: widget.api, aula: aid),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final d = _d;
+    final a = (d?['area'] as Map?) ?? const {};
+    final cert = d?['cert'] as Map?;
+    final cor = _hex(cert?['cor'] ?? a['cor']);
+    final mapa = ((d?['mapa'] as List?) ?? const []).cast<Map>();
+    final certs = ((d?['certificacoes'] as List?) ?? const []).cast<Map>();
+    final erros = (d?['erros'] as num?)?.toInt() ?? 0;
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B1A47),
+      body: Stack(fit: StackFit.expand, children: [
+        const FundoCidade(),
+        RefreshIndicator(
+          onRefresh: _carregar,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: ListView(padding: const EdgeInsets.fromLTRB(10, 6, 10, 30), children: [
+                // cabeçalho da área com o voltar
+                Container(
+                  padding: const EdgeInsets.fromLTRB(4, 6, 14, 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(22),
+                    gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF0B1A47), 0.3)!, const Color(0xFF0B1A47)]),
+                    border: Border.all(color: Color.lerp(cor, Colors.white, 0.25)!, width: 2),
+                    image: arteCartao('${a['arte'] ?? 'cidade'}', opacidade: 0.4),
+                    boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 16)],
+                  ),
+                  child: Row(children: [
+                    IconButton(tooltip: 'Voltar ao Aprender', onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 28)),
+                    Text(cert == null ? '${a['icone'] ?? ''}' : '🎓', style: const TextStyle(fontSize: 34)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(cert == null ? widget.titulo : '${cert['titulo']}', style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: Colors.white)),
+                        Text(cert == null ? '${a['descricao'] ?? ''}' : '${cert['sub']} · ${cert['descricao']}', style: const TextStyle(fontSize: 12.5, color: Color(0xFFD4E2F7))),
+                      ]),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 10),
+                if (d == null && _erro == null) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
+                if (d == null && _erro != null) Text(_erro!, style: const TextStyle(color: Colors.white)),
+                if (d != null) ...[
+                  if (erros > 0) Entrada(ordem: 0, child: _revisao(erros)),
+                  // Certificações: escolher a certificação
+                  for (final (i, c) in certs.indexed) Entrada(ordem: 1 + i, child: _cardCert(c)),
+                  if (certs.isNotEmpty)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(8, 4, 8, 0),
+                      child: Text('Conteúdo de estudo, sem vínculo com a ANBIMA. Confira sempre o programa oficial vigente.',
+                          textAlign: TextAlign.center, style: TextStyle(fontSize: 11.5, color: _lilas)),
+                    ),
+                  for (final (k, u) in mapa.indexed) Entrada(ordem: 1 + k, child: _unidade(u, k)),
+                  if (mapa.isEmpty && certs.isEmpty) _emBreve(),
+                ],
+              ]),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _cardCert(Map c) {
+    final cor = _hex(c['cor']);
+    final feitas = (c['feitas'] as num?)?.toInt() ?? 0, total = (c['total'] as num?)?.toInt() ?? 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Pressionavel(
-        aoTocar: () => _abrir('revisao'),
+        aoTocar: () async {
+          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AreaTela(api: widget.api, area: widget.area, titulo: '${c['titulo']}', cert: '${c['id']}')));
+          _carregar();
+        },
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(colors: [Color.lerp(cor, const Color(0xFF0B1A47), 0.4)!, const Color(0xFF0B1A47)]),
+            border: Border.all(color: cor, width: 2),
+            boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.45), blurRadius: 14)],
+          ),
+          child: Row(children: [
+            Container(
+              width: 58,
+              height: 58,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: cor.withValues(alpha: 0.25), border: Border.all(color: cor, width: 2)),
+              child: Text('${c['titulo']}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${c['titulo']}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white)),
+                Text('${c['sub']}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color.lerp(cor, Colors.white, 0.4))),
+                Text('${c['descricao']}', style: const TextStyle(fontSize: 12, color: Color(0xFFD4E2F7))),
+                const SizedBox(height: 4),
+                Text(c['em_breve'] == true ? 'Em breve' : '$feitas/$total lições', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFFF2B84B))),
+              ]),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 30),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _emBreve() => Container(
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: const Color(0xE60B2C5E), border: Border.all(color: const Color(0xFF4F88E6), width: 1.6)),
+        child: Column(children: [
+          Image.asset('assets/home/urso_joinha.webp', height: 110),
+          const SizedBox(height: 8),
+          const Text('Trilhas a caminho!', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFFF2B84B))),
+          const SizedBox(height: 4),
+          const Text('Estamos preparando as lições desta área. Enquanto isso, que tal começar por Educação financeira?',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, color: Colors.white)),
+        ]),
+      );
+
+  Widget _revisao(int n) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Pressionavel(
+        aoTocar: () => _abrir(widget.cert == null ? 'revisao:${widget.area}' : 'revisao:${widget.area}:${widget.cert}'),
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
           decoration: BoxDecoration(
@@ -265,7 +513,7 @@ class _AprenderTelaState extends State<AprenderTela> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Unidade ${k + 1} · ${u['titulo']}',
+                        'Trilha ${k + 1} · ${u['titulo']}',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                       ),
                       Text('${u['descricao'] ?? ''}', style: const TextStyle(fontSize: 12, color: Color(0xEEFFFFFF))),
@@ -279,7 +527,7 @@ class _AprenderTelaState extends State<AprenderTela> {
                       '$feitas/$total',
                       style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
                     ),
-                    if (u['completa'] == true) const Icon(Icons.verified_rounded, color: Colors.white, size: 18),
+                    if (u['completa'] == true) const Text('🏅', style: TextStyle(fontSize: 20)),
                   ],
                 ),
               ],
@@ -288,7 +536,7 @@ class _AprenderTelaState extends State<AprenderTela> {
           const SizedBox(height: 10),
           LayoutBuilder(
             builder: (ctx, c) {
-              const passo = 124.0, topo = 30.0;
+              const passo = 134.0, topo = 30.0;
               final w = c.maxWidth;
               double x(int i) => w / 2 + sin(i * 1.1) * w * 0.26;
               return SizedBox(
@@ -383,6 +631,17 @@ class _AprenderTelaState extends State<AprenderTela> {
             style: const TextStyle(fontSize: 11.5, height: 1.15, fontWeight: FontWeight.w800, color: Colors.white),
           ),
         ),
+        if (l['nivel'] == 'intermediario' || l['nivel'] == 'avancado')
+          Container(
+            margin: const EdgeInsets.only(top: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              color: l['nivel'] == 'avancado' ? const Color(0xFFB0306B) : const Color(0xFF2A62C8),
+              border: Border.all(color: Colors.white70),
+            ),
+            child: Text(l['nivel'] == 'avancado' ? 'Avançado' : 'Intermediário', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white)),
+          ),
       ],
     );
   }
