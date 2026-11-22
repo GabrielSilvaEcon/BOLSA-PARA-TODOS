@@ -58,6 +58,12 @@ const passosTour = <PassoTour>[
     texto: 'Todo bom investidor começa estudando. Toque em Aprender.',
   ),
   PassoTour(
+    alvo: 'area_financas',
+    evento: 'tela_area_financas',
+    titulo: 'Escolha um caminho',
+    texto: 'O Aprender é dividido em áreas: finanças, cartões, investimentos, trading, cripto, certificações... Vamos começar pela base: toque em Educação financeira.',
+  ),
+  PassoTour(
     alvo: 'aprender_proxima',
     evento: 'licao',
     marco: 'aprender',
@@ -463,7 +469,7 @@ class _Cartao extends StatelessWidget {
                     child: Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: i >= [4, 7, 13, 17][k] ? const Color(0xFFF7C84A) : const Color(0x553A6FD8)),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: i >= [4, 8, 14, 18][k] ? const Color(0xFFF7C84A) : const Color(0x553A6FD8)),
                     ),
                   ),
                 ),
