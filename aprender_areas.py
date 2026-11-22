@@ -54,7 +54,8 @@ NIVEL_DA_LICAO: dict[str, str] = {
 
 
 def area_da_unidade(uid: str) -> str:
-    return AREA_DA_UNIDADE.get(uid, "investimentos")
+    u = J.UNIDADE_POR_ID.get(uid) or {}
+    return u.get("area") or AREA_DA_UNIDADE.get(uid, "investimentos")
 
 
 def area_da_licao(lid: str) -> str | None:
@@ -63,7 +64,7 @@ def area_da_licao(lid: str) -> str | None:
 
 
 def nivel(lid: str) -> str:
-    return NIVEL_DA_LICAO.get(lid, "iniciante")
+    return NIVEL_DA_LICAO.get(lid) or J.NIVEIS_NOVOS.get(lid, "iniciante")
 
 
 def unidades_da_area(area: str, cert: str | None = None) -> list[dict]:
