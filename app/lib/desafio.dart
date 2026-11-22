@@ -58,10 +58,6 @@ class _DesafioTelaState extends State<DesafioTela> {
         _erro = null;
         _resta = (r['termina_em'] as num?)?.toInt() ?? 0;
       });
-      final pr = r['premio_ontem'];
-      if (pr is Map && pr['novo'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Desafio de ontem: você ficou em ${pr['pos']}º e ganhou +${pr['tc']} TC!')));
-      }
       if ((r['meu'] as Map?)?['terminou'] == true) _ranking();
     } catch (e) {
       if (mounted) setState(() => _erro = e.toString());
@@ -102,16 +98,16 @@ class _DesafioTelaState extends State<DesafioTela> {
                     const Spacer(),
                     IconButton(onPressed: _regras, icon: const Icon(Icons.info_outline_rounded, color: Colors.white)),
                   ]),
-                  SizedBox(
-                    height: 210,
-                    child: Stack(children: [
-                      Positioned(left: -8, bottom: 0, child: Flutua(child: Image.asset(terminou ? 'assets/ranking/urso_vitoria.webp' : 'assets/ranking/urso_aponta.webp', height: 200))),
-                      Positioned(right: 0, top: 0, child: Image.asset('assets/ranking/desafio_titulo.webp', height: 205)),
-                    ]),
-                  ),
+                  // dois cartões da arte: o urso apontando e o título "Desafio do dia"
+                  Row(children: [
+                    Expanded(child: Entrada(ordem: 0, child: _cartaoArte('assets/ranking/desafio_card_urso.webp'))),
+                    const SizedBox(width: 10),
+                    Expanded(child: Entrada(ordem: 0, child: Flutua(altura: 3, child: _cartaoArte('assets/ranking/desafio_card_titulo.webp')))),
+                  ]),
                   if (d == null && _erro == null) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
                   if (d == null && _erro != null) Padding(padding: const EdgeInsets.all(20), child: Text(_erro!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white))),
                   if (d != null) ...(terminou ? _depois(d, meu!) : _antes(d, meu)),
+                  if (d?['premio_ontem'] is Map) _avisoOntem(d!['premio_ontem'] as Map),
                 ]),
               ),
             ),
@@ -120,6 +116,31 @@ class _DesafioTelaState extends State<DesafioTela> {
       ]),
     );
   }
+
+  /// Cartão com moldura da arte de referência (cantos arredondados e brilho azul).
+  Widget _cartaoArte(String arte) => Container(
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: const [BoxShadow(color: Color(0x886C8BFF), blurRadius: 16)]),
+        child: ClipRRect(borderRadius: BorderRadius.circular(18), child: AspectRatio(aspectRatio: 1.42, child: Image.asset(arte, fit: BoxFit.cover))),
+      );
+
+  /// Faixa clara no pé da tela com o resultado de ontem (como na referência).
+  Widget _avisoOntem(Map pr) => Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(colors: [Color(0xFFF2F4FF), Color(0xFFD9E2FF)]),
+          boxShadow: const [BoxShadow(color: Color(0x886C8BFF), blurRadius: 12)],
+        ),
+        child: Row(children: [
+          const Text('📣', style: TextStyle(fontSize: 22)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('Desafio de ontem: você ficou em ${pr['pos']}º e ganhou +${pr['tc']} TC!',
+                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: Color(0xFF1A2560))),
+          ),
+        ]),
+      );
 
   Widget _faixa(Widget child, {Color borda = const Color(0xFF4F88E6)}) => Container(
         margin: const EdgeInsets.only(top: 10),
@@ -144,7 +165,7 @@ class _DesafioTelaState extends State<DesafioTela> {
         Flexible(child: Text('1 tentativa, o mesmo gráfico para todos.', style: TextStyle(fontSize: 15, fontStyle: FontStyle.italic, color: Colors.white))),
       ])),
       const SizedBox(height: 12),
-      ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.asset('assets/ranking/grafico_trancado.webp', fit: BoxFit.cover)),
+      ClipRRect(borderRadius: BorderRadius.circular(22), child: Image.asset('assets/ranking/desafio_trancado.webp', fit: BoxFit.cover)),
       const SizedBox(height: 12),
       Row(children: [
         Expanded(
