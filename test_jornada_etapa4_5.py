@@ -21,9 +21,7 @@ from test_jornada import _certo
 
 def test_toda_aula_tem_uma_licao_e_toda_licao_esta_em_uma_unidade():
     # toda aula da biblioteca tem a sua lição; as áreas novas do Aprender (aprender_*.py) trazem aulas próprias, também uma por lição
-    import aprender_cartoes as AC
-    import aprender_financas as AF
-    novas = {a["id"] for m in (AF, AC) for a in m.AULAS}
+    novas = {a["id"] for m in J.MODULOS_NOVOS for a in m.AULAS}
     assert {l["aula"] for l in J.LICOES} == {a["id"] for a in E.AULAS} | novas
     assert all(a in E.POR_ID for a in novas)
     em_unidades = [lid for u in J.UNIDADES for lid in u["licoes"]]

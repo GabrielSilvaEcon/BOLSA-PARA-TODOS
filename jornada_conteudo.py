@@ -101,12 +101,15 @@ LICOES.extend(LICOES_MAIS)
 import edu_conteudo as _E  # noqa: E402
 import aprender_cartoes as _AC  # noqa: E402
 import aprender_financas as _AF  # noqa: E402
+import aprender_investimentos as _AI  # noqa: E402
+import aprender_trading as _AT  # noqa: E402
 
-for _m in (_AF, _AC):
+MODULOS_NOVOS = (_AF, _AC, _AI, _AT)
+for _m in MODULOS_NOVOS:
     UNIDADES.extend(_m.UNIDADES)
     LICOES.extend(_m.LICOES)
     _E.POR_ID.update({_a["id"]: _a for _a in _m.AULAS})
-NIVEIS_NOVOS = {**_AF.NIVEIS, **_AC.NIVEIS}
+NIVEIS_NOVOS = {k: v for _m in MODULOS_NOVOS for k, v in _m.NIVEIS.items()}
 
 # ---- índices (ids dos exercícios são gerados: <lição>_<n>)
 for _l in LICOES:

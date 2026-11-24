@@ -59,3 +59,30 @@ def test_fase2_educacao_financeira_e_cartoes():
             assert len(ED.texto_aula(E.POR_ID[l["aula"]], modo)) > 300, (l["id"], modo)
     assert AA.nivel("lf_rotativo") == "intermediario" and AA.nivel("lf_salario") == "iniciante"
     assert not any(a["id"].startswith(("af_", "ac_")) for a in E.AULAS)
+
+
+def test_fase3_trading_investimentos_e_nivelamento(cli):
+    assert [u["id"] for u in AA.mapa_area({}, "trading")] == ["ut_bolsa", "ut_grafico", "ut_wyckoff", "ut_gestao"]
+    inv = [u["id"] for u in AA.mapa_area({}, "investimentos")]
+    assert inv[:2] == ["u_rf", "ui_rf_pratica"] and "ui_gestao" in inv                 # trilhas novas perto do assunto
+    assert AA.tem_nivelamento("financas") and not AA.tem_nivelamento("cripto") and not AA.tem_nivelamento("certificacoes")
+    # nivelamento pela API: errar a 1ª pergunta recomenda a 1ª trilha; não dá XP nem muda o progresso
+    antes = cli.get("/aprender").json()["resumo"]
+    r = cli.post("/aprender/licao/nivel:trading").json()
+    assert r["sessao"]["titulo"] == "Teste de nivelamento"
+    import jornada_conteudo as JC
+    fim, primeira = None, True
+    while fim is None:
+        ex = JC.EX_POR_ID[r["exercicio"]["id"]]
+        certa = {"escolha": ex.get("correta"), "completar": ex.get("correta"), "vf": ex.get("correta"),
+                 "ordenar": ex.get("itens"), "pares": dict(ex.get("pares") or [])}[ex["tipo"]]
+        if primeira:
+            certa = {"vf": not ex["correta"]}.get(ex["tipo"], -1)
+            primeira = False
+        r = cli.post("/aprender/responder", json={"id": ex["id"], "resposta": certa}).json()
+        fim = r.get("fim")
+    assert fim["nivelamento"] and fim["xp"] == 0 and fim["recomendada"]["id"] == "ut_bolsa"
+    depois = cli.get("/aprender").json()["resumo"]
+    assert depois["xp"] == antes["xp"] and depois["erros"] == antes["erros"]
+    assert cli.get("/aprender/area/trading").json()["recomendada"] == "ut_bolsa"
+    assert cli.post("/aprender/licao/nivel:cripto").status_code == 400

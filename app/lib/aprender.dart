@@ -8,6 +8,7 @@ import 'api.dart';
 import 'arte_cartao.dart';
 import 'navegacao.dart';
 import 'tour.dart';
+import 'trade.dart';
 
 /// Aprender (a Jornada do app antigo: jornada.py e jornada_player.py): trilha de unidades com lições curtas no estilo Duolingo.
 /// Nada fica trancado; o erro volta ao fim da fila (sem vidas) e vai para a revisão. XP só por estudar.
@@ -373,6 +374,7 @@ class _AreaTelaState extends State<AreaTela> {
                 if (d == null && _erro == null) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
                 if (d == null && _erro != null) Text(_erro!, style: const TextStyle(color: Colors.white)),
                 if (d != null) ...[
+                  if (d['nivelamento'] == true) Entrada(ordem: 0, child: _nivelamento(d['recomendada'] != null)),
                   if (erros > 0) Entrada(ordem: 0, child: _revisao(erros)),
                   // Certificações: escolher a certificação
                   for (final (i, c) in certs.indexed) Entrada(ordem: 1 + i, child: _cardCert(c)),
@@ -383,6 +385,7 @@ class _AreaTelaState extends State<AreaTela> {
                           textAlign: TextAlign.center, style: TextStyle(fontSize: 11.5, color: _lilas)),
                     ),
                   for (final (k, u) in mapa.indexed) Entrada(ordem: 1 + k, child: _unidade(u, k)),
+                  if (widget.area == 'trading' && mapa.isNotEmpty) Entrada(ordem: 2 + mapa.length, child: _praticar()),
                   if (mapa.isEmpty && certs.isEmpty) _emBreve(),
                 ],
               ]),
@@ -392,6 +395,60 @@ class _AreaTelaState extends State<AreaTela> {
       ]),
     );
   }
+
+  /// Teste de nivelamento opcional: algumas perguntas para descobrir por qual trilha começar (não vale XP).
+  Widget _nivelamento(bool feito) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Pressionavel(
+          aoTocar: () => _abrir('nivel:${widget.area}'),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFF6CA3FF), width: 2),
+              gradient: const LinearGradient(colors: [Color(0xFF1A3A80), Color(0xFF0B1A47)]),
+              boxShadow: const [BoxShadow(color: Color(0x556CA3FF), blurRadius: 12)],
+            ),
+            child: Row(children: [
+              const Text('🎯', style: TextStyle(fontSize: 30)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(feito ? 'Refazer o teste de nivelamento' : 'Teste de nivelamento', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
+                  const Text('Opcional · descubra por qual trilha começar (não vale XP).', style: TextStyle(fontSize: 12.5, color: Color(0xFFD4E2F7))),
+                ]),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white),
+            ]),
+          ),
+        ),
+      );
+
+  /// Fim da área de Trading: praticar no Trade Battle, com dinheiro virtual (opcional).
+  Widget _praticar() => Pressionavel(
+        aoTocar: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TradeTela(api: widget.api))),
+        child: Container(
+          height: 90,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFF2B84B), width: 2)),
+          child: Stack(fit: StackFit.expand, children: [
+            Image.asset('assets/home/btn_trade.webp', fit: BoxFit.cover),
+            Container(color: const Color(0x66000814)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Text('Pratique no Trade Battle', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Colors.black, blurRadius: 4)])),
+                    Text('Teste stop, alvo e o seu plano com dinheiro virtual.', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ]),
+                ),
+                Icon(Icons.play_circle_fill_rounded, color: Color(0xFFF2B84B), size: 38),
+              ]),
+            ),
+          ]),
+        ),
+      );
 
   Widget _cardCert(Map c) {
     final cor = _hex(c['cor']);
@@ -517,6 +574,13 @@ class _AreaTelaState extends State<AreaTela> {
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
                       ),
                       Text('${u['descricao'] ?? ''}', style: const TextStyle(fontSize: 12, color: Color(0xEEFFFFFF))),
+                      if (u['id'] == _d?['recomendada'])
+                        Container(
+                          margin: const EdgeInsets.only(top: 5),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0xFFF2B84B), border: Border.all(color: Colors.white)),
+                          child: const Text('⭐ Recomendada para você', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF3B2600))),
+                        ),
                     ],
                   ),
                 ),
@@ -1680,6 +1744,7 @@ class _FimState extends State<_Fim> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final f = widget.fim;
+    if (f['nivelamento'] == true) return _resultadoNivel(f);
     final xp = (f['xp'] as num?)?.toInt() ?? 0;
     final subiu = (f['nivel_depois'] as num? ?? 0) > (f['nivel_antes'] as num? ?? 0);
     final conq = ((f['conquistas_novas'] as List?) ?? const []).cast<String>();
@@ -1782,6 +1847,67 @@ class _FimState extends State<_Fim> with SingleTickerProviderStateMixin {
         ]);
       },
     );
+  }
+
+  /// Resultado do teste de nivelamento: cada trilha com ✓ ou "revisar" e a trilha recomendada para começar.
+  Widget _resultadoNivel(Map f) {
+    final trilhas = ((f['trilhas'] as List?) ?? const []).cast<Map>();
+    final rec = f['recomendada'] as Map?;
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 18, 16, 20), children: [
+      Image.asset('assets/home/urso_joinha.webp', height: 170),
+      const SizedBox(height: 6),
+      Center(child: FittedBox(child: _titulo3d('Nivelamento concluído!', 34, const [Color(0xFFFFF3B0), Color(0xFFFFD34A), Color(0xFFF5A623)]))),
+      const SizedBox(height: 4),
+      Text('${f['acertos_primeira']} de ${f['total']} de primeira', textAlign: TextAlign.center, style: const TextStyle(color: _lilas)),
+      const SizedBox(height: 14),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(colors: [Color(0xFF6B3A12), Color(0xFF2A1046)]),
+          border: Border.all(color: const Color(0xFFF2B84B), width: 2),
+        ),
+        child: Row(children: [
+          const Text('⭐', style: TextStyle(fontSize: 36)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(rec == null ? 'Você já domina o básico!' : 'Comece por: ${rec['titulo']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+              Text(rec == null ? 'Acertou tudo de primeira. Escolha a trilha que quiser aprofundar.' : 'É a primeira trilha em que vale reforçar. Ela ganha o selo "Recomendada".',
+                  style: const TextStyle(fontSize: 12.5, color: Color(0xFFFFE6C2))),
+            ]),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      for (final t in trilhas)
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: const Color(0xE6143362),
+            border: Border.all(color: t['ok'] == true ? const Color(0xFF2EE88A) : const Color(0xFFFF8A3D), width: 1.6),
+          ),
+          child: Row(children: [
+            Icon(t['ok'] == true ? Icons.check_circle_rounded : Icons.replay_circle_filled_rounded, color: t['ok'] == true ? const Color(0xFF2EE88A) : const Color(0xFFFF8A3D)),
+            const SizedBox(width: 10),
+            Expanded(child: Text('${t['titulo']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))),
+            Text(t['ok'] == true ? 'Mandou bem' : 'Revisar', style: TextStyle(fontWeight: FontWeight.w900, color: t['ok'] == true ? const Color(0xFF2EE88A) : const Color(0xFFFF8A3D))),
+          ]),
+        ),
+      const SizedBox(height: 12),
+      _BotaoJogo(
+        texto: 'CONTINUAR',
+        icone: Icons.play_arrow_rounded,
+        cores: const [Color(0xFF6BFF5A), Color(0xFF12A83C)],
+        sombra: const Color(0xFF0B6B26),
+        letra: Colors.white,
+        aoTocar: widget.aoFechar,
+      ),
+      const SizedBox(height: 8),
+      const Text('O teste não vale XP nem muda o seu progresso.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: _lilas)),
+    ]);
   }
 
   Widget _quadro(Widget ic, Color c, String v, String t, double e) => Expanded(
