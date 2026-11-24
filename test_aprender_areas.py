@@ -23,7 +23,7 @@ def test_mapa_da_area_e_proxima_por_area():
     assert ls[0]["estado"] == "concluida" and ls[1]["estado"] == "proxima"
     inv = [l for u in AA.mapa_area({}, "investimentos") for l in u["licoes"]]
     assert inv[0]["estado"] == "proxima"                                # cada área tem a sua próxima lição
-    assert AA.mapa_area({}, "certificacoes", "cpa") == []                # certificações ainda sem trilhas (fase 5)
+    assert AA.mapa_area({}, "certificacoes", "cpo_inexistente") == []   # certificação sem trilhas não traz nada
 
 
 def test_revisao_so_da_area():
@@ -95,3 +95,28 @@ def test_fase4_cripto_e_especializacoes():
     r = {a["id"]: a for a in AA.resumo_areas({}, [])}
     assert r["cripto"]["total"] == 8 and r["especializacoes"]["total"] == 21 and not r["cripto"]["em_breve"]
     assert AA.tem_nivelamento("cripto") and AA.tem_nivelamento("especializacoes")
+
+
+def test_fase5_cpa_e_simulado(cli):
+    assert [u["id"] for u in AA.mapa_area({}, "certificacoes", "cpa")] == ["ucpa_sfn", "ucpa_etica", "ucpa_economia", "ucpa_produtos"]
+    assert AA.mapa_area({}, "certificacoes", "cpro_r") == []                     # certificações não se misturam
+    c = {x["id"]: x for x in AA.certificacoes({})}
+    assert c["cpa"]["total"] == 11 and not c["cpa"]["em_breve"] and c["cpro_r"]["em_breve"]
+    s = AA.iniciar_simulado("cpa", "2026-11-24")
+    assert s["total"] == AA.SIMULADO_QUESTOES and s["ids"] == AA.iniciar_simulado("cpa", "2026-11-24")["ids"]
+    assert all(J.EX_POR_ID[e]["licao"].startswith("lcpa_") for e in s["ids"])
+    assert AA.iniciar_simulado("cpro_r", "x") is None
+    # pela API: simulado inteiro, acertando tudo → 100% e aprovado
+    a = cli.get("/aprender/area/certificacoes?cert=cpa").json()
+    assert a["simulado"]["questoes"] == 20 and a["mapa"]
+    r = cli.post("/aprender/licao/simulado:cpa").json()
+    assert r["sessao"]["titulo"] == "Simulado"
+    fim = None
+    while fim is None:
+        ex = J.EX_POR_ID[r["exercicio"]["id"]]
+        certa = {"escolha": ex.get("correta"), "completar": ex.get("correta"), "vf": ex.get("correta"),
+                 "ordenar": ex.get("itens"), "pares": dict(ex.get("pares") or [])}[ex["tipo"]]
+        r = cli.post("/aprender/responder", json={"id": ex["id"], "resposta": certa}).json()
+        fim = r.get("fim")
+    assert fim["simulado"] and fim["aprovado"] and fim["pct"] == 1.0 and fim["xp"] > 0
+    assert cli.post("/aprender/licao/simulado:cpro_i").status_code == 400
