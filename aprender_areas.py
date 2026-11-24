@@ -67,9 +67,18 @@ def nivel(lid: str) -> str:
     return NIVEL_DA_LICAO.get(lid) or J.NIVEIS_NOVOS.get(lid, "iniciante")
 
 
+# Ordem das trilhas dentro da área, quando a ordem do conteúdo não é a melhor (trilhas novas perto do assunto que aprofundam).
+ORDEM_TRILHAS = {
+    "investimentos": ["u_rf", "ui_rf_pratica", "u_onde", "u_carteira", "ui_gestao", "u_analise", "u_riscos", "u_imp"],
+}
+
+
 def unidades_da_area(area: str, cert: str | None = None) -> list[dict]:
     """Unidades (trilhas) da área, na ordem do conteúdo. Em Certificações, só as da certificação pedida."""
     out = [u for u in J.UNIDADES if area_da_unidade(u["id"]) == area]
+    ordem = ORDEM_TRILHAS.get(area)
+    if ordem:
+        out.sort(key=lambda u: ordem.index(u["id"]) if u["id"] in ordem else len(ordem))
     if area == "certificacoes":
         out = [u for u in out if CERT_DA_UNIDADE.get(u["id"]) == cert]
     return out
@@ -130,3 +139,40 @@ def iniciar_revisao_area(erros: list[str], area: str, cert: str | None = None, n
     if not ids:
         return None
     return {"licao": None, "fila": list(ids), "total": len(ids), "feitos": 0, "erros_ids": [], "revisao": True, "ids": list(ids)}
+
+
+# ------------------------------------------------------------------ teste de nivelamento (opcional, por área)
+# Uma pergunta da primeira e uma da última lição de cada trilha. Não dá XP, não muda o progresso nem a fila de revisão:
+# só recomenda a primeira trilha em que a pessoa errou alguma pergunta de primeira.
+MIN_TRILHAS_NIVEL = 2
+
+
+def tem_nivelamento(area: str) -> bool:
+    return area != "certificacoes" and len([u for u in unidades_da_area(area) if u["licoes"]]) >= MIN_TRILHAS_NIVEL
+
+
+def iniciar_nivelamento(area: str) -> dict | None:
+    if not tem_nivelamento(area):
+        return None
+    ids = []
+    for u in unidades_da_area(area):
+        if not u["licoes"]:
+            continue
+        for lid in dict.fromkeys([u["licoes"][0], u["licoes"][-1]]):
+            ids.append(J.LICAO_POR_ID[lid]["exercicios"][0]["id"])
+    return {"licao": None, "fila": list(ids), "total": len(ids), "feitos": 0, "erros_ids": [], "revisao": False, "ids": list(ids),
+            "nivelamento": area}
+
+
+def resultado_nivelamento(s: dict) -> dict:
+    """Por trilha: acertou tudo de primeira? A recomendada é a primeira trilha (na ordem da área) com algum erro."""
+    area = s["nivelamento"]
+    erros = set(s.get("erros_ids") or [])
+    trilhas = []
+    for u in unidades_da_area(area):
+        meus = [e for e in s["ids"] if J.LICAO_POR_ID[J.EX_POR_ID[e]["licao"]]["unidade"] == u["id"]]
+        if meus:
+            trilhas.append({"id": u["id"], "titulo": u["titulo"], "ok": not any(e in erros for e in meus)})
+    rec = next((t for t in trilhas if not t["ok"]), None)
+    return {"nivelamento": True, "area": area, "trilhas": trilhas, "recomendada": rec, "acertos_primeira": s["total"] - len(erros), "total": s["total"],
+            "xp": 0, "tc": 0, "ofensiva": None, "conquistas_novas": [], "meta_nova": False}

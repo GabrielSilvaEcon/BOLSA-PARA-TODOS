@@ -1619,7 +1619,7 @@ def _apr_sessao(q: Quem) -> dict | None:
 def _apr_estado(s: dict) -> dict:
     ex = JO.exercicio_atual(s)
     return {"sessao": {"total": s["total"], "feitos": s["feitos"], "pct": JO.progresso_sessao(s), "revisao": s["revisao"],
-                       "titulo": "Revisão" if s["revisao"] else jornada_conteudo().LICAO_POR_ID[s["licao"]]["titulo"]},
+                       "titulo": "Teste de nivelamento" if s.get("nivelamento") else ("Revisão" if s["revisao"] else jornada_conteudo().LICAO_POR_ID[s["licao"]]["titulo"])},
             "exercicio": _apr_ex_tela(ex) if ex else None}
 
 
@@ -1651,7 +1651,12 @@ def aprender_area(area: str, cert: str | None = None, q: Quem = Depends(quem)) -
         raise HTTPException(404, "área não encontrada")
     _, p = _prog_estudo(q)
     j = JO._jor(p)
-    out = {"area": a, "cert": AA.CERT_POR_ID.get(cert) if cert else None, "erros": len(AA.erros_da_area(j["erros"], area, cert))}
+    out = {"area": a, "cert": AA.CERT_POR_ID.get(cert) if cert else None, "erros": len(AA.erros_da_area(j["erros"], area, cert)),
+           "nivelamento": AA.tem_nivelamento(area) and cert is None}
+    try:
+        out["recomendada"] = (banco.sis_estado_ler(q.email, "apr_nivel") or {}).get(area)
+    except Exception:
+        out["recomendada"] = None
     if area == "certificacoes" and cert is None:
         return {**out, "certificacoes": AA.certificacoes(j["licoes"]), "mapa": []}
     return {**out, "mapa": AA.mapa_area(j["licoes"], area, cert)}
@@ -1676,6 +1681,11 @@ def aprender_comecar(lid: str, q: Quem = Depends(quem)) -> dict:
         s = JO.iniciar_revisao(p)
         if not s:
             raise HTTPException(400, "Nada para revisar agora. Bom trabalho!")
+    elif lid.startswith("nivel:"):                       # teste de nivelamento opcional da área: nivel:<area>
+        import aprender_areas as AA
+        s = AA.iniciar_nivelamento(lid.split(":", 1)[1])
+        if not s:
+            raise HTTPException(400, "Esta área ainda não tem teste de nivelamento.")
     elif lid.startswith("revisao:"):                     # revisão só de uma área (e certificação): revisao:<area>[:<cert>]
         import aprender_areas as AA
         partes = lid.split(":")
@@ -1714,6 +1724,17 @@ def aprender_responder(r: RespostaApr, q: Quem = Depends(quem)) -> dict:
     if not JO.terminada(s2):
         banco.cfg_gravar(CHAVE_LICAO.format(h=banco._h_conta(q.email)), s2)
         return {**out, **_apr_estado(s2), "fim": None}
+    if s2.get("nivelamento"):                            # nivelamento: sem XP e sem mexer no progresso; guarda só a trilha recomendada
+        import aprender_areas as AA
+        res = AA.resultado_nivelamento(s2)
+        banco.cfg_gravar(CHAVE_LICAO.format(h=banco._h_conta(q.email)), {})
+        try:
+            rec = banco.sis_estado_ler(q.email, "apr_nivel") or {}
+            rec[res["area"]] = (res["recomendada"] or {}).get("id")
+            banco.sis_estado_gravar(q.email, "apr_nivel", rec)
+        except Exception as e:
+            banco.registrar_erro("api.aprender_nivel", e)
+        return {**out, "sessao": None, "exercicio": None, "fim": res}
     dados, p = _prog_estudo(q)
     antes = {c["id"] for c in ED.conquistas(p) if c["ok"]}
     p2, res = JO.concluir_sessao(p, s2)
