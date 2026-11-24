@@ -49,7 +49,7 @@ EMPRESAS = [
     _e("BBDC4", "Bradesco", "Bancos", "🏦", "Oferece contas, crédito, cartões, seguros e investimentos.",
        "Tem uma das maiores redes de atendimento bancário do país.", 36, 26, 15),
     _e("ABEV3", "Ambev", "Bebidas", "🍺", "Produz e vende cervejas, refrigerantes e outras bebidas.",
-       "Faz parte de um dos maiores grupos cervejeiros do mundo.", 38, 22, 14),
+       "Faz parte de um dos maiores grupos cervejeiros do mundo.", 38, 22, 14, arte="arte_ABEV3.webp"),
     _e("WEGE3", "WEG", "Bens industriais", "⚙️", "Fabrica motores elétricos, geradores e equipamentos de energia.",
        "Nasceu em Jaraguá do Sul (SC) e exporta para muitos países.", 40, 20, 14),
     _e("B3SA3", "B3", "Serviços financeiros", "📈", "Opera a bolsa de valores brasileira e seus sistemas de negociação.",
