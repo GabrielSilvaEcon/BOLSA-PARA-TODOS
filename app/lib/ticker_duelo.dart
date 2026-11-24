@@ -127,7 +127,8 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
         SafeArea(
           child: Column(children: [
             if (!_verResultado) _topo(),
-            Expanded(child: AnimatedSwitcher(duration: const Duration(milliseconds: 350), child: KeyedSubtree(key: ValueKey('${corpo.runtimeType}$_carta${_revelada?['n']}$_verResultado'), child: corpo))),
+            Expanded(
+                child: AnimatedSwitcher(duration: const Duration(milliseconds: 350), child: KeyedSubtree(key: ValueKey('${corpo.runtimeType}$_carta${_revelada?['n']}$_verResultado'), child: corpo))),
           ]),
         ),
       ]),
@@ -189,18 +190,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
             child: Column(children: [
               Pressionavel(
                 aoTocar: c['sem_adv'] == true ? null : () => _escolher('${c['tk']}'),
-                child: CartaTk(tk: '${c['tk']}', largura: 104, travada: c['sem_adv'] == true),
-              ),
-              const SizedBox(height: 4),
-              SizedBox(
-                width: 104,
-                child: Column(children: [
-                  for (final i in ((c['ind'] as List?) ?? const []).cast<Map>().take(3))
-                    Row(children: [
-                      Expanded(child: Text('${_meta('${i['id']}')['curto'] ?? i['id']}', overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: lilas))),
-                      Text('${i['txt']}', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white)),
-                    ]),
-                ]),
+                child: CartaTk(tk: '${c['tk']}', largura: 116, travada: c['sem_adv'] == true, dados: dadosDoDuelo(c), valores: valoresDoDuelo(c['ind'])),
               ),
             ]),
           ),
@@ -217,12 +207,14 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
     final valores = {for (final i in ((minha['ind'] as List?) ?? const []).cast<Map>()) '${i['id']}': '${i['txt']}'};
     return ListView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 20), children: [
       Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Expanded(child: Column(children: [CartaTk(tk: '$_carta', largura: 130), const SizedBox(height: 4), const Text('Você', style: TextStyle(color: lilas))])),
+        Expanded(
+            child:
+                Column(children: [CartaTk(tk: '$_carta', largura: 130, dados: dadosDoDuelo(minha), valores: valores), const SizedBox(height: 4), const Text('Você', style: TextStyle(color: lilas))])),
         const _Vs(),
         Expanded(
           child: Column(children: [
             _adv == null
-                ? const SizedBox(width: 130, height: 175, child: Center(child: CircularProgressIndicator()))
+                ? SizedBox(width: 130, height: CartaTk.alturaPara(130), child: const Center(child: CircularProgressIndicator()))
                 : Stack(alignment: Alignment.center, children: [
                     CartaTk(tk: '${adv['tk']}', largura: 130),
                     Container(
@@ -274,8 +266,8 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${_meta(i)['nome'] ?? i}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontWeight: FontWeight.w900, color: _ind == i ? const Color(0xFF2A1A00) : Colors.white)),
+                        Text('${_meta(i)['nome'] ?? i}',
+                            maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, color: _ind == i ? const Color(0xFF2A1A00) : Colors.white)),
                         Text('Você: ${valores[i] ?? '—'}', style: TextStyle(fontSize: 11, color: _ind == i ? const Color(0xFF3B2600) : lilas)),
                       ]),
                     ),
@@ -295,8 +287,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0x33143362), border: Border.all(color: const Color(0x666CA3FF))),
-          child: Text('${_meta(_ind)['nome']}. ${_meta(_ind)['significa']} Regra: ${_meta(_ind)['regra']}',
-              style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFE9F1FF))),
+          child: Text('${_meta(_ind)['nome']}. ${_meta(_ind)['significa']} Regra: ${_meta(_ind)['regra']}', style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFFE9F1FF))),
         ),
       ],
       const SizedBox(height: 14),
@@ -364,7 +355,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
                     ..setEntry(3, 2, 0.0015)
                     ..rotateY(angulo),
                   child: angulo > pi / 2
-                      ? Image.asset('assets/ticker/pilha.webp', width: 130, height: 175, fit: BoxFit.cover)
+                      ? Image.asset('assets/ticker/pilha.webp', width: 130, height: CartaTk.alturaPara(130), fit: BoxFit.cover)
                       : Transform.scale(
                           scale: 1 + (gb ? 0.06 * fim : 0),
                           child: CartaTk(tk: '${(r['adv'] as Map)['tk']}', largura: 130, brilho: fim > 0.2 && gb ? cor : null, apagada: fim > 0.2 && ga),
@@ -442,14 +433,11 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
           builder: (ctx, v, c) => Transform.scale(scale: v, child: c),
           child: Image.asset('assets/ticker/$faixa.webp', height: 170),
         ),
-        if (f == 'vitoria')
-          Positioned(right: 0, bottom: -10, child: Flutua(child: Image.asset('assets/home/mascote_principal.webp', height: 90))),
+        if (f == 'vitoria') Positioned(right: 0, bottom: -10, child: Flutua(child: Image.asset('assets/home/mascote_principal.webp', height: 90))),
       ]),
       const SizedBox(height: 8),
-      Text('Você ${_placar['jogador']} × ${_placar['adversario']} Sistema', textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
-      if ((_placar['empates'] as num? ?? 0) > 0)
-        Text('${_placar['empates']} rodada(s) empatada(s)', textAlign: TextAlign.center, style: const TextStyle(color: lilas)),
+      Text('Você ${_placar['jogador']} × ${_placar['adversario']} Sistema', textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
+      if ((_placar['empates'] as num? ?? 0) > 0) Text('${_placar['empates']} rodada(s) empatada(s)', textAlign: TextAlign.center, style: const TextStyle(color: lilas)),
       const SizedBox(height: 14),
       const Text('Resumo das rodadas e Raio-X', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
       const SizedBox(height: 8),
@@ -496,7 +484,7 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Rodada ${r['n']} · ${r['nome_ind']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: Colors.white)),
-                Text('${(r['jog'] as Map)['tk']} ${r['txt_a']} × ${r['txt_b']} ${(r['adv'] as Map)['tk']}', style: const TextStyle(fontSize: 12, color: lilas)),
+                Text('${tkBase((r['jog'] as Map)['tk'])} ${r['txt_a']} × ${r['txt_b']} ${tkBase((r['adv'] as Map)['tk'])}', style: const TextStyle(fontSize: 12, color: lilas)),
               ]),
             ),
             Text(venc == 'jogador' ? 'Venceu' : (venc == 'adversario' ? 'Perdeu' : 'Empate'), style: TextStyle(fontWeight: FontWeight.w900, color: cor)),
@@ -514,10 +502,12 @@ class _DueloTelaState extends State<DueloTela> with TickerProviderStateMixin {
             ])
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text.rich(TextSpan(children: [
-                  TextSpan(text: '$t: ', style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
-                  TextSpan(text: '${rx[k] ?? ''}', style: const TextStyle(color: Color(0xFFE9F1FF))),
-                ]), style: const TextStyle(fontSize: 12.5, height: 1.35)),
+                child: Text.rich(
+                    TextSpan(children: [
+                      TextSpan(text: '$t: ', style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+                      TextSpan(text: '${rx[k] ?? ''}', style: const TextStyle(color: Color(0xFFE9F1FF))),
+                    ]),
+                    style: const TextStyle(fontSize: 12.5, height: 1.35)),
               ),
           ],
         ),

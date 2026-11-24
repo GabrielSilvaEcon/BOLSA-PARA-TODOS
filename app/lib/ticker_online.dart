@@ -525,7 +525,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
               child: AnimatedScale(
                 scale: _carta == t ? 1.06 : 1,
                 duration: const Duration(milliseconds: 200),
-                child: CartaTk(tk: t, largura: 96, marcada: _carta == t, apagada: _carta != null && _carta != t),
+                child: CartaTk(tk: t, largura: 96, marcada: _carta == t, apagada: _carta != null && _carta != t, dados: dadosDoDuelo(cartas[t]), valores: valoresDoDuelo((cartas[t] as Map?)?['ind'])),
               ),
             ),
           ),
@@ -596,14 +596,14 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
       Row(children: [
         Expanded(
             child: Column(children: [
-          CartaTk(tk: '${e['tk']}', largura: 128),
+          CartaTk(tk: '${e['tk']}', largura: 128, dados: dadosDoDuelo((v['cartas'] as Map?)?[e['tk']])),
           const SizedBox(height: 4),
           Text('${(_meta[e['ind']] as Map?)?['nome'] ?? e['ind']}', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFFFD66B)))
         ])),
         SizedBox(width: 62, child: Flutua(altura: 4, child: Image.asset('assets/ticker/vs.webp'))),
         Expanded(
           child: Column(children: [
-            Flutua(altura: 6, periodo: const Duration(milliseconds: 1400), child: Image.asset('assets/ticker/pilha.webp', width: 128, height: 172, fit: BoxFit.cover)),
+            Flutua(altura: 6, periodo: const Duration(milliseconds: 1400), child: Image.asset('assets/ticker/pilha.webp', width: 128, height: CartaTk.alturaPara(128), fit: BoxFit.cover)),
             const SizedBox(height: 4),
             Text(op['confirmou'] == true ? 'Confirmou!' : 'Escolhendo…', style: TextStyle(fontWeight: FontWeight.w800, color: op['confirmou'] == true ? const Color(0xFF8DF5C1) : lilas)),
           ]),
@@ -651,7 +651,7 @@ class _PartidaOnlineTelaState extends State<PartidaOnlineTela> with TickerProvid
                     ..setEntry(3, 2, 0.0015)
                     ..rotateY(ang),
                   child: ang > pi / 2
-                      ? Image.asset('assets/ticker/pilha.webp', width: 128, height: 172, fit: BoxFit.cover)
+                      ? Image.asset('assets/ticker/pilha.webp', width: 128, height: CartaTk.alturaPara(128), fit: BoxFit.cover)
                       : Transform.scale(scale: 1 + (perdi ? 0.06 * fim : 0), child: CartaTk(tk: '${op['tk']}', largura: 128, brilho: fim > 0.2 && perdi ? cor : null, apagada: fim > 0.2 && ganhei)),
                 ),
                 Text('${(_v?['op'] as Map?)?['nick'] ?? 'Adversário'}', style: const TextStyle(color: lilas)),

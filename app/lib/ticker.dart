@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade;
+import 'cartas.dart';
+import 'colecao.dart';
 import 'navegacao.dart';
 import 'ticker_duelo.dart';
 import 'ticker_online.dart';
+
+export 'cartas.dart' show CartaTk, tkBase, valoresDoDuelo, dadosDoDuelo, CatalogoCartas, revelarCartas;
 
 /// Ticker Battle (como no app antigo, battle_app.py): cartas de ações com os indicadores REAIS (dividendos, ROE, P/L…).
 /// Central → Meu Baralho (3 a 10 cartas) → Duelo contra o Sistema (3 rodadas) → Resultado com o Raio-X de cada rodada.
@@ -42,6 +46,7 @@ class _TickerTelaState extends State<TickerTela> {
   @override
   void initState() {
     super.initState();
+    CatalogoCartas.carregar(widget.api);
     _carregar();
   }
 
@@ -81,7 +86,7 @@ class _TickerTelaState extends State<TickerTela> {
   Future<void> _baralho() async {
     final d = _d;
     if (d == null) return;
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => BaralhoTela(api: widget.api, central: d)));
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ColecaoTela(api: widget.api)));
     _carregar();
   }
 
@@ -89,7 +94,7 @@ class _TickerTelaState extends State<TickerTela> {
     final d = _d;
     if (d == null || _iniciando) return;
     if (d['valido'] != true) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${d['msg'] ?? 'Monte seu baralho primeiro.'}')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${d['msg'] ?? 'Equipe suas cartas na Coleção primeiro.'}')));
       return _baralho();
     }
     setState(() => _iniciando = true);
@@ -216,8 +221,7 @@ class _TickerTelaState extends State<TickerTela> {
             shaderCallback: (r) => const LinearGradient(colors: [Color(0x00000000), Color(0xFF000000)], stops: [0, 0.35]).createShader(r),
             blendMode: BlendMode.dstIn,
             child: ShaderMask(
-              shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF000000), Color(0x00000000)], stops: [0.8, 1])
-                  .createShader(r),
+              shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF000000), Color(0x00000000)], stops: [0.8, 1]).createShader(r),
               blendMode: BlendMode.dstIn,
               child: Flutua(altura: 3, child: Image.asset('assets/jogos/tb_touro.webp', height: 112, fit: BoxFit.fitHeight)),
             ),
@@ -237,11 +241,9 @@ class _TickerTelaState extends State<TickerTela> {
             const SizedBox(width: 10),
             const Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Ticker Battle',
-                    style: TextStyle(fontSize: 19, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
+                Text('Ticker Battle', style: TextStyle(fontSize: 19, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
                 SizedBox(height: 3),
-                Text('Escolha seu modo de jogo',
-                    style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: lilas, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
+                Text('Escolha seu modo de jogo', style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: lilas, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
               ]),
             ),
           ]),
@@ -270,8 +272,8 @@ class _TickerTelaState extends State<TickerTela> {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Meu baralho · ${deck.length}/${d['max'] ?? 10}', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
-                Text(ok ? 'Pronto para o duelo. Toque para editar.' : '${d['msg'] ?? 'Monte seu baralho'}',
+                Text('Coleção · ${deck.length}/4 equipadas', style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                Text(ok ? 'Pronto para o duelo. Toque para evoluir e trocar.' : '${d['msg'] ?? 'Equipe suas cartas'}',
                     style: TextStyle(fontSize: 12.2, color: ok ? const Color(0xFF8DF5C1) : const Color(0xFFFFD66B))),
               ]),
             ),
@@ -280,9 +282,10 @@ class _TickerTelaState extends State<TickerTela> {
           if (deck.isNotEmpty) ...[
             const SizedBox(height: 8),
             SizedBox(
-              height: 60,
+              height: CartaTk.alturaPara(56),
               child: ListView(scrollDirection: Axis.horizontal, children: [
-                for (final t in deck) Padding(padding: const EdgeInsets.only(right: 6), child: CartaTk(tk: t, largura: 45)),
+                for (final c in ((d['equipadas'] as List?) ?? const []).cast<Map>())
+                  Padding(padding: const EdgeInsets.only(right: 6), child: CartaTk(tk: '${c['tk']}', largura: 56, dados: dadosDoDuelo(c), valores: valoresDoDuelo(c['ind']))),
               ]),
             ),
           ],
@@ -363,9 +366,9 @@ class _TickerTelaState extends State<TickerTela> {
           ]),
         ),
         quadro([
-          col(img('assets/ticker/pilha.webp'), '3 a 10', 'cartas no baralho'),
+          col(img('assets/ticker/pilha.webp'), '4', 'cartas equipadas'),
           sep(),
-          col(img('assets/jogos/tb_ic_graf.webp'), '5', 'indicadores reais'),
+          col(img('assets/jogos/tb_ic_graf.webp'), '3', 'P/L, DY e ROE'),
           sep(),
           col(img('assets/jogos/tb_ic_xp.webp'), 'Melhor de 3', 'rodadas'),
           sep(),
@@ -406,7 +409,8 @@ class _TickerTelaState extends State<TickerTela> {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Text(
-                'Cada carta é uma ação real da B3 com 5 indicadores de verdade: Dividendos, Rentabilidade, Volatilidade, ROE e P/L. '
+                'Cada carta é uma ação real da B3 com 3 indicadores de verdade: P/L, DY (dividendos) e ROE. O seu baralho são as cartas '
+                'equipadas na Coleção (1 de cada raridade). Ao evoluir uma carta você melhora um desses atributos só no jogo: o dado real não muda. '
                 'No Duelo Clássico são ${d['rodadas'] ?? 3} rodadas: você escolhe a carta e o indicador; o sistema escolhe a carta dele por uma '
                 'regra fixa e pública, sem olhar os seus valores. Cada indicador tem a sua regra (maior vence, menor vence ou menor positivo vence). '
                 'Valores iguais empatam a rodada. Cada carta joga uma vez. Vence quem ganhar mais rodadas.\n\n'
@@ -428,254 +432,3 @@ Widget _caixa({required Widget child, Color borda = const Color(0xFF4F88E6)}) =>
       ),
       child: child,
     );
-
-/// Carta do Ticker Battle (arte própria de cada ação), com marcação de escolhida, trava e brilho.
-class CartaTk extends StatelessWidget {
-  const CartaTk({super.key, required this.tk, this.largura = 110, this.marcada = false, this.travada = false, this.brilho, this.apagada = false});
-  final String tk;
-  final double largura;
-  final bool marcada, travada, apagada;
-  final Color? brilho;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 300),
-      opacity: apagada ? 0.45 : 1,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: largura,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(largura * 0.08),
-          boxShadow: [
-            if (brilho != null) BoxShadow(color: brilho!.withValues(alpha: 0.8), blurRadius: 18, spreadRadius: 2),
-            if (marcada) const BoxShadow(color: Color(0xCC26D07C), blurRadius: 12, spreadRadius: 1),
-          ],
-        ),
-        child: Stack(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(largura * 0.08),
-            child: Image.asset(
-              'assets/ticker/carta_$tk.webp',
-              width: largura,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Container(
-                width: largura,
-                height: largura * 1.34,
-                color: const Color(0xFF1E4786),
-                alignment: Alignment.center,
-                child: Text(tk, style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
-              ),
-            ),
-          ),
-          if (travada)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(largura * 0.08), color: const Color(0xAA081528)),
-                child: const Icon(Icons.lock_rounded, color: Colors.white70, size: 30),
-              ),
-            ),
-          if (marcada)
-            Positioned(
-              right: 4,
-              top: 4,
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF26D07C), border: Border.all(color: Colors.white, width: 2)),
-                child: const Icon(Icons.check, size: 13, color: Colors.white),
-              ),
-            ),
-        ]),
-      ),
-    );
-  }
-}
-
-/// Meu Baralho: todas as cartas; tocar abre os detalhes (indicadores reais e a regra de cada um) com Adicionar/Remover.
-class BaralhoTela extends StatefulWidget {
-  const BaralhoTela({super.key, required this.api, required this.central});
-  final Api api;
-  final Map<String, dynamic> central;
-
-  @override
-  State<BaralhoTela> createState() => _BaralhoTelaState();
-}
-
-class _BaralhoTelaState extends State<BaralhoTela> {
-  late List<String> _deck = ((widget.central['deck'] as List?) ?? const []).cast<String>().toList();
-  late bool _valido = widget.central['valido'] == true;
-  late String _msg = '${widget.central['msg'] ?? ''}';
-  late final List<Map> _cartas = ((widget.central['cartas'] as List?) ?? const []).cast<Map>();
-  late final Map _meta = (widget.central['indicadores'] as Map?) ?? const {};
-  int get _max => (widget.central['max'] as num?)?.toInt() ?? 10;
-  int get _min => (widget.central['min'] as num?)?.toInt() ?? 3;
-
-  Future<void> _salvar(List<String> novo) async {
-    final antes = _deck;
-    setState(() => _deck = novo);
-    try {
-      final r = await widget.api.post('/ticker/baralho', {'deck': novo});
-      if (mounted) {
-        setState(() {
-          _deck = ((r['deck'] as List?) ?? const []).cast<String>().toList();
-          _valido = r['valido'] == true;
-          _msg = '${r['msg'] ?? ''}';
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _deck = antes);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    }
-  }
-
-  void _detalhes(Map c) {
-    final tk = '${c['tk']}';
-    final no = _deck.contains(tk);
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF10274A),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (ctx) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.8,
-        maxChildSize: 0.95,
-        builder: (ctx, sc) => ListView(
-          controller: sc,
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: [
-            Center(child: CartaTk(tk: tk, largura: 150, travada: c['jogavel'] != true)),
-            const SizedBox(height: 8),
-            Text('${c['nome']} · ${c['categoria']}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
-            Text('Dados de ${c['ref']}${'${c['fonte']}'.isEmpty ? '' : ' · ${c['fonte']}'}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: lilas)),
-            const SizedBox(height: 10),
-            for (final i in ((c['ind'] as List?) ?? const []).cast<Map>()) _linhaInd(i),
-            for (final a in ((c['avisos'] as List?) ?? const [])) Text('⚠️ $a', style: const TextStyle(color: Color(0xFFFFD66B))),
-            if (c['jogavel'] != true) Text('🔒 ${c['motivo']}', style: const TextStyle(color: Color(0xFFFF8FA3))),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-                backgroundColor: no ? const Color(0xFF4B82D6) : const Color(0xFF12A83C),
-                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-              ),
-              onPressed: (!no && (c['jogavel'] != true || _deck.length >= _max))
-                  ? null
-                  : () {
-                      Navigator.of(ctx).pop();
-                      _salvar(no ? (_deck.toList()..remove(tk)) : [..._deck, tk]);
-                    },
-              icon: Icon(no ? Icons.remove_rounded : Icons.add_rounded),
-              label: Text(no ? 'Remover do baralho' : (_deck.length >= _max ? 'Baralho cheio ($_max)' : 'Adicionar ao baralho')),
-            ),
-            const SizedBox(height: 6),
-            const Text('As barras são só visuais; quem vence segue a regra de cada indicador.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11.5, color: lilas)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _linhaInd(Map i) {
-    final m = (_meta[i['id']] as Map?) ?? const {};
-    final v = (i['v'] as num).toDouble().abs();
-    final w = (m['melhor'] == 'maior' || m['melhor'] == 'menor') && '${i['txt']}'.contains('%') ? (v * 100).clamp(6, 100) : (v * 4).clamp(6, 100);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(iconesInd[m['icone']] ?? Icons.analytics_rounded, size: 18, color: const Color(0xFF9BBFFF)),
-          const SizedBox(width: 6),
-          Expanded(child: Text('${m['nome'] ?? i['id']}', style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
-          Text('${i['txt']}', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFFD66B))),
-        ]),
-        const SizedBox(height: 4),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: w / 100),
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.easeOutCubic,
-          builder: (ctx, f, _) => ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(value: f, minHeight: 7, backgroundColor: const Color(0x334B82D6), color: const Color(0xFF6CA3FF)),
-          ),
-        ),
-        Text('${m['regra'] ?? ''}', style: const TextStyle(fontSize: 11.5, color: lilas)),
-      ]),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF081528),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0C1E3A),
-        title: const Text('Meu baralho', style: TextStyle(fontWeight: FontWeight.w900)),
-      ),
-      body: Column(children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: _valido ? const Color(0x2226D07C) : const Color(0x22F2B84B),
-            border: Border.all(color: _valido ? const Color(0xFF26D07C) : const Color(0xFFF2B84B)),
-          ),
-          child: Row(children: [
-            Text('${_deck.length}/$_max', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(_valido ? 'Baralho válido: pronto para jogar!' : (_msg.isEmpty ? 'Escolha de $_min a $_max cartas, sem repetir.' : _msg),
-                  style: TextStyle(color: _valido ? const Color(0xFF8DF5C1) : const Color(0xFFFFD66B), fontWeight: FontWeight.w700)),
-            ),
-            if (_deck.isEmpty && (widget.central['sugestao'] as List?)?.isNotEmpty == true)
-              TextButton(
-                onPressed: () => _salvar(((widget.central['sugestao'] as List?) ?? const []).cast<String>().toList()),
-                child: const Text('Sugerir'),
-              ),
-          ]),
-        ),
-        Expanded(
-          child: LayoutBuilder(builder: (ctx, c) {
-            final n = c.maxWidth >= 560 ? 5 : 3;
-            return GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 90),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: n, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.74),
-              itemCount: _cartas.length,
-              itemBuilder: (ctx, i) {
-                final carta = _cartas[i];
-                final tk = '${carta['tk']}';
-                return Entrada(
-                  ordem: i ~/ n,
-                  child: Pressionavel(
-                    aoTocar: () => _detalhes(carta),
-                    child: LayoutBuilder(
-                      builder: (ctx, cc) => CartaTk(tk: tk, largura: cc.maxWidth, marcada: _deck.contains(tk), travada: carta['jogavel'] != true),
-                    ),
-                  ),
-                );
-              },
-            );
-          }),
-        ),
-      ]),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12A83C), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-            onPressed: _valido ? () => Navigator.of(context).pop() : null,
-            icon: const Icon(Icons.check_rounded),
-            label: Text(_valido ? 'Pronto' : 'Escolha pelo menos $_min cartas'),
-          ),
-        ),
-      ),
-    );
-  }
-}
