@@ -101,13 +101,15 @@ LICOES.extend(LICOES_MAIS)
 import edu_conteudo as _E  # noqa: E402
 import aprender_cartoes as _AC  # noqa: E402
 import aprender_cpa as _ACPA  # noqa: E402
+import aprender_cpro_i as _ACPI  # noqa: E402
+import aprender_cpro_r as _ACPR  # noqa: E402
 import aprender_cripto as _AK  # noqa: E402
 import aprender_especializacoes as _AE  # noqa: E402
 import aprender_financas as _AF  # noqa: E402
 import aprender_investimentos as _AI  # noqa: E402
 import aprender_trading as _AT  # noqa: E402
 
-MODULOS_NOVOS = (_AF, _AC, _AI, _AT, _AK, _AE, _ACPA)
+MODULOS_NOVOS = (_AF, _AC, _AI, _AT, _AK, _AE, _ACPA, _ACPR, _ACPI)
 for _m in MODULOS_NOVOS:
     UNIDADES.extend(_m.UNIDADES)
     LICOES.extend(_m.LICOES)
