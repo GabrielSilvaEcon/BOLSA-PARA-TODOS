@@ -80,7 +80,7 @@ def unidades_da_area(area: str, cert: str | None = None) -> list[dict]:
     if ordem:
         out.sort(key=lambda u: ordem.index(u["id"]) if u["id"] in ordem else len(ordem))
     if area == "certificacoes":
-        out = [u for u in out if CERT_DA_UNIDADE.get(u["id"]) == cert]
+        out = [u for u in out if (u.get("cert") or CERT_DA_UNIDADE.get(u["id"])) == cert]
     return out
 
 
@@ -176,3 +176,33 @@ def resultado_nivelamento(s: dict) -> dict:
     rec = next((t for t in trilhas if not t["ok"]), None)
     return {"nivelamento": True, "area": area, "trilhas": trilhas, "recomendada": rec, "acertos_primeira": s["total"] - len(erros), "total": s["total"],
             "xp": 0, "tc": 0, "ofensiva": None, "conquistas_novas": [], "meta_nova": False}
+
+
+# ------------------------------------------------------------------ simulado de certificação
+# Perguntas sorteadas (com semente do dia, iguais o dia todo) só das lições da certificação. Vale como revisão (mesmo XP) e os erros
+# entram na fila de revisão daquela certificação. Nota de corte de referência: 70% (a prova oficial tem regras próprias).
+SIMULADO_QUESTOES = 20
+SIMULADO_CORTE = 0.7
+
+
+def tem_simulado(cert: str | None) -> bool:
+    return bool(cert) and len(licoes_da_area("certificacoes", cert)) >= 2
+
+
+def iniciar_simulado(cert: str, semente: str) -> dict | None:
+    import random
+    if not tem_simulado(cert):
+        return None
+    ids = [e["id"] for u in unidades_da_area("certificacoes", cert) for lid in u["licoes"] for e in J.LICAO_POR_ID[lid]["exercicios"]]
+    rnd = random.Random(f"{cert}|{semente}")
+    rnd.shuffle(ids)
+    ids = ids[:SIMULADO_QUESTOES]
+    return {"licao": None, "fila": list(ids), "total": len(ids), "feitos": 0, "erros_ids": [], "revisao": True, "ids": list(ids), "simulado": cert}
+
+
+def resultado_simulado(s: dict) -> dict:
+    total = s["total"]
+    acertos = total - len(s.get("erros_ids") or [])
+    pct = acertos / total if total else 0.0
+    c = CERT_POR_ID.get(s["simulado"]) or {}
+    return {"simulado": True, "cert": c.get("titulo"), "pct": round(pct, 4), "aprovado": pct >= SIMULADO_CORTE, "corte": SIMULADO_CORTE}

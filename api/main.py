@@ -1619,7 +1619,7 @@ def _apr_sessao(q: Quem) -> dict | None:
 def _apr_estado(s: dict) -> dict:
     ex = JO.exercicio_atual(s)
     return {"sessao": {"total": s["total"], "feitos": s["feitos"], "pct": JO.progresso_sessao(s), "revisao": s["revisao"],
-                       "titulo": "Teste de nivelamento" if s.get("nivelamento") else ("Revisão" if s["revisao"] else jornada_conteudo().LICAO_POR_ID[s["licao"]]["titulo"])},
+                       "titulo": ("Simulado" if s.get("simulado") else "Teste de nivelamento") if (s.get("nivelamento") or s.get("simulado")) else ("Revisão" if s["revisao"] else jornada_conteudo().LICAO_POR_ID[s["licao"]]["titulo"])},
             "exercicio": _apr_ex_tela(ex) if ex else None}
 
 
@@ -1652,7 +1652,8 @@ def aprender_area(area: str, cert: str | None = None, q: Quem = Depends(quem)) -
     _, p = _prog_estudo(q)
     j = JO._jor(p)
     out = {"area": a, "cert": AA.CERT_POR_ID.get(cert) if cert else None, "erros": len(AA.erros_da_area(j["erros"], area, cert)),
-           "nivelamento": AA.tem_nivelamento(area) and cert is None}
+           "nivelamento": AA.tem_nivelamento(area) and cert is None,
+           "simulado": {"questoes": AA.SIMULADO_QUESTOES, "corte": AA.SIMULADO_CORTE} if AA.tem_simulado(cert) else None}
     try:
         out["recomendada"] = (banco.sis_estado_ler(q.email, "apr_nivel") or {}).get(area)
     except Exception:
@@ -1681,6 +1682,11 @@ def aprender_comecar(lid: str, q: Quem = Depends(quem)) -> dict:
         s = JO.iniciar_revisao(p)
         if not s:
             raise HTTPException(400, "Nada para revisar agora. Bom trabalho!")
+    elif lid.startswith("simulado:"):                    # simulado de uma certificação: simulado:<cert>
+        import aprender_areas as AA
+        s = AA.iniciar_simulado(lid.split(":", 1)[1], _agora_brt().date().isoformat())
+        if not s:
+            raise HTTPException(400, "Esta certificação ainda não tem simulado.")
     elif lid.startswith("nivel:"):                       # teste de nivelamento opcional da área: nivel:<area>
         import aprender_areas as AA
         s = AA.iniciar_nivelamento(lid.split(":", 1)[1])
@@ -1750,6 +1756,9 @@ def aprender_responder(r: RespostaApr, q: Quem = Depends(quem)) -> dict:
     res["conquistas_novas"] = [c["titulo"] for c in novas]
     res["tc"] = tc
     res["nivel_antes"], res["nivel_depois"] = NV.nivel_de(res["xp_antes"]), NV.nivel_de(res["xp_depois"])
+    if s2.get("simulado"):
+        import aprender_areas as AA
+        res.update(AA.resultado_simulado(s2))
     return {**out, "sessao": None, "exercicio": None, "fim": res}
 
 

@@ -375,6 +375,7 @@ class _AreaTelaState extends State<AreaTela> {
                 if (d == null && _erro != null) Text(_erro!, style: const TextStyle(color: Colors.white)),
                 if (d != null) ...[
                   if (d['nivelamento'] == true) Entrada(ordem: 0, child: _nivelamento(d['recomendada'] != null)),
+                  if (d['simulado'] is Map) Entrada(ordem: 0, child: _simulado(d['simulado'] as Map)),
                   if (erros > 0) Entrada(ordem: 0, child: _revisao(erros)),
                   // Certificações: escolher a certificação
                   for (final (i, c) in certs.indexed) Entrada(ordem: 1 + i, child: _cardCert(c)),
@@ -419,6 +420,35 @@ class _AreaTelaState extends State<AreaTela> {
                 ]),
               ),
               const Icon(Icons.chevron_right_rounded, color: Colors.white),
+            ]),
+          ),
+        ),
+      );
+
+  /// Simulado da certificação: perguntas sorteadas só das lições dela, com nota de corte de referência.
+  Widget _simulado(Map m) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Pressionavel(
+          aoTocar: () => _abrir('simulado:${widget.cert}'),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFF2B84B), width: 2),
+              gradient: const LinearGradient(colors: [Color(0xFF6B3A12), Color(0xFF2A1046)]),
+              boxShadow: const [BoxShadow(color: Color(0x66F2B84B), blurRadius: 14)],
+            ),
+            child: Row(children: [
+              const Text('📝', style: TextStyle(fontSize: 32)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Simulado', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
+                  Text('${m['questoes']} perguntas sorteadas · aprovação com ${(((m['corte'] as num?) ?? 0.7) * 100).round()}% · vale XP de revisão',
+                      style: const TextStyle(fontSize: 12.5, color: Color(0xFFFFE6C2))),
+                ]),
+              ),
+              const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFF2B84B), size: 34),
             ]),
           ),
         ),
@@ -1745,6 +1775,7 @@ class _FimState extends State<_Fim> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final f = widget.fim;
     if (f['nivelamento'] == true) return _resultadoNivel(f);
+    if (f['simulado'] == true) return _resultadoSimulado(f);
     final xp = (f['xp'] as num?)?.toInt() ?? 0;
     final subiu = (f['nivel_depois'] as num? ?? 0) > (f['nivel_antes'] as num? ?? 0);
     final conq = ((f['conquistas_novas'] as List?) ?? const []).cast<String>();
@@ -1847,6 +1878,54 @@ class _FimState extends State<_Fim> with SingleTickerProviderStateMixin {
         ]);
       },
     );
+  }
+
+  /// Resultado do simulado: porcentagem de acertos, aprovado ou não (pela nota de corte de referência) e o XP de revisão.
+  Widget _resultadoSimulado(Map f) {
+    final pct = ((f['pct'] as num?) ?? 0).toDouble();
+    final ok = f['aprovado'] == true;
+    final cor = ok ? const Color(0xFF2EE88A) : const Color(0xFFFF8A3D);
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 18, 16, 20), children: [
+      Image.asset(ok ? 'assets/aprender/licao_certo_urso.webp' : 'assets/home/urso_joinha.webp', height: 170),
+      const SizedBox(height: 6),
+      Center(child: FittedBox(child: _titulo3d(ok ? 'Aprovado no simulado!' : 'Quase lá!', 36, const [Color(0xFFFFF3B0), Color(0xFFFFD34A), Color(0xFFF5A623)]))),
+      Text('Simulado ${f['cert'] ?? ''}', textAlign: TextAlign.center, style: const TextStyle(color: _lilas)),
+      const SizedBox(height: 14),
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF16306E), Color(0xFF0B1A47)]),
+          border: Border.all(color: cor, width: 2.4),
+          boxShadow: [BoxShadow(color: cor.withValues(alpha: 0.5), blurRadius: 16)],
+        ),
+        child: Column(children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: pct * 100),
+            duration: const Duration(milliseconds: 1200),
+            curve: Curves.easeOutCubic,
+            builder: (ctx, v, _) => Text('${v.round()}%', style: TextStyle(fontSize: 56, fontWeight: FontWeight.w900, color: cor)),
+          ),
+          Text('${f['acertos_primeira']} de ${f['total']} de primeira', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+          const SizedBox(height: 4),
+          Text('Nota de corte de referência: ${(((f['corte'] as num?) ?? 0.7) * 100).round()}%', style: const TextStyle(fontSize: 12.5, color: _lilas)),
+        ]),
+      ),
+      const SizedBox(height: 10),
+      Text(ok ? 'Mandou bem! Continue revisando as trilhas para chegar à prova confiante.' : 'As perguntas que você errou foram para a revisão desta certificação. Revise e tente de novo amanhã.',
+          textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Colors.white)),
+      const SizedBox(height: 14),
+      _BotaoJogo(
+        texto: 'CONTINUAR',
+        icone: Icons.play_arrow_rounded,
+        cores: const [Color(0xFF6BFF5A), Color(0xFF12A83C)],
+        sombra: const Color(0xFF0B6B26),
+        letra: Colors.white,
+        aoTocar: widget.aoFechar,
+      ),
+      const SizedBox(height: 8),
+      Text('+${f['xp'] ?? 0} XP · conteúdo de estudo, sem vínculo com a ANBIMA', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: _lilas)),
+    ]);
   }
 
   /// Resultado do teste de nivelamento: cada trilha com ✓ ou "revisar" e a trilha recomendada para começar.

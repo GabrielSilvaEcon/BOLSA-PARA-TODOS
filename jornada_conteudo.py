@@ -100,13 +100,14 @@ LICOES.extend(LICOES_MAIS)
 # As aulas entram só no índice edu_conteudo.POR_ID (para /aprender/aula), sem mexer na lista de aulas da biblioteca antiga.
 import edu_conteudo as _E  # noqa: E402
 import aprender_cartoes as _AC  # noqa: E402
+import aprender_cpa as _ACPA  # noqa: E402
 import aprender_cripto as _AK  # noqa: E402
 import aprender_especializacoes as _AE  # noqa: E402
 import aprender_financas as _AF  # noqa: E402
 import aprender_investimentos as _AI  # noqa: E402
 import aprender_trading as _AT  # noqa: E402
 
-MODULOS_NOVOS = (_AF, _AC, _AI, _AT, _AK, _AE)
+MODULOS_NOVOS = (_AF, _AC, _AI, _AT, _AK, _AE, _ACPA)
 for _m in MODULOS_NOVOS:
     UNIDADES.extend(_m.UNIDADES)
     LICOES.extend(_m.LICOES)
