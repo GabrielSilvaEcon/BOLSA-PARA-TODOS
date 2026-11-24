@@ -55,8 +55,15 @@ def _snapshot() -> dict:
 
 
 def deck_de(email: str) -> list[str]:
-    """Baralho salvo da pessoa (lido do banco, não da sessão do navegador)."""
-    return list(BD.ler_pessoa(banco, email).get("deck") or [])
+    """Baralho da pessoa = cartas EQUIPADAS na Coleção (lidas do banco, nunca do navegador), como ids de jogo "TK-xxxx"."""
+    import cartas_dados as CD
+    return CD.deck(email)
+
+
+def _snapshot_de(*emails: str) -> dict:
+    """Snapshot + as cópias de jogo (com a evolução da coleção) das cartas equipadas dessas pessoas."""
+    import cartas_dados as CD
+    return CD.snapshot_com(_snapshot(), list(emails))
 
 
 def nick_de(email: str) -> str:
@@ -118,8 +125,9 @@ def _fila_row(email: str) -> dict | None:
 
 def _validar_deck(email: str, snap: dict, agora: datetime) -> list[str]:
     from battle import validar_baralho
+    import cartas_dados as CD
     deck = deck_de(email)
-    ok, msg = validar_baralho(deck, snap, O.hoje_de(agora))
+    ok, msg = validar_baralho(deck, CD.snapshot_com(snap, [email]), O.hoje_de(agora))
     if not ok:
         raise O.ErroPartida(msg)
     return deck
@@ -166,7 +174,6 @@ def consultar_fila(email: str, agora: datetime | None = None) -> dict:
     candidatos = banco._selecionar("bt_fila", {"criado_em": ("lte", eu["criado_em"]), "partida_id": "", "expira_em": ("gt", O.iso(agora))},
                                    ordem="criado_em", limite=10)
     candidatos = [c for c in candidatos if c["email"] != email and (c["criado_em"], c["email"]) < (eu["criado_em"], email)]
-    snap = _snapshot()
     for c in candidatos:
         novo_id = uuid.uuid4().hex[:16]
         if not banco._atualizar_n("bt_fila", {"email": email, "partida_id": ""}, {"partida_id": novo_id}):
@@ -176,6 +183,7 @@ def consultar_fila(email: str, agora: datetime | None = None) -> dict:
             continue                                              # perdi a disputa por este adversário
         try:
             deck_c = banco._de_js(c.get("baralho")).get("deck", [])
+            snap = _snapshot_de(c["email"], email)
             d = O.novo(novo_id, c["email"], c["nick"], deck_c, agora)
             d = O.entrar(d, email, eu["nick"], eu["baralho"], snap, agora, BD.referencia_dos_dados(snap, list(snap)))
             banco._inserir("bt_partidas", {"id": novo_id, "codigo": None, "tipo": "rapida", "status": d["fase"], "a_email": c["email"], "b_email": email,
@@ -230,7 +238,7 @@ def entrar_na_sala(email: str, codigo: str, agora: datetime | None = None) -> di
     if ja == pid:
         return {"id": pid}
     deck = _validar_deck(email, _snapshot(), agora)
-    snap = _snapshot()
+    snap = _snapshot_de(achadas[0].get("a_email") or "", email)
     nick = nick_de(email)
     _mutar(pid, lambda d: O.entrar(d, email, nick, deck, snap, agora, BD.referencia_dos_dados(snap, list(snap))), agora)
     banco._apagar("bt_fila", {"email": email})

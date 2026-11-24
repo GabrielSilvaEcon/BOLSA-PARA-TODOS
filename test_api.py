@@ -317,21 +317,21 @@ def _cartas_teste():
 def test_ticker_battle_duelo_inteiro(cli):
     _cartas_teste()
     c = cli.get("/ticker/central").json()
-    assert len(c["cartas"]) >= 10 and c["deck"] == [] and not c["valido"] and c["sugestao"]
+    assert len(c["cartas"]) >= 10 and len(c["deck"]) == 3 and c["valido"]   # pacote inicial: 3 cartas já equipadas viram o baralho
     assert c["cartas"][0]["ind"] and c["cartas"][0]["ind"][0]["txt"]
-    assert all(len(k["ind"]) <= 5 for k in c["cartas"]) and set(c["indicadores"]) == {"dy_12m", "ret_12m", "vol", "roe", "pl"}
-    assert cli.post("/ticker/duelo").status_code == 400                     # sem baralho válido não começa
-    r = cli.post("/ticker/baralho", json={"deck": c["sugestao"][:4] + [c["sugestao"][0], "NAOEXISTE"]}).json()
-    assert r["deck"] == c["sugestao"][:4] and r["valido"]                  # repetida e inexistente ficam de fora
+    assert all(len(k["ind"]) <= 3 for k in c["cartas"]) and set(c["indicadores"]) == {"dy_12m", "roe", "pl"}
+    assert all("-" in t for t in c["deck"]) and [e["tk"] for e in c["equipadas"]] == c["deck"]
+    r = cli.post("/ticker/baralho", json={"deck": ["PETR4", "VALE3", "ITUB4"]}).json()
+    assert r["deck"] == c["deck"]                                           # o baralho vem da Coleção, não do pedido
     d = cli.post("/ticker/duelo").json()
     did = d["id"]
-    assert d["rodada"] == 1 and len(d["mao"]) == 4 and d["final"] is None
+    assert d["rodada"] == 1 and len(d["mao"]) == 3 and d["final"] is None
     for n in range(1, 4):
         carta = next(m["tk"] for m in d["mao"] if not m["sem_adv"])
         adv = cli.get(f"/ticker/duelo/{did}/adversaria", params={"carta": carta}).json()
         assert adv["adversaria"]["tk"] != carta and "ind" not in adv["adversaria"]     # os valores do sistema ficam escondidos
-        assert set(adv["disputaveis"]) <= {"dy_12m", "ret_12m", "vol", "roe", "pl"}
-        assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "pvp"}).status_code == 400   # fora dos 5
+        assert set(adv["disputaveis"]) <= {"dy_12m", "roe", "pl"} and adv["adversaria"]["ticker"] != carta.split("-")[0]
+        assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "vol"}).status_code == 400   # fora dos 3
         d = cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": adv["disputaveis"][0]}).json()
         assert len(d["rodadas"]) == n and d["rodadas"][-1]["raio_x"]["porque"]
     assert d["final"] in ("vitoria", "derrota", "empate") and sum(d["placar"].values()) == 3
@@ -349,9 +349,8 @@ def test_ticker_online_sala_duas_pessoas(cli):
     banco.sis_atualizar_conta("id-bia@x.com", {"status": "ativa"})
     bia = TestClient(API.app)
     bia.headers["Authorization"] = f"Bearer {contas.criar_sessao('id-bia@x.com')}"
-    sug = cli.get("/ticker/central").json()["sugestao"]
     for c in (cli, bia):
-        assert c.post("/ticker/baralho", json={"deck": sug[:3]}).json()["valido"]
+        assert c.get("/ticker/central").json()["valido"]
     sala = cli.post("/ticker/online/sala").json()
     assert len(sala["codigo"]) == 6
     assert bia.post("/ticker/online/sala/entrar", json={"codigo": sala["codigo"].lower()}).json()["id"] == sala["id"]
@@ -365,7 +364,7 @@ def test_ticker_online_sala_duas_pessoas(cli):
         eb = bia.get(f"/ticker/online/{pid}").json()
         ta = next(t for t in ea["eu"]["deck"] if t not in ea["eu"]["usadas"])
         tb = next(t for t in eb["eu"]["deck"] if t not in eb["eu"]["usadas"])
-        assert cli.post(f"/ticker/online/{pid}/jogar", json={"carta": ta, "ind": "pvp"}).status_code == 400   # fora dos 5
+        assert cli.post(f"/ticker/online/{pid}/jogar", json={"carta": ta, "ind": "vol"}).status_code == 400   # fora dos 3
         va = cli.post(f"/ticker/online/{pid}/jogar", json={"carta": ta, "ind": "dy_12m"}).json()
         assert va["eu"]["escolha"] and "escolha" not in (bia.get(f"/ticker/online/{pid}").json()["op"] or {})   # a escolha fica secreta
         vb = bia.post(f"/ticker/online/{pid}/jogar", json={"carta": tb, "ind": "dy_12m"}).json()
@@ -388,9 +387,6 @@ def test_ticker_online_fila_emparelha(cli):
     banco.sis_atualizar_conta("id-caio@x.com", {"status": "ativa"})
     caio = TestClient(API.app)
     caio.headers["Authorization"] = f"Bearer {contas.criar_sessao('id-caio@x.com')}"
-    sug = cli.get("/ticker/central").json()["sugestao"]
-    for c in (cli, caio):
-        c.post("/ticker/baralho", json={"deck": sug[:3]})
     assert cli.post("/ticker/online/fila").json()["estado"] == "fila"
     r = caio.post("/ticker/online/fila").json()
     assert r["estado"] == "partida"
@@ -450,3 +446,68 @@ def test_aprender_licao_inteira(cli):
     assert m2["resumo"]["xp"] == 10 and m2["resumo"]["erros"] == 1 and m2["mapa"][0]["licoes"][0]["estado"] == "concluida"
     rv = cli.post("/aprender/licao/revisao").json()["exercicio"]           # o que errou entra na revisão
     assert rv["id"] == e["id"]
+
+
+def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
+    _cartas_teste()
+    c = cli.get("/cartas/colecao").json()
+    minhas = [x for x in c["cartas"] if x["possui"]]
+    assert len(minhas) == 3 and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"} and c["inicial"]
+    assert all(x["equipada"] for x in minhas) and c["descobertas"] == 3 and c["total"] >= 19
+    trancada = next(x for x in c["cartas"] if not x["possui"])
+    assert "nome" not in trancada and trancada["setor"]                    # silhueta: só raridade e setor
+    assert "inicial" not in cli.get("/cartas/colecao").json()              # o pacote inicial sai uma vez só
+    r = cli.post("/loja/bau").json()
+    assert r["cartas"] and all(k["tk"] and k["raridade"] for k in r["cartas"])
+    assert "cartas" not in cli.post("/loja/bau").json()                    # mesmo baú não dá cartas de novo
+    c2 = cli.get("/cartas/colecao").json()
+    assert sum(x.get("total", 0) for x in c2["cartas"]) == 3 + len(r["cartas"])
+    # evolução: dá cópias de uma carta e evolui escolhendo o ROE
+    import cartas_dados as CD
+    import cartas as C
+    doc = CD.ler(EU)
+    alvo = next(x["tk"] for x in minhas if x["raridade"] == "epica")
+    for _ in range(3):
+        C.adicionar(doc, alvo, "epica", "2026-11-24T10:00:00")
+    CD.gravar(EU, doc)
+    assert cli.post("/cartas/evoluir", json={"tk": alvo, "ind": "vol"}).status_code == 400
+    assert cli.post("/cartas/evoluir", json={"tk": "NAOTEM3", "ind": "roe"}).status_code == 400
+    e = cli.post("/cartas/evoluir", json={"tk": alvo, "ind": "roe"}).json()
+    x = next(k for k in e["cartas"] if k["tk"] == alvo)
+    assert e["evolucao"]["nivel"] == 2 and x["nivel"] == 2 and x["escolhas"] == ["roe"] and x["melhorias"]["roe"] == 1
+    assert x["real"]["roe"] != x["jogo"]["roe"]                            # dado real separado do atributo de jogo
+    # no duelo, a carta equipada entra com o ROE melhorado (o valor real continua guardado)
+    d = cli.post("/ticker/duelo").json()
+    m = next(k for k in d["mao"] if k["ticker"] == alvo)
+    roe = next(i for i in m["ind"] if i["id"] == "roe")
+    assert m["nivel"] == 2 and roe["real"] != roe["txt"]
+    # equipar: troca dentro da mesma raridade
+    outra = next((k["tk"] for k in cli.get("/cartas/colecao").json()["cartas"] if k["possui"] and not k["equipada"]), None)
+    if outra:
+        r = cli.post("/cartas/equipar", json={"tk": outra}).json()
+        assert r["equipar"]["tk"] == outra and sum(1 for k in r["cartas"] if k.get("equipada")) <= 4
+    assert cli.post("/cartas/equipar", json={"tk": "NAOTEM3"}).status_code == 400
+    assert cli.post("/cartas/desequipar", json={"rar": "comum"}).json()["equip"]["comum"] is None
+    assert cli.post("/ticker/duelo").status_code in (200, 400)
+
+
+def test_catalogo_e_admin_das_cartas(cli):
+    cat = cli.get("/cartas/catalogo").json()["empresas"]
+    assert cat["CVCB3"]["arte"] == "arte_CVCB3.webp" and cat["PETR4"]["raridade"] == "lendaria"
+    assert cli.get("/admin/cartas").status_code == 403
+    assert cli.post("/admin/cartas/empresa", json={"tk": "RENT3", "dados": {}}).status_code == 403
+    import banco
+    banco.sis_atualizar_conta("id-" + EU, {"papel": "admin"})
+    import api.main as A
+    A._CACHE_AUTH.clear()
+    novo = {"nome": "Localiza", "setor": "Locação de veículos", "icone": "🚗", "atividade": "Aluga carros.", "fato": "Grande locadora.",
+            "pontos": {"mercado": 30, "liquidez": 20, "relevancia": 10}}
+    r = cli.post("/admin/cartas/empresa", json={"tk": "RENT3", "dados": novo})
+    assert r.status_code == 200, r.text
+    assert r.json()["raridade_fixa"] == "epica"
+    assert cli.get("/cartas/catalogo").json()["empresas"]["RENT3"]["nome"] == "Localiza"
+    assert cli.post("/admin/cartas/empresa", json={"tk": "RENT3", "dados": {"pontos": {"mercado": 90, "liquidez": 1, "relevancia": 1}}}).status_code == 400
+    assert cli.post("/admin/cartas/regras", json={"evolucao": {"comum": [0]}}).status_code == 400
+    assert cli.post("/admin/cartas/regras", json={"baus": {"comum": {"qtd": 3}}}).json()["baus"]["comum"]["qtd"] == 3
+    import cartas_catalogo as CAT
+    CAT.EXTRAS.clear()

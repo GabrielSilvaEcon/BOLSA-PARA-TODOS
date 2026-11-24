@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'aprender.dart' show FundoCidade;
+import 'cartas.dart' show revelarCartas;
 import 'efeitos.dart';
 import 'navegacao.dart';
 
@@ -98,9 +99,24 @@ class _LojaTelaState extends State<LojaTela> {
     }
   }
 
-  void _abrirBau() => _acao(() => widget.api.post('/loja/bau'), (r) => _bauNovo = r);
+  void _abrirBau() => _acao(() => widget.api.post('/loja/bau'), (r) {
+        _bauNovo = r;
+        _cartasDoBau(r);
+      });
 
-  void _abrirBauProg(int indice) => _acao(() => widget.api.post('/loja/bau/$indice'), (r) => _bauProgNovo = r);
+  void _abrirBauProg(int indice) => _acao(() => widget.api.post('/loja/bau/$indice'), (r) {
+        _bauProgNovo = r;
+        _cartasDoBau(r);
+      });
+
+  /// Cartas colecionáveis que vieram no baú: aparecem depois da animação do baú (uma a uma, com a revelação).
+  void _cartasDoBau(Map<String, dynamic> r) {
+    final c = r['cartas'];
+    if (c is! List || c.isEmpty) return;
+    Future.delayed(const Duration(milliseconds: 3700), () {
+      if (mounted) revelarCartas(context, c, titulo: 'Cartas do baú!');
+    });
+  }
 
   void _usar(String? pid, String tipo) => _acao(
         () => widget.api.post('/loja/equipar', {'pid': pid, 'tipo': tipo}),
@@ -119,8 +135,7 @@ class _LojaTelaState extends State<LojaTela> {
     final req = '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 30)}';
     await _acao(
       () => widget.api.post('/loja/comprar', {'pid': it['id'], 'req': req}),
-      (r) => _aviso =
-          (true, r['duplicada'] == true ? 'Esta compra já tinha sido feita (nada foi cobrado de novo).' : 'Compra feita: ${it['nome']}! Já está na sua conta.'),
+      (r) => _aviso = (true, r['duplicada'] == true ? 'Esta compra já tinha sido feita (nada foi cobrado de novo).' : 'Compra feita: ${it['nome']}! Já está na sua conta.'),
     );
   }
 
@@ -231,8 +246,7 @@ class _LojaTelaState extends State<LojaTela> {
                     Image.asset('assets/loja/tc.webp', height: 30),
                     const SizedBox(width: 8),
                     Flexible(
-                      child: Text(s is num ? _milhar(s) : '—',
-                          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: _ouro), overflow: TextOverflow.ellipsis),
+                      child: Text(s is num ? _milhar(s) : '—', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: _ouro), overflow: TextOverflow.ellipsis),
                     ),
                   ],
                 ),
@@ -240,9 +254,7 @@ class _LojaTelaState extends State<LojaTela> {
                 const SizedBox(height: 4),
                 GestureDetector(
                   onTap: () => setState(() => _aba = 0),
-                  child: const Text('Como ganhar?',
-                      style:
-                          TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _verde, decoration: TextDecoration.underline, decorationColor: _verde)),
+                  child: const Text('Como ganhar?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _verde, decoration: TextDecoration.underline, decorationColor: _verde)),
                 ),
               ],
             ),
@@ -282,8 +294,7 @@ class _LojaTelaState extends State<LojaTela> {
                       const SizedBox(width: 5),
                       Flexible(
                         child: Text(_abas[i].$1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _aba == i ? const Color(0xFF06361F) : Colors.white)),
+                            overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _aba == i ? const Color(0xFF06361F) : Colors.white)),
                       ),
                     ],
                   ),
@@ -365,8 +376,7 @@ class _LojaTelaState extends State<LojaTela> {
       _secao('Como ganhar mais', Icons.lightbulb_rounded, _verde),
       const SizedBox(height: 8),
       _cartao(
-        child: const Text('Conclua lições na Jornada, jogue partidas online e abra o baú diário. Cada conquista rende Ticker Coins.',
-            style: TextStyle(fontSize: 14, color: _lila, height: 1.35)),
+        child: const Text('Conclua lições na Jornada, jogue partidas online e abra o baú diário. Cada conquista rende Ticker Coins.', style: TextStyle(fontSize: 14, color: _lila, height: 1.35)),
       ),
     ];
   }
@@ -456,9 +466,7 @@ class _LojaTelaState extends State<LojaTela> {
     final kind = '${it['kind'] ?? ''}';
     final Widget botao;
     if (tem && it['equipavel'] == true) {
-      botao = it['em_uso'] == true
-          ? _botaoRoxo('Tirar', _ocupado ? null : () => _usar(null, kind))
-          : _botaoVerde('Usar', _ocupado ? null : () => _usar('${it['id']}', kind));
+      botao = it['em_uso'] == true ? _botaoRoxo('Tirar', _ocupado ? null : () => _usar(null, kind)) : _botaoVerde('Usar', _ocupado ? null : () => _usar('${it['id']}', kind));
     } else if (tem) {
       botao = _botaoRoxo('Ativo', null);
     } else if (st['cls'] == 'fora') {
@@ -511,8 +519,7 @@ class _LojaTelaState extends State<LojaTela> {
       _secao('Histórico', Icons.history_rounded, const Color(0xFF9CBFFF)),
       const SizedBox(height: 8),
       if (hist.isEmpty)
-        _cartao(
-            child: const Text('Nenhuma movimentação ainda. Conclua uma lição na Jornada para ganhar suas primeiras moedas.', style: TextStyle(color: _lila)))
+        _cartao(child: const Text('Nenhuma movimentação ainda. Conclua uma lição na Jornada para ganhar suas primeiras moedas.', style: TextStyle(color: _lila)))
       else
         for (final h in hist) ...[
           _linha(
@@ -535,8 +542,7 @@ class _LojaTelaState extends State<LojaTela> {
           if (pill != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration:
-                  BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x2218DB7C), border: Border.all(color: const Color(0x992EE59D))),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), color: const Color(0x2218DB7C), border: Border.all(color: const Color(0x992EE59D))),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.schedule, size: 14, color: _verde),
                 const SizedBox(width: 4),
@@ -565,15 +571,7 @@ class _LojaTelaState extends State<LojaTela> {
         },
       );
 
-  Widget _caixa(
-          {required Widget topo,
-          required String nome,
-          String sub = '',
-          int? preco,
-          required Widget botao,
-          Color borda = const Color(0xFF4B82D6),
-          String etiqueta = ''}) =>
-      Container(
+  Widget _caixa({required Widget topo, required String nome, String sub = '', int? preco, required Widget botao, Color borda = const Color(0xFF4B82D6), String etiqueta = ''}) => Container(
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
@@ -594,11 +592,7 @@ class _LojaTelaState extends State<LojaTela> {
               ),
             SizedBox(height: 74, child: Center(child: topo)),
             const SizedBox(height: 6),
-            Text(nome,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, height: 1.15)),
+            Text(nome, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, height: 1.15)),
             if (sub.isNotEmpty) Text(sub, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: _lila)),
             if (preco != null)
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -630,10 +624,7 @@ class _LojaTelaState extends State<LojaTela> {
               border: Border.all(color: cores.first == const Color(0x22FFFFFF) ? const Color(0x80B3CFFF) : const Color(0xD9FFD66B), width: 1.5),
               boxShadow: [BoxShadow(color: sombra, offset: const Offset(0, 4))],
             ),
-            child: Text(t,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: f == null && texto == Colors.white ? _lila : texto)),
+            child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: f == null && texto == Colors.white ? _lila : texto)),
           ),
         ),
       );
@@ -703,10 +694,7 @@ class _Previa extends StatelessWidget {
           width: 92,
           height: 62,
           padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: _cor(pl['fundo'], const Color(0xFF0A192E)),
-              border: Border.all(color: _cor(pl['borda'], cor), width: 2)),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: _cor(pl['fundo'], const Color(0xFF0A192E)), border: Border.all(color: _cor(pl['borda'], cor), width: 2)),
           child: Column(
             children: [
               Container(height: 14, decoration: BoxDecoration(borderRadius: BorderRadius.circular(5), color: _cor(pl['cartao'], cor))),
@@ -797,18 +785,15 @@ class _ConfirmaCompra extends StatelessWidget {
             if (falta)
               const Padding(
                 padding: EdgeInsets.only(top: 6),
-                child: Text('Saldo insuficiente. Ganhe mais TC na Jornada ou no baú diário.',
-                    textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFFF8FA3))),
+                child: Text('Saldo insuficiente. Ganhe mais TC na Jornada ou no baú diário.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFFF8FA3))),
               ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 48,
               child: FilledButton(
-                style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFF2B84B),
-                    foregroundColor: const Color(0xFF2A1A00),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                style:
+                    FilledButton.styleFrom(backgroundColor: const Color(0xFFF2B84B), foregroundColor: const Color(0xFF2A1A00), textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
                 onPressed: falta ? null : () => Navigator.of(context).pop(true),
                 child: const Text('Confirmar compra'),
               ),

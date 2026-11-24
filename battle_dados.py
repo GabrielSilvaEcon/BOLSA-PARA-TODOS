@@ -28,7 +28,7 @@ MIN_PREGOES = 120                 # menos que isso em 12 meses: sem indicadores 
 CATEGORIAS_ATIVAS = ("acao",)     # por enquanto só ações, que têm arte de carta; FIIs, ETFs e cripto voltam quando houver arte
 ACOES = {"PETR4": "Petrobras", "VALE3": "Vale", "ITUB4": "Itaú", "BBDC4": "Bradesco", "ABEV3": "Ambev", "WEGE3": "Weg", "EMBR3": "Embraer",
          "UGPA3": "Ultra", "BRKM5": "Braskem", "BBAS3": "Banco do Brasil", "SANB11": "Santander", "MGLU3": "Magazine Luiza", "TIMS3": "TIM",
-         "SUZB3": "Suzano", "B3SA3": "B3", "CPFE3": "CPFL Energia"}
+         "SUZB3": "Suzano", "B3SA3": "B3", "CPFE3": "CPFL Energia", "CVCB3": "CVC Brasil", "VAMO3": "Vamos", "LWSA3": "LWSA"}
 FIIS = tuple(A.FIIS_LIQUIDOS[:8])
 ETFS = ("BOVA11", "IVVB11", "SMAL11", "IMAB11", "DIVO11", "HASH11")
 CRIPTOS = {"BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana", "XRP": "ripple", "ADA": "cardano"}
@@ -38,7 +38,8 @@ NOMES_ETF = {"BOVA11": "iShares Ibovespa", "IVVB11": "iShares S&P 500", "SMAL11"
 
 def universo() -> list[dict]:
     """[{tk, classe, nome, codigo (para a coleta), moeda}] das cartas ativas do Battle (só categorias com análise real e arte de carta)."""
-    out = [{"tk": t, "classe": "acao", "nome": n, "codigo": t, "moeda": "BRL"} for t, n in ACOES.items()]
+    import cartas_catalogo as CAT
+    out = [{"tk": t, "classe": "acao", "nome": n, "codigo": t, "moeda": "BRL"} for t, n in {**ACOES, **CAT.EXTRAS}.items()]
     out += [{"tk": t, "classe": "fii", "nome": f"Fundo imobiliário {t[:4]}", "codigo": t, "moeda": "BRL"} for t in FIIS]
     out += [{"tk": t, "classe": "etf", "nome": NOMES_ETF.get(t, t), "codigo": t, "moeda": "BRL"} for t in ETFS]
     out += [{"tk": A.id_cripto(s), "classe": "cripto", "nome": A.NOMES_CRIPTO.get(s, s), "codigo": gid, "moeda": "USD", "simbolo": s} for s, gid in CRIPTOS.items()]
