@@ -99,13 +99,13 @@ def test_fase4_cripto_e_especializacoes():
 
 def test_fase5_cpa_e_simulado(cli):
     assert [u["id"] for u in AA.mapa_area({}, "certificacoes", "cpa")] == ["ucpa_sfn", "ucpa_etica", "ucpa_economia", "ucpa_produtos"]
-    assert AA.mapa_area({}, "certificacoes", "cpro_r") == []                     # certificações não se misturam
+    assert not {l["id"] for u in AA.mapa_area({}, "certificacoes", "cpro_r") for l in u["licoes"]} & AA.licoes_da_area("certificacoes", "cpa")  # não se misturam
     c = {x["id"]: x for x in AA.certificacoes({})}
-    assert c["cpa"]["total"] == 11 and not c["cpa"]["em_breve"] and c["cpro_r"]["em_breve"]
+    assert c["cpa"]["total"] == 11 and not c["cpa"]["em_breve"]
     s = AA.iniciar_simulado("cpa", "2026-11-24")
     assert s["total"] == AA.SIMULADO_QUESTOES and s["ids"] == AA.iniciar_simulado("cpa", "2026-11-24")["ids"]
     assert all(J.EX_POR_ID[e]["licao"].startswith("lcpa_") for e in s["ids"])
-    assert AA.iniciar_simulado("cpro_r", "x") is None
+    assert AA.iniciar_simulado("inexistente", "x") is None
     # pela API: simulado inteiro, acertando tudo → 100% e aprovado
     a = cli.get("/aprender/area/certificacoes?cert=cpa").json()
     assert a["simulado"]["questoes"] == 20 and a["mapa"]
@@ -119,4 +119,16 @@ def test_fase5_cpa_e_simulado(cli):
         r = cli.post("/aprender/responder", json={"id": ex["id"], "resposta": certa}).json()
         fim = r.get("fim")
     assert fim["simulado"] and fim["aprovado"] and fim["pct"] == 1.0 and fim["xp"] > 0
-    assert cli.post("/aprender/licao/simulado:cpro_i").status_code == 400
+    assert cli.post("/aprender/licao/simulado:inexistente").status_code == 400
+
+
+def test_fase5_cpro_r_e_cpro_i_sem_misturar():
+    from collections import Counter
+    for cert, pre in (("cpa", "lcpa_"), ("cpro_r", "lcr_"), ("cpro_i", "lci_")):
+        ids = AA.licoes_da_area("certificacoes", cert)
+        assert ids and all(lid.startswith(pre) for lid in ids)                       # cada certificação só com as suas lições
+        s = AA.iniciar_simulado(cert, "2026-11-24")
+        assert s["total"] == AA.SIMULADO_QUESTOES and all(J.EX_POR_ID[e]["licao"].startswith(pre) for e in s["ids"])
+        pos = Counter(e["correta"] for lid in ids for e in J.LICAO_POR_ID[lid]["exercicios"] if e["tipo"] in ("escolha", "completar"))
+        assert len(pos) >= 3                                                           # resposta certa não fica sempre no mesmo lugar
+    assert not any(c["em_breve"] for c in AA.certificacoes({}))
