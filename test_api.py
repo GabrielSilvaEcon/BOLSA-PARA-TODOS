@@ -316,8 +316,12 @@ def _cartas_teste():
 
 def test_ticker_battle_duelo_inteiro(cli):
     _cartas_teste()
+    t = cli.post("/ticker/tutorial/bau").json()
+    assert not t["ja"] and len(t["cartas"]) == 3                            # tutorial: 3 cartas (1 Rara garantida + 2 Comuns)
+    for it in t["cartas"]:                                                  # equipa as 3 cartas recebidas (simula passo da Coleção)
+        cli.post("/cartas/equipar", json={"tk": it["tk"]})
     c = cli.get("/ticker/central").json()
-    assert len(c["cartas"]) >= 10 and len(c["deck"]) == 3 and c["valido"]   # pacote inicial: 3 cartas já equipadas viram o baralho
+    assert len(c["cartas"]) >= 10 and len(c["deck"]) >= 1 and c["valido"]   # baralho formado pelas cartas equipadas
     assert c["cartas"][0]["ind"] and c["cartas"][0]["ind"][0]["txt"]
     assert all(len(k["ind"]) <= 3 for k in c["cartas"]) and set(c["indicadores"]) == {"dy_12m", "roe", "pl"}
     assert all("-" in t for t in c["deck"]) and [e["tk"] for e in c["equipadas"]] == c["deck"]
@@ -350,6 +354,9 @@ def test_ticker_online_sala_duas_pessoas(cli):
     bia = TestClient(API.app)
     bia.headers["Authorization"] = f"Bearer {contas.criar_sessao('id-bia@x.com')}"
     for c in (cli, bia):
+        t = c.post("/ticker/tutorial/bau").json()
+        for it in t["cartas"]:
+            c.post("/cartas/equipar", json={"tk": it["tk"]})
         assert c.get("/ticker/central").json()["valido"]
     sala = cli.post("/ticker/online/sala").json()
     assert len(sala["codigo"]) == 6
@@ -387,6 +394,10 @@ def test_ticker_online_fila_emparelha(cli):
     banco.sis_atualizar_conta("id-caio@x.com", {"status": "ativa"})
     caio = TestClient(API.app)
     caio.headers["Authorization"] = f"Bearer {contas.criar_sessao('id-caio@x.com')}"
+    for c in (cli, caio):
+        t = c.post("/ticker/tutorial/bau").json()
+        for it in t["cartas"]:
+            c.post("/cartas/equipar", json={"tk": it["tk"]})
     assert cli.post("/ticker/online/fila").json()["estado"] == "fila"
     r = caio.post("/ticker/online/fila").json()
     assert r["estado"] == "partida"
@@ -450,13 +461,18 @@ def test_aprender_licao_inteira(cli):
 
 def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     _cartas_teste()
+    # jogadores começam sem cartas; o tutorial entrega as 3 iniciais
+    c0 = cli.get("/cartas/colecao").json()
+    assert len([x for x in c0["cartas"] if x["possui"]]) == 0
+    t = cli.post("/ticker/tutorial/bau").json()
+    assert not t["ja"] and len(t["cartas"]) == 3                           # tutorial: 1 Comum + 1 Rara + 1 Épica
     c = cli.get("/cartas/colecao").json()
     minhas = [x for x in c["cartas"] if x["possui"]]
-    assert len(minhas) == 3 and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"} and c["inicial"]
+    assert len(minhas) == 3 and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"}
     assert all(x["equipada"] for x in minhas) and c["descobertas"] == 3 and c["total"] >= 19
     trancada = next(x for x in c["cartas"] if not x["possui"])
     assert "nome" not in trancada and trancada["setor"]                    # silhueta: só raridade e setor
-    assert "inicial" not in cli.get("/cartas/colecao").json()              # o pacote inicial sai uma vez só
+    assert cli.post("/ticker/tutorial/bau").json()["ja"]                   # o baú tutorial sai uma vez só
     r = cli.post("/loja/bau").json()
     assert r["cartas"] and all(k["tk"] and k["raridade"] for k in r["cartas"])
     assert "cartas" not in cli.post("/loja/bau").json()                    # mesmo baú não dá cartas de novo
