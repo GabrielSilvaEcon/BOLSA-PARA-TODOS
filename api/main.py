@@ -577,9 +577,10 @@ def loja(q: Quem = Depends(quem)) -> dict:
 def loja_bau(q: Quem = Depends(quem)) -> dict:
     """Abre o baú diário (uma vez por dia; o servidor sorteia e credita)."""
     try:
-        return TC.abrir_bau_diario(q.conta.get("id"))
+        res = TC.abrir_bau_diario(q.conta.get("id"))
     except TC.ErroTC as e:
         _erro(e)
+    return _ct_bau(q, "diario:" + TC._dia_bau(), res)
 
 
 @app.post("/loja/bau/{indice}")
@@ -588,10 +589,12 @@ def loja_bau_progresso(indice: int, q: Quem = Depends(quem)) -> dict:
     lista = _baus_elegiveis(q)
     if not 0 <= indice < len(lista):
         raise HTTPException(404, "Baú não encontrado.")
+    el = lista[indice]
     try:
-        return {**TC.abrir_bau(q.conta.get("id"), lista[indice]), "rotulo": lista[indice].get("rotulo", "Baú")}
+        res = {**TC.abrir_bau(q.conta.get("id"), el), "rotulo": el.get("rotulo", "Baú")}
     except TC.ErroTC as e:
         _erro(e)
+    return _ct_bau(q, f"{el.get('origem')}:{el.get('ref')}", res)
 
 
 class Compra(BaseModel):
@@ -1131,7 +1134,7 @@ def sala_sair(pid: str, q: Quem = Depends(quem)) -> dict:
 # O duelo fica no banco com as cartas CONGELADAS no início (como no app antigo, onde ficava na sessão). O app só manda "qual carta" e
 # "qual indicador"; o servidor escolhe a adversária (regra fixa e pública), compara os valores reais e guarda o histórico.
 CHAVE_TICKER = "tk_api|{h}|{id}"
-TK_INDICADORES = ("dy_12m", "ret_12m", "vol", "roe", "pl")   # no app novo, só 5 indicadores por carta (os mais didáticos)
+TK_INDICADORES = ("pl", "dy_12m", "roe")   # as cartas colecionáveis usam só P/L, DY e ROE
 
 
 def _tk_agora():
@@ -1149,11 +1152,15 @@ def _tk_carta(c: dict, hoje, valores: bool = True) -> dict:
     import battle as BT
     cat = BT.CATEGORIAS.get(c.get("classe"), {"nome": "—", "cor": "#8B6CFF"})
     ok, mot = BT.jogavel(c, hoje)
-    out = {"tk": c.get("tk"), "nome": c.get("nome") or c.get("tk"), "classe": c.get("classe"), "categoria": cat["nome"], "cor": cat["cor"],
-           "ref": _tk_data(c.get("ref")), "fonte": c.get("fonte") or "", "jogavel": ok, "motivo": mot, "avisos": list(c.get("avisos") or [])}
+    # "tk" é o id da carta NO DUELO (cópia de jogo "TK-xxxx" para as cartas da coleção); "ticker" é o código da empresa
+    out = {"tk": c.get("id") or c.get("tk"), "ticker": c.get("tk"), "nome": c.get("nome") or c.get("tk"), "classe": c.get("classe"), "categoria": cat["nome"],
+           "cor": cat["cor"], "ref": _tk_data(c.get("ref")), "fonte": c.get("fonte") or "", "jogavel": ok, "motivo": mot, "avisos": list(c.get("avisos") or [])}
+    if c.get("nivel"):
+        out.update(nivel=c["nivel"], rar=c.get("rar"), melhorias=c.get("melhorias") or {})
     if valores:
-        ind = c.get("ind") or {}
-        out["ind"] = [{"id": i, "v": float(ind[i]), "txt": BT.formatar(i, ind[i])} for i in BT.indicadores_validos(c) if i in TK_INDICADORES]
+        ind, real = c.get("ind") or {}, c.get("real") or {}
+        out["ind"] = [{"id": i, "v": float(ind[i]), "txt": BT.formatar(i, ind[i]), **({"real": BT.formatar(i, real[i])} if i in real and real[i] != ind[i] else {})}
+                      for i in BT.indicadores_validos(c) if i in TK_INDICADORES]
     return out
 
 
@@ -1182,9 +1189,12 @@ def ticker_central(q: Quem = Depends(quem)) -> dict:
     import battle_dados as BD
     hoje = _tk_agora().date()
     snap = _tk_snapshot()
+    import cartas_dados as CD
     pes = BD.ler_pessoa(banco, q.email)
-    deck = [t for t in pes["deck"] if t in snap]
-    ok, msg = BT.validar_baralho(deck, snap, hoje)
+    deck, jogo = CD.cartas_do_solo(q.email, snap)
+    ok, msg = BT.validar_baralho(deck, jogo, hoje)
+    if not ok and len(deck) < BT.BARALHO_MIN:
+        msg = f"Equipe pelo menos {BT.BARALHO_MIN} cartas na Coleção para jogar."
     hist = pes["hist"]
     conta = {"vitoria": 0, "derrota": 0, "empate": 0}
     for h in hist:
@@ -1192,7 +1202,7 @@ def ticker_central(q: Quem = Depends(quem)) -> dict:
             conta[h["final"]] += 1
     cartas = sorted((_tk_carta(c, hoje) for c in snap.values()), key=lambda c: (not c["jogavel"], c["tk"]))
     return {"cartas": cartas, "indicadores": _tk_meta(), "deck": deck, "valido": ok, "msg": msg, "min": BT.BARALHO_MIN, "max": BT.BARALHO_MAX,
-            "rodadas": BT.RODADAS, "sugestao": BT.baralho_padrao(snap, hoje), "historico": {**conta, "ultimos": [
+            "equipadas": [_tk_carta(jogo[t], hoje) for t in deck], "rodadas": BT.RODADAS, "sugestao": [], "historico": {**conta, "ultimos": [
                 {"id": h.get("id"), "ts": str(h.get("ts") or "")[:16].replace("T", " "), "final": h.get("final"), "placar": h.get("placar")} for h in hist[:5]]}}
 
 
@@ -1202,22 +1212,12 @@ class BaralhoTk(BaseModel):
 
 @app.post("/ticker/baralho")
 def ticker_baralho(b: BaralhoTk, q: Quem = Depends(quem)) -> dict:
-    """Guarda o baralho (só cartas que existem, sem repetir, até o máximo). Devolve se ele já vale para jogar."""
+    """Antigo: o baralho agora é formado pelas cartas EQUIPADAS na Coleção (o pedido é ignorado; devolve o baralho atual)."""
     import battle as BT
-    import battle_dados as BD
-    hoje = _tk_agora().date()
-    snap = _tk_snapshot(False)
-    deck = []
-    for t in b.deck:
-        if t in snap and t not in deck:
-            deck.append(t)
-    if len(deck) > BT.BARALHO_MAX:
-        raise HTTPException(400, f"O baralho aceita no máximo {BT.BARALHO_MAX} cartas.")
-    pes = BD.ler_pessoa(banco, q.email)
-    if not BD.gravar_pessoa(banco, q.email, {**pes, "deck": deck}):
-        raise HTTPException(503, "Não consegui salvar o baralho agora. Tente de novo.")
-    ok, msg = BT.validar_baralho(deck, snap, hoje)
-    return {"deck": deck, "valido": ok, "msg": msg}
+    import cartas_dados as CD
+    deck, jogo = CD.cartas_do_solo(q.email, _tk_snapshot(False))
+    ok, msg = BT.validar_baralho(deck, jogo, _tk_agora().date())
+    return {"deck": deck, "valido": ok, "msg": msg or "O baralho é formado pelas cartas equipadas na Coleção."}
 
 
 def _tk_chave(q: Quem, did: str) -> str:
@@ -1258,14 +1258,14 @@ def ticker_novo(q: Quem = Depends(quem)) -> dict:
     import battle as BT
     import battle_dados as BD
     hoje = _tk_agora().date()
+    import cartas_dados as CD
     snap = _tk_snapshot(False)
-    pes = BD.ler_pessoa(banco, q.email)
-    ok, msg = BT.validar_baralho(pes["deck"], snap, hoje)
+    deck, jogo = CD.cartas_do_solo(q.email, snap)           # baralho = cartas equipadas, com os atributos de jogo da coleção
+    ok, msg = BT.validar_baralho(deck, jogo, hoje)
     if not ok:
-        raise HTTPException(400, msg)
-    du = BT.novo_duelo(uuid.uuid4().hex[:12], uuid.uuid4().hex, list(pes["deck"]), _tk_agora().replace(tzinfo=None),
-                       BD.referencia_dos_dados(snap, list(snap)))
-    d = {"duelo": du, "cartas": {t: dict(c) for t, c in snap.items()}}
+        raise HTTPException(400, msg if len(deck) >= BT.BARALHO_MIN else f"Equipe pelo menos {BT.BARALHO_MIN} cartas na Coleção para jogar.")
+    du = BT.novo_duelo(uuid.uuid4().hex[:12], uuid.uuid4().hex, deck, _tk_agora().replace(tzinfo=None), BD.referencia_dos_dados(snap, list(snap)))
+    d = {"duelo": du, "cartas": jogo}
     banco.cfg_gravar(_tk_chave(q, du["id"]), d)
     return _tk_estado(d)
 
@@ -1447,6 +1447,167 @@ def tk_on_sair(pid: str, q: Quem = Depends(quem)) -> dict:
     """Sair: sala sem jogo é cancelada; duelo em andamento = desistência (vitória do adversário)."""
     import battle_online_dados as BOD
     return _tk_on_visao(q, _tk_on(BOD.sair, pid, q.email))
+
+
+# ------------------------------------------------------------------ Cartas colecionáveis (cartas.py / cartas_dados.py / cartas_catalogo.py)
+# Catálogo global separado da coleção de cada pessoa. Toda regra (cópias, evolução, equipar, baús) roda AQUI no servidor; o app só pede.
+def _ct_inds(c: dict | None) -> dict:
+    """{ind: texto} dos 3 indicadores de uma carta do snapshot (ou cópia de jogo)."""
+    import battle as BT
+    ind = (c or {}).get("ind") or {}
+    return {i: BT.formatar(i, ind[i]) for i in TK_INDICADORES if i in ind and BT.valor_valido(i, ind[i])}
+
+
+def _ct_visao(q: Quem, doc: dict | None = None) -> dict:
+    import cartas as C
+    import cartas_catalogo as CAT
+    import cartas_dados as CD
+    cat, cfg = CD.catalogo(), CD.regras()
+    doc = doc if doc is not None else CD.garantir_inicial(q.email)[0]
+    snap = _tk_snapshot(False)
+    lista = []
+    for tk, e in cat.items():
+        c = doc["cartas"].get(tk)
+        item = {"tk": tk, "setor": e["setor"], "icone": e["icone"], "raridade": c["rar"] if c else e["raridade_fixa"], "possui": bool(c)}
+        if c:
+            pr = C.progresso(cfg, c)
+            jogo = C.carta_de_jogo(snap[tk], c, cfg, tk) if tk in snap else None
+            item.update(CD.visao_empresa(e), raridade=c["rar"], nivel=c["nivel"], copias=c["copias"], total=c.get("total", 1), precisa=pr["precisa"],
+                        pode=pr["pode"], maximo=pr["maximo"], nivel_max=pr["nivel_max"], escolhas=list(c.get("escolhas") or []),
+                        melhorias=C.bonus_das_escolhas(c.get("escolhas")), equipada=doc["equip"].get(c["rar"]) == tk,
+                        real=_ct_inds(snap.get(tk)), jogo=_ct_inds(jogo), ref=_tk_data((snap.get(tk) or {}).get("ref")))
+        lista.append(item)
+    ordem = {r: i for i, r in enumerate(CAT.RARIDADES)}
+    lista.sort(key=lambda x: (not x["possui"], -ordem[x["raridade"]], x["tk"]))
+    bonus = {i: ("−4% no P/L" if i == "pl" else "+0,25 p.p. no DY" if i == "dy_12m" else "+1 p.p. no ROE") for i in CAT.INDICADORES}
+    return {"cartas": lista, "equip": doc["equip"], "setores": sorted({e["setor"] for e in cat.values()}), "raridades": list(CAT.RARIDADES),
+            "rotulos": CAT.ROTULO_RARIDADE, "indicadores": CAT.ROTULO_IND, "bonus": bonus,
+            "descobertas": len(doc["cartas"]), "total": len(cat), "log": doc["log"][:20]}
+
+
+@app.get("/cartas/colecao")
+def cartas_colecao(q: Quem = Depends(quem)) -> dict:
+    """A Coleção: todas as cartas do catálogo (as que você não tem vêm só com raridade e setor, para a silhueta) e os 4 espaços equipados."""
+    import cartas_dados as CD
+    doc, ini = CD.garantir_inicial(q.email)
+    out = _ct_visao(q, doc)
+    if ini and not ini["ja"]:
+        out["inicial"] = [{**i, **CD.visao_empresa(CD.catalogo().get(i["tk"]))} for i in ini["itens"]]
+    return out
+
+
+class EvoluirCarta(BaseModel):
+    tk: str
+    ind: str
+
+
+@app.post("/cartas/evoluir")
+def cartas_evoluir(b: EvoluirCarta, q: Quem = Depends(quem)) -> dict:
+    """Evolui a carta com as cópias dela mesma e grava a melhoria escolhida (P/L, DY ou ROE). Validado no servidor."""
+    import cartas as C
+    import cartas_dados as CD
+    doc = CD.garantir_inicial(q.email)[0]
+    try:
+        r = C.evoluir(doc, CD.regras(), b.tk, b.ind, CD._agora_iso())
+    except C.ErroCarta as e:
+        raise HTTPException(400, str(e))
+    CD.gravar(q.email, doc)
+    return {"evolucao": r, **_ct_visao(q, doc)}
+
+
+class EquiparCarta(BaseModel):
+    tk: str
+
+
+@app.post("/cartas/equipar")
+def cartas_equipar(b: EquiparCarta, q: Quem = Depends(quem)) -> dict:
+    """Equipa a carta no espaço da raridade dela (1 por raridade). Se já havia outra, ela sai (devolvida em `saiu`)."""
+    import cartas as C
+    import cartas_dados as CD
+    doc = CD.garantir_inicial(q.email)[0]
+    try:
+        r = C.equipar(doc, b.tk, CD._agora_iso())
+    except C.ErroCarta as e:
+        raise HTTPException(400, str(e))
+    CD.gravar(q.email, doc)
+    return {"equipar": r, **_ct_visao(q, doc)}
+
+
+class DesequiparCarta(BaseModel):
+    rar: str
+
+
+@app.post("/cartas/desequipar")
+def cartas_desequipar(b: DesequiparCarta, q: Quem = Depends(quem)) -> dict:
+    import cartas as C
+    import cartas_dados as CD
+    doc = CD.garantir_inicial(q.email)[0]
+    try:
+        C.desequipar(doc, b.rar, CD._agora_iso())
+    except C.ErroCarta as e:
+        raise HTTPException(400, str(e))
+    CD.gravar(q.email, doc)
+    return _ct_visao(q, doc)
+
+
+@app.get("/cartas/catalogo")
+def cartas_catalogo_app(q: Quem = Depends(quem)) -> dict:
+    """Textos das cartas (nome, setor, atividade, fato, arte, raridade) para o app desenhar qualquer carta pelo ticker. Sem valores."""
+    import cartas_dados as CD
+    return {"empresas": {tk: CD.visao_empresa(e) for tk, e in CD.catalogo().items()}}
+
+
+def _ct_bau(q: Quem, ref: str, res: dict) -> dict:
+    """Cartas do baú que acabou de abrir (uma vez por baú; se algo falhar, as moedas continuam valendo)."""
+    import cartas_dados as CD
+    try:
+        r = CD.recompensa_bau(q.email, ref, str(res.get("raridade") or "comum"))
+        return {**res, "cartas": r["itens"]} if not r["ja"] else res
+    except Exception as e:
+        banco.registrar_erro("api.cartas_bau", e)
+        return res
+
+
+def _ct_admin(q: Quem) -> None:
+    if q.conta.get("papel") != "admin":
+        raise HTTPException(403, "Só a administração pode mudar o catálogo de cartas.")
+
+
+@app.get("/admin/cartas")
+def admin_cartas(q: Quem = Depends(quem)) -> dict:
+    """Admin: catálogo completo (com pontos e raridade) e as regras de evolução e baús em vigor."""
+    import cartas_dados as CD
+    _ct_admin(q)
+    return {"empresas": CD.catalogo(), "regras": CD.regras()}
+
+
+class EmpresaCarta(BaseModel):
+    tk: str
+    dados: dict
+
+
+@app.post("/admin/cartas/empresa")
+def admin_cartas_empresa(b: EmpresaCarta, q: Quem = Depends(quem)) -> dict:
+    """Admin: cadastra ou ajusta uma empresa (textos, arte, pontos de mercado/liquidez/relevância, ativo). A raridade sai dos pontos."""
+    import cartas as C
+    import cartas_dados as CD
+    _ct_admin(q)
+    try:
+        return CD.admin_salvar_empresa(b.tk, b.dados)
+    except C.ErroCarta as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/admin/cartas/regras")
+def admin_cartas_regras(b: dict, q: Quem = Depends(quem)) -> dict:
+    """Admin: tabela de evolução por raridade e nível; quantidade, chances, garantia e prêmio extra de cada baú."""
+    import cartas as C
+    import cartas_dados as CD
+    _ct_admin(q)
+    try:
+        return CD.admin_salvar_regras(b)
+    except C.ErroCarta as e:
+        raise HTTPException(400, str(e))
 
 
 # ------------------------------------------------------------------ Perfil (o mesmo do app antigo: perfis.py, perfis_app.py, avatares.py)
