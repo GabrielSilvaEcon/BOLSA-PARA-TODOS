@@ -4632,22 +4632,17 @@ def _css_topo_avatar() -> str:
 
 
 def _topo_acoes():
-    """Botões do topo (no lugar do menu lateral): logo à esquerda; pesquisa e conta à direita, ambos abrem uma janela."""
+    """Cabeçalho em todas as telas: nível, Ticker Coins e ranking à esquerda; alertas à direita. Sem logo. O avatar (no cartão de nível) abre o Perfil."""
     with st.container(key="topo_perfil"):
-        st.markdown(_marca_html(26), unsafe_allow_html=True)
         st.markdown(_css_topo_avatar(), unsafe_allow_html=True)
-        if pg.url_path == PG_INICIO.url_path:                         # Home: nível, Ticker Coins e ranking ficam no próprio cabeçalho
-            try:
-                import home_game_app
-                home_game_app.hud(_ir_home, educacao_app)
-            except Exception as _e_hud:
-                if type(_e_hud).__name__ in ("StopException", "RerunException"):
-                    raise
+        try:                                                           # o mesmo cabeçalho em todas as telas (antes só aparecia no Início)
+            import home_game_app
+            home_game_app.hud(_ir_home, educacao_app)
+        except Exception as _e_hud:
+            if type(_e_hud).__name__ in ("StopException", "RerunException"):
+                raise
         # (a lupa de pesquisa saiu do cabeçalho, nov/2026: os ativos se escolhem pelo Analisar)
         st.page_link(PG_NOTIF, label="Alertas", icon=":material/notifications:")      # sino: o número de não lidas vem de cabecalho_global.css_topo
-        if pg.url_path not in (PG_INICIO.url_path, PG_PERFIL.url_path):     # Home: avatar no cartão de nível; Perfil: já é a tela do avatar
-            st.button("Meu perfil", key="topo_conta", icon=":material/account_circle:", type="tertiary",      # avatar: abre o Meu Perfil (com as opções da conta)
-                      on_click=lambda: st.session_state.update(_nav_pend="perfil"))
 
 
 conta_app.registrar_paginas(gestao=PG_GESTAO, admin=PG_ADMIN)   # Radar, Notícias, Relatórios e Risco saíram do app (nov/2026)
@@ -4704,7 +4699,8 @@ if DESIGN_V2:                                # cabeçalho (estilo de referência
             _quem = getattr(usuarios.ator(), "email", "") or ""
             _agora_g = _gn.foto(_h["xp"], _tc_s, _h["ofensiva"])
             _ult_g = st.session_state.get("_ganhos_ult")
-            _gna.registrar(_gn.comparar(_ult_g["f"], _agora_g) if _ult_g and _ult_g.get("q") == _quem else [])
+            if pg.url_path != PG_ECONOMIA.url_path:      # na Loja o resultado (baú aberto) já aparece no próprio cartão: sem pop-up
+                _gna.registrar(_gn.comparar(_ult_g["f"], _agora_g) if _ult_g and _ult_g.get("q") == _quem else [])
             st.session_state["_ganhos_ult"] = {"q": _quem, "f": _agora_g}
         except Exception:
             pass

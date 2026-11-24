@@ -10,11 +10,56 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.2
+  google_fonts: ^6.2.1
+  web: ^1.1.0
+  webview_flutter: ^4.10.0
+  supabase_flutter: ^2.5.6
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/mascote.webp
+    - assets/abertura.webp
+    - assets/logo_th.webp
+    - assets/fundo_login.webp
+    - assets/home/
+    - assets/carteira/
+    - assets/jogos/
+    - assets/ticker/
+    - assets/cartas/
+    - assets/loja/
+    - assets/aprender/
+    - assets/cards/
+    - assets/ranking/
+    - assets/nav/
+    - assets/cabecalho/
+    - assets/mesa/
+    - assets/logos/setores/
+    - assets/logos/cripto/
+    - assets/avatares/
+
+# Ícone do app no Android (gerado no build do APK pelo robô app_apk): o touro do TickerHunters com a moeda
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "icone/icone.png"
+  # Android 8+: o celular recorta o ícone em círculo, gota ou quadrado; a arte fica no centro, com folga para os chifres
+  adaptive_icon_background: "#1B0A63"
+  adaptive_icon_foreground: "icone/icone_frente.png"
+
+# cor do instante antes do Flutter desenhar (sem clarão branco ao abrir o app); a arte de abertura vem logo depois (lib/abertura.dart)
+flutter_native_splash:
+  color: "#1B0A63"
+  android: true
+  ios: false
+  web: false
+  android_12:
+    color: "#1B0A63"

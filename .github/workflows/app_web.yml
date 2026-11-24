@@ -4,7 +4,7 @@ name: app_web
 on:
   push:
     branches: [main]
-    paths: ['app/**', '.github/workflows/app_web.yml']
+    paths: ['app/**', 'trader_front/**', '.github/workflows/app_web.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,12 +26,16 @@ jobs:
       - name: Dependências e análise
         working-directory: app
         run: |
+          mkdir -p assets/mesa && cp ../trader_front/index.html assets/mesa/index.html   # mesa do Trade Battle (a mesma do app antigo)
           flutter create --project-name tickerhunters --platforms web . --no-overwrite || true
+          rm -rf test                      # o teste de exemplo do flutter create não combina com o app: removido
           flutter pub get
           flutter analyze --no-fatal-infos
       - name: Compilar versão web
         working-directory: app
-        run: flutter build web --release --base-href /BOLSA-PARA-TODOS/
+        env:
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: flutter build web --release --pwa-strategy=none --base-href /BOLSA-PARA-TODOS/ --dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app/build/web

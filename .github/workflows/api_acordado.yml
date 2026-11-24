@@ -1,0 +1,17 @@
+name: api_acordado
+# O servidor grátis do Render "dorme" depois de 15 min sem uso, e a primeira partida espera ~1 min ele acordar.
+# Este aviso a cada 10 min mantém o servidor do jogo acordado (um pedido leve em /saude).
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: api-acordado
+  cancel-in-progress: true
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: curl -s -o /dev/null -w "%{http_code} %{time_total}s\n" --max-time 90 https://tickerhunters-api.onrender.com/saude || true

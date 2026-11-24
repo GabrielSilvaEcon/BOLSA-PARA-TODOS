@@ -1037,7 +1037,7 @@ def test_argumentos_do_componente_nao_vazam_futuro_nem_segredos_do_adversario():
         assert str(segredo) not in txt
     assert bia["motor"] == 2 and bia["mesa"]["pode_abrir"] and bia["adversarios"][0]["ops"][0]["aberta"] and bia["mesa"]["posicao"] is None
     ana = G.args_mesa(TB.visao(p, c, agora, "ana"), p, {}, agora)
-    assert ana["mesa"]["posicao"]["stop"] == STOP_SECRETO and ana["mesa"]["pode_encerrar"] and ana["mesa"]["aposta_txt"] and {k: ana["inicial"][k] for k in EST} == EST and ana["inicial"]["marcas"] == {"niveis": [], "tendencias": [], "notas": []}
+    assert ana["mesa"]["posicao"]["stop"] == STOP_SECRETO and ana["mesa"]["pode_encerrar"] and ana["mesa"]["aposta_txt"] and {k: ana["inicial"][k] for k in EST} == EST and ana["inicial"]["marcas"] == {"niveis": [], "tendencias": [], "notas": [], "zonas": []}
     assert ana["propria"] is None and ana["operacao"] is None                             # o motor antigo não aparece na mesa
 
 

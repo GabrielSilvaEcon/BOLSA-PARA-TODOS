@@ -53,7 +53,9 @@ JOGADORES_MIN, JOGADORES_MAX = 1, 4          # nesta etapa joga 1; a estrutura j
 DIRECOES = ("alta", "baixa", "lateral")
 ESTRATEGIAS = ("continuacao", "reversao", "rompimento", "aguardar")
 ROTULO_ESTRATEGIA = {"continuacao": "Continuação", "reversao": "Reversão", "rompimento": "Rompimento", "aguardar": "Aguardar"}
-MAX_MARCAS = {"niveis": 6, "tendencias": 4, "notas": 6}
+MAX_MARCAS = {"niveis": 6, "tendencias": 4, "notas": 6, "zonas": 3}
+PAPEIS_NIVEL = ("suporte", "resistencia", "rompimento", "alvo")   # o que o jogador aposta que a linha horizontal vai fazer (avaliado no fim)
+REACOES_ZONA = ("alta", "baixa")                                   # zona de reação: o preço entra na área e reage para cima ou para baixo
 FASES = ("analise", "replay", "resultado", "fim")
 
 # ---- MESA DE OPERAÇÕES (motor 2). Tudo o que é novo mora aqui, centralizado para facilitar ajuste. Partidas SEM `cfg` seguem o motor 1 (regras antigas).
@@ -478,7 +480,10 @@ def validar_marcas(m: dict | None) -> dict:
     for x in (m.get("niveis") or [])[:MAX_MARCAS["niveis"]]:
         v = _num(x.get("preco") if isinstance(x, dict) else x)
         if v and v > 0:
-            niveis.append({"preco": v, "rotulo": str((x.get("rotulo") if isinstance(x, dict) else "") or "")[:20]})
+            n = {"preco": v, "rotulo": str((x.get("rotulo") if isinstance(x, dict) else "") or "")[:20]}
+            if isinstance(x, dict) and x.get("papel") in PAPEIS_NIVEL:
+                n["papel"] = x["papel"]
+            niveis.append(n)
     tend = []
     for x in (m.get("tendencias") or [])[:MAX_MARCAS["tendencias"]]:
         try:
@@ -494,7 +499,16 @@ def validar_marcas(m: dict | None) -> dict:
             notas.append({"i": int(x["i"]), "preco": float(x["preco"]), "texto": str(x.get("texto") or "")[:40]})
         except (KeyError, TypeError, ValueError):
             continue
-    return {"niveis": niveis, "tendencias": tend, "notas": notas}
+    zonas = []
+    for x in (m.get("zonas") or [])[:MAX_MARCAS["zonas"]]:
+        try:
+            i1, i2 = sorted((int(x["i1"]), int(x["i2"])))
+            p1, p2 = sorted((float(x["p1"]), float(x["p2"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if i1 >= 0 and p1 > 0 and p2 > p1 and x.get("reacao") in REACOES_ZONA:
+            zonas.append({"i1": i1, "i2": i2, "p1": p1, "p2": p2, "reacao": x["reacao"]})
+    return {"niveis": niveis, "tendencias": tend, "notas": notas, "zonas": zonas}
 
 
 def salvar_estrategia(p: dict, jog: str, est: dict, marcas: dict | None, preco_ref: float, agora: float) -> dict:
@@ -530,7 +544,7 @@ def _travar(p: dict) -> None:
             continue
         p["travadas"][k] = True
         p["estrategias"].setdefault(k, {"direcao": None, "tipo": "aguardar", "confianca": None, "entrada": None, "stop": None, "alvo": None,
-                                        "marcas": {"niveis": [], "tendencias": [], "notas": []}, "sem_registro": True})
+                                        "marcas": {"niveis": [], "tendencias": [], "notas": [], "zonas": []}, "sem_registro": True})
         plano = p["estrategias"][k].get("plano")
         if qtd_de(p) and plano and not any(a["jogador"] == j and a.get("aid") == "plano" for a in p.get("acoes") or []):
             p["seq_acao"] = int(p.get("seq_acao", 0)) + 1
@@ -916,6 +930,13 @@ def explicar_mesa(r: dict) -> list[tuple[str, str]]:
         else:
             linhas.append(("Sua leitura", f"Você registrou: {nome.get(est.get('direcao'), '')} ({ROTULO_ESTRATEGIA.get(est.get('tipo'), '').lower()}), confiança {est.get('confianca')}/5."))
     linhas.append(("O mercado", f"O preço foi de {real['ref']:.2f} para {real['fim']:.2f} ({real['mov_pct']:+.1f}%): {nome[real['direcao']]}."))
+    lt = r.get("leitura") or {}
+    if lt.get("itens"):                                     # desenhos da estratégia conferidos contra o gráfico real
+        resumo = (f"{lt['acertos']} de {lt['avaliados']} se confirmaram · nota {lt['nota']:.0f}/100 (metade da leitura)."
+                  if lt.get("nota") is not None else "O preço não chegou a nenhum dos seus desenhos: eles não contaram.")
+        linhas.append(("Seus desenhos", resumo))
+        for x in lt["itens"]:
+            linhas.append(("✔" if x["ok"] else ("✖" if x["ok"] is False else "•"), x["texto"]))
     ops = r.get("operacoes") or []
     if not ops:
         if r.get("qualidade_nota") is not None:          # partida corrida: a leitura ainda vale para o ranking de Qualidade
@@ -1010,8 +1031,14 @@ def revelacao(p: dict, cenario: dict) -> dict:
     def br(t):
         t = str(t)
         return f"{t[8:10]}/{t[5:7]}/{t[:4]}"
+    diario = TIMEFRAMES[cenario["tf"]]["nome"] == "1 dia"
+
+    def rotulo(t):                                         # eixo do gráfico do resultado: a data real de cada candle (só existe no fim)
+        t = str(t)
+        return f"{t[8:10]}/{t[5:7]}" if diario or len(t) < 16 else f"{t[8:10]}/{t[5:7]} {t[11:16]}"
+    datas = [rotulo(c.get("t", "")) for c in cenario["candles"][:ini]] + [rotulo(r.get("t", "")) for r in rep]
     return {"ticker": cenario["ticker"], "nome": cenario.get("nome") or cenario["ticker"], "de": br(rep[0]["t"]) if rep else "", "ate": br(rep[-1]["t"]) if rep else "",
-            "tf_nome": TIMEFRAMES[cenario["tf"]]["nome"], "demo": bool(cenario.get("demo"))}
+            "tf_nome": TIMEFRAMES[cenario["tf"]]["nome"], "demo": bool(cenario.get("demo")), "datas": datas}
 
 
 def resumo_final(p: dict, jog: str) -> dict:
@@ -1606,6 +1633,15 @@ def avaliar_corrida(cen_r: dict, est: dict, trades: list[dict]) -> dict:
         qual = q["total"] if est.get("confianca") else (q["direcao"] + q["entrada"] + q["risco"]) / 3.0
     else:                                                   # sem operação: só a leitura conta
         qual = (q["direcao"] + q["confianca"]) / 2.0 if est.get("confianca") else q["direcao"] / 2.0
+    leitura = None
+    try:                                                    # desenhos da estratégia (opcionais): cada um conferido contra o gráfico real
+        import trader_leitura as TL
+        real = base["real"]
+        leitura = TL.avaliar_desenhos(est.get("marcas"), cen_r["n_analise"], cen_r["candles"][cen_r["n_analise"]:], real["ref"], real["atr"])
+    except Exception:
+        leitura = None
+    if leitura and leitura["nota"] is not None:             # com desenhos avaliados, a leitura (30%) = metade direção/entrada/risco + metade desenhos
+        qual = (qual + (leitura["nota"] / 50.0 - 1.0)) / 2.0
     res = PONTOS_MAX * math.tanh(pt["x"] / pt["unidade"]) if trades else 0.0
     pts = PESO_RESULTADO * res + (1 - PESO_RESULTADO) * qual * PONTOS_MAX if trades else 0.0
     pts = max(-PONTOS_MAX, min(PONTOS_MAX, pts))
@@ -1614,6 +1650,7 @@ def avaliar_corrida(cen_r: dict, est: dict, trades: list[dict]) -> dict:
     base["pontos"] = round(pts, 1)
     base["qualidade_nota"] = round(50 * (qual + 1), 1)
     base["partes"] = {**pt, "res": round(res, 2), "qual": round(qual, 3), "peso_res": PESO_RESULTADO}
+    base["leitura"] = leitura
     return base
 
 

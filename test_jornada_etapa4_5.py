@@ -20,7 +20,10 @@ from test_jornada import _certo
 
 
 def test_toda_aula_tem_uma_licao_e_toda_licao_esta_em_uma_unidade():
-    assert {l["aula"] for l in J.LICOES} == {a["id"] for a in E.AULAS}
+    # toda aula da biblioteca tem a sua lição; as áreas novas do Aprender (aprender_*.py) trazem aulas próprias, também uma por lição
+    novas = {a["id"] for m in J.MODULOS_NOVOS for a in m.AULAS}
+    assert {l["aula"] for l in J.LICOES} == {a["id"] for a in E.AULAS} | novas
+    assert all(a in E.POR_ID for a in novas)
     em_unidades = [lid for u in J.UNIDADES for lid in u["licoes"]]
     assert sorted(em_unidades) == sorted(J.LICAO_POR_ID) and len(em_unidades) == len(set(em_unidades))
 
