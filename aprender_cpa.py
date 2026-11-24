@@ -258,3 +258,11 @@ LICOES = [
 for _a in AULAS:
     if _a.get("intermediario"):
         _a["intermediario"] = _a["iniciante"] + "\n\n**Para ir além:** " + _a["intermediario"]
+
+# Espalha a posição da resposta certa nas questões de escolha (fixo, sem sorteio), para a certa não ficar sempre no mesmo lugar.
+for _i, _e in enumerate(e for _l in LICOES for e in _l["exercicios"] if e["tipo"] in ("escolha", "completar")):
+    _k = (_i * 3 + 1) % len(_e["opcoes"])
+    _ops = list(_e["opcoes"])
+    _certa = _ops.pop(_e["correta"])
+    _ops.insert(_k, _certa)
+    _e["opcoes"], _e["correta"] = _ops, _k
