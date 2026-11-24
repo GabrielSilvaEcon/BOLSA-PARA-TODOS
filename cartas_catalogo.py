@@ -39,11 +39,11 @@ def _e(tk, nome, setor, icone, atividade, fato, mercado, liquidez, relevancia, a
 
 EMPRESAS = [
     _e("PETR4", "Petrobras", "Petróleo e gás", "🛢️", "Explora, produz e refina petróleo e gás natural.",
-       "Maior produtora de petróleo do Brasil, com forte atuação no pré-sal.", 50, 30, 20),
+       "Maior produtora de petróleo do Brasil, com forte atuação no pré-sal.", 50, 30, 20, arte="arte_PETR4.webp"),
     _e("VALE3", "Vale", "Mineração", "⛏️", "Produz minério de ferro, níquel e cobre.",
-       "Uma das maiores produtoras de minério de ferro do mundo.", 48, 29, 19),
+       "Uma das maiores produtoras de minério de ferro do mundo.", 48, 29, 19, arte="arte_VALE3.webp"),
     _e("ITUB4", "Itaú Unibanco", "Bancos", "🏦", "Oferece contas, crédito, cartões, seguros e investimentos.",
-       "Um dos maiores bancos privados da América Latina.", 48, 28, 19),
+       "Um dos maiores bancos privados da América Latina.", 48, 28, 19, arte="arte_ITUB4.webp"),
     _e("BBAS3", "Banco do Brasil", "Bancos", "🏦", "Banco com forte atuação no crédito ao agronegócio.",
        "Um dos bancos mais antigos do Brasil, fundado em 1808.", 36, 27, 15),
     _e("BBDC4", "Bradesco", "Bancos", "🏦", "Oferece contas, crédito, cartões, seguros e investimentos.",
