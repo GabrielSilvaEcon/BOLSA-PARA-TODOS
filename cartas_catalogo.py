@@ -320,4 +320,4 @@ BAUS = {
     "lendario": {"qtd": 6, "chances": {"comum": 25, "rara": 35, "epica": 28, "lendaria": 12}, "garantia": "lendaria"},
 }
 # Primeiro acesso à coleção: uma carta de cada raridade jogável no início (comum, rara e épica), para já montar um time de 3.
-INICIAL = ("comum", "rara", "epica")
+INICIAL = ()  # jogadores começam sem cartas; o tutorial entrega as primeiras via POST /ticker/tutorial/bau

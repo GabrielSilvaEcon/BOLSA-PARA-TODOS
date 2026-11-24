@@ -204,12 +204,13 @@ def atualizar(banco_, agora: datetime, coletor=coletar_padrao, lote: int = LOTE_
 
 # ------------------------------------------------------------------ estado da pessoa (baralho e histórico)
 def estado_vazio() -> dict:
-    return {"v": 1, "deck": [], "hist": []}
+    return {"v": 1, "deck": [], "hist": [], "tutorial_concluido": False}
 
 
 def normalizar_estado(e) -> dict:
     e = e if isinstance(e, dict) else {}
-    return {"v": 1, "deck": [str(t) for t in (e.get("deck") or [])][:B.BARALHO_MAX], "hist": list(e.get("hist") or [])[:MAX_HISTORICO]}
+    return {"v": 1, "deck": [str(t) for t in (e.get("deck") or [])][:B.BARALHO_MAX], "hist": list(e.get("hist") or [])[:MAX_HISTORICO],
+            "tutorial_concluido": bool(e.get("tutorial_concluido", False))}
 
 
 def ler_pessoa(banco_, email: str) -> dict:

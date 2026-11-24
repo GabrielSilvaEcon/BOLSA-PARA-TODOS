@@ -72,11 +72,11 @@ class _TickerTelaState extends State<TickerTela> {
     }).catchError((_) {});
     try {
       final r = await widget.api.get('/ticker/central');
-      if (mounted) {
-        setState(() {
-          _d = r;
-          _erro = null;
-        });
+      if (!mounted) return;
+      setState(() { _d = r; _erro = null; });
+      if (r['tutorial_pendente'] == true && mounted) {
+        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => TutorialBattleTela(api: widget.api)));
+        if (mounted) _carregar();
       }
     } catch (e) {
       if (mounted) setState(() => _erro = e.toString());
@@ -432,3 +432,188 @@ Widget _caixa({required Widget child, Color borda = const Color(0xFF4F88E6)}) =>
       ),
       child: child,
     );
+
+// ===================================================================================== Tutorial de Boas-Vindas
+
+/// Fluxo de onboarding do Ticker Battle: aparece uma única vez quando o jogador entra pela primeira vez.
+/// Passo 0 → introdução + abertura do Baú Iniciante → revelarCartas (animação existente).
+/// Passo 1 → instrução para equipar cartas na Coleção.
+/// Passo 2 → confirmação e botão "Batalhar!".
+class TutorialBattleTela extends StatefulWidget {
+  const TutorialBattleTela({super.key, required this.api});
+  final Api api;
+
+  @override
+  State<TutorialBattleTela> createState() => _TutorialBattleTelaState();
+}
+
+class _TutorialBattleTelaState extends State<TutorialBattleTela> {
+  int _passo = 0;
+  bool _abrindo = false;
+
+  Future<void> _abrirBau() async {
+    if (_abrindo) return;
+    setState(() => _abrindo = true);
+    try {
+      final r = await widget.api.post('/ticker/tutorial/bau');
+      final cartas = (r['cartas'] as List? ?? []).cast<Map>().map((m) => m.cast<String, dynamic>()).toList();
+      if (!mounted) return;
+      await revelarCartas(context, cartas, titulo: 'Baú Iniciante aberto!');
+      if (mounted) setState(() { _passo = 1; _abrindo = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _abrindo = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Future<void> _irColecao() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ColecaoTela(api: widget.api)));
+    if (mounted) setState(() => _passo = 2);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0A0A5A),
+        body: Stack(fit: StackFit.expand, children: [
+          const FundoCidade(),
+          const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: [Color(0xCC061730), Color(0xAA061730)],
+          ))),
+          SafeArea(child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            child: KeyedSubtree(key: ValueKey(_passo), child: switch (_passo) {
+              0 => _passoIntro(),
+              1 => _passoDeck(),
+              _ => _passoFinal(),
+            }),
+          )),
+        ]),
+      ),
+    );
+  }
+
+  Widget _passoIntro() => _corpo(
+    icone: const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB938), size: 72),
+    titulo: 'Bem-vindo ao\nTicker Battle!',
+    corpo: 'Colete cartas das maiores empresas do Brasil e dispute duelos com seus indicadores reais de mercado.',
+    centro: Reflexo(
+      raio: 24,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Image.asset('assets/loja/bau_raro.webp', width: 150),
+        const SizedBox(height: 6),
+        const Text('Baú Iniciante', style: TextStyle(color: Color(0xFFFFB938), fontWeight: FontWeight.bold, fontSize: 15)),
+      ]),
+    ),
+    botao: FilledButton.icon(
+      onPressed: _abrindo ? null : _abrirBau,
+      icon: _abrindo
+          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+          : const Icon(Icons.lock_open_rounded),
+      label: Text(_abrindo ? 'Abrindo...' : 'Abrir meu Baú!'),
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFFFFB938), foregroundColor: Colors.black87,
+        minimumSize: const Size(double.infinity, 52),
+        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+  );
+
+  Widget _passoDeck() => _corpo(
+    icone: const Icon(Icons.style_rounded, color: Color(0xFF6B99FF), size: 72),
+    titulo: 'Monte seu Deck!',
+    corpo: 'Equipe pelo menos 3 cartas na Coleção para disputar batalhas. Toque em cada carta e selecione "Equipar".',
+    centro: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+      for (var i = 0; i < 3; i++) ...[
+        Container(
+          width: 68, height: 96,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0xFF1A3A6B), Color(0xFF0A1F45)]),
+            border: Border.all(color: const Color(0xFF4DA3FF), width: 1.5),
+            boxShadow: const [BoxShadow(color: Color(0x554DA3FF), blurRadius: 12)],
+          ),
+          child: const Icon(Icons.style_rounded, color: Color(0xFF4DA3FF), size: 34),
+        ),
+        if (i < 2) const SizedBox(width: 10),
+      ],
+    ]),
+    botao: FilledButton.icon(
+      onPressed: _irColecao,
+      icon: const Icon(Icons.collections_bookmark_rounded),
+      label: const Text('Ir para a Coleção'),
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF4DA3FF), foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 52),
+        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+  );
+
+  Widget _passoFinal() => _corpo(
+    icone: const Icon(Icons.sports_esports_rounded, color: Color(0xFF26D07C), size: 72),
+    titulo: 'Pronto para batalhar!',
+    corpo: 'Seu deck está montado. Dispute seu primeiro Ticker Battle e veja quais ações vencem na prática!',
+    centro: const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFB938), size: 100),
+    botao: FilledButton.icon(
+      onPressed: () => Navigator.of(context).pop(),
+      icon: const Icon(Icons.play_arrow_rounded),
+      label: const Text('Batalhar agora!'),
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF26D07C), foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 52),
+        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+  );
+
+  Widget _corpo({required Widget icone, required String titulo, required String corpo, required Widget centro, required Widget botao}) {
+    return Column(children: [
+      const SizedBox(height: 24),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Row(children: [
+        const SizedBox(width: 48),
+        const Spacer(),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          for (var i = 0; i < 3; i++) ...[
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: _passo == i ? 24 : 8, height: 8,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: _passo == i ? const Color(0xFFFFB938) : const Color(0x44FFFFFF),
+              ),
+            ),
+            if (i < 2) const SizedBox(width: 6),
+          ],
+        ]),
+        const Spacer(),
+        const SizedBox(width: 48),
+      ])),
+      const Spacer(),
+      icone,
+      const SizedBox(height: 16),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 28), child: Text(
+        titulo, textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white, height: 1.2),
+      )),
+      const SizedBox(height: 10),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 32), child: Text(
+        corpo, textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 15, color: Color(0xFFB5C8E6), height: 1.45),
+      )),
+      const Spacer(),
+      centro,
+      const Spacer(),
+      Padding(padding: const EdgeInsets.fromLTRB(24, 0, 24, 32), child: botao),
+    ]);
+  }
+}

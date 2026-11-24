@@ -1202,8 +1202,35 @@ def ticker_central(q: Quem = Depends(quem)) -> dict:
             conta[h["final"]] += 1
     cartas = sorted((_tk_carta(c, hoje) for c in snap.values()), key=lambda c: (not c["jogavel"], c["tk"]))
     return {"cartas": cartas, "indicadores": _tk_meta(), "deck": deck, "valido": ok, "msg": msg, "min": BT.BARALHO_MIN, "max": BT.BARALHO_MAX,
-            "equipadas": [_tk_carta(jogo[t], hoje) for t in deck], "rodadas": BT.RODADAS, "sugestao": [], "historico": {**conta, "ultimos": [
+            "equipadas": [_tk_carta(jogo[t], hoje) for t in deck], "rodadas": BT.RODADAS, "sugestao": [],
+            "tutorial_pendente": not bool(pes.get("tutorial_concluido")),
+            "historico": {**conta, "ultimos": [
                 {"id": h.get("id"), "ts": str(h.get("ts") or "")[:16].replace("T", " "), "final": h.get("final"), "placar": h.get("placar")} for h in hist[:5]]}}
+
+
+@app.post("/ticker/tutorial/bau")
+def ticker_tutorial_bau(q: Quem = Depends(quem)) -> dict:
+    """Tutorial: entrega o Baú Iniciante (1 Comum + 1 Rara + 1 Épica, uma por slot) e marca o tutorial concluído no Battle."""
+    import battle_dados as BD
+    import cartas as C
+    import cartas_dados as CD
+    pes = BD.ler_pessoa(banco, q.email)
+    if pes.get("tutorial_concluido"):
+        return {"ja": True, "cartas": []}
+    doc, _ = CD.garantir_inicial(q.email)
+    cat, cfg = CD.catalogo(), CD.regras()
+    tks = C.sortear_inicial(banco._h_conta(q.email), ["comum", "rara", "epica"], CD.por_raridade(cat))
+    agora = CD._agora_iso()
+    res = C.entregar(doc, "tutorial_battle", tks, lambda t: cat[t]["raridade_fixa"], "tutorial_battle", agora)
+    if not res["ja"]:
+        for t in tks:                                                       # equipa automaticamente (1 por raridade = 3 slots)
+            if not doc["equip"].get(doc["cartas"][t]["rar"]):
+                try: C.equipar(doc, t, agora)
+                except C.ErroCarta: pass
+        CD.gravar(q.email, doc)
+    pes["tutorial_concluido"] = True
+    BD.gravar_pessoa(banco, q.email, pes)
+    return {"ja": res["ja"], "cartas": [{**i, **CD.visao_empresa(cat.get(i["tk"]))} for i in res["itens"]]}
 
 
 class BaralhoTk(BaseModel):
