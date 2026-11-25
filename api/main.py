@@ -1134,10 +1134,7 @@ def sala_sair(pid: str, q: Quem = Depends(quem)) -> dict:
 # O duelo fica no banco com as cartas CONGELADAS no início (como no app antigo, onde ficava na sessão). O app só manda "qual carta" e
 # "qual indicador"; o servidor escolhe a adversária (regra fixa e pública), compara os valores reais e guarda o histórico.
 CHAVE_TICKER = "tk_api|{h}|{id}"
-# Indicadores das cartas colecionáveis. Cinco ângulos diferentes da empresa, sem dois medindo a mesma coisa:
-# preço (P/L), renda (DY), eficiência (ROE), desempenho (Retorno 12m) e lucratividade (Margem líquida).
-# É entre estes que o jogador escolhe a cada rodada — o motor tem outros, mas a carta mostra só estes.
-TK_INDICADORES = ("pl", "dy_12m", "roe", "ret_12m", "margem_liq")
+TK_INDICADORES = ("pl", "dy_12m", "roe")   # as cartas colecionáveis usam só P/L, DY e ROE
 
 
 def _tk_agora():
