@@ -1,4 +1,5 @@
 """Avaliação dos desenhos da estratégia (trader_leitura): cada papel conferido contra candles conhecidos."""
+import pytest
 import trader_leitura as TL
 
 
@@ -43,19 +44,42 @@ def test_zona_de_reacao_e_nota():
     assert TL.avaliar_desenhos(m, 100, CAI_E_VOLTA, REF, ATR)["nota"] == 0.0
 
 
-def test_desenho_em_cima_do_preco_nao_conta():
-    """Brecha fechada: alvo e rompimento colados no preço acertavam quase sempre, porque o preço já estava lá."""
-    sobe = [v(10, 10.6, 9.9, 10.5), v(10.5, 11.2, 10.4, 11.1)]
-    for papel in ("alvo", "rompimento", "suporte", "resistencia"):
-        r = TL.avaliar_desenhos(nivel(papel, 10.05), 100, sobe, REF, ATR)
-        assert r["itens"][0]["ok"] is None and r["avaliados"] == 0, papel
-    assert TL.avaliar_desenhos(nivel("alvo", 11.0), 100, sobe, REF, ATR)["avaliados"] == 1   # longe do preço continua valendo
+def test_acerto_vale_proporcional_a_distancia_do_preco_de_partida():
+    """Pode desenhar em qualquer lugar, mas o acerto vale o quanto o preço andou: colado no preço quase não pontua."""
+    sobe = [v(10, 10.6, 9.9, 10.5), v(10.5, 11.2, 10.4, 11.1), v(11.1, 11.6, 11.0, 11.5)]
+    plena = TL.distancia_plena(ATR, REF)                                    # 2 ATR = 0,80
+    longe = TL.avaliar_desenhos(nivel("alvo", REF + plena + 0.1), 100, sobe, REF, ATR)["itens"][0]
+    meio = TL.avaliar_desenhos(nivel("alvo", REF + plena / 2), 100, sobe, REF, ATR)["itens"][0]
+    colado = TL.avaliar_desenhos(nivel("alvo", REF + 0.04), 100, sobe, REF, ATR)["itens"][0]
+    assert longe["ok"] and meio["ok"] and colado["ok"]                       # todos acertaram (✔ no gráfico)...
+    assert longe["peso"] == 1.0 and meio["peso"] == 0.5 and colado["peso"] == 0.05      # ...mas valem 100%, 50% e 5%
+    assert longe["valor"] == 1.0 and meio["valor"] == pytest.approx(0.5) and colado["valor"] == pytest.approx(0.05)
+    assert "Vale 50%" in meio["texto"] and "Vale" not in longe["texto"]
 
 
-def test_zona_em_volta_do_preco_nao_conta():
-    m = {"zonas": [{"i1": 90, "i2": 99, "p1": 9.8, "p2": 10.2, "reacao": "alta"}]}
-    r = TL.avaliar_desenhos(m, 100, CAI_E_VOLTA, REF, ATR)
-    assert r["itens"][0]["ok"] is None and r["nota"] is None
+def test_desenho_colado_no_preco_puxa_a_nota_para_baixo_em_vez_de_ajudar():
+    """A nota é a média: somar desenhos fáceis e colados ao desenho honesto piora a nota, então não há como encher de acertos baratos."""
+    sobe = [v(10, 10.6, 9.9, 10.5), v(10.5, 11.2, 10.4, 11.1), v(11.1, 11.6, 11.0, 11.5)]
+    honesto = {"niveis": [{"preco": 11.0, "papel": "alvo"}]}
+    com_colados = {"niveis": honesto["niveis"] + [{"preco": 10.05 + i * 0.01, "papel": "alvo"} for i in range(3)]}
+    so = TL.avaliar_desenhos(honesto, 100, sobe, REF, ATR)["nota"]
+    junto = TL.avaliar_desenhos(com_colados, 100, sobe, REF, ATR)["nota"]
+    assert so == 100.0 and junto < 40                                       # 100 sozinho; com 3 colados cai para ~26
+
+
+def test_desenho_que_o_preco_nao_alcancou_continua_sem_contar():
+    r = TL.avaliar_desenhos(nivel("alvo", 20.0), 100, CAI_E_VOLTA, REF, ATR)
+    assert r["itens"][0]["ok"] is False or r["itens"][0]["ok"] is None
+    r2 = TL.avaliar_desenhos(nivel("suporte", 5.0), 100, CAI_E_VOLTA, REF, ATR)
+    assert r2["itens"][0]["ok"] is None and r2["nota"] is None
+
+
+def test_zona_em_volta_do_preco_vale_zero_mas_a_vizinha_vale():
+    dentro = {"zonas": [{"i1": 90, "i2": 99, "p1": 9.8, "p2": 10.2, "reacao": "alta"}]}      # o preço (10,0) está dentro dela: distância 0
+    r = TL.avaliar_desenhos(dentro, 100, CAI_E_VOLTA, REF, ATR)["itens"][0]
+    assert r["peso"] == 0.0 and r["valor"] in (None, 0.0)
+    longe = {"zonas": [{"i1": 90, "i2": 99, "p1": 8.8, "p2": 9.2, "reacao": "alta"}]}        # borda mais próxima a 0,8 = distância plena
+    assert TL.avaliar_desenhos(longe, 100, CAI_E_VOLTA, REF, ATR)["itens"][0]["peso"] == 1.0
 
 
 def test_tendencia_de_alta_respeitada():

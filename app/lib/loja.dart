@@ -6,6 +6,7 @@ import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade;
 import 'cartas.dart' show revelarCartas;
+import 'setups.dart';
 import 'efeitos.dart';
 import 'navegacao.dart';
 
@@ -113,9 +114,17 @@ class _LojaTelaState extends State<LojaTela> {
   /// Cartas colecionáveis que vieram no baú: aparecem depois da animação do baú (uma a uma, com a revelação).
   void _cartasDoBau(Map<String, dynamic> r) {
     final c = r['cartas'];
-    if (c is! List || c.isEmpty) return;
-    Future.delayed(const Duration(milliseconds: 3700), () {
-      if (mounted) revelarCartas(context, c, titulo: 'Cartas do baú!');
+    final setup = r['setup'];
+    final temCartas = c is List && c.isNotEmpty;
+    if (!temCartas && setup is! Map) return;
+    Future.delayed(const Duration(milliseconds: 3700), () async {
+      if (!mounted) return;
+      if (temCartas) await revelarCartas(context, c, titulo: 'Cartas do baú!');
+      // setup colecionável que veio no baú (rolagem à parte; só aparece quando caiu)
+      if (mounted && setup is Map) {
+        await revelarSetup(context, setup.cast<String, dynamic>(),
+            abrirMeusSetups: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SetupsTela(api: widget.api))));
+      }
     });
   }
 

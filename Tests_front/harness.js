@@ -8,7 +8,7 @@ const ids = [...html.split("<script>")[0].matchAll(/id="([^"]+)"/g)].map(m => m[
 function carregar() {
   const posts = [], timers = [], els = {}; let agora = 1000;
   const ctx = new Proxy({}, { get: (t, k) => k === "measureText" ? () => ({ width: 10 }) : (k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true } });
-  const mk = id => { const e = { id, style: {}, _c: new Set(), innerHTML: "", textContent: "", value: "", disabled: false, src: "", className: "", dataset: {}, L: {},
+  const mk = id => { const e = { id, style: { setProperty(k, v) { this[k] = v } }, _c: new Set(), innerHTML: "", textContent: "", value: "", disabled: false, src: "", className: "", dataset: {}, L: {},
     classList: { toggle: (c, on) => { if (on === undefined) on = !e._c.has(c); on ? e._c.add(c) : e._c.delete(c) }, add: c => e._c.add(c), remove: c => e._c.delete(c), contains: c => e._c.has(c) },
     addEventListener(t, f) { (e.L[t] = e.L[t] || []).push(f) }, getBoundingClientRect: () => ({ width: 360, height: 420, top: 0, left: 0 }), querySelectorAll: () => [], closest: () => null,
     setPointerCapture() {}, getContext: () => ctx, focus() {} }; return e };
@@ -17,7 +17,7 @@ function carregar() {
     devicePixelRatio: 1, addEventListener(t, f) { (win.L[t] = win.L[t] || []).push(f) } };
   const doc = { getElementById: id => els[id], querySelectorAll: () => [], addEventListener() {}, documentElement: { clientWidth: 360, requestFullscreen() {} }, fullscreenElement: null, fullscreenEnabled: false };
   const sb = { window: win, document: doc, performance: { now: () => agora }, setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length }, clearTimeout() {}, setInterval() { return 1 },
-    requestAnimationFrame: () => 1, cancelAnimationFrame() {}, console, Math, JSON, Number, String, Array, Object, Set, Map, isFinite, parseFloat, Date, crypto: { randomUUID: () => "u" + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2) } };
+    Image: class {}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}, console, Math, JSON, Number, String, Array, Object, Set, Map, isFinite, parseFloat, Date, crypto: { randomUUID: () => "u" + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2) } };
   sb.window.crypto = sb.crypto; sb.window.document = doc; sb.window.performance = sb.performance;
   vm.createContext(sb); vm.runInContext(code, sb);
   return { sb, els, posts, timers, win, ctx, tempo: ms => { agora += ms }, render: a => win.L.message.forEach(f => f({ data: { type: "streamlit:render", args: a } })),
@@ -263,5 +263,48 @@ t("aviso sobre o gráfico aparece e some sozinho (também durante a partida)", (
   eq(h.els.dica.style.display, "block", "dica da 1ª posição aparece");
   const tm = h.timers.filter(x => x.ms >= 1600).pop(); tm.f();
   eq(h.els.dica.style.display, "none", "e some");
+});
+
+// ---- Setups colecionáveis: o servidor manda o evento; a mesa só mostra e devolve a decisão ----
+const evSetup = (extra) => ({ evento: Object.assign({ sinal: "p:1:130", setup: { id: "larry_williams", nome: "Larry Williams", raridade: "epica", cores: { principal: "#2EE59D", brilho: "#FFD76A" }, assets: { carta: "assets/setups/larry_williams/carta.jpg", ativacao: null, efeitos: [] }, provisorio: true },
+  dono: "Você", voce_e_dono: true, direcao: "alta", candle: 120, preco: 11.3, stop: 11.0, alvo: 11.9, motivo: "x", anim_ms: 4000, janela_ms: 5000, decorrido_ms: 0, restante_ms: 9000, pode_decidir: true }, extra || {}), marcas: [] });
+t("setup: durante a animação não há botões; a janela só abre depois dos 4 s e com contador de 5 s", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup() }));
+  yes(h.els.stp._c.has("on"), "overlay ligado"); yes(!h.els["stp-dec"]._c.has("on"), "sem janela na animação");
+  yes(h.els["stp-fx"].innerHTML.includes("Larry Williams"), "nome do setup aparece na detecção");
+  h.tempo(4100); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 4100, restante_ms: 4900 }) }));
+  yes(h.els["stp-dec"]._c.has("on"), "janela aberta"); eq(h.els["stp-h"].textContent, "SEU SETUP FOI ATIVADO!");
+  yes(h.els["stp-p"].textContent.includes("Deseja entrar nesta operação?")); eq(h.els["stp-c"].textContent, "5s"); eq(h.els["stp-bt"].style.display, "flex");
+  yes(!h.els["stp-sim"].disabled, "dono pode decidir");
+});
+t("setup: ENTRAR e RECUSAR mandam a decisão uma única vez (com a quantidade da boleta)", () => {
+  const h = carregar(); const a = args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) });
+  h.render(a); h.els["q-val"].value = "2"; h.els["stp-sim"].onclick(); h.els["stp-sim"].onclick(); h.els["stp-nao"].onclick();
+  const v = h.acoes().filter(x => x.evento === "setup"); eq(v.length, 1, "só um envio"); eq([v[0].dados.acao, v[0].dados.q], ["aceitar", 200]);
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) }));
+  h2.els["stp-nao"].onclick(); eq(h2.acoes().filter(x => x.evento === "setup").map(x => x.dados), [{ acao: "recusar" }]);
+});
+t("setup: o adversário vê o evento mas não tem botões e não consegue decidir", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  yes(h.els["stp-dec"]._c.has("on")); yes(h.els["stp-h"].textContent.includes("Jogador 2")); eq(h.els["stp-bt"].style.display, "none", "sem botões");
+  h.els["stp-sim"].onclick(); eq(h.acoes().filter(x => x.evento === "setup").length, 0, "nada sai");
+  yes(!h.els["stp-dt"].innerHTML.includes("Stop"), "stop e alvo do outro não aparecem");
+});
+t("setup: o contador acompanha o relógio do servidor e a janela fecha no fim; sem evento, tudo some", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 4000, restante_ms: 5000 }) }));
+  h.tempo(2000); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 6000, restante_ms: 3000 }) }));
+  eq(h.els["stp-c"].textContent, "3s"); h.tempo(3100); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 9100, restante_ms: 0 }) }));
+  yes(!h.els["stp-dec"]._c.has("on"), "janela fecha em 0");
+  h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, setup: { evento: null, marcas: [] } })); yes(!h.els.stp._c.has("on"), "overlay desligado sem evento");
+});
+t("setup: arte de ativação enviada entra pelo caminho relativo da mesa; sem ela, o aviso de arte provisória aparece", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) }));
+  yes(h.els["stp-prov"].textContent.includes("provisória"), "provisório sinalizado");
+  const h2 = carregar(); const e = evSetup({ decorrido_ms: 4500, restante_ms: 4500 }); e.evento.setup.assets.ativacao = "assets/setups/larry_williams/ativacao.webp"; e.evento.setup.provisorio = false;
+  h2.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: e })); eq(h2.els["stp-prov"].textContent, "", "sem aviso quando a arte final existe");
+});
+t("setup: marcas só dos sinais ativados e o desenho não quebra com marcas fora da tela", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, setup: { evento: null, marcas: [{ id: "a", candle: 120, preco: 11.3, direcao: "alta", setup: "larry_williams", estado: "aceito", meu: true }, { id: "b", candle: 9999, preco: 11, direcao: "baixa", setup: "x", estado: "recusado", meu: false }] } }));
+  yes(!h.els.stp._c.has("on"), "marca sozinha não liga o overlay");
 });
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

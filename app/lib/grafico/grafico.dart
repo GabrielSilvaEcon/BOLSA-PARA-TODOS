@@ -96,9 +96,15 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
   /// Preço no fim da análise: a referência contra a qual o servidor confere os desenhos.
   double get _refPreco => widget.velas.isEmpty ? 0 : widget.velas[_fimAnalise - 1].c;
 
-  /// Quão longe do preço um desenho precisa estar para valer como previsão.
-  /// Mesma conta de trader_leitura.distancia_minima: 2 ATR, com piso de 1,6% do preço.
-  double get _distMinima {
+  /// Pode desenhar em qualquer lugar; o acerto é que vale proporcional à distância (igual ao servidor). Aqui só se avisa, sem bloquear.
+  void _avisarPeso(double dist) {
+    final plena = _distPlena;
+    final peso = plena <= 0 ? 1.0 : (dist / plena).clamp(0.0, 1.0);
+    if (peso < 0.9) widget.aoAviso?.call('Perto do preço de partida: este desenho vale ${(peso * 100).round()}% dos pontos. Quanto mais longe, mais ele vale.');
+  }
+
+  /// Distância do preço de partida a partir da qual um acerto vale 100%. Mesma conta de trader_leitura.distancia_plena: 2 ATR, com piso de 1,6%.
+  double get _distPlena {
     final v = widget.velas;
     final ref = _refPreco;
     final piso = max(0.016 * ref, 0.02);
@@ -111,7 +117,7 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
       soma += max(v[i].h - v[i].l, max((v[i].h - ant).abs(), (ant - v[i].l).abs()));
       n++;
     }
-    return max(n == 0 ? 0.0 : 2.0 * soma / n, piso);     // 2 ATR, igual a trader_leitura.DIST_MINIMA
+    return max(n == 0 ? 0.0 : 2.0 * soma / n, piso);     // 2 ATR, igual a trader_leitura.DIST_PLENA
   }
   late List<double?> _mm20 = media(widget.velas, 20), _mm50 = media(widget.velas, 50), _mm200 = media(widget.velas, 200);
 
@@ -202,11 +208,8 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
       return;
     }
     if (f.nivel) {
-      if ((pr - _refPreco).abs() < _distMinima) {
-        widget.aoAviso?.call('Muito perto do preço de agora: marque onde você acha que o preço VAI reagir, não onde ele já está.');
-        return;
-      }
       _adicionar(Desenho.nivel(f, pr));
+      _avisarPeso((pr - _refPreco).abs());
     } else if (f.doisPontos) {
       final i = _candle(p.dx);
       if (_pendente == null) {
@@ -220,18 +223,13 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
         widget.aoAviso?.call('Escolha um candle diferente para o 2º ponto.');
         return;
       }
-      if (f != Ferramenta.tendencia) {
-        final (b, t) = (min(pa, pr), max(pa, pr));                 // a zona não pode envolver o preço de agora: não há o que prever
-        if (b - _distMinima < _refPreco && _refPreco < t + _distMinima) {
-          _pulso.stop();
-          setState(() => _pendente = null);
-          widget.aoAviso?.call('A zona está em cima do preço de agora: desenhe onde você acha que o preço vai reagir.');
-          return;
-        }
-      }
       _pulso.stop();
       _pendente = null;
       _adicionar(Desenho.dois(f, min(ia, i), ia <= i ? pa : pr, max(ia, i), ia <= i ? pr : pa));
+      if (f != Ferramenta.tendencia) {
+        final (b, t) = (min(pa, pr), max(pa, pr));                 // a distância da zona é a da borda mais próxima (zero se envolve o preço)
+        _avisarPeso(b <= _refPreco && _refPreco <= t ? 0 : min((b - _refPreco).abs(), (t - _refPreco).abs()));
+      }
     } else if (f == Ferramenta.nota) {
       final i = _candle(p.dx);
       final t = await widget.pedirTexto();

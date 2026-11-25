@@ -6,6 +6,7 @@ import 'tour.dart';
 import 'navegacao.dart';
 import 'partida.dart';
 import 'sala.dart';
+import 'setups.dart';
 
 /// Tela inicial do Trade Battle, montada com a arte do Gabriel: título e touro com as três durações (Rápida, Intermediária, Longa),
 /// Jogar Solo / Jogar com Amigos, Entrar em uma Sala (ou voltar para a sala), ranking do jogo, "Sobre o Trade Battle" e "Como funciona".
@@ -26,6 +27,7 @@ const _lila = Color(0xFFD4E2F7);
 
 class _TradeTelaState extends State<TradeTela> {
   Map<String, dynamic>? _d;
+  Map<String, dynamic>? _setups;
   String _corrida = 'intermediaria';
   bool _comoAberto = false;
 
@@ -40,6 +42,9 @@ class _TradeTelaState extends State<TradeTela> {
   Future<void> _carregar() async {
     try {
       final r = await widget.api.get('/trade/central');
+      try {
+        _setups = await widget.api.get('/setups'); // falha aqui não derruba a central
+      } catch (_) {}
       if (mounted) setState(() => _d = r);
     } catch (_) {
       if (mounted) setState(() => _d = const {});
@@ -177,6 +182,8 @@ class _TradeTelaState extends State<TradeTela> {
                     const SizedBox(height: 10),
                     Entrada(ordem: 2, child: _linhaSala(ativa)),
                     Entrada(ordem: 3, child: _secaoRanking()),
+                    const SizedBox(height: 10),
+                    Entrada(ordem: 3, child: _secaoSetups()),
                     const SizedBox(height: 10),
                     Entrada(ordem: 4, child: _sobre()),
                     const SizedBox(height: 6),
@@ -487,6 +494,38 @@ class _TradeTelaState extends State<TradeTela> {
             const Icon(Icons.chevron_right_rounded, size: 30, color: Colors.white),
           ],
         ),
+      ),
+    );
+  }
+
+  // ---- Meus Setups: atalho com o setup equipado e quantos já foram conquistados
+  Widget _secaoSetups() {
+    final st = _setups;
+    final itens = (st?['itens'] as List? ?? []).cast<Map>();
+    final eq = itens.where((x) => x['equipado'] == true).map((x) => '${x['nome']}').firstOrNull;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () async {
+        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SetupsTela(api: widget.api)));
+        _carregar();
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: const Color(0xCC10274A), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x55FFD76A))),
+        child: Row(children: [
+          const Icon(Icons.gps_fixed, color: Color(0xFFFFD76A)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Meus Setups', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+              Text(eq != null ? 'Equipado: $eq' : (itens.isEmpty ? 'Ganhe setups nos baús' : 'Nenhum equipado'), style: const TextStyle(fontSize: 12.5, color: Colors.white70)),
+            ]),
+          ),
+          Text(st == null ? '' : '${itens.length}/${st['total']}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
+          const SizedBox(width: 6),
+          const Icon(Icons.chevron_right, color: Colors.white70),
+        ]),
       ),
     );
   }

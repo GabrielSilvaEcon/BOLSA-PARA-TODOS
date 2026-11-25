@@ -42,6 +42,10 @@ flutter:
     - assets/nav/
     - assets/cabecalho/
     - assets/mesa/
+    - assets/setups/larry_williams/
+    - assets/setups/setup_classico/
+    - assets/setups/turtle_trading/
+    - assets/setups/mark_minervini/
     - assets/logos/setores/
     - assets/logos/cripto/
     - assets/avatares/

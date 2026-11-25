@@ -1124,10 +1124,48 @@ def sala_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
     return sala_ver(pid, q)
 
 
+class DecisaoSetup(BaseModel):
+    acao: str
+    q: float | None = None
+
+
+@app.post("/trade/salas/{pid}/setup")
+def sala_setup(pid: str, d: DecisaoSetup, q: Quem = Depends(quem)) -> dict:
+    """O dono do setup ativado aceita (ordem a mercado pelo sistema atual, na quantidade `q` da boleta) ou recusa. Prazo, dono e duplicidade são do servidor."""
+    if d.acao not in ("aceitar", "recusar"):
+        raise HTTPException(400, "Escolha aceitar ou recusar.")
+    _sala(OL.decidir_setup, pid, q.email, d.acao == "aceitar", d.q, _agora())
+    return sala_ver(pid, q)
+
+
 @app.post("/trade/salas/{pid}/sair")
 def sala_sair(pid: str, q: Quem = Depends(quem)) -> dict:
     _sala(OL.sair, pid, q.email, _agora())
     return {"ok": True}
+
+
+# ------------------------------------------------------------------ Setups colecionáveis (Meus Setups)
+@app.get("/setups")
+def setups_listar(q: Quem = Depends(quem)) -> dict:
+    """Os setups que a pessoa conquistou nos baús, o equipado e quantos faltam. O que ela não desbloqueou não aparece."""
+    import setups_dados as SD
+    return SD.listar(q.email)
+
+
+class EquiparSetup(BaseModel):
+    id: str
+
+
+@app.post("/setups/equipar")
+def setups_equipar(b: EquiparSetup, q: Quem = Depends(quem)) -> dict:
+    """Equipa (ou troca) o setup que vale nas partidas X1. Só o que a pessoa conquistou; a conferência é do servidor."""
+    import setups as SU
+    import setups_dados as SD
+    try:
+        SD.equipar(q.email, b.id)
+    except SU.ErroSetup as e:
+        raise HTTPException(400, str(e))
+    return SD.listar(q.email)
 
 
 # ------------------------------------------------------------------ Ticker Battle: duelo contra o sistema (mesmas regras de battle.py)
@@ -1591,12 +1629,20 @@ def cartas_catalogo_app(q: Quem = Depends(quem)) -> dict:
 def _ct_bau(q: Quem, ref: str, res: dict) -> dict:
     """Cartas do baú que acabou de abrir (uma vez por baú; se algo falhar, as moedas continuam valendo)."""
     import cartas_dados as CD
+    out = res
     try:
         r = CD.recompensa_bau(q.email, ref, str(res.get("raridade") or "comum"))
-        return {**res, "cartas": r["itens"]} if not r["ja"] else res
+        out = {**res, "cartas": r["itens"]} if not r["ja"] else res
     except Exception as e:
         banco.registrar_erro("api.cartas_bau", e)
-        return res
+    try:                                                   # setups: rolagem à parte, que não mexe nas cartas nem nas moedas do baú
+        import setups_dados as SD
+        st = SD.recompensa_bau(q.email, ref, str(res.get("raridade") or "comum"))
+        if st["setup"]:
+            out = {**out, "setup": st["setup"]}
+    except Exception as e:
+        banco.registrar_erro("api.setups_bau", e)
+    return out
 
 
 def _ct_admin(q: Quem) -> None:

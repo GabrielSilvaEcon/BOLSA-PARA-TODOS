@@ -1,0 +1,31 @@
+{
+  "id": "setup_classico",
+  "nome": "Setup Clássico",
+  "raridade": "comum",
+  "resumo": "O cruzamento de médias móveis que todo trader aprende primeiro, confirmado pela força do movimento.",
+  "caracteristicas": [
+    "Segue a tendência de curto prazo",
+    "Funciona melhor em mercado com direção definida",
+    "O sinal nasce na virada do cruzamento"
+  ],
+  "indicadores": [
+    "Média exponencial de 9 candles",
+    "Média exponencial de 21 candles",
+    "IFR (RSI) de 14"
+  ],
+  "regra": {
+    "compra": "A média de 9 cruza para cima a de 21, o candle fecha acima da de 21 e o IFR está em 57 ou mais.",
+    "venda": "A média de 9 cruza para baixo a de 21, o candle fecha abaixo da de 21 e o IFR está em 43 ou menos."
+  },
+  "cores": {
+    "principal": "#8FB4F0",
+    "brilho": "#DDEBFF"
+  },
+  "assets": {
+    "carta": null,
+    "ativacao": null,
+    "moldura": null,
+    "icone": null,
+    "efeitos": []
+  }
+}
