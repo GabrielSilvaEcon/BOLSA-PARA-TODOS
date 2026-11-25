@@ -20,7 +20,7 @@ from __future__ import annotations
 JANELA_REACAO = 5          # candles para o preço reagir depois de tocar a linha ou entrar na zona
 JANELA_TENDENCIA = 20      # candles do replay usados para conferir uma linha de tendência
 MIN_TENDENCIA = 0.7        # fração mínima de fechamentos do lado certo da linha para a tendência valer
-DIST_MINIMA = 2.0          # em ATR: abaixo disso o desenho não é previsão, e por isso não é avaliado
+DIST_PLENA = 2.0           # em ATR: a partir desta distância do preço de partida o acerto vale 100%; mais perto, vale proporcionalmente
 
 ROTULO_NIVEL = {"suporte": "Suporte", "resistencia": "Resistência", "rompimento": "Rompimento", "alvo": "Alvo"}
 
@@ -33,13 +33,22 @@ def tolerancia(atr: float, ref: float) -> float:
     return max(0.25 * float(atr or 0), 0.002 * float(ref or 0), 0.01)
 
 
-def distancia_minima(atr: float, ref: float) -> float:
-    """Quão longe do preço do fim da análise um desenho precisa estar para contar como aposta.
+def distancia_plena(atr: float, ref: float) -> float:
+    """Distância do preço de partida a partir da qual um acerto vale tudo. Mais perto, o acerto vale a fração dessa distância.
 
-    Calibrado em 4000 mercados pela taxa de acerto de quem desenha exatamente no limite: a 1 ATR o
-    alvo ainda acertava 70% das vezes (quase de graça); a 2 ATR cai para 45%, abaixo de um
-    cara-ou-coroa, e o desenho volta a ser previsão. O piso cobre o caso de ATR muito pequeno."""
-    return max(DIST_MINIMA * float(atr or 0), 0.016 * float(ref or 0), 0.02)
+    Um desenho colado no preço acerta quase sempre (o preço já está lá), então o acerto dele não diz nada. Medido em 4000 mercados: a 1 ATR o alvo
+    acertava 70% das vezes; a 2 ATR, 45%, abaixo de um cara-ou-coroa, que é onde acertar volta a ser previsão. Daí a distância cheia de 2 ATR.
+    O piso (1,6% do preço) cobre o caso de ATR muito pequeno."""
+    return max(DIST_PLENA * float(atr or 0), 0.016 * float(ref or 0), 0.02)
+
+
+def peso_distancia(dist: float, plena: float) -> float:
+    """Quanto vale o acerto de um desenho que está a `dist` do preço de partida: 0 em cima do preço, 1 a partir da distância plena."""
+    return 0.0 if plena <= 0 else max(0.0, min(1.0, dist / plena))
+
+
+def _com_peso(texto: str, peso: float) -> str:
+    return texto if peso >= 1 else f"{texto} Vale {peso:.0%} dos pontos por estar perto do preço de partida."
 
 
 def _reacao(rep: list[dict], toque, volta, rompe) -> bool | None:
@@ -113,33 +122,36 @@ def _zona(z: dict, rep: list[dict], tol: float) -> tuple[bool | None, str]:
 
 def avaliar_desenhos(marcas: dict | None, n_ini: int, rep: list[dict], ref: float, atr: float) -> dict:
     """Confere os desenhos (`marcas` validadas por trader_battle.validar_marcas) contra os candles do replay `rep`.
-    `n_ini` = índice do 1º candle do replay (os índices dos desenhos usam o mesmo eixo); `ref` = preço no fim da análise."""
+    `n_ini` = índice do 1º candle do replay (os índices dos desenhos usam o mesmo eixo); `ref` = preço no fim da análise.
+
+    Pode-se desenhar em qualquer lugar. Em níveis e zonas o acerto é multiplicado pelo peso da distância (`peso_distancia`), que mede o caminho que o
+    preço precisou percorrer até o desenho. Um acerto colado no preço vale quase nada, e como a nota é a MÉDIA dos desenhos avaliados, um desenho
+    assim ainda puxa a nota para baixo em vez de ajudar. Linha de tendência fica fora do peso (ver abaixo)."""
     m = marcas or {}
     tol = tolerancia(atr, ref)
-    dmin = distancia_minima(atr, ref)
+    plena = distancia_plena(atr, ref)
     itens = []
     for n in m.get("niveis") or []:
         papel = n.get("papel")
         if papel not in ("suporte", "resistencia", "rompimento", "alvo"):
             continue
         p = float(n["preco"])
-        if abs(p - ref) < dmin:
-            itens.append({"tipo": "nivel", "papel": papel, "preco": n["preco"], "ok": None, "valor": None,
-                          "texto": f"{ROTULO_NIVEL[papel]} em {_fmt(p)}: está em cima do preço do fim da análise, então não conta como previsão."})
-            continue
+        w = peso_distancia(abs(p - ref), plena)
         ok, txt = _nivel(papel, p, rep, ref, tol)
-        itens.append({"tipo": "nivel", "papel": papel, "preco": n["preco"], "ok": ok, "valor": None if ok is None else float(ok), "texto": txt})
+        itens.append({"tipo": "nivel", "papel": papel, "preco": n["preco"], "ok": ok, "peso": round(w, 3),
+                      "valor": None if ok is None else float(ok) * w, "texto": txt if ok is None else _com_peso(txt, w)})
     for t in m.get("tendencias") or []:
         v, txt = _tendencia(t, n_ini, rep, tol)
+        # Sem peso de distância: uma linha de tendência nasce encostada no preço (passa pelos fundos ou topos recentes), então o peso a zeraria.
+        # E o acerto dela não depende do preço CHEGAR a algum lugar, que é o que o peso mede.
         itens.append({"tipo": "tendencia", **{k: t[k] for k in ("i1", "p1", "i2", "p2")}, "ok": None if v is None else v >= MIN_TENDENCIA,
-                      "valor": v, "texto": txt})
+                      "peso": 1.0, "valor": v, "texto": txt})
     for z in m.get("zonas") or []:
-        if z["p1"] - dmin < ref < z["p2"] + dmin:           # zona em volta do preço: o preço já está dentro, não há o que prever
-            itens.append({"tipo": "zona", **{k: z[k] for k in ("i1", "i2", "p1", "p2", "reacao")}, "ok": None, "valor": None,
-                          "texto": f"Zona {_fmt(z['p1'])}–{_fmt(z['p2'])}: está em cima do preço do fim da análise, então não conta como previsão."})
-            continue
+        d = 0.0 if z["p1"] <= ref <= z["p2"] else min(abs(z["p1"] - ref), abs(z["p2"] - ref))     # a borda mais próxima: o caminho até entrar nela
+        w = peso_distancia(d, plena)
         ok, txt = _zona(z, rep, tol)
-        itens.append({"tipo": "zona", **{k: z[k] for k in ("i1", "i2", "p1", "p2", "reacao")}, "ok": ok, "valor": None if ok is None else float(ok), "texto": txt})
+        itens.append({"tipo": "zona", **{k: z[k] for k in ("i1", "i2", "p1", "p2", "reacao")}, "ok": ok, "peso": round(w, 3),
+                      "valor": None if ok is None else float(ok) * w, "texto": txt if ok is None else _com_peso(txt, w)})
     contam = [x["valor"] for x in itens if x["valor"] is not None]
     nota = round(100 * sum(contam) / len(contam), 1) if contam else None
     return {"itens": itens, "nota": nota, "avaliados": len(contam), "acertos": sum(1 for x in itens if x["ok"]), "tol": round(tol, 4)}
