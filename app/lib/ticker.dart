@@ -6,6 +6,7 @@ import 'aprender.dart' show FundoCidade;
 import 'cartas.dart';
 import 'colecao.dart';
 import 'navegacao.dart';
+import 'setups.dart' show revelarSetup;
 import 'ticker_duelo.dart';
 import 'ticker_online.dart';
 
@@ -459,6 +460,8 @@ class _TutorialBattleTelaState extends State<TutorialBattleTela> {
       final cartas = (r['cartas'] as List? ?? []).cast<Map>().map((m) => m.cast<String, dynamic>()).toList();
       if (!mounted) return;
       await revelarCartas(context, cartas, titulo: 'Baú Iniciante aberto!');
+      final st = r['setup']; // brinde: a carta do setup básico
+      if (mounted && st is Map) await revelarSetup(context, st.cast<String, dynamic>(), titulo: '🎁 PRESENTE DE BOAS-VINDAS!');
       if (mounted) setState(() { _passo = 1; _abrindo = false; });
     } catch (e) {
       if (mounted) {

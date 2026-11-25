@@ -206,10 +206,23 @@ def eu(q: Quem = Depends(quem)) -> dict:
         trofeus = max(td[j]["t"] for j in TF.JOGOS)
     except Exception:
         trofeus = None
+    _presente_setup(q)
     return {"trofeus": trofeus, "conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
             "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar,
             "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe, "ranking": ranking,
             "avatar_img": _avatar_img(perfil.get("avatar")), "alertas": _alertas_nao_lidos(a)}
+
+
+def _presente_setup(q: Quem) -> None:
+    """Contas que já passaram do tutorial (as antigas) recebem o brinde do setup básico ao abrir o app, uma vez só. Quem ainda não fez o tutorial
+    recebe pelo Baú Iniciante. Qualquer falha aqui é só registrada: nunca atrapalha a abertura do app."""
+    try:
+        import battle_dados as BD
+        import setups_dados as SD
+        if BD.ler_pessoa(banco, q.email).get("tutorial_concluido"):
+            SD.presente_inicial(q.email)
+    except Exception as e:
+        banco.registrar_erro("api.setups_presente_eu", e)
 
 
 def _alertas_nao_lidos(a):
@@ -1277,7 +1290,15 @@ def ticker_tutorial_bau(q: Quem = Depends(quem)) -> dict:
         CD.gravar(q.email, doc)
     pes["tutorial_concluido"] = True
     BD.gravar_pessoa(banco, q.email, pes)
-    return {"ja": res["ja"], "cartas": [{**i, **CD.visao_empresa(cat.get(i["tk"]))} for i in res["itens"]]}
+    out = {"ja": res["ja"], "cartas": [{**i, **CD.visao_empresa(cat.get(i["tk"]))} for i in res["itens"]]}
+    try:                                                   # brinde do Baú Iniciante: a carta do setup básico (e o aviso no sino)
+        import setups_dados as SD
+        st = SD.presente_inicial(q.email)
+        if st:
+            out["setup"] = st
+    except Exception as e:
+        banco.registrar_erro("api.setups_presente_bau", e)
+    return out
 
 
 class BaralhoTk(BaseModel):
