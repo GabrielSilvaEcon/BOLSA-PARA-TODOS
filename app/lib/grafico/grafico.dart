@@ -97,11 +97,11 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
   double get _refPreco => widget.velas.isEmpty ? 0 : widget.velas[_fimAnalise - 1].c;
 
   /// Quão longe do preço um desenho precisa estar para valer como previsão.
-  /// Mesma conta de trader_leitura.distancia_minima: 1 ATR, com piso de 0,8% do preço.
+  /// Mesma conta de trader_leitura.distancia_minima: 2 ATR, com piso de 1,6% do preço.
   double get _distMinima {
     final v = widget.velas;
     final ref = _refPreco;
-    final piso = max(0.008 * ref, 0.02);
+    final piso = max(0.016 * ref, 0.02);
     final fim = _fimAnalise;
     if (fim < 2) return piso;
     var soma = 0.0;
@@ -111,7 +111,7 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
       soma += max(v[i].h - v[i].l, max((v[i].h - ant).abs(), (ant - v[i].l).abs()));
       n++;
     }
-    return max(n == 0 ? 0.0 : soma / n, piso);
+    return max(n == 0 ? 0.0 : 2.0 * soma / n, piso);     // 2 ATR, igual a trader_leitura.DIST_MINIMA
   }
   late List<double?> _mm20 = media(widget.velas, 20), _mm50 = media(widget.velas, 50), _mm200 = media(widget.velas, 200);
 
