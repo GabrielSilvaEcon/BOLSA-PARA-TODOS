@@ -20,6 +20,9 @@ from __future__ import annotations
 JANELA_REACAO = 5          # candles para o preço reagir depois de tocar a linha ou entrar na zona
 JANELA_TENDENCIA = 20      # candles do replay usados para conferir uma linha de tendência
 MIN_TENDENCIA = 0.7        # fração mínima de fechamentos do lado certo da linha para a tendência valer
+DIST_MINIMA = 1.0          # em ATR: um desenho colado no preço não é previsão, e por isso não é avaliado
+
+ROTULO_NIVEL = {"suporte": "Suporte", "resistencia": "Resistência", "rompimento": "Rompimento", "alvo": "Alvo"}
 
 
 def _fmt(p: float) -> str:
@@ -28,6 +31,12 @@ def _fmt(p: float) -> str:
 
 def tolerancia(atr: float, ref: float) -> float:
     return max(0.25 * float(atr or 0), 0.002 * float(ref or 0), 0.01)
+
+
+def distancia_minima(atr: float, ref: float) -> float:
+    """Quão longe do preço do fim da análise um desenho precisa estar para contar como aposta.
+    Sem isso, alvo e rompimento desenhados em cima do preço acertam quase sempre (o preço já está lá)."""
+    return max(DIST_MINIMA * float(atr or 0), 0.008 * float(ref or 0), 0.02)
 
 
 def _reacao(rep: list[dict], toque, volta, rompe) -> bool | None:
@@ -104,18 +113,28 @@ def avaliar_desenhos(marcas: dict | None, n_ini: int, rep: list[dict], ref: floa
     `n_ini` = índice do 1º candle do replay (os índices dos desenhos usam o mesmo eixo); `ref` = preço no fim da análise."""
     m = marcas or {}
     tol = tolerancia(atr, ref)
+    dmin = distancia_minima(atr, ref)
     itens = []
     for n in m.get("niveis") or []:
         papel = n.get("papel")
         if papel not in ("suporte", "resistencia", "rompimento", "alvo"):
             continue
-        ok, txt = _nivel(papel, float(n["preco"]), rep, ref, tol)
+        p = float(n["preco"])
+        if abs(p - ref) < dmin:
+            itens.append({"tipo": "nivel", "papel": papel, "preco": n["preco"], "ok": None, "valor": None,
+                          "texto": f"{ROTULO_NIVEL[papel]} em {_fmt(p)}: está em cima do preço do fim da análise, então não conta como previsão."})
+            continue
+        ok, txt = _nivel(papel, p, rep, ref, tol)
         itens.append({"tipo": "nivel", "papel": papel, "preco": n["preco"], "ok": ok, "valor": None if ok is None else float(ok), "texto": txt})
     for t in m.get("tendencias") or []:
         v, txt = _tendencia(t, n_ini, rep, tol)
         itens.append({"tipo": "tendencia", **{k: t[k] for k in ("i1", "p1", "i2", "p2")}, "ok": None if v is None else v >= MIN_TENDENCIA,
                       "valor": v, "texto": txt})
     for z in m.get("zonas") or []:
+        if z["p1"] - dmin < ref < z["p2"] + dmin:           # zona em volta do preço: o preço já está dentro, não há o que prever
+            itens.append({"tipo": "zona", **{k: z[k] for k in ("i1", "i2", "p1", "p2", "reacao")}, "ok": None, "valor": None,
+                          "texto": f"Zona {_fmt(z['p1'])}–{_fmt(z['p2'])}: está em cima do preço do fim da análise, então não conta como previsão."})
+            continue
         ok, txt = _zona(z, rep, tol)
         itens.append({"tipo": "zona", **{k: z[k] for k in ("i1", "i2", "p1", "p2", "reacao")}, "ok": ok, "valor": None if ok is None else float(ok), "texto": txt})
     contam = [x["valor"] for x in itens if x["valor"] is not None]

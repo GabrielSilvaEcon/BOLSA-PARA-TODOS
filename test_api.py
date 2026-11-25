@@ -279,8 +279,10 @@ def test_desenhos_sao_avaliados_no_fim(cli, monkeypatch):
     t = {"agora": 1_000_000.0}
     monkeypatch.setattr(API, "_agora", lambda: t["agora"])
     r = cli.post("/trade/solo", json={"corrida": "rapida"}).json()
-    pid, ref = r["id"], r["tela"]["candles"][-1]["c"]
-    marcas = {"niveis": [{"preco": round(ref * 1.001, 2), "papel": "alvo"}, {"preco": round(ref * 0.5, 2), "papel": "suporte"}]}
+    pid, velas = r["id"], r["tela"]["candles"]
+    ref = velas[-1]["c"]
+    amplitude = sum(c["h"] - c["l"] for c in velas[-14:]) / len(velas[-14:])   # ~ATR: o alvo precisa ficar longe do preço para contar como previsão
+    marcas = {"niveis": [{"preco": round(ref + 3 * amplitude, 2), "papel": "alvo"}, {"preco": round(ref * 0.5, 2), "papel": "suporte"}]}
     cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta", "marcas": marcas})
     t["agora"] += 5
     cli.post(f"/trade/solo/{pid}/acao", json={"dados": {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 50}})
