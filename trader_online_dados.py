@@ -19,6 +19,8 @@ import secrets
 import time
 
 import banco
+import setups_dados as SD
+import setups_vivo as SV
 import trader_battle as TB
 import trader_carteira as TCA
 import trader_dados as TD
@@ -286,6 +288,7 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
             n["cen"] = TD.referencia_corrida(cen, semente)
             apostas = {j["email"]: _capital(j["email"], j["nick"]) for j in d["sala"]["jogadores"]}
             n["p"] = TB.nova_partida(cen, cen["tf"], jogs, agora, pid=pid, multi=True, apostas=apostas, corrida=corrida)
+            n["p"]["setups"] = SV.iniciar(jogs, {j: SD.equipado(j) for j in jogs})       # o setup de cada um fica congelado: trocar na central não muda esta partida
             return n
         cen = TD.escolher(tf, semente, rodadas=TB.FORMATOS[formato]) if formato in TB.FORMATOS else TD.escolher(tf, semente)
         n = copy.deepcopy(d)
@@ -301,11 +304,12 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
 
 
 # ------------------------------------------------------------------ partida
-def _publico(p: dict, email: str) -> dict:
+def _publico(p: dict, email: str, agora: float | None = None) -> dict:
     """Só o que a camada de tela precisa do estado; nada de estratégias, desenhos ou pontos dos outros."""
     return {"id": p["id"], "tf": p["tf"], "fase": p["fase"], "t_fase": p["t_fase"], "rodada": p["rodada"], "multi": True,
             "pontos": {email: p["pontos"].get(email, 0.0)},
-            "cfg": p.get("cfg"), "pausas": p.get("pausas")}          # só tempo/configuração (nada privado): o gráfico precisa do ritmo e da pausa
+            "cfg": p.get("cfg"), "pausas": p.get("pausas"),          # só tempo/configuração (nada privado): o gráfico precisa do ritmo e da pausa
+            "setup": SV.visao(p, email, time.time() if agora is None else agora)}   # só o evento e as marcas dos sinais ATIVADOS, do ponto de vista de quem pergunta
 
 
 def _sincronizar(pid: str, agora: float) -> dict:
@@ -316,6 +320,7 @@ def _sincronizar(pid: str, agora: float) -> dict:
         n = copy.deepcopy(d)
         cen = _cenario(n)
         TB.avancar(n["p"], agora, {cen["id"]: cen})
+        SV.processar(n["p"], cen, agora)                              # setups: prazo do evento em curso e sinais do candle que acabou de fechar
         return d if n["p"]["versao"] == d["p"]["versao"] else n
     return _mutar(pid, f, agora)
 
@@ -342,7 +347,7 @@ def ler(pid: str, email: str, agora: float | None = None) -> dict:
         return {"estado": "cancelada"}
     cen = _cenario(d)
     v = TB.visao(d["p"], cen, agora, email)
-    return {"estado": "jogo", "v": v, "p": _publico(d["p"], email)}
+    return {"estado": "jogo", "v": v, "p": _publico(d["p"], email, agora)}
 
 
 def _acao(pid: str, email: str, agora: float, fn) -> None:
@@ -381,6 +386,15 @@ def agir(pid: str, email: str, dados: dict, agora: float | None = None) -> None:
     fase, pausa, candles revelados, duplicidade (`aid`) e regras da mesa são conferidos aqui. Erro ou clique repetido = nada é gravado de novo."""
     agora = time.time() if agora is None else agora
     _acao(pid, email, agora, lambda p, cen: TB.registrar_acao(p, cen, email, dados, agora))
+
+
+def decidir_setup(pid: str, email: str, aceitar: bool, q=None, agora: float | None = None) -> dict:
+    """O dono do setup ativado aceita (manda uma ordem a mercado pelo sistema atual) ou recusa. Fase, prazo, dono e duplicidade são conferidos aqui,
+    dentro do CAS, com o relógio do servidor."""
+    agora = time.time() if agora is None else agora
+    out: dict = {}
+    _acao(pid, email, agora, lambda p, cen: out.update(SV.decidir(p, cen, email, aceitar, q, agora)))
+    return out
 
 
 def pronto(pid: str, email: str, agora: float | None = None) -> None:

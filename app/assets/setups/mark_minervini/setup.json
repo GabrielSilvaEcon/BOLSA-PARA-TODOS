@@ -1,0 +1,33 @@
+{
+  "id": "mark_minervini",
+  "nome": "Mark Minervini",
+  "raridade": "lendaria",
+  "resumo": "Tendência de alta saudável, volatilidade que se aperta e rompimento do pivô: o método de quem só compra ação em força.",
+  "caracteristicas": [
+    "Só compra, nunca vende a descoberto",
+    "Exige uma tendência de alta já estabelecida",
+    "O sinal mais raro e mais seletivo"
+  ],
+  "indicadores": [
+    "Médias de 50, 150 e 200 candles",
+    "Topo da janela de 250 candles",
+    "Amplitude dos candles (contração)",
+    "Máxima dos 5 candles anteriores (pivô)",
+    "Volume médio de 20 candles"
+  ],
+  "regra": {
+    "compra": "O preço está acima das médias de 50, 150 e 200, que estão em ordem, com a de 200 subindo; fecha a no máximo 25% do topo; a volatilidade recente é menor que a anterior; e o candle rompe a máxima dos 5 anteriores sem o volume secar.",
+    "venda": "Este setup não vende: ele só procura compras."
+  },
+  "cores": {
+    "principal": "#FFC93C",
+    "brilho": "#FFF1BF"
+  },
+  "assets": {
+    "carta": null,
+    "ativacao": null,
+    "moldura": null,
+    "icone": null,
+    "efeitos": []
+  }
+}

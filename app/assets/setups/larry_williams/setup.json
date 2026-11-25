@@ -1,0 +1,32 @@
+{
+  "id": "larry_williams",
+  "nome": "Larry Williams",
+  "raridade": "epica",
+  "resumo": "Compra na superação da máxima do candle que fez a média exponencial de 9 virar para cima, para capturar reversões rápidas de curto prazo.",
+  "caracteristicas": [
+    "Price Action / Tendência",
+    "Gatilho: superar a máxima do candle que virou a MME9 para cima",
+    "Alvo de 2 para 1, com stop na mínima do candle",
+    "Busca reversões rápidas de curto prazo"
+  ],
+  "indicadores": [
+    "Média móvel exponencial de 9 períodos (MME9)",
+    "Máxima e mínima do candle de virada",
+    "Média exponencial de 50 (filtro de tendência)"
+  ],
+  "regra": {
+    "compra": "A MME9 vira para cima num candle que fecha acima da MME50. A compra fica armada na máxima desse candle e dispara se o preço a superar no candle seguinte. Stop na mínima do candle e alvo de 2 vezes o risco.",
+    "venda": "Este setup só compra."
+  },
+  "cores": {
+    "principal": "#2EE59D",
+    "brilho": "#FFD76A"
+  },
+  "assets": {
+    "carta": "carta.jpg",
+    "ativacao": null,
+    "moldura": null,
+    "icone": null,
+    "efeitos": []
+  }
+}
