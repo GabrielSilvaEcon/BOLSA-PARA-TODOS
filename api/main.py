@@ -1211,7 +1211,7 @@ def ticker_central(q: Quem = Depends(quem)) -> dict:
 @app.post("/ticker/tutorial/bau")
 def ticker_tutorial_bau(q: Quem = Depends(quem)) -> dict:
     """Tutorial: entrega o Baú Iniciante e marca o tutorial concluído no Battle.
-    São BARALHO_MIN cartas, o baralho inteiro — o duelo tem uma rodada por carta, então com menos ninguém joga."""
+    São BARALHO_MAX cartas: o baralho já nasce cheio, e como o duelo usa só RODADAS delas, dá para escolher quais entram."""
     import battle_dados as BD
     import cartas as C
     import cartas_dados as CD
@@ -1221,7 +1221,7 @@ def ticker_tutorial_bau(q: Quem = Depends(quem)) -> dict:
     doc, _ = CD.garantir_inicial(q.email)
     cat, cfg = CD.catalogo(), CD.regras()
     import battle as BT
-    raridades = ["comum", "comum", "rara", "rara", "epica"][:BT.BARALHO_MIN]   # respeita o teto de 1 épica do baralho
+    raridades = ["comum", "comum", "rara", "rara", "epica"][:BT.BARALHO_MAX]   # baralho cheio, respeitando o teto de 1 épica
     tks = C.sortear_inicial(banco._h_conta(q.email), raridades, CD.por_raridade(cat))
     agora = CD._agora_iso()
     res = C.entregar(doc, "tutorial_battle", tks, lambda t: cat[t]["raridade_fixa"], "tutorial_battle", agora)

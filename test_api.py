@@ -320,7 +320,7 @@ def test_ticker_battle_duelo_inteiro(cli):
     _cartas_teste()
     t = cli.post("/ticker/tutorial/bau").json()
     import battle as BT
-    assert not t["ja"] and len(t["cartas"]) == BT.BARALHO_MIN               # o Baú entrega o baralho inteiro: uma carta por rodada
+    assert not t["ja"] and len(t["cartas"]) == BT.BARALHO_MAX               # o Baú entrega o baralho inteiro: uma carta por rodada
     for it in t["cartas"]:                                                  # equipa as cartas recebidas (simula passo da Coleção)
         cli.post("/cartas/equipar", json={"tk": it["tk"]})
     c = cli.get("/ticker/central").json()
@@ -332,7 +332,7 @@ def test_ticker_battle_duelo_inteiro(cli):
     assert r["deck"] == c["deck"]                                           # o baralho vem da Coleção, não do pedido
     d = cli.post("/ticker/duelo").json()
     did = d["id"]
-    assert d["rodada"] == 1 and len(d["mao"]) == BT.BARALHO_MIN and d["final"] is None
+    assert d["rodada"] == 1 and len(d["mao"]) == BT.BARALHO_MAX and d["final"] is None   # a mão começa com o baralho inteiro
     for n in range(1, BT.RODADAS + 1):                                          # uma rodada por carta do baralho
         carta = next(m["tk"] for m in d["mao"] if not m["sem_adv"])
         adv = cli.get(f"/ticker/duelo/{did}/adversaria", params={"carta": carta}).json()
@@ -470,11 +470,11 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     assert len([x for x in c0["cartas"] if x["possui"]]) == 0
     t = cli.post("/ticker/tutorial/bau").json()
     import battle as BT
-    assert not t["ja"] and len(t["cartas"]) == BT.BARALHO_MIN              # o Baú entrega o baralho inteiro
+    assert not t["ja"] and len(t["cartas"]) == BT.BARALHO_MAX              # o Baú entrega o baralho inteiro
     c = cli.get("/cartas/colecao").json()
     minhas = [x for x in c["cartas"] if x["possui"]]
-    assert len(minhas) == BT.BARALHO_MIN and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"}
-    assert all(x["equipada"] for x in minhas) and c["descobertas"] == BT.BARALHO_MIN and c["total"] >= 19
+    assert len(minhas) == BT.BARALHO_MAX and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"}
+    assert all(x["equipada"] for x in minhas) and c["descobertas"] == BT.BARALHO_MAX and c["total"] >= 19
     trancada = next(x for x in c["cartas"] if not x["possui"])
     assert "nome" not in trancada and trancada["setor"]                    # silhueta: só raridade e setor
     assert cli.post("/ticker/tutorial/bau").json()["ja"]                   # o baú tutorial sai uma vez só
@@ -482,7 +482,7 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     assert r["cartas"] and all(k["tk"] and k["raridade"] for k in r["cartas"])
     assert "cartas" not in cli.post("/loja/bau").json()                    # mesmo baú não dá cartas de novo
     c2 = cli.get("/cartas/colecao").json()
-    assert sum(x.get("total", 0) for x in c2["cartas"]) == BT.BARALHO_MIN + len(r["cartas"])
+    assert sum(x.get("total", 0) for x in c2["cartas"]) == BT.BARALHO_MAX + len(r["cartas"])
     # evolução: dá cópias de uma carta e evolui escolhendo o ROE
     import cartas_dados as CD
     import cartas as C
