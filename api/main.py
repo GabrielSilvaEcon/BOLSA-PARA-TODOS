@@ -1954,15 +1954,27 @@ def aprender_responder(r: RespostaApr, q: Quem = Depends(quem)) -> dict:
 _MERC_CACHE: dict = {}
 
 
+_MERC_TTL_VAZIO = 60.0   # a fonte falhou: espera um pouco antes de tentar de novo
+
+
 def _merc_cache(chave: str, ttl: float, f):
-    """Guarda a resposta de `f()` por `ttl` segundos (cotações mudam devagar e as fontes limitam consultas). Falha não é guardada."""
+    """Guarda a resposta de `f()` por `ttl` segundos (cotações mudam devagar e as fontes limitam consultas).
+
+    A falha também é guardada, por `_MERC_TTL_VAZIO`. Sem isso, uma fonte fora do ar ou lenta faz CADA
+    pedido pagar a espera dela — e a Home é a primeira tela de todo mundo. Pior: como a fonte limita
+    consultas, repetir a chamada a cada pedido alimenta o próprio bloqueio que causou a falha.
+    HTTPException passa direto: é resposta deliberada (ex.: cripto inexistente), não fonte indisponível."""
     agora = time.time()
     c = _MERC_CACHE.get(chave)
-    if c and agora - c[0] < ttl:
+    if c and agora - c[0] < (ttl if c[1] else _MERC_TTL_VAZIO):
         return c[1]
-    v = f()
-    if v:
-        _MERC_CACHE[chave] = (agora, v)
+    try:
+        v = f()
+    except HTTPException:
+        raise
+    except Exception:
+        v = None
+    _MERC_CACHE[chave] = (agora, v)
     return v
 
 
