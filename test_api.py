@@ -319,8 +319,9 @@ def _cartas_teste():
 def test_ticker_battle_duelo_inteiro(cli):
     _cartas_teste()
     t = cli.post("/ticker/tutorial/bau").json()
-    assert not t["ja"] and len(t["cartas"]) == 3                            # tutorial: 3 cartas (1 Rara garantida + 2 Comuns)
-    for it in t["cartas"]:                                                  # equipa as 3 cartas recebidas (simula passo da Coleção)
+    import battle as BT
+    assert not t["ja"] and len(t["cartas"]) == BT.BARALHO_MAX               # o Baú entrega o baralho inteiro: uma carta por rodada
+    for it in t["cartas"]:                                                  # equipa as cartas recebidas (simula passo da Coleção)
         cli.post("/cartas/equipar", json={"tk": it["tk"]})
     c = cli.get("/ticker/central").json()
     assert len(c["cartas"]) >= 10 and len(c["deck"]) >= 1 and c["valido"]   # baralho formado pelas cartas equipadas
@@ -331,8 +332,8 @@ def test_ticker_battle_duelo_inteiro(cli):
     assert r["deck"] == c["deck"]                                           # o baralho vem da Coleção, não do pedido
     d = cli.post("/ticker/duelo").json()
     did = d["id"]
-    assert d["rodada"] == 1 and len(d["mao"]) == 3 and d["final"] is None
-    for n in range(1, 4):
+    assert d["rodada"] == 1 and len(d["mao"]) == BT.BARALHO_MAX and d["final"] is None   # a mão começa com o baralho inteiro
+    for n in range(1, BT.RODADAS + 1):                                          # uma rodada por carta do baralho
         carta = next(m["tk"] for m in d["mao"] if not m["sem_adv"])
         adv = cli.get(f"/ticker/duelo/{did}/adversaria", params={"carta": carta}).json()
         assert adv["adversaria"]["tk"] != carta and "ind" not in adv["adversaria"]     # os valores do sistema ficam escondidos
@@ -340,7 +341,7 @@ def test_ticker_battle_duelo_inteiro(cli):
         assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "vol"}).status_code == 400   # fora dos 3
         d = cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": adv["disputaveis"][0]}).json()
         assert len(d["rodadas"]) == n and d["rodadas"][-1]["raio_x"]["porque"]
-    assert d["final"] in ("vitoria", "derrota", "empate") and sum(d["placar"].values()) == 3
+    assert d["final"] in ("vitoria", "derrota", "empate") and sum(d["placar"].values()) == BT.RODADAS
     assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "roe"}).status_code == 400      # acabou
     h = cli.get("/ticker/central").json()["historico"]
     assert h["ultimos"][0]["id"] == did and h[d["final"]] == 1              # entrou no histórico uma vez
@@ -368,7 +369,8 @@ def test_ticker_online_sala_duas_pessoas(cli):
     cli.post(f"/ticker/online/{pid}/pronto")
     v = bia.post(f"/ticker/online/{pid}/pronto").json()
     assert v["fase"] == "em_jogo" and v["op"]["nick"]
-    for n in range(3):
+    import battle as BT
+    for n in range(BT.RODADAS):                                                   # uma rodada por carta do baralho
         ea = cli.get(f"/ticker/online/{pid}").json()
         eb = bia.get(f"/ticker/online/{pid}").json()
         ta = next(t for t in ea["eu"]["deck"] if t not in ea["eu"]["usadas"])
@@ -467,11 +469,12 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     c0 = cli.get("/cartas/colecao").json()
     assert len([x for x in c0["cartas"] if x["possui"]]) == 0
     t = cli.post("/ticker/tutorial/bau").json()
-    assert not t["ja"] and len(t["cartas"]) == 3                           # tutorial: 1 Comum + 1 Rara + 1 Épica
+    import battle as BT
+    assert not t["ja"] and len(t["cartas"]) == BT.BARALHO_MAX              # o Baú entrega o baralho inteiro
     c = cli.get("/cartas/colecao").json()
     minhas = [x for x in c["cartas"] if x["possui"]]
-    assert len(minhas) == 3 and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"}
-    assert all(x["equipada"] for x in minhas) and c["descobertas"] == 3 and c["total"] >= 19
+    assert len(minhas) == BT.BARALHO_MAX and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"}
+    assert all(x["equipada"] for x in minhas) and c["descobertas"] == BT.BARALHO_MAX and c["total"] >= 19
     trancada = next(x for x in c["cartas"] if not x["possui"])
     assert "nome" not in trancada and trancada["setor"]                    # silhueta: só raridade e setor
     assert cli.post("/ticker/tutorial/bau").json()["ja"]                   # o baú tutorial sai uma vez só
@@ -479,7 +482,7 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     assert r["cartas"] and all(k["tk"] and k["raridade"] for k in r["cartas"])
     assert "cartas" not in cli.post("/loja/bau").json()                    # mesmo baú não dá cartas de novo
     c2 = cli.get("/cartas/colecao").json()
-    assert sum(x.get("total", 0) for x in c2["cartas"]) == 3 + len(r["cartas"])
+    assert sum(x.get("total", 0) for x in c2["cartas"]) == BT.BARALHO_MAX + len(r["cartas"])
     # evolução: dá cópias de uma carta e evolui escolhendo o ROE
     import cartas_dados as CD
     import cartas as C
@@ -499,13 +502,18 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     m = next(k for k in d["mao"] if k["ticker"] == alvo)
     roe = next(i for i in m["ind"] if i["id"] == "roe")
     assert m["nivel"] == 2 and roe["real"] != roe["txt"]
-    # equipar: troca dentro da mesma raridade
-    outra = next((k["tk"] for k in cli.get("/cartas/colecao").json()["cartas"] if k["possui"] and not k["equipada"]), None)
+    # baralho: o Baú já entrega as BARALHO_EQUIP cartas, então ele nasce cheio
+    import cartas as C
+    col = cli.get("/cartas/colecao").json()
+    assert len(col["equip"]) == C.BARALHO_EQUIP and col["equip_max"] == C.BARALHO_EQUIP
+    outra = next((k["tk"] for k in col["cartas"] if k["possui"] and not k["equipada"]), None)
     if outra:
-        r = cli.post("/cartas/equipar", json={"tk": outra}).json()
-        assert r["equipar"]["tk"] == outra and sum(1 for k in r["cartas"] if k.get("equipada")) <= 4
+        assert cli.post("/cartas/equipar", json={"tk": outra}).status_code == 400   # cheio: não entra mais
     assert cli.post("/cartas/equipar", json={"tk": "NAOTEM3"}).status_code == 400
-    assert cli.post("/cartas/desequipar", json={"rar": "comum"}).json()["equip"]["comum"] is None
+    saiu = col["equip"][0]
+    dep = cli.post("/cartas/desequipar", json={"tk": saiu}).json()
+    assert saiu not in dep["equip"] and len(dep["equip"]) == C.BARALHO_EQUIP - 1
+    assert cli.post("/cartas/equipar", json={"tk": saiu}).status_code == 200        # abriu espaço, volta a caber
     assert cli.post("/ticker/duelo").status_code in (200, 400)
 
 
@@ -529,3 +537,59 @@ def test_catalogo_e_admin_das_cartas(cli):
     assert cli.post("/admin/cartas/regras", json={"baus": {"comum": {"qtd": 3}}}).json()["baus"]["comum"]["qtd"] == 3
     import cartas_catalogo as CAT
     CAT.EXTRAS.clear()
+
+
+def test_sinergia_de_setor_chega_na_carta_do_duelo(cli):
+    """Duas cartas do mesmo setor no baralho ganham bônus nos indicadores; a de outro setor não muda; o dado real nunca muda."""
+    import cartas as C
+    import cartas_dados as CD
+    snap = _cartas_teste()
+    cat = CD.catalogo()
+    por_setor = {}
+    for t in snap:
+        if t in cat:
+            por_setor.setdefault(cat[t]["setor"], []).append(t)
+    forte = {"epica", "lendaria"}                                             # o baralho aceita só 1 de cada: escolhe cartas que caibam juntas
+    par = next((s, [t for t in ts if cat[t]["raridade_fixa"] not in forte][:2]) for s, ts in por_setor.items()
+               if len([t for t in ts if cat[t]["raridade_fixa"] not in forte]) >= 2)
+    setor, (a, b) = par
+    outra = next(t for s, ts in por_setor.items() if s != setor for t in ts if cat[t]["raridade_fixa"] not in forte)
+    doc = C.colecao_vazia()
+    for t in (a, b, outra):
+        C.adicionar(doc, t, cat[t]["raridade_fixa"], "2026-11-25T10:00:00")
+        C.equipar(doc, t, "2026-11-25T10:00:00")
+    jogo = CD.cartas_de_jogo(EU, snap, doc)
+    ca, cb, co = (jogo[CD.id_jogo(EU, t)] for t in (a, b, outra))
+    assert ca["sinergia"] == cb["sinergia"] == {"setor": setor, "n": 2, "passos": 1}
+    assert "sinergia" not in co and co["ind"] == snap[outra]["ind"]            # setor sozinho: sem bônus
+    for carta, base in ((ca, snap[a]), (cb, snap[b])):
+        assert carta["real"] == base["ind"]                                    # o dado financeiro real fica intacto
+        if isinstance(base["ind"].get("roe"), (int, float)):
+            assert carta["ind"]["roe"] > base["ind"]["roe"]                    # +1 passo de ROE
+
+
+def test_colecao_expoe_as_sinergias_do_baralho(cli):
+    import cartas as C
+    import cartas_dados as CD
+    snap = _cartas_teste()
+    cat = CD.catalogo()
+    forte = {"epica", "lendaria"}
+    por_setor = {}
+    for t in snap:
+        if t in cat and cat[t]["raridade_fixa"] not in forte:
+            por_setor.setdefault(cat[t]["setor"], []).append(t)
+    setor, tks = next((s, ts[:3]) for s, ts in por_setor.items() if len(ts) >= 3)
+    doc = C.colecao_vazia()
+    for t in tks:
+        C.adicionar(doc, t, cat[t]["raridade_fixa"], "2026-11-25T10:00:00")
+    C.equipar(doc, tks[0], "2026-11-25T10:00:00")
+    CD.gravar(EU, doc)
+    assert cli.get("/cartas/colecao").json()["sinergias"] == []                  # uma carta do setor: ainda não há sinergia
+    C.equipar(doc, tks[1], "2026-11-25T10:00:00")
+    CD.gravar(EU, doc)
+    s = cli.get("/cartas/colecao").json()["sinergias"]
+    assert [(x["setor"], x["n"], x["passos"]) for x in s] == [(setor, 2, 1)]
+    C.equipar(doc, tks[2], "2026-11-25T10:00:00")
+    CD.gravar(EU, doc)
+    s = cli.get("/cartas/colecao").json()["sinergias"]
+    assert [(x["n"], x["passos"]) for x in s] == [(3, 2)] and s[0]["tks"] == tks     # 3 cartas: o teto de 2 passos

@@ -7,7 +7,7 @@ import 'animacoes.dart';
 import 'api.dart';
 import 'ticker.dart';
 
-/// Duelo Clássico do Ticker Battle contra o Sistema (3 rodadas), feito no app:
+/// Duelo Clássico do Ticker Battle contra o Sistema (3 rodadas, escolhendo entre as cartas do baralho), feito no app:
 ///   1. escolher a carta (as que sobraram na mão);
 ///   2. ver a carta do sistema (escolhida por regra fixa, valores escondidos) e escolher o indicador;
 ///   3. revelação: a carta do sistema vira, os valores sobem, a vencedora brilha e o Raio-X explica por quê;

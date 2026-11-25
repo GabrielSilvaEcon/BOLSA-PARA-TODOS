@@ -4,7 +4,8 @@ Este módulo NÃO calcula indicadores financeiros: recebe as "cartas" prontas (v
 decide o duelo. Tudo aqui é determinístico e roda no servidor; o navegador nunca envia valores, só escolhas (qual carta, qual atributo).
 
 REGRAS
- · Duelo Clássico: 3 rodadas. Vence quem ganhar 2 (ou mais pontos no total). Cada carta só pode ser usada UMA vez por duelo.
+ · Duelo Clássico: 3 rodadas, uma carta contra a outra. Vence quem somar mais rodadas. Cada carta só pode ser usada UMA vez por duelo,
+   e o baralho tem mais cartas que rodadas: a escolha de quais entram faz parte do jogo.
  · Por rodada: o jogador escolhe uma carta; o sistema escolhe a adversária por regra fixa (`escolher_adversaria`); o jogador escolhe o atributo;
    o servidor lê os valores da própria carta e aplica a regra do indicador (`resolver`).
  · Regra de cada indicador (INDICADORES): "maior" ou "menor" vence; "menor_positivo" vence o menor valor MAIOR QUE ZERO (P/L e P/VP negativos não valem).
@@ -20,8 +21,10 @@ import math
 from datetime import date, datetime
 
 RODADAS = 3
-BARALHO_MIN = 3
-BARALHO_MAX = 10
+BARALHO_MIN = 3              # uma carta por rodada, sem repetir
+BARALHO_MAX = 5              # com mais cartas que rodadas, escolher quais entram faz parte do jogo
+MAX_POR_RARIDADE = {"epica": 1, "lendaria": 1}   # as fortes não repetem no baralho; comum e rara, sem teto
+ROTULO_RAR = {"comum": "Comum", "rara": "Rara", "epica": "Épica", "lendaria": "Lendária"}
 MAX_IDADE_DIAS = 10          # dado de referência mais velho que isso não entra em disputa
 MIN_ATRIBUTOS_CARTA = 2      # carta com menos indicadores válidos não é jogável
 PRECISAO = 4                 # casas usadas para decidir empate (em fração/razão; ex.: 0,0001 = 0,01 p.p.)
@@ -240,6 +243,7 @@ def validar_baralho(tks: list[str], cartas: dict, hoje: date) -> tuple[bool, str
         return False, f"Escolha pelo menos {BARALHO_MIN} cartas (uma para cada rodada)."
     if len(tks) > BARALHO_MAX:
         return False, f"O baralho aceita no máximo {BARALHO_MAX} cartas."
+    contas: dict[str, int] = {}
     for t in tks:
         c = cartas.get(t)
         if not c:
@@ -247,6 +251,11 @@ def validar_baralho(tks: list[str], cartas: dict, hoje: date) -> tuple[bool, str
         ok, m = jogavel(c, hoje)
         if not ok:
             return False, f"{t}: {m}"
+        r = c.get("rar")                          # baralhos de sistema não trazem raridade: aí não há teto a conferir
+        if r in MAX_POR_RARIDADE:
+            contas[r] = contas.get(r, 0) + 1
+            if contas[r] > MAX_POR_RARIDADE[r]:
+                return False, f"O baralho aceita no máximo {MAX_POR_RARIDADE[r]} carta {ROTULO_RAR[r]}."
     return True, ""
 
 

@@ -12,7 +12,7 @@ import 'ticker_online.dart';
 export 'cartas.dart' show CartaTk, tkBase, valoresDoDuelo, dadosDoDuelo, CatalogoCartas, revelarCartas;
 
 /// Ticker Battle (como no app antigo, battle_app.py): cartas de ações com os indicadores REAIS (dividendos, ROE, P/L…).
-/// Central → Meu Baralho (3 a 10 cartas) → Duelo contra o Sistema (3 rodadas) → Resultado com o Raio-X de cada rodada.
+/// Central → Meu Baralho (5 cartas) → Duelo contra o Sistema (3 rodadas; você escolhe quais cartas entram) → Resultado com o Raio-X.
 /// Quem decide tudo é o servidor (mesmas regras de battle.py): o app só manda "qual carta" e "qual indicador".
 class TickerTela extends StatefulWidget {
   const TickerTela({super.key, required this.api});
@@ -370,7 +370,7 @@ class _TickerTelaState extends State<TickerTela> {
           sep(),
           col(img('assets/jogos/tb_ic_graf.webp'), '3', 'P/L, DY e ROE'),
           sep(),
-          col(img('assets/jogos/tb_ic_xp.webp'), 'Melhor de 3', 'rodadas'),
+          col(img('assets/jogos/tb_ic_xp.webp'), '3 rodadas', 'de 5 cartas'),
           sep(),
           col(img('assets/jogos/tb_ic_jog.webp'), '1 × 1', 'online, vale ranking'),
         ]),
@@ -528,7 +528,7 @@ class _TutorialBattleTelaState extends State<TutorialBattleTela> {
   Widget _passoDeck() => _corpo(
     icone: const Icon(Icons.style_rounded, color: Color(0xFF6B99FF), size: 72),
     titulo: 'Monte seu Deck!',
-    corpo: 'Equipe pelo menos 3 cartas na Coleção para disputar batalhas. Toque em cada carta e selecione "Equipar".',
+    corpo: 'Monte o baralho na Coleção: até 5 cartas, e o duelo usa 3 delas. Toque em cada carta e selecione "Equipar".',
     centro: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
       for (var i = 0; i < 3; i++) ...[
         Container(

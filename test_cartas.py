@@ -58,28 +58,41 @@ def test_nivel_maximo():
         C.evoluir(d, cfg, "PETR4", "pl", AG)
 
 
-def test_equipar_uma_por_raridade_substitui():
+def test_baralho_repete_comum_mas_nao_epica_nem_lendaria():
     d = C.colecao_vazia()
-    for t, r in (("CVCB3", "comum"), ("VAMO3", "comum"), ("SUZB3", "rara"), ("WEGE3", "epica"), ("PETR4", "lendaria")):
+    for t, r in (("CVCB3", "comum"), ("VAMO3", "comum"), ("SUZB3", "rara"), ("WEGE3", "epica"), ("ITUB4", "epica"),
+                 ("PETR4", "lendaria"), ("VALE3", "lendaria")):
         C.adicionar(d, t, r, AG)
-    assert C.equipar(d, "CVCB3", AG)["saiu"] is None
-    assert C.equipar(d, "VAMO3", AG)["saiu"] == "CVCB3"             # troca dentro da mesma raridade
-    for t in ("SUZB3", "WEGE3", "PETR4"):
+    for t in ("CVCB3", "VAMO3", "SUZB3", "WEGE3", "PETR4"):          # duas comuns juntas: antes era impossível
         C.equipar(d, t, AG)
-    assert C.equipadas(d) == ["VAMO3", "SUZB3", "WEGE3", "PETR4"]    # no máximo 4, uma de cada
-    with pytest.raises(C.ErroCarta):
-        C.equipar(d, "ITUB4", AG)                                    # carta que não tem
-    C.desequipar(d, "rara", AG)
-    assert C.equipadas(d) == ["VAMO3", "WEGE3", "PETR4"]
+    assert C.equipadas(d) == ["CVCB3", "VAMO3", "SUZB3", "WEGE3", "PETR4"]
+    with pytest.raises(C.ErroCarta):                                 # 2ª épica
+        C.equipar(d, "ITUB4", AG)
+    C.desequipar(d, "WEGE3", AG)
+    with pytest.raises(C.ErroCarta):                                 # 2ª lendária, mesmo com espaço
+        C.equipar(d, "VALE3", AG)
+    assert C.equipadas(d) == ["CVCB3", "VAMO3", "SUZB3", "PETR4"]
 
 
-def test_normalizar_descarta_equipada_invalida():
+def test_baralho_cheio_e_carta_que_nao_tem():
     d = C.colecao_vazia()
-    C.adicionar(d, "CVCB3", "comum", AG)
-    d["equip"]["rara"] = "CVCB3"                                     # adulterado: comum no espaço da rara
-    d["equip"]["epica"] = "XXXX3"
+    for i in range(C.BARALHO_EQUIP + 1):
+        C.adicionar(d, f"AAA{i}", "comum", AG)
+    for i in range(C.BARALHO_EQUIP):
+        C.equipar(d, f"AAA{i}", AG)
+    with pytest.raises(C.ErroCarta):                                 # passou do tamanho do baralho
+        C.equipar(d, f"AAA{C.BARALHO_EQUIP}", AG)
+    with pytest.raises(C.ErroCarta):
+        C.equipar(d, "NAOTENHO3", AG)
+
+
+def test_normalizar_migra_formato_antigo_e_descarta_invalida():
+    d = C.colecao_vazia()
+    for t, r in (("CVCB3", "comum"), ("SUZB3", "rara")):
+        C.adicionar(d, t, r, AG)
+    d["equip"] = {"comum": "CVCB3", "rara": "SUZB3", "epica": "XXXX3", "lendaria": None}   # formato antigo em disco
     n = C.normalizar(d)
-    assert n["equip"]["rara"] is None and n["equip"]["epica"] is None
+    assert n["equip"] == ["CVCB3", "SUZB3"]                          # vira lista, sem a carta que a pessoa não tem
 
 
 def test_bau_deterministico_com_garantia_e_entrega_unica():
@@ -123,3 +136,31 @@ def test_bonus_da_raridade_nao_existe_so_do_nivel():
     a = C.carta_de_jogo(base, {"rar": "lendaria", "nivel": 1, "escolhas": []}, cfg, "a")
     b = C.carta_de_jogo(base, {"rar": "comum", "nivel": 1, "escolhas": []}, cfg, "b")
     assert a["ind"] == b["ind"] == base["ind"]                       # lendária não vence só por ser lendária
+
+
+# ------------------------------------------------------------------ sinergia de setor
+def test_passos_de_sinergia_por_cartas_do_setor():
+    assert [C.passos_sinergia(n) for n in (0, 1, 2, 3, 4, 5)] == [0, 0, 1, 2, 2, 2]      # teto de 2: nunca passa por cima da evolução
+
+
+def test_sinergias_so_para_setor_com_duas_cartas_ou_mais():
+    setor = {"A": "Bancos", "B": "Bancos", "C": "Varejo", "D": "Varejo", "E": "Varejo", "F": "Saúde", "G": None}
+    s = C.sinergias(list("ABCDEFG"), setor.get)
+    assert [(x["setor"], x["n"], x["passos"]) for x in s] == [("Bancos", 2, 1), ("Varejo", 3, 2)]    # Saúde (1) e sem setor ficam de fora
+    assert s[0]["tks"] == ["A", "B"] and C.sinergias([], setor.get) == []
+
+
+def test_aplicar_sinergia_melhora_no_sentido_certo_e_preserva_o_real():
+    cfg = C.config_padrao()
+    carta = {"ind": {"pl": 10.0, "dy_12m": 0.05, "roe": 0.15, "vol": 0.3}, "real": {"pl": 10.0, "dy_12m": 0.05, "roe": 0.15, "vol": 0.3}}
+    out = C.aplicar_sinergia(carta, 2, cfg)
+    assert out["ind"]["pl"] < 10.0                                    # P/L: menor é melhor
+    assert out["ind"]["dy_12m"] > 0.05 and out["ind"]["roe"] > 0.15   # DY e ROE: maior é melhor
+    assert out["ind"]["vol"] == 0.3                                   # indicador sem bônus configurado não muda
+    assert out["real"] == {"pl": 10.0, "dy_12m": 0.05, "roe": 0.15, "vol": 0.3}   # o dado financeiro real nunca é alterado
+
+
+def test_aplicar_sinergia_sem_passos_ou_com_valor_ausente_nao_quebra():
+    cfg = C.config_padrao()
+    assert C.aplicar_sinergia({"ind": {"pl": 10.0}}, 0, cfg)["ind"] == {"pl": 10.0}
+    assert C.aplicar_sinergia({"ind": {"pl": None, "roe": 0.1}}, 1, cfg)["ind"]["pl"] is None

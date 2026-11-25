@@ -4,7 +4,7 @@ Coleção de uma pessoa (documento salvo em banco.sis_estado, chave cartas_colec
     {"v": 1,
      "cartas": {tk: {"rar": raridade FIXADA na 1ª obtenção, "nivel": 1.., "copias": cópias extras guardadas, "total": cópias já obtidas,
                      "escolhas": [indicador escolhido em cada evolução, na ordem], "desde": iso}},
-     "equip": {"comum": tk|None, "rara": .., "epica": .., "lendaria": ..},
+     "equip": [tk, ..]  → o baralho, na ordem escolhida; no máximo BARALHO_EQUIP cartas, com teto por raridade (MAX_POR_RARIDADE),
      "ids": [referências de recompensa já entregues (baú, pacote inicial)]  → nenhuma recompensa entra duas vezes,
      "log": [transações, a mais nova primeiro]}
 Dados financeiros reais NUNCA são alterados: `carta_de_jogo` devolve uma CÓPIA da carta do snapshot com os bônus da evolução aplicados
@@ -63,16 +63,37 @@ def niveis_max(cfg: dict) -> dict:
 
 
 # ------------------------------------------------------------------ coleção
+BARALHO_EQUIP = 5                                  # cartas no baralho
+MAX_POR_RARIDADE = {"epica": 1, "lendaria": 1}     # as fortes não repetem; comum e rara, sem teto
+
+
+def cabe_no_baralho(doc: dict, tk: str) -> tuple[bool, str]:
+    """A carta cabe no baralho como ele está? (tamanho e teto da raridade dela)"""
+    if tk in doc["equip"]:
+        return True, ""
+    if len(doc["equip"]) >= BARALHO_EQUIP:
+        return False, f"O baralho já tem {BARALHO_EQUIP} cartas. Tire uma para pôr outra."
+    r = (doc["cartas"].get(tk) or {}).get("rar")
+    teto = MAX_POR_RARIDADE.get(r)
+    if teto is not None and sum(1 for t in doc["equip"] if doc["cartas"][t]["rar"] == r) >= teto:
+        return False, f"O baralho aceita no máximo {teto} carta {CAT.ROTULO_RARIDADE[r]}."
+    return True, ""
+
+
 def colecao_vazia() -> dict:
-    return {"v": 1, "cartas": {}, "equip": {r: None for r in CAT.RARIDADES}, "ids": [], "log": []}
+    return {"v": 1, "cartas": {}, "equip": [], "ids": [], "log": []}
 
 
 def normalizar(doc) -> dict:
     d = colecao_vazia()
     if isinstance(doc, dict) and doc.get("v") == 1:
         d["cartas"] = {t: dict(c) for t, c in (doc.get("cartas") or {}).items() if isinstance(c, dict) and c.get("rar") in CAT.RARIDADES}
-        eq = doc.get("equip") or {}
-        d["equip"] = {r: (eq.get(r) if eq.get(r) in d["cartas"] and d["cartas"][eq[r]]["rar"] == r else None) for r in CAT.RARIDADES}
+        eq = doc.get("equip")
+        if isinstance(eq, dict):                   # formato antigo (um espaço por raridade): vira lista, da comum à lendária
+            eq = [eq.get(r) for r in CAT.RARIDADES]
+        for t in (eq or []):                       # só o que a pessoa tem, sem repetir e respeitando os tetos de hoje
+            if t in d["cartas"] and cabe_no_baralho(d, t)[0] and t not in d["equip"]:
+                d["equip"].append(t)
         d["ids"] = list(doc.get("ids") or [])[-IDS_MAX:]
         d["log"] = list(doc.get("log") or [])[:LOG_MAX]
     return d
@@ -129,32 +150,33 @@ def evoluir(doc: dict, cfg: dict, tk: str, ind: str, agora_iso: str) -> dict:
 
 
 def equipar(doc: dict, tk: str, agora_iso: str) -> dict:
-    """Equipa `tk` no espaço da raridade dela (1 por raridade, no máximo 4). Se já havia outra, ela é substituída (e devolvida em `saiu`)."""
+    """Põe `tk` no baralho. Recusa se já estiver cheio ou se a raridade dela já bateu o teto."""
     c = doc["cartas"].get(tk)
     if c is None:
         raise ErroCarta("Você ainda não tem essa carta.")
     r = c["rar"]
-    antes = doc["equip"].get(r)
-    if antes == tk:
+    if tk in doc["equip"]:
         return {"tk": tk, "rar": r, "saiu": None}
-    doc["equip"][r] = tk
-    _registrar(doc, "equipar", agora_iso, tk=tk, rar=r, saiu=antes)
-    return {"tk": tk, "rar": r, "saiu": antes}
+    ok, msg = cabe_no_baralho(doc, tk)
+    if not ok:
+        raise ErroCarta(msg)
+    doc["equip"].append(tk)
+    _registrar(doc, "equipar", agora_iso, tk=tk, rar=r, saiu=None)
+    return {"tk": tk, "rar": r, "saiu": None}
 
 
-def desequipar(doc: dict, rar: str, agora_iso: str) -> dict:
-    if rar not in CAT.RARIDADES:
-        raise ErroCarta("Espaço inválido.")
-    antes = doc["equip"].get(rar)
-    doc["equip"][rar] = None
-    if antes:
-        _registrar(doc, "desequipar", agora_iso, tk=antes, rar=rar)
-    return {"rar": rar, "saiu": antes}
+def desequipar(doc: dict, tk: str, agora_iso: str) -> dict:
+    """Tira `tk` do baralho."""
+    if tk not in doc["equip"]:
+        raise ErroCarta("Essa carta não está no baralho.")
+    doc["equip"].remove(tk)
+    _registrar(doc, "desequipar", agora_iso, tk=tk, rar=(doc["cartas"].get(tk) or {}).get("rar"))
+    return {"tk": tk, "saiu": tk}
 
 
 def equipadas(doc: dict) -> list[str]:
-    """Cartas equipadas, na ordem das raridades (comum → lendária)."""
-    return [doc["equip"][r] for r in CAT.RARIDADES if doc["equip"].get(r)]
+    """O baralho, na ordem em que a pessoa montou."""
+    return list(doc["equip"])
 
 
 # ------------------------------------------------------------------ sorteio (determinístico: mesma conta + mesma recompensa = mesmo resultado)
@@ -190,8 +212,15 @@ def sortear_bau(seed: str, conf: dict, por_raridade: dict) -> list[str]:
 
 
 def sortear_inicial(seed: str, raridades: list[str], por_raridade: dict) -> list[str]:
+    """Uma carta para cada raridade pedida, sem repetir ticker — a mesma raridade pode aparecer mais de uma vez na lista
+    (o baralho aceita duas comuns), e aí repetir o ticker daria cópia em vez de carta nova."""
     rng = _rng("inicial|" + seed)
-    return [rng.choice(sorted(por_raridade[r])) for r in raridades if por_raridade.get(r)]
+    out: list[str] = []
+    for r in raridades:
+        cand = sorted(t for t in (por_raridade.get(r) or ()) if t not in out)
+        if cand:
+            out.append(rng.choice(cand))
+    return out
 
 
 def entregar(doc: dict, ref: str, tks: list[str], raridade_de, origem: str, agora_iso: str) -> dict:
@@ -226,3 +255,31 @@ def carta_de_jogo(base: dict, c: dict, cfg: dict, ident: str) -> dict:
     out["ind"] = {k: (aplicar_bonus(k, float(v), vezes.get(k, 0), cfg["bonus"]) if k in vezes else v) for k, v in real.items()}
     out.update(id=ident, real=real, nivel=c["nivel"], rar=c["rar"], melhorias=vezes)
     return out
+
+
+# ------------------------------------------------------------------ sinergia de setor
+SINERGIA_MAX = 2   # teto em passos de evolução: uma sinergia nunca passa por cima da progressão (o nível máximo dá 9 passos)
+
+
+def passos_sinergia(n_mesmo_setor: int) -> int:
+    """Passos de bônus (a mesma unidade da evolução) que cada carta ganha por ter `n` cartas do seu setor no baralho: 2 → 1, 3 ou mais → 2.
+    Calibrado em todos os pares do catálogo: 1 passo vira 2,4% das disputas e 2 passos vira 4,9%. É um empurrão, não uma alavanca."""
+    return 0 if n_mesmo_setor < 2 else min(SINERGIA_MAX, n_mesmo_setor - 1)
+
+
+def sinergias(tks: list[str], setor_de) -> list[dict]:
+    """As sinergias ativas num baralho: [{"setor", "n", "passos", "tks"}], só para setores com 2 cartas ou mais, na ordem do baralho."""
+    por_setor: dict[str, list[str]] = {}
+    for t in tks:
+        s = setor_de(t)
+        if s:
+            por_setor.setdefault(s, []).append(t)
+    return [{"setor": s, "n": len(ts), "passos": passos_sinergia(len(ts)), "tks": ts} for s, ts in por_setor.items() if len(ts) >= 2]
+
+
+def aplicar_sinergia(carta: dict, passos: int, cfg: dict) -> dict:
+    """Soma `passos` de bônus aos indicadores da carta de jogo, por cima da evolução. Os valores reais (`real`) não se mexem."""
+    if passos:
+        carta["ind"] = {k: (aplicar_bonus(k, float(v), passos, cfg["bonus"]) if k in cfg["bonus"] and isinstance(v, (int, float)) else v)
+                        for k, v in (carta.get("ind") or {}).items()}
+    return carta

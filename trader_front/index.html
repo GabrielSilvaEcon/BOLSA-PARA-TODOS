@@ -509,7 +509,7 @@ function onRender(a){
   const nT=performance.now()+a.seg*1000;if(novo||Math.abs(nT-T0)>1500||a.modo!=="analise")T0=nT;   // na análise o relógio local só é corrigido se desviar mais de 1,5 s
   if(a.ok_seq&&a.ok_seq===S.sentSeq&&S.sentSeq>0){S.savedSig=S.sentSig}
   if(a.erro&&a.erro_seq===S.sentSeq){S.erroLocal=a.erro}else if(a.ok_seq===S.sentSeq){S.erroLocal=""}
-  if(S.modo!=='analise'){const n=S.cands.length;S.offAlvo=n+3-(W-axisW())/S.cw}
+  if(S.modo!=='analise'){const n=S.cands.length;S.offAlvo=n+folga()-(W-axisW())/S.cw}
   $("tk").innerHTML=a.corrida?`${esc(a.ticker)}<small>${esc(a.tf_nome)}${a.demo?' · <span class="pill">SIMULADO</span>':""}</small>`
     :`${esc(a.ticker)}${a.demo?'<span class="pill">SIMULADO</span>':""}<small>${esc(a.tf_nome)} · ${mesaOn()?"mesa":"análise"}</small>`;
   topoCorrida();const cd=$("cdl");if(cd)cd.textContent=a.corrida?(a.modo==="analise"?"estratégia":`candle ${a.revelados||0}/${a.total_replay||0}`):"";
@@ -883,9 +883,12 @@ function uiMesa(){   // atualiza só textos e estados dos botões (a tela não �
   if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
   if(m&&m.qtd){   // partida corrida: quantidade, preço médio, poder de compra e exposição
     const p=m.posicao,naFila=(m.fila||[]).length>0;
-    const fila=naFila&&p?` · <span class="pz">⏳ ordem a mercado: executa na abertura do próximo candle</span>`:"";
+    const zerando=naFila&&p&&(m.fila||[]).some(f=>f.reduz&&f.q>=p.q);      // ordem na fila que fecha a posição inteira
+    const fila="";
     const sa2=p&&p.trail?sa.replace("STOP ","STOP MÓVEL "):sa;
-    if(p)l1=`<span class="e">${p.direcao==="alta"?"Comprado":"Vendido"} ${p.q} · PM ${fmt(p.preco_entrada)}</span>${sa2}`;
+    // com ordem a caminho a linha principal avisa: antes ela repetia "Comprado 3 · PM ..." como se o toque não tivesse valido
+    if(p&&naFila)l1=`<span class="e">⏳ ${zerando?"Zerando a posição":"Ordem enviada"}</span><span class="pz">executa na abertura do próximo candle</span>`;
+    else if(p)l1=`<span class="e">${p.direcao==="alta"?"Comprado":"Vendido"} ${p.q} · PM ${fmt(p.preco_entrada)}</span>${sa2}`;
     else if(o.pend)l1=`<span class="e">Ordem ${o.pend.tipo==="limite"?"limite":"stop"} ${o.pend.direcao==="alta"?"compra":"venda"} ${o.pend.q||""} em ${fmt(o.pend.preco)}</span>${sa}`;
     // sem a linha abaixo o painel dizia "Sem posição · pronto para operar" logo após enviar a ordem, e a espera do candle parecia o app travado
     else if(naFila)l1=`<span class="e">⏳ Ordem enviada</span><span class="pz">executa na abertura do próximo candle</span>`;
@@ -996,10 +999,13 @@ cv.addEventListener("pointerup",fim);cv.addEventListener("pointercancel",e=>{ptr
 cv.addEventListener("wheel",e=>{e.preventDefault();S.cwAlvo=null;const p=pos(e),idx=(p.x-S.cw/2)/S.cw+S.off;S.cw=Math.max(2,Math.min(40,S.cw*(e.deltaY<0?1.12:1/1.12)));S.off=idx-(p.x-S.cw/2)/S.cw;limita();draw()},{passive:false});
 cv.addEventListener("contextmenu",e=>e.preventDefault());
 const VIS_REPLAY=40;                                                // candles na tela quando o gráfico começa a andar
-function fimOff(){return S.cands.length+3-(W-axisW())/S.cw}
+// Folga entre o último candle e o eixo de preço. Em candles ela some quando o gráfico está afastado
+// (cw pequeno), e o candle que está se formando fica colado na borda: por isso o piso em pixels.
+function folga(){return Math.max(3,56/Math.max(1,S.cw))}
+function fimOff(){return S.cands.length+folga()-(W-axisW())/S.cw}
 function zoomReplay(){if(!W)return;S.cwAlvo=Math.max(2,Math.min(40,(W-axisW())/(VIS_REPLAY+3)));S.follow=true;aoVivoUI()}
 function aoVivoUI(){const b=$("aovivo");if(b)b.classList.toggle("on",!!S&&S.modo!=="analise"&&!S.follow)}
-function limita(){const n=S.cands.length,pw=W-axisW();S.off=Math.max(-3,Math.min(n-pw/S.cw+3,S.off))}
+function limita(){const n=S.cands.length,pw=W-axisW();S.off=Math.max(-3,Math.min(n-pw/S.cw+folga(),S.off))}
 function toque(p){
   layout();const t=S.tool,pr=Geo.r2(L.price(p.y));
   if(mesaOn()&&S.modo==="replay")return toqueMesa(p,pr);
@@ -1046,7 +1052,7 @@ function loop(){
   if(S.fila.length&&now>=S.fT){let n=0;                                 // libera os candles já devidos (se o navegador atrasou, recupera sem acelerar a animação)
     while(S.fila.length&&now>=S.fT&&n<8){S.cands.push(S.fila.shift());S.fT=Math.max(S.fT,now-S.fStep)+S.fStep;n++}
     cache();S.anim={i:S.cands.length-1,t0:now,dur:Math.min(650,S.fStep*1.6)};mexe=true;
-    if(S.modo!=="analise")S.offAlvo=S.cands.length+3-(W-axisW())/S.cw}
+    if(S.modo!=="analise")S.offAlvo=fimOff()}
   if(S.fila.length)mexe=true;
   if(S.anim){const t=Math.min(1,(now-S.anim.t0)/S.anim.dur);S.anim.e=ease(t);if(t>=1)S.anim=null;else mexe=true}
   if(S.modo!=="analise"){

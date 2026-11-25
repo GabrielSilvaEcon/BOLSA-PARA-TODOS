@@ -8,7 +8,7 @@ import 'aprender.dart' show FundoCidade;
 import 'cartas.dart';
 
 /// COLEÇÃO: cartas descobertas e silhuetas das que faltam, filtros por raridade e setor, nível, cópias e progresso,
-/// evoluir (escolhendo P/L, DY ou ROE) e equipar (1 por raridade, 4 espaços). Tudo é validado no servidor.
+/// evoluir (escolhendo P/L, DY ou ROE) e montar o baralho (5 cartas, máx 1 Épica e 1 Lendária). Tudo é validado no servidor.
 class ColecaoTela extends StatefulWidget {
   const ColecaoTela({super.key, required this.api});
   final Api api;
@@ -129,9 +129,10 @@ class _ColecaoTelaState extends State<ColecaoTela> {
         ]),
       );
 
-  // ---- Equipadas: 4 espaços, um por raridade
+  // ---- Baralho: lista de até equip_max cartas, com teto só para épica e lendária
   Widget _equipadas(Map d) {
-    final eq = ((d['equip'] as Map?) ?? const {}).cast<String, dynamic>();
+    final eq = ((d['equip'] as List?) ?? const []).map((e) => '$e').toList();
+    final nMax = (d['equip_max'] as num?)?.toInt() ?? 5;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
       child: Container(
@@ -148,32 +149,61 @@ class _ColecaoTelaState extends State<ColecaoTela> {
             SizedBox(width: 6),
             Text('Equipadas', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
             Spacer(),
-            Text('1 por raridade · vão para o Ticker Battle', style: TextStyle(fontSize: 11, color: Color(0xFFB5C8E6))),
+            Text('máx 1 Épica e 1 Lendária · vão para o Ticker Battle', style: TextStyle(fontSize: 11, color: Color(0xFFB5C8E6))),
           ]),
           const SizedBox(height: 10),
           LayoutBuilder(builder: (ctx, cc) {
-            final w = (cc.maxWidth - 3 * 8) / 4;
+            final w = (cc.maxWidth - (nMax - 1) * 6) / nMax;
             return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              for (final r in ordemRaridade) _slot(r, eq[r] as String?, w),
+              for (var i = 0; i < nMax; i++) _slot(i < eq.length ? eq[i] : null, w),
             ]);
           }),
+          ..._chipsSinergia(d),
         ]),
       ),
     );
   }
 
-  Widget _slot(String rar, String? tk, double w) {
-    final (cor, clara, _) = coresRaridade[rar]!;
+  /// Sinergia de setor: cartas do mesmo setor no baralho ganham nível de evolução extra nos indicadores. Sem mostrar, seria um bônus invisível.
+  List<Widget> _chipsSinergia(Map d) {
+    final sin = ((d['sinergias'] as List?) ?? const []).cast<Map>();
+    if (sin.isEmpty) return const [];
+    return [
+      const SizedBox(height: 10),
+      Wrap(spacing: 8, runSpacing: 6, children: [
+        for (final s in sin)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              color: const Color(0x33FFC93C),
+              border: Border.all(color: const Color(0xFFFFC93C), width: 1.2),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.bolt_rounded, size: 16, color: Color(0xFFFFC93C)),
+              const SizedBox(width: 4),
+              Text('${s['setor']} ×${s['n']} · +${s['passos']} ${s['passos'] == 1 ? 'nível' : 'níveis'} nos indicadores',
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFFFFE08A))),
+            ]),
+          ),
+      ]),
+    ];
+  }
+
+  Widget _slot(String? tk, double w) {
     final c = _carta(tk);
+    final rar = c == null ? 'comum' : '${c['raridade']}';
+    final (cor, clara, _) = coresRaridade[rar] ?? coresRaridade['comum']!;
     final novo = tk != null && tk == _acabouDeEquipar;
     Widget conteudo = c == null
         ? Container(
             width: w,
             height: CartaTk.alturaPara(w),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(w * 0.08), color: const Color(0x55081A3D), border: Border.all(color: cor.withValues(alpha: 0.7), width: 2)),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(w * 0.08), color: const Color(0x55081A3D), border: Border.all(color: const Color(0x884F88E6), width: 2)),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(Icons.add_rounded, color: cor, size: w * 0.35),
-              Text('Vazio', style: TextStyle(fontSize: 11, color: clara)),
+              Icon(Icons.add_rounded, color: const Color(0xFF8FB4F0), size: w * 0.35),
+              const Text('Vazio', style: TextStyle(fontSize: 10, color: Color(0xFFB5C8E6))),
             ]),
           )
         : CartaTk(tk: tk!, largura: w, dados: c, valores: _vals(c['jogo']));
@@ -193,9 +223,9 @@ class _ColecaoTelaState extends State<ColecaoTela> {
       );
     }
     return Column(children: [
-      Pressionavel(aoTocar: c == null ? () => setState(() => _rar = rar) : () => _abrir(c), child: conteudo),
+      Pressionavel(aoTocar: c == null ? () => setState(() => _rar = null) : () => _abrir(c), child: conteudo),
       const SizedBox(height: 4),
-      Text(nomesRaridade[rar]!, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: clara)),
+      Text(c == null ? '—' : nomesRaridade[rar]!, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: c == null ? const Color(0xFF8FB4F0) : clara)),
     ]);
   }
 
@@ -408,35 +438,14 @@ class _DetalheCartaTelaState extends State<DetalheCartaTela> with TickerProvider
     }
   }
 
+  // Não há mais substituição: a carta entra se couber, e o servidor recusa com o motivo (baralho cheio ou teto da raridade).
   Future<void> _equipar() async {
-    final eq = ((_col['equip'] as Map?) ?? const {}).cast<String, dynamic>();
-    final atual = eq[_rar] as String?;
-    if (atual != null && atual != _c['tk']) {
-      final nomeAtual = ((_col['cartas'] as List?) ?? const []).cast<Map>().where((x) => x['tk'] == atual).firstOrNull?['nome'] ?? atual;
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF0E2A5C),
-          title: const Text('Substituir carta?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
-          content: Text(
-            'Você só pode equipar 1 carta ${nomesRaridade[_rar]!.toLowerCase()}. $nomeAtual ($atual) sairá do espaço e ${_c['nome']} (${_c['tk']}) entrará no lugar.',
-            style: const TextStyle(color: Color(0xFFD4E2F7), height: 1.35),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Substituir')),
-          ],
-        ),
-      );
-      if (ok != true || !mounted) return;
-    }
     setState(() => _ocupado = true);
     try {
       final r = await widget.api.post('/cartas/equipar', {'tk': _c['tk']});
       if (!mounted) return;
       setState(() => _atualizar(r));
-      final saiu = (r['equipar'] as Map?)?['saiu'];
-      _aviso(saiu != null ? '${_c['tk']} equipada no lugar de $saiu!' : '${_c['tk']} equipada!');
+      _aviso('${_c['tk']} entrou no baralho!');
       await Future.delayed(const Duration(milliseconds: 450));
       if (mounted) Navigator.of(context).pop(_mudou);
     } catch (e) {
@@ -449,7 +458,7 @@ class _DetalheCartaTelaState extends State<DetalheCartaTela> with TickerProvider
   Future<void> _desequipar() async {
     setState(() => _ocupado = true);
     try {
-      final r = await widget.api.post('/cartas/desequipar', {'rar': _rar});
+      final r = await widget.api.post('/cartas/desequipar', {'tk': _c['tk']});
       if (mounted) setState(() => _atualizar(r));
     } catch (e) {
       if (mounted) _aviso(e.toString(), ok: false);

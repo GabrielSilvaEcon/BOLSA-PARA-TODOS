@@ -1210,7 +1210,8 @@ def ticker_central(q: Quem = Depends(quem)) -> dict:
 
 @app.post("/ticker/tutorial/bau")
 def ticker_tutorial_bau(q: Quem = Depends(quem)) -> dict:
-    """Tutorial: entrega o Baú Iniciante (1 Comum + 1 Rara + 1 Épica, uma por slot) e marca o tutorial concluído no Battle."""
+    """Tutorial: entrega o Baú Iniciante e marca o tutorial concluído no Battle.
+    São BARALHO_MAX cartas: o baralho já nasce cheio, e como o duelo usa só RODADAS delas, dá para escolher quais entram."""
     import battle_dados as BD
     import cartas as C
     import cartas_dados as CD
@@ -1219,14 +1220,15 @@ def ticker_tutorial_bau(q: Quem = Depends(quem)) -> dict:
         return {"ja": True, "cartas": []}
     doc, _ = CD.garantir_inicial(q.email)
     cat, cfg = CD.catalogo(), CD.regras()
-    tks = C.sortear_inicial(banco._h_conta(q.email), ["comum", "rara", "epica"], CD.por_raridade(cat))
+    import battle as BT
+    raridades = ["comum", "comum", "rara", "rara", "epica"][:BT.BARALHO_MAX]   # baralho cheio, respeitando o teto de 1 épica
+    tks = C.sortear_inicial(banco._h_conta(q.email), raridades, CD.por_raridade(cat))
     agora = CD._agora_iso()
     res = C.entregar(doc, "tutorial_battle", tks, lambda t: cat[t]["raridade_fixa"], "tutorial_battle", agora)
     if not res["ja"]:
-        for t in tks:                                                       # equipa automaticamente (1 por raridade = 3 slots)
-            if not doc["equip"].get(doc["cartas"][t]["rar"]):
-                try: C.equipar(doc, t, agora)
-                except C.ErroCarta: pass
+        for t in tks:                                                       # monta o baralho com o que couber
+            try: C.equipar(doc, t, agora)
+            except C.ErroCarta: pass
         CD.gravar(q.email, doc)
     pes["tutorial_concluido"] = True
     BD.gravar_pessoa(banco, q.email, pes)
@@ -1501,13 +1503,15 @@ def _ct_visao(q: Quem, doc: dict | None = None) -> dict:
             jogo = C.carta_de_jogo(snap[tk], c, cfg, tk) if tk in snap else None
             item.update(CD.visao_empresa(e), raridade=c["rar"], nivel=c["nivel"], copias=c["copias"], total=c.get("total", 1), precisa=pr["precisa"],
                         pode=pr["pode"], maximo=pr["maximo"], nivel_max=pr["nivel_max"], escolhas=list(c.get("escolhas") or []),
-                        melhorias=C.bonus_das_escolhas(c.get("escolhas")), equipada=doc["equip"].get(c["rar"]) == tk,
+                        melhorias=C.bonus_das_escolhas(c.get("escolhas")), equipada=tk in doc["equip"],
                         real=_ct_inds(snap.get(tk)), jogo=_ct_inds(jogo), ref=_tk_data((snap.get(tk) or {}).get("ref")))
         lista.append(item)
     ordem = {r: i for i, r in enumerate(CAT.RARIDADES)}
     lista.sort(key=lambda x: (not x["possui"], -ordem[x["raridade"]], x["tk"]))
     bonus = {i: ("−4% no P/L" if i == "pl" else "+0,25 p.p. no DY" if i == "dy_12m" else "+1 p.p. no ROE") for i in CAT.INDICADORES}
-    return {"cartas": lista, "equip": doc["equip"], "setores": sorted({e["setor"] for e in cat.values()}), "raridades": list(CAT.RARIDADES),
+    sinergias = C.sinergias(list(doc["equip"]), lambda t: (cat.get(t) or {}).get("setor"))
+    return {"cartas": lista, "equip": doc["equip"], "equip_max": C.BARALHO_EQUIP, "equip_por_raridade": C.MAX_POR_RARIDADE, "sinergias": sinergias,
+            "setores": sorted({e["setor"] for e in cat.values()}), "raridades": list(CAT.RARIDADES),
             "rotulos": CAT.ROTULO_RARIDADE, "indicadores": CAT.ROTULO_IND, "bonus": bonus,
             "descobertas": len(doc["cartas"]), "total": len(cat), "log": doc["log"][:20]}
 
@@ -1561,7 +1565,7 @@ def cartas_equipar(b: EquiparCarta, q: Quem = Depends(quem)) -> dict:
 
 
 class DesequiparCarta(BaseModel):
-    rar: str
+    tk: str
 
 
 @app.post("/cartas/desequipar")
@@ -1570,7 +1574,7 @@ def cartas_desequipar(b: DesequiparCarta, q: Quem = Depends(quem)) -> dict:
     import cartas_dados as CD
     doc = CD.garantir_inicial(q.email)[0]
     try:
-        C.desequipar(doc, b.rar, CD._agora_iso())
+        C.desequipar(doc, b.tk, CD._agora_iso())
     except C.ErroCarta as e:
         raise HTTPException(400, str(e))
     CD.gravar(q.email, doc)
