@@ -7,6 +7,13 @@ import 'cartas.dart' show coresRaridade, rotulosRaridade;
 /// A arte de cada setup mora em assets/setups/<id>/ (o servidor já manda o caminho só quando o arquivo existe); sem arte, entra o
 /// espaço provisório, claramente marcado, e nunca uma arte inventada.
 
+IconData _iconeDe(String id) => switch (id) {
+      'larry_williams' => Icons.bolt,
+      'turtle_trading' => Icons.waves,
+      'mark_minervini' => Icons.rocket_launch,
+      _ => Icons.ssid_chart,
+    };
+
 Color _corDe(Map s) => (coresRaridade[s['raridade']] ?? coresRaridade['comum']!).$1;
 
 /// Carta do setup: a arte enviada, ou o espaço provisório (marcado) quando ela ainda não existe ou não carrega.
@@ -20,23 +27,54 @@ class SetupCarta extends StatelessWidget {
     final cor = _corDe(setup);
     final arte = (setup['assets'] as Map?)?['carta'] as String?;
     final borda = BorderRadius.circular(largura * 0.08);
-    Widget provisoria() => Container(
-          decoration: BoxDecoration(
-            borderRadius: borda,
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [cor.withValues(alpha: .55), const Color(0xFF0C192E)]),
-          ),
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.gps_fixed, size: largura * 0.32, color: Colors.white70),
-              const SizedBox(height: 8),
-              Text('${setup['nome']}', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: largura * 0.1)),
-              const SizedBox(height: 6),
-              Text('ARTE PROVISÓRIA', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w700, fontSize: largura * 0.062, letterSpacing: .6)),
-            ],
-          ),
-        );
+    // Carta feita em código enquanto a arte final não chega: moldura da raridade, ícone do setup e as características do próprio cadastro.
+    Widget provisoria() {
+      final (_, clara, escura) = coresRaridade[setup['raridade']] ?? coresRaridade['comum']!;
+      final linhas = ((setup['caracteristicas'] as List?) ?? const []).take(3).map((e) => '$e').toList();
+      final u = largura / 150; // tudo escala com a largura da carta
+      return Container(
+        decoration: BoxDecoration(borderRadius: borda, gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [escura, const Color(0xFF0C1330)])),
+        padding: EdgeInsets.fromLTRB(9 * u, 8 * u, 9 * u, 8 * u),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [
+              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 6 * u, vertical: 2 * u),
+                decoration: BoxDecoration(color: cor, borderRadius: BorderRadius.circular(6 * u)),
+                child: Text(rotulosRaridade[setup['raridade']] ?? '', style: TextStyle(color: const Color(0xFF0C1330), fontWeight: FontWeight.w900, fontSize: 8 * u)),
+              ))),
+              const Spacer(),
+              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text('SETUP', style: TextStyle(color: clara, fontWeight: FontWeight.w900, fontSize: 9 * u, letterSpacing: 1)))),
+            ]),
+            SizedBox(height: 8 * u),
+            Expanded(
+              flex: 5,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10 * u),
+                  border: Border.all(color: cor.withValues(alpha: .6)),
+                  gradient: RadialGradient(colors: [cor.withValues(alpha: .45), Colors.transparent]),
+                ),
+                child: Center(child: Icon(_iconeDe('${setup['id']}'), size: 46 * u, color: Colors.white)),
+              ),
+            ),
+            SizedBox(height: 7 * u),
+            FittedBox(fit: BoxFit.scaleDown, child: Text('${setup['nome']}'.toUpperCase(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13 * u))),
+            SizedBox(height: 4 * u),
+            Expanded(
+              flex: 4,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Text(linhas.map((l) => '• $l').join('\n'), maxLines: 6, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white70, fontSize: 8 * u, height: 1.25)),
+              ),
+            ),
+            Text('ARTE PROVISÓRIA', textAlign: TextAlign.center, style: TextStyle(color: Colors.white38, fontWeight: FontWeight.w700, fontSize: 6.5 * u, letterSpacing: .8)),
+          ],
+        ),
+      );
+    }
+
     return Container(
       width: largura,
       height: largura * 1.4,
