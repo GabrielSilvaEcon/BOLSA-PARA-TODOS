@@ -10,11 +10,28 @@ import 'ticker.dart';
 import 'ticker_online.dart';
 import 'trade.dart';
 
+/// Ticker Battle precisa de baralho, e quem nunca abriu o Baú Iniciante não tem carta nenhuma (INICIAL = ()).
+/// Só a aba do jogo abria o tutorial, então desafiar daqui morria num "Escolha pelo menos 3 cartas" sem saída:
+/// as cartas vêm justamente do baú. Abre o tutorial antes, como a aba do jogo faz.
+Future<void> _garantirBaralho(NavigatorState nav, Api api, String jogo) async {
+  if (jogo != 'ticker') return;
+  try {
+    final c = await api.get('/ticker/central');
+    if (c['tutorial_pendente'] == true && nav.mounted) {
+      await nav.push(MaterialPageRoute(builder: (_) => TutorialBattleTela(api: api)));
+    }
+  } catch (_) {
+    // servidor sem resposta: segue e deixa o desafio falhar com a mensagem dele
+  }
+}
+
 /// Desafio PvP direto a um amigo, de qualquer tela (ex.: Revanche no fim da partida): abre a espera "VS" e, se ele aceitar,
 /// a partida (Trade Battle na sala, Ticker Battle no duelo online).
 Future<void> desafiarAmigo(BuildContext context, Api api, Map amigo, String jogo, {Object? euImg}) async {
   final nav = Navigator.of(context, rootNavigator: true);
   final msg = ScaffoldMessenger.maybeOf(context);
+  await _garantirBaralho(nav, api, jogo);
+  if (!nav.mounted) return;
   final r = await nav.push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: api, amigo: amigo, jogo: jogo, euImg: euImg)));
   if (r != null && r['estado'] == 'aceito' && r['id'] != null) {
     await nav.push(MaterialPageRoute(builder: (_) => r['jogo'] == 'trade' ? SalaTela(api: api, salaId: '${r['id']}') : PartidaOnlineTela(api: api, pid: '${r['id']}')));
@@ -462,7 +479,10 @@ class _SocialTelaState extends State<SocialTela> {
   }
 
   Future<void> _desafiar(Map a, String jogo) async {
-    final r = await Navigator.of(context).push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: widget.api, amigo: a, jogo: jogo, euImg: (_d?['eu'] as Map?)?['avatar_img'])));
+    final nav = Navigator.of(context);
+    await _garantirBaralho(nav, widget.api, jogo);
+    if (!mounted) return;
+    final r = await nav.push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: widget.api, amigo: a, jogo: jogo, euImg: (_d?['eu'] as Map?)?['avatar_img'])));
     if (!mounted) return;
     if (r != null && r['estado'] == 'aceito') {
       _abrirSala('${r['jogo']}', r['id']);
