@@ -187,21 +187,37 @@ def test_conquista_e_permanente_e_so_se_equipa_o_que_se_tem():
     d = SU.colecao_vazia()
     assert SU.conquistar(d, "turtle_trading", "bau_raro", AG) is True
     assert SU.conquistar(d, "turtle_trading", "bau_raro", AG) is False             # não duplica
-    with pytest.raises(SU.ErroSetup, match="desbloqueou"):
-        SU.equipar(d, "larry_williams", AG)                                         # não é dela
+    with pytest.raises(SU.ErroSetup, match="carta"):
+        SU.equipar(d, "larry_williams", AG)                                         # sem a carta, sem o setup
     with pytest.raises(SU.ErroSetup, match="desconhecido"):
         SU.equipar(d, "inventado", AG)
-    assert SU.equipar(d, "turtle_trading", AG) == {"equipado": "turtle_trading", "saiu": None}
+    assert SU.equipar(d, "turtle_trading", AG) == {"equipados": ["turtle_trading"]}
     SU.conquistar(d, "larry_williams", "bau_comum", AG)
-    assert SU.equipar(d, "larry_williams", AG)["saiu"] == "turtle_trading"          # trocar = equipar outro
+    assert SU.equipar(d, "larry_williams", AG) == {"equipados": ["turtle_trading", "larry_williams"]}     # até 2 ao mesmo tempo
+    assert SU.equipar(d, "larry_williams", AG)["equipados"] == ["turtle_trading", "larry_williams"]       # repetir não duplica
+    SU.conquistar(d, "mark_minervini", "bau_comum", AG)
+    with pytest.raises(SU.ErroSetup, match="2 setups"):
+        SU.equipar(d, "mark_minervini", AG)                                         # os 2 espaços estão ocupados
+    assert SU.desequipar(d, "turtle_trading", AG) == {"equipados": ["larry_williams"]}
+    assert SU.equipar(d, "mark_minervini", AG)["equipados"] == ["larry_williams", "mark_minervini"]       # trocar = desequipar um e equipar outro
+
+
+def test_colecao_do_formato_antigo_vira_lista_e_mais_de_dois_equipados_adulterados_sao_cortados():
+    d = SU.colecao_vazia()
+    for i in ("turtle_trading", "larry_williams", "mark_minervini"):
+        SU.conquistar(d, i, "t", AG)
+    antigo = {k: v for k, v in d.items() if k != "equipados"} | {"equipado": "larry_williams"}
+    assert SU.normalizar(antigo)["equipados"] == ["larry_williams"]
+    d["equipados"] = ["turtle_trading", "larry_williams", "mark_minervini", "turtle_trading", "inventado"]
+    assert SU.normalizar(d)["equipados"] == ["turtle_trading", "larry_williams"]
 
 
 def test_normalizar_nunca_perde_conquista_mas_descarta_equipado_invalido():
     d = SU.colecao_vazia()
     SU.conquistar(d, "turtle_trading", "t", AG)
-    d["equipado"] = "larry_williams"                                                # adulterado: equipado sem ter
+    d["equipados"] = ["larry_williams"]                                             # adulterado: equipado sem ter a carta
     n = SU.normalizar(d)
-    assert "turtle_trading" in n["itens"] and n["equipado"] is None
+    assert "turtle_trading" in n["itens"] and n["equipados"] == []
     assert SU.normalizar(None) == SU.colecao_vazia() and SU.normalizar({"v": 9}) == SU.colecao_vazia()
 
 
@@ -242,7 +258,7 @@ def jogo():
     for j in jogs:
         TB.salvar_estrategia(p, j, {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, T0)
     assert p["fase"] == "replay" and p["t_fase"] == T0
-    p["setups"] = SV.iniciar(jogs, {A: "turtle_trading", B: None})
+    p["setups"] = SV.iniciar(jogs, {A: ["turtle_trading"], B: []})
     return p, cen
 
 
@@ -282,7 +298,7 @@ def test_candle_que_ja_envelheceu_nao_vira_sinal(jogo, monkeypatch):
 def test_so_quem_tem_setup_equipado_ativa_e_o_estado_antigo_nao_quebra(jogo, monkeypatch):
     p, cen = jogo
     sempre(monkeypatch)
-    p["setups"]["equip"][A] = None
+    p["setups"]["equip"][A] = []
     assert tick(p, cen, T0 + 4.2) is False and p["setups"]["sinais"] == []                 # ninguém equipou nada
     del p["setups"]
     assert tick(p, cen, T0 + 8.2) is False and SV.visao(p, A, T0 + 8.2) is None            # partida sem setups: tudo segue igual
@@ -425,6 +441,19 @@ def test_recarga_e_teto_de_ativacoes_por_jogador(jogo, monkeypatch):
     assert all(b - a >= SV.RECARGA for a, b in zip(disparos, disparos[1:]))                  # espaço mínimo entre duas ativações
 
 
+def test_dois_setups_equipados_sao_avaliados_cada_um_e_so_um_evento_por_vez(jogo, monkeypatch):
+    p, cen = jogo
+    ini = ini_de(p, cen)
+    p["setups"]["equip"][A] = ["turtle_trading", "larry_williams"]
+    vistos = []
+    monkeypatch.setattr(SU, "detectar", lambda sid, v: vistos.append(sid) or (
+        {"direcao": "alta", "stop": 1.0, "alvo": 99.0, "motivo": sid} if sid == "larry_williams" and len(v) == ini + 3 else None))
+    tick(p, cen, T0 + 3 * 4.0 + 0.2)
+    assert {"turtle_trading", "larry_williams"} <= set(vistos), "os dois equipados são avaliados"
+    ev = p["setups"]["evento"]
+    assert ev and next(x for x in p["setups"]["sinais"] if x["id"] == ev["sinal"])["setup"] == "larry_williams"
+
+
 def test_setup_armado_que_o_preco_nao_alcanca_expira_sem_evento(jogo, monkeypatch):
     p, cen = jogo
     ini = ini_de(p, cen)
@@ -432,7 +461,7 @@ def test_setup_armado_que_o_preco_nao_alcanca_expira_sem_evento(jogo, monkeypatc
                         if len(v) == ini + 2 else None)
     for k in range(1, 8):
         tick(p, cen, T0 + k * 2.0)
-    assert p["setups"]["sinais"] == [] and p["setups"]["armado"] == {} and p["setups"]["evento"] is None
+    assert p["setups"]["sinais"] == [] and not any(p["setups"]["armado"].values()) and p["setups"]["evento"] is None
 
 
 def test_sinal_armado_nao_vale_se_o_rompimento_ja_e_velho(jogo, monkeypatch):
@@ -469,8 +498,8 @@ def _conquistar(email, *ids, equipar=None):
     d = SD.ler(email)
     for i in ids:
         SU.conquistar(d, i, "teste", AG)
-    if equipar:
-        SU.equipar(d, equipar, AG)
+    for e in ([equipar] if isinstance(equipar, str) else equipar or []):
+        SU.equipar(d, e, AG)
     SD.gravar(email, d)
 
 
@@ -487,9 +516,9 @@ def test_x1_com_banco_congela_o_setup_e_mostra_o_mesmo_evento_para_os_dois(monke
             OL.entrar_na_sala(outro, r["codigo"], TS + 1)
             OL.iniciar(r["id"], dono, TS + 2)
             pid = r["id"]
-            assert OL._row(pid)["dados"]["p"]["setups"]["equip"] == {dono: "turtle_trading", outro: None}
-            _conquistar(dono, "larry_williams", equipar="larry_williams")                      # trocar na central DEPOIS de começar
-            assert OL._row(pid)["dados"]["p"]["setups"]["equip"][dono] == "turtle_trading"       # não muda a partida em andamento
+            assert OL._row(pid)["dados"]["p"]["setups"]["equip"] == {dono: ["turtle_trading"], outro: []}
+            _conquistar(dono, "larry_williams", equipar="larry_williams")                      # equipar outro na central DEPOIS de começar
+            assert OL._row(pid)["dados"]["p"]["setups"]["equip"][dono] == ["turtle_trading"]       # não muda a partida em andamento
             t0 = TS + 10
             for e in (dono, outro):
                 OL.salvar(pid, e, {"direcao": "alta", "tipo": "continuacao"}, None, t0)
@@ -540,21 +569,25 @@ def test_x1_sem_resposta_o_servidor_recusa_na_consulta_de_qualquer_jogador(monke
 
 def test_api_meus_setups_lista_so_o_conquistado_e_equipar_confere_a_propriedade(cli):
     from test_api import EU
-    assert cli.get("/setups").json() == {"itens": [], "equipado": None, "conquistados": 0, "total": 4}
+    assert cli.get("/setups").json() == {"itens": [], "equipados": [], "limite": 2, "conquistados": 0, "total": 4}
     assert cli.post("/setups/equipar", json={"id": "turtle_trading"}).status_code == 400            # ainda não desbloqueou
     _conquistar(EU, "turtle_trading")
     r = cli.get("/setups").json()
-    assert [i["id"] for i in r["itens"]] == ["turtle_trading"] and r["conquistados"] == 1 and r["total"] == 4 and r["equipado"] is None
+    assert [i["id"] for i in r["itens"]] == ["turtle_trading"] and r["conquistados"] == 1 and r["total"] == 4 and r["equipados"] == []
     assert "larry_williams" not in json.dumps(r) and "Minervini" not in json.dumps(r)               # o que não desbloqueou não aparece
     i = r["itens"][0]
     assert i["caracteristicas"] and i["indicadores"] and i["regra"]["compra"] and i["assets"]["carta"] is None and i["provisorio"]
     assert cli.post("/setups/equipar", json={"id": "larry_williams"}).status_code == 400
     assert cli.post("/setups/equipar", json={"id": "inventado"}).status_code == 400
-    assert cli.post("/setups/equipar", json={"id": "turtle_trading"}).json()["equipado"] == "turtle_trading"
+    assert cli.post("/setups/equipar", json={"id": "turtle_trading"}).json()["equipados"] == ["turtle_trading"]
     assert cli.get("/setups").json()["itens"][0]["equipado"] is True                                  # persistido na conta
     _conquistar(EU, "larry_williams")
-    assert cli.post("/setups/equipar", json={"id": "larry_williams"}).json()["equipado"] == "larry_williams"      # trocar
-    assert cli.get("/setups").json()["conquistados"] == 2
+    assert cli.post("/setups/equipar", json={"id": "larry_williams"}).json()["equipados"] == ["turtle_trading", "larry_williams"]   # o segundo espaço
+    _conquistar(EU, "mark_minervini")
+    assert cli.post("/setups/equipar", json={"id": "mark_minervini"}).status_code == 400            # só 2 ao mesmo tempo
+    assert cli.post("/setups/desequipar", json={"id": "turtle_trading"}).json()["equipados"] == ["larry_williams"]
+    assert cli.post("/setups/equipar", json={"id": "mark_minervini"}).json()["equipados"] == ["larry_williams", "mark_minervini"]
+    assert cli.get("/setups").json()["conquistados"] == 3
 
 
 def test_api_bau_pode_trazer_setup_uma_vez_so_e_nao_mexe_nas_outras_recompensas(cli, monkeypatch):

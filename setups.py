@@ -223,18 +223,25 @@ def info(setup_id: str) -> dict | None:
 
 # ------------------------------------------------------------------ coleção de uma pessoa
 def colecao_vazia() -> dict:
-    return {"v": 1, "itens": {}, "equipado": None, "ids": [], "log": []}
+    return {"v": 1, "itens": {}, "equipados": [], "ids": [], "log": []}
 
 
 IDS_MAX, LOG_MAX = 500, 100
+MAX_EQUIPADOS = 2      # cada jogador usa até 2 setups ao mesmo tempo, desde que tenha a carta de cada um
 
 
 def normalizar(doc) -> dict:
     d = colecao_vazia()
     if isinstance(doc, dict) and doc.get("v") == 1:
         d["itens"] = {str(k): dict(v) for k, v in (doc.get("itens") or {}).items() if isinstance(v, dict)}      # o que foi conquistado nunca sai
-        eq = doc.get("equipado")
-        d["equipado"] = eq if eq in d["itens"] and info(eq) else None                                             # mas só se equipa o que existe e é dela
+        bruto = doc.get("equipados")
+        if bruto is None:
+            bruto = [doc.get("equipado")]                                                                          # formato antigo (um só)
+        eqs = []
+        for x in bruto if isinstance(bruto, list) else []:
+            if x in d["itens"] and info(x) and x not in eqs:                                                       # só se equipa o que existe e é dela
+                eqs.append(x)
+        d["equipados"] = eqs[:MAX_EQUIPADOS]
         d["ids"] = list(doc.get("ids") or [])[-IDS_MAX:]
         d["log"] = list(doc.get("log") or [])[:LOG_MAX]
     return d
@@ -256,16 +263,24 @@ def conquistar(doc: dict, setup_id: str, origem: str, agora_iso: str) -> bool:
 
 
 def equipar(doc: dict, setup_id: str, agora_iso: str) -> dict:
-    """Equipa um setup conquistado (trocar = equipar outro). Quem não desbloqueou não equipa."""
+    """Equipa um setup cuja carta a pessoa tem. Até MAX_EQUIPADOS ao mesmo tempo; com todos os espaços ocupados, é preciso desequipar um antes."""
     if not info(setup_id):
         raise ErroSetup("Setup desconhecido.")
     if setup_id not in doc["itens"]:
-        raise ErroSetup("Você ainda não desbloqueou este setup.")
-    antes = doc["equipado"]
-    if antes != setup_id:
-        doc["equipado"] = setup_id
-        _registrar(doc, "equipar", agora_iso, setup=setup_id, saiu=antes)
-    return {"equipado": setup_id, "saiu": antes if antes != setup_id else None}
+        raise ErroSetup("Você ainda não tem a carta deste setup.")
+    if setup_id not in doc["equipados"]:
+        if len(doc["equipados"]) >= MAX_EQUIPADOS:
+            raise ErroSetup(f"Você já está usando {MAX_EQUIPADOS} setups. Desequipe um para equipar outro.")
+        doc["equipados"].append(setup_id)
+        _registrar(doc, "equipar", agora_iso, setup=setup_id)
+    return {"equipados": list(doc["equipados"])}
+
+
+def desequipar(doc: dict, setup_id: str, agora_iso: str) -> dict:
+    if setup_id in doc["equipados"]:
+        doc["equipados"].remove(setup_id)
+        _registrar(doc, "desequipar", agora_iso, setup=setup_id)
+    return {"equipados": list(doc["equipados"])}
 
 
 # ------------------------------------------------------------------ baús

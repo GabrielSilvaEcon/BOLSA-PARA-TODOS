@@ -63,14 +63,14 @@ Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {Voi
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('NOVO SETUP CONQUISTADO!', style: TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w900, fontSize: 16)),
+            const Text('NOVA CARTA DE SETUP!', style: TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w900, fontSize: 16)),
             const SizedBox(height: 12),
             SetupCarta(setup: setup, largura: 170),
             const SizedBox(height: 10),
             Text('${setup['nome']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
             Text(rotulosRaridade[setup['raridade']] ?? '', style: TextStyle(color: cor, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
-            const Text('Ele já está na sua coleção. Equipe em Meus Setups para usar nas partidas X1.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+            const Text('Com esta carta você já pode usar o setup. Equipe em Meus Setups (até 2) para usar nas partidas X1.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 12.5)),
             const SizedBox(height: 14),
             Row(children: [
               Expanded(child: OutlinedButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))),
@@ -92,7 +92,7 @@ Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {Voi
   );
 }
 
-/// "Meus Setups": o que a pessoa conquistou, as características de cada um e qual está equipado (vale sozinho nas partidas X1).
+/// "Meus Setups": as cartas de setup que a pessoa tem, as características de cada uma e quais estão equipadas (até 2; valem sozinhas nas partidas X1).
 class SetupsTela extends StatefulWidget {
   const SetupsTela({super.key, required this.api});
   final Api api;
@@ -121,14 +121,19 @@ class _SetupsTelaState extends State<SetupsTela> {
     }
   }
 
-  Future<void> _equipar(String id) async {
+  int get _limite => ((_d?['limite'] as num?) ?? 2).toInt();
+  int get _nEquipados => (_d?['equipados'] as List? ?? []).length;
+
+  Future<void> _equipar(String id, {bool tirar = false}) async {
     if (_salvando != null) return;
     setState(() => _salvando = id);
     try {
-      await widget.api.post('/setups/equipar', {'id': id});
+      await widget.api.post(tirar ? '/setups/desequipar' : '/setups/equipar', {'id': id});
       await _carregar();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não foi possível equipar agora. Tente de novo.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().contains('Desequipe') ? 'Você já está usando $_limite setups. Desequipe um para equipar outro.' : 'Não foi possível salvar agora. Tente de novo.')));
+      }
     } finally {
       if (mounted) setState(() => _salvando = null);
     }
@@ -144,6 +149,7 @@ class _SetupsTelaState extends State<SetupsTela> {
         builder: (ctx, set) {
           final atual = (_d?['itens'] as List? ?? []).cast<Map>().firstWhere((x) => x['id'] == s['id'], orElse: () => s);
           final equipado = atual['equipado'] == true;
+          final cheio = !equipado && _nEquipados >= _limite;
           return DraggableScrollableSheet(
             expand: false,
             initialChildSize: .9,
@@ -162,16 +168,16 @@ class _SetupsTelaState extends State<SetupsTela> {
                 _bloco('Indicadores', (s['indicadores'] as List).map((e) => '$e').toList()),
                 const SizedBox(height: 16),
                 FilledButton(
-                  onPressed: equipado || _salvando != null
+                  onPressed: _salvando != null || cheio
                       ? null
                       : () async {
-                          await _equipar('${s['id']}');
+                          await _equipar('${s['id']}', tirar: equipado);
                           set(() {});
                         },
-                  child: Text(equipado ? 'EQUIPADO' : 'EQUIPAR'),
+                  child: Text(equipado ? 'DESEQUIPAR' : (cheio ? 'DESEQUIPE UM SETUP PRIMEIRO' : 'EQUIPAR')),
                 ),
                 const SizedBox(height: 6),
-                const Text('O setup equipado é usado automaticamente nas partidas X1. Você não precisa escolher antes de cada partida.',
+                Text('Você pode usar até $_limite setups ao mesmo tempo, só os das cartas que você tem. Eles são usados automaticamente nas partidas X1, sem escolher antes de cada partida.',
                     textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 11.5)),
               ],
             ),
@@ -208,15 +214,15 @@ class _SetupsTelaState extends State<SetupsTela> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    Text('${itens.length} de $total setups conquistados', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                    Text('${itens.length} de $total cartas de setup · $_nEquipados/$_limite equipados', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    const Text('Setups vêm dos baús. Equipe um para ele ser monitorado em tempo real nas suas partidas X1.', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
+                    const Text('As cartas de setup vêm dos baús. Sem a carta, não há setup para usar. Equipe até 2 para serem monitorados em tempo real nas suas partidas X1.', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
                     const SizedBox(height: 14),
                     if (itens.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(color: const Color(0xFF10274A), borderRadius: BorderRadius.circular(14)),
-                        child: const Text('Você ainda não conquistou nenhum setup. Abra baús na Loja para tentar.', style: TextStyle(color: Colors.white70)),
+                        child: const Text('Você ainda não tem nenhuma carta de setup. Abra baús na Loja para tentar.', style: TextStyle(color: Colors.white70)),
                       )
                     else
                       Wrap(
