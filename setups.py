@@ -68,7 +68,8 @@ TURTLE_CANAL, TURTLE_SAIDA, TURTLE_ATR, TURTLE_STOP_ATR = 20, 10, 20, 2.0      #
 LW_MEDIA, LW_ALVO_R, LW_VALIDADE, LW_MIN_CANDLES = 9, 2.0, 1, 40   # MME9; alvo = 2x o risco; o gatilho vale só para o candle seguinte
 LW_TENDENCIA, LW_VENDE = 50, False                                  # só opera a favor da MME50; a carta só descreve a COMPRA (LW_VENDE liga o espelho)
 MM_TOPO = 0.75                                                         # fechamento a no máximo 25% do topo da janela (a regra original)
-MM_JANELA, MM_CONTRACAO, MM_PIVO, MM_VOLUME = 250, 1.0, 5, 0.8
+MM_JANELA, MM_CONTRACAO, MM_PIVO, MM_VOLUME = 250, 1.0, 5, 1.4          # rompimento com volume 40% acima da média de 20 (o critério do Minervini: 40 a 50%)
+MM_ACIMA_FUNDO = 1.30                                                   # Trend Template: pelo menos 30% acima da mínima da janela (52 semanas)
 MM_BASE, MM_ALVO_R = 15, 3.0                                           # fundo da contração (VCP) = mínima dos últimos 15 candles; alvo 3:1 (a carta)
 
 
@@ -150,7 +151,7 @@ def _larry(v: list[dict]) -> dict | None:
 
 def _minervini(v: list[dict]) -> dict | None:
     """Mark Minervini (SEPA/VCP simplificado, só compra): tendência de alta saudável (fechamento > média 50 > 150 > 200, com a de 200 subindo),
-    preço a no máximo 25% do topo da janela, volatilidade contraída e rompimento do pivô sem o volume secar."""
+    preço a no máximo 25% do topo e pelo menos 30% acima do fundo da janela, volatilidade contraída e rompimento do pivô com volume 40% acima da média."""
     if len(v) < 221:
         return None
     c, h, lo, vol = ([x[k] for x in v] for k in ("c", "h", "l", "v"))
@@ -161,7 +162,7 @@ def _minervini(v: list[dict]) -> dict | None:
     if not (c[-1] > m50 > m150 > m200 and m200 > m200_antes):
         return None
     janela = v[-MM_JANELA:]
-    if c[-1] < MM_TOPO * max(x["h"] for x in janela):
+    if c[-1] < MM_TOPO * max(x["h"] for x in janela) or c[-1] < MM_ACIMA_FUNDO * min(x["l"] for x in janela):
         return None
     amp = [h[i] - lo[i] for i in range(len(v))]
     recente, anterior = _sma(amp[:-1], 5), _sma(amp[:-6], 15)

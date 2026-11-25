@@ -158,7 +158,7 @@ def test_larry_williams_so_compra_como_diz_a_carta_e_so_a_favor_da_tendencia(mon
     assert sinais("larry_williams", velas(contra), 100) == []
 
 
-def _serie_minervini(final_close=0.0035, final_vol=1000.0, contracao=True):
+def _serie_minervini(final_close=0.0035, final_vol=1600.0, contracao=True):
     n = 260
     c = [100 * 1.002 ** i for i in range(n)]
     v = velas(c, amp=0.008)
@@ -179,6 +179,7 @@ def test_minervini_tendencia_contracao_e_rompimento_do_pivo():
     assert s["alvo"] == pytest.approx(v[-1]["c"] + 3 * (v[-1]["c"] - s["stop"]), abs=1e-3)                    # alvo 3:1, como na carta
     assert SU.detectar("mark_minervini", _serie_minervini(final_close=0.0001)) is None        # não rompeu o pivô
     assert SU.detectar("mark_minervini", _serie_minervini(final_vol=100.0)) is None            # o volume secou
+    assert SU.detectar("mark_minervini", _serie_minervini(final_vol=1100.0)) is None           # acima da média, mas sem os 40% do critério original
     assert SU.detectar("mark_minervini", _serie_minervini(contracao=False)) is None            # a volatilidade não contraiu
     queda = velas([100 * 0.998 ** i for i in range(260)])
     assert SU.detectar("mark_minervini", queda) is None                                         # sem tendência de alta
