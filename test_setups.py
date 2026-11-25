@@ -715,6 +715,89 @@ def test_api_se_a_roleta_de_setup_falhar_o_bau_continua_igual(cli, monkeypatch):
     assert r["cartas"] and "setup" not in r                                                            # as cartas e as moedas não dependem dos setups
 
 
+def _solo_ate_ativar(cli, monkeypatch, equipar=("turtle_trading",)):
+    """Partida solo com o(s) setup(s) equipado(s) e um detector que sempre acha sinal; avança o relógio até o primeiro candle do replay fechar."""
+    import api.main as API
+    from test_api import EU
+    t = {"agora": 7_000_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    cli.get("/eu")
+    cli.post("/setups/desequipar", json={"id": "setup_classico"})
+    for sid in equipar:
+        _conquistar(EU, sid)
+        assert cli.post("/setups/equipar", json={"id": sid}).status_code == 200
+    pid = cli.post("/trade/solo", json={"corrida": "rapida"}).json()["id"]
+    t["agora"] += 5
+    assert cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta"}).status_code == 200
+    return pid, t
+
+
+def test_api_solo_ativa_o_setup_equipado_pausa_e_aceitar_manda_a_ordem(cli, monkeypatch):
+    pid, t = _solo_ate_ativar(cli, monkeypatch)
+    sempre(monkeypatch)
+    t["agora"] += 4.2
+    v = cli.get(f"/trade/solo/{pid}").json()
+    ev = v["tela"]["setup"]["evento"]
+    assert ev and ev["voce_e_dono"] and ev["pode_decidir"] and ev["janela_ms"] == 5000 and v["tela"]["pausada"]       # a partida para para quem joga
+    assert cli.post(f"/trade/solo/{pid}/setup", json={"acao": "talvez"}).status_code == 400
+    t["agora"] += 2
+    r = cli.post(f"/trade/solo/{pid}/setup", json={"acao": "aceitar", "q": 3})
+    assert r.status_code == 200 and r.json()["tela"]["setup"]["evento"] is None and not r.json()["tela"]["pausada"]
+    assert r.json()["tela"]["mesa"]["fila"][0]["q"] == 3                                                               # entrou pelo sistema atual de execução
+    assert cli.post(f"/trade/solo/{pid}/setup", json={"acao": "aceitar"}).status_code in (400, 409)                    # e não duplica
+    assert [m["estado"] for m in r.json()["tela"]["setup"]["marcas"]] == ["aceito"]                                    # a marca no gráfico, só do sinal ativado
+
+
+def test_api_solo_recusar_e_prazo_vencido_retomam_sem_operar(cli, monkeypatch):
+    pid, t = _solo_ate_ativar(cli, monkeypatch)
+    sempre(monkeypatch)
+    t["agora"] += 4.2
+    assert cli.get(f"/trade/solo/{pid}").json()["tela"]["setup"]["evento"]
+    r = cli.post(f"/trade/solo/{pid}/setup", json={"acao": "recusar"}).json()
+    assert r["tela"]["setup"]["evento"] is None and not r["tela"]["pausada"] and not r["tela"]["mesa"]["fila"]
+    assert r["tela"]["setup"]["marcas"][0]["estado"] == "recusado"
+    pid2, t2 = _solo_ate_ativar(cli, monkeypatch)
+    t2["agora"] += 4.2
+    assert cli.get(f"/trade/solo/{pid2}").json()["tela"]["setup"]["evento"]
+    t2["agora"] += 9.5                                                                                                 # ninguém respondeu: 4 s de animação + 5 s de janela
+    r2 = cli.get(f"/trade/solo/{pid2}").json()
+    assert r2["tela"]["setup"]["evento"] is None and not r2["tela"]["pausada"] and r2["tela"]["setup"]["marcas"][0]["estado"] == "expirado"
+
+
+def test_api_solo_sem_setup_equipado_nada_muda_e_equipar_depois_nao_vale_na_partida_em_andamento(cli, monkeypatch):
+    import api.main as API
+    from test_api import EU
+    t = {"agora": 7_100_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    cli.post("/setups/desequipar", json={"id": "setup_classico"})
+    pid = cli.post("/trade/solo", json={"corrida": "rapida"}).json()["id"]
+    t["agora"] += 5
+    cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta"})
+    _conquistar(EU, "turtle_trading", equipar="turtle_trading")                                                         # equipou DEPOIS de começar
+    sempre(monkeypatch)
+    t["agora"] += 4.2
+    v = cli.get(f"/trade/solo/{pid}").json()
+    assert v["tela"]["setup"]["evento"] is None and not v["tela"]["pausada"]                                            # congelado no começo: sem setup, sem evento
+
+
+def test_api_desafio_do_dia_nao_tem_setups_porque_o_cenario_e_igual_para_todos(dois, monkeypatch):
+    import api.main as API
+    ana, _ = dois
+    t = {"agora": 7_200_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    ana.get("/eu")
+    _conquistar("ana@x.com", "turtle_trading", equipar="turtle_trading")
+    r = ana.post("/desafio/jogar")
+    assert r.status_code == 200, r.text
+    pid = r.json()["id"]
+    assert r.json()["tela"].get("setup") is None                                                                         # nenhuma partida do desafio carrega setups
+    ana.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta", "tipo": "continuacao"})
+    sempre(monkeypatch)
+    t["agora"] += 6
+    v = ana.get(f"/trade/solo/{pid}").json()
+    assert v["tela"].get("setup") is None and not v["tela"]["pausada"]
+
+
 def test_api_x1_de_ponta_a_ponta_com_dois_jogadores(dois, monkeypatch):
     """Sala, equipar, estratégia, ativação, pausa nas duas telas, só o dono decide, aceitar e retomar, tudo pela API."""
     import api.main as API
