@@ -1147,7 +1147,7 @@ def sala_sair(pid: str, q: Quem = Depends(quem)) -> dict:
 # ------------------------------------------------------------------ Setups colecionáveis (Meus Setups)
 @app.get("/setups")
 def setups_listar(q: Quem = Depends(quem)) -> dict:
-    """Os setups que a pessoa conquistou nos baús, o equipado e quantos faltam. O que ela não desbloqueou não aparece."""
+    """As cartas de setup que a pessoa tem, os equipados (até 2) e quantos faltam. O que ela não desbloqueou não aparece."""
     import setups_dados as SD
     return SD.listar(q.email)
 
@@ -1158,13 +1158,20 @@ class EquiparSetup(BaseModel):
 
 @app.post("/setups/equipar")
 def setups_equipar(b: EquiparSetup, q: Quem = Depends(quem)) -> dict:
-    """Equipa (ou troca) o setup que vale nas partidas X1. Só o que a pessoa conquistou; a conferência é do servidor."""
+    """Equipa um setup para as partidas X1 (até 2 ao mesmo tempo). Só quem tem a carta; a conferência é do servidor."""
     import setups as SU
     import setups_dados as SD
     try:
         SD.equipar(q.email, b.id)
     except SU.ErroSetup as e:
         raise HTTPException(400, str(e))
+    return SD.listar(q.email)
+
+
+@app.post("/setups/desequipar")
+def setups_desequipar(b: EquiparSetup, q: Quem = Depends(quem)) -> dict:
+    import setups_dados as SD
+    SD.desequipar(q.email, b.id)
     return SD.listar(q.email)
 
 

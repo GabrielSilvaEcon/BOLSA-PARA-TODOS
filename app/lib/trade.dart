@@ -502,7 +502,7 @@ class _TradeTelaState extends State<TradeTela> {
   Widget _secaoSetups() {
     final st = _setups;
     final itens = (st?['itens'] as List? ?? []).cast<Map>();
-    final eq = itens.where((x) => x['equipado'] == true).map((x) => '${x['nome']}').firstOrNull;
+    final eq = itens.where((x) => x['equipado'] == true).map((x) => '${x['nome']}').join(' · ');
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () async {
@@ -519,7 +519,7 @@ class _TradeTelaState extends State<TradeTela> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Meus Setups', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-              Text(eq != null ? 'Equipado: $eq' : (itens.isEmpty ? 'Ganhe setups nos baús' : 'Nenhum equipado'), style: const TextStyle(fontSize: 12.5, color: Colors.white70)),
+              Text(eq.isNotEmpty ? 'Equipados: $eq' : (itens.isEmpty ? 'Ganhe cartas de setup nos baús' : 'Nenhum equipado'), style: const TextStyle(fontSize: 12.5, color: Colors.white70)),
             ]),
           ),
           Text(st == null ? '' : '${itens.length}/${st['total']}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),

@@ -13,8 +13,8 @@ GARANTIAS
  · O adversário vê a ativação (nome do setup, sentido e ponto no gráfico), mas não o stop e o alvo, e nunca quem equipou o quê antes de ativar.
 
 ESTADO (`p["setups"]`, JSON puro)
-    equip    {jogador: id do setup equipado, congelado quando a partida começa}      varrido  {jogador: candles fechados já avaliados}
-    armado   {jogador: gatilho esperando o preço}                                    n, ultimo  {jogador: ativações, candle da última}
+    equip    {jogador: [até 2 ids de setups equipados], congelados quando a partida começa}      varrido  {jogador: candles fechados já avaliados}
+    armado   {jogador: {setup: gatilho esperando o preço}}                                    n, ultimo  {jogador: ativações, candle da última}
     sinais   [{id, jogador, setup, direcao, candle, preco, stop, alvo, motivo, t, estado, ...}]       evento  {sinal, t_ini, prazo} | None
 """
 from __future__ import annotations
@@ -37,8 +37,8 @@ ESTADOS_FINAIS = ("aceito", "recusado", "expirado")
 
 # ------------------------------------------------------------------ começo da partida
 def iniciar(jogadores: list[str], equipados: dict) -> dict:
-    """Congela o setup equipado de cada jogador no começo da partida. `equipados` já vem validado (só o que a pessoa conquistou)."""
-    return {"v": 1, "equip": {j: equipados.get(j) for j in jogadores}, "varrido": {}, "armado": {}, "n": {}, "ultimo": {}, "sinais": [], "evento": None}
+    """Congela os setups equipados (até 2) de cada jogador no começo da partida. `equipados` já vem validado (só as cartas que a pessoa tem)."""
+    return {"v": 1, "equip": {j: list(equipados.get(j) or []) for j in jogadores}, "varrido": {}, "armado": {}, "n": {}, "ultimo": {}, "sinais": [], "evento": None}
 
 
 # ------------------------------------------------------------------ relógio e candles do replay
@@ -123,16 +123,21 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
     dec, dt, g = TB._decorrido(p, agora), _dt(p), cen.get("grupo")
     mudou = False
     for jog in p["jogadores"]:
-        sid = s["equip"].get(jog)
-        if not sid or s["n"].get(jog, 0) >= TETO:
+        ids = _equipados(s, jog)
+        if not ids or s["n"].get(jog, 0) >= TETO:
             continue
-        arm = s["armado"].get(jog)
-        if arm:                                                      # 1) um gatilho armado esperando o preço
-            ga = arm["candle"] - ini
+        armados = s["armado"].get(jog) or {}
+        if "gatilho" in armados:                                     # estado de antes dos 2 espaços: descarta
+            armados = {}
+        for sid in ids:
+            arm = armados.get(sid)
+            if not arm:
+                continue
+            ga = arm["candle"] - ini                                 # 1) um gatilho armado esperando o preço
             a, b = _passos_ate(cen, ga + 1), _passos_ate(cen, ga + 1 + arm["validade"])
             k = next((k for k in range(a, min(b, n)) if _rompeu(arm, cen["candles"][ini + k])), None)
             if k is not None:
-                s["armado"].pop(jog, None)
+                armados.pop(sid, None)
                 mudou = True
                 idade = dec - (k + 1) * dt
                 candle = ini + (g[k] if g else k)
@@ -141,27 +146,34 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
                     if sinal and _disparar(p, cen, s, sinal, agora):
                         return True                                  # um evento por vez: o resto espera a janela fechar
             elif n >= b:
-                s["armado"].pop(jog, None)                           # a validade acabou sem o preço chegar
+                armados.pop(sid, None)                               # a validade acabou sem o preço chegar
                 mudou = True
-        if m > s["varrido"].get(jog, 0):                             # 2) o candle que acabou de fechar
+        if m > s["varrido"].get(jog, 0):                             # 2) o candle que acabou de fechar, para cada setup equipado
             s["varrido"][jog] = m
             mudou = True
             if m < 1 or dec - _passos_ate(cen, m) * dt > FRESCOR_S or total - m < RESTANTES:
                 continue                                             # histórico, velho demais ou sem tempo de operar: nunca é sinal
             fechados = cen["candles"][:ini] + TB.velas_replay(cen, ini, _passos_ate(cen, m))
-            sig = SU.detectar(sid, fechados)
-            if not sig:
-                continue
             candle = ini + m - 1
-            if "gatilho" in sig:                                     # setup armado: só prepara; quem dispara é o preço, nos candles seguintes
-                s["armado"][jog] = {**sig, "candle": candle}
-            elif candle - s["ultimo"].get(jog, -999) >= RECARGA:
-                sinal = _sinal(p, s, jog, sid, candle, sig, fechados[-1]["c"], agora)
-                if sinal and _disparar(p, cen, s, sinal, agora):
-                    return True
+            for sid in ids:
+                sig = SU.detectar(sid, fechados)
+                if not sig:
+                    continue
+                if "gatilho" in sig:                                 # setup armado: só prepara; quem dispara é o preço, nos candles seguintes
+                    armados[sid] = {**sig, "candle": candle}
+                    s["armado"][jog] = armados
+                elif candle - s["ultimo"].get(jog, -999) >= RECARGA:
+                    sinal = _sinal(p, s, jog, sid, candle, sig, fechados[-1]["c"], agora)
+                    if sinal and _disparar(p, cen, s, sinal, agora):
+                        return True
     if mudou:
         p["versao"] += 1
     return mudou
+
+
+def _equipados(s: dict, jog: str) -> list:
+    e = s["equip"].get(jog)
+    return [e] if isinstance(e, str) else list(e or [])
 
 
 def _rompeu(arm: dict, x: dict) -> bool:

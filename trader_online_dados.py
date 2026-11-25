@@ -288,7 +288,7 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
             n["cen"] = TD.referencia_corrida(cen, semente)
             apostas = {j["email"]: _capital(j["email"], j["nick"]) for j in d["sala"]["jogadores"]}
             n["p"] = TB.nova_partida(cen, cen["tf"], jogs, agora, pid=pid, multi=True, apostas=apostas, corrida=corrida)
-            n["p"]["setups"] = SV.iniciar(jogs, {j: SD.equipado(j) for j in jogs})       # o setup de cada um fica congelado: trocar na central não muda esta partida
+            n["p"]["setups"] = SV.iniciar(jogs, {j: SD.equipados(j) for j in jogs})       # o setup de cada um fica congelado: trocar na central não muda esta partida
             return n
         cen = TD.escolher(tf, semente, rodadas=TB.FORMATOS[formato]) if formato in TB.FORMATOS else TD.escolher(tf, semente)
         n = copy.deepcopy(d)
