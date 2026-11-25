@@ -27,15 +27,16 @@ def test_desenho_que_o_preco_nao_alcancou_nao_conta():
 
 
 def test_resistencia_rompimento_e_alvo():
+    # os preços ficam a mais de 2 ATR (0,80) de REF: mais perto que isso não é avaliado
     sobe = [v(10, 10.6, 9.9, 10.5), v(10.5, 11.2, 10.4, 11.1), v(11.1, 11.6, 11.0, 11.5)]
-    assert TL.avaliar_desenhos(nivel("resistencia", 10.6), 100, sobe, REF, ATR)["itens"][0]["ok"] is False
-    assert TL.avaliar_desenhos(nivel("rompimento", 10.6), 100, sobe, REF, ATR)["itens"][0]["ok"] is True
+    assert TL.avaliar_desenhos(nivel("resistencia", 10.9), 100, sobe, REF, ATR)["itens"][0]["ok"] is False
+    assert TL.avaliar_desenhos(nivel("rompimento", 10.9), 100, sobe, REF, ATR)["itens"][0]["ok"] is True
     assert TL.avaliar_desenhos(nivel("alvo", 11.5), 100, sobe, REF, ATR)["itens"][0]["ok"] is True
     assert TL.avaliar_desenhos(nivel("alvo", 9.0), 100, sobe, REF, ATR)["itens"][0]["ok"] is False
 
 
 def test_zona_de_reacao_e_nota():
-    m = {"zonas": [{"i1": 90, "i2": 99, "p1": 9.0, "p2": 9.3, "reacao": "alta"}], "niveis": [{"preco": 5.0, "papel": "suporte"}]}
+    m = {"zonas": [{"i1": 90, "i2": 99, "p1": 8.8, "p2": 9.2, "reacao": "alta"}], "niveis": [{"preco": 5.0, "papel": "suporte"}]}
     r = TL.avaliar_desenhos(m, 100, CAI_E_VOLTA, REF, ATR)
     assert r["itens"][1]["ok"] is True and r["nota"] == 100.0 and r["avaliados"] == 1     # o suporte não alcançado não puxa a nota para baixo
     m["zonas"][0]["reacao"] = "baixa"

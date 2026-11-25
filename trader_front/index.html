@@ -639,8 +639,16 @@ function draw(){
   // eixo de tempo (gráfico diário: só o número do pregão)
   ctx.fillStyle="#9E96CE";ctx.textAlign="center";ctx.font="9px system-ui";const gap=Math.max(1,Math.round(70/cw));
   for(let i=Math.ceil(S.off/gap)*gap;i<=i1;i+=gap){if(i<0)continue;const c=S.cands[i],x=L.x(i);if(x<14||x>L.pw-14)continue;ctx.fillText(diario?"Pregão "+(c.d||i+1):(c.d?"D"+c.d+" ":"")+c.t,x,H-6)}
-  // último preço
-  const u=S.cands[S.cands.length-1];if(u){const y=L.y(u.c);if(y>0&&y<L.mTop+L.mH){ctx.strokeStyle="rgba(255,255,255,.35)";ctx.setLineDash([2,3]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(L.pw,y);ctx.stroke();ctx.setLineDash([])}}
+  // último preço: com posição aberta esta é a SUA linha (cor do resultado e o retorno nela); sem posição, só um tracejado de referência
+  const u=S.cands[S.cands.length-1];
+  if(u){
+    const mm=mz(),pos=mm&&mm.posicao,ap=pos?mm.aberto_pct:null;
+    if(ap!=null){
+      hline(u.c,ap>0?COR.up:(ap<0?COR.dn:COR.e),[],pc(ap)+" "+(pos.direcao==="alta"?"▲":"▼"),false);
+    }else{
+      const y=L.y(u.c);if(y>0&&y<L.mTop+L.mH){ctx.strokeStyle="rgba(255,255,255,.35)";ctx.setLineDash([2,3]);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(L.pw,y);ctx.stroke();ctx.setLineDash([])}
+    }
+  }
 }
 let usL=[],usT=[];
 function livre(lista,y){let v=y;for(let k=0;k<12&&lista.some(u=>Math.abs(u-v)<15);k++)v+=15;lista.push(v);return v}
@@ -810,10 +818,9 @@ function desenhaMesa(i0,i1){
     marca(q.indice_saida,q.preco_saida,"o",q.pct>0?COR.up:(q.pct<0?COR.dn:COR.gold),k===m.operacoes.length-1&&!m.posicao?"SAÍDA":"")});
   if(m.posicao)marca(m.posicao.indice_entrada,m.posicao.preco_entrada,m.posicao.direcao==="alta"?"up":"dn",COR.e,"ENTRADA");
   if(o.pend)hline(o.pend.preco,COR.e,[5,4],(o.pend.tipo==="limite"?"LIMITE ":"STOP ENT. ")+(o.pend.direcao==="alta"?"▲":"▼"),false);
-  else if(o.entrada!=null){   // com posição aberta a linha mostra o retorno da operação (verde/vermelho), não o rótulo da entrada
-    const ap=m.posicao?m.aberto_pct:null,lot=corrida()&&m.posicao?nLotes(m.posicao.q)+" ":"",seta=o.dir==="alta"?"▲":"▼";
-    hline(o.entrada,ap==null?COR.e:(ap>0?COR.up:ap<0?COR.dn:COR.e),[],
-      ap!=null?pc(ap)+" "+lot+seta:(o.dir==="alta"?"COMPRA ":"VENDA ")+lot+seta,false)}
+  else if(o.entrada!=null){   // o retorno vive na linha do preço; aqui fica só por onde você entrou, tracejado para não competir
+    const pos=!!m.posicao,lot=corrida()&&pos?nLotes(m.posicao.q)+" ":"",seta=o.dir==="alta"?"▲":"▼";
+    hline(o.entrada,COR.e,pos?[5,4]:[],(o.dir==="alta"?"COMPRA ":"VENDA ")+lot+seta,false)}
   if(o.stop!=null)hline(o.stop,COR.s,[],"STOP",true);
   if(o.alvo!=null)hline(o.alvo,COR.a,[],"ALVO",true);
   if(m.posicao&&m.limite&&m.limite.preco!=null)hline(m.limite.preco,COR.s,[2,4],"LIMITE "+m.limite.pct_pat+"%",false)}   // nível em que a perda acumulada da rodada chega ao limite

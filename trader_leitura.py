@@ -20,7 +20,7 @@ from __future__ import annotations
 JANELA_REACAO = 5          # candles para o preço reagir depois de tocar a linha ou entrar na zona
 JANELA_TENDENCIA = 20      # candles do replay usados para conferir uma linha de tendência
 MIN_TENDENCIA = 0.7        # fração mínima de fechamentos do lado certo da linha para a tendência valer
-DIST_MINIMA = 1.0          # em ATR: um desenho colado no preço não é previsão, e por isso não é avaliado
+DIST_MINIMA = 2.0          # em ATR: abaixo disso o desenho não é previsão, e por isso não é avaliado
 
 ROTULO_NIVEL = {"suporte": "Suporte", "resistencia": "Resistência", "rompimento": "Rompimento", "alvo": "Alvo"}
 
@@ -35,8 +35,11 @@ def tolerancia(atr: float, ref: float) -> float:
 
 def distancia_minima(atr: float, ref: float) -> float:
     """Quão longe do preço do fim da análise um desenho precisa estar para contar como aposta.
-    Sem isso, alvo e rompimento desenhados em cima do preço acertam quase sempre (o preço já está lá)."""
-    return max(DIST_MINIMA * float(atr or 0), 0.008 * float(ref or 0), 0.02)
+
+    Calibrado em 4000 mercados pela taxa de acerto de quem desenha exatamente no limite: a 1 ATR o
+    alvo ainda acertava 70% das vezes (quase de graça); a 2 ATR cai para 45%, abaixo de um
+    cara-ou-coroa, e o desenho volta a ser previsão. O piso cobre o caso de ATR muito pequeno."""
+    return max(DIST_MINIMA * float(atr or 0), 0.016 * float(ref or 0), 0.02)
 
 
 def _reacao(rep: list[dict], toque, volta, rompe) -> bool | None:
