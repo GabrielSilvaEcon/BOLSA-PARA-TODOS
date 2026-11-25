@@ -28,9 +28,10 @@ jobs:
         run: |
           mkdir -p assets/mesa && cp ../trader_front/index.html assets/mesa/index.html   # mesa do Trade Battle (a mesma do app antigo)
           flutter create --project-name tickerhunters --platforms web . --no-overwrite || true
-          rm -rf test                      # o teste de exemplo do flutter create não combina com o app: removido
+          rm -f test/widget_test.dart      # só o exemplo gerado pelo flutter create; os testes do app ficam
           flutter pub get
           flutter analyze --no-fatal-infos
+          flutter test
       - name: Compilar versão web
         working-directory: app
         env:
