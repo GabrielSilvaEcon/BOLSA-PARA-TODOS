@@ -86,6 +86,33 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
   late final AnimationController _entrada = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..forward();
   late final AnimationController _fx = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
   late final AnimationController _pulso = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+
+  /// Último índice da análise (o replay começa no [divisor]).
+  int get _fimAnalise {
+    final d = widget.divisor;
+    return (d != null && d > 0 && d <= widget.velas.length) ? d : widget.velas.length;
+  }
+
+  /// Preço no fim da análise: a referência contra a qual o servidor confere os desenhos.
+  double get _refPreco => widget.velas.isEmpty ? 0 : widget.velas[_fimAnalise - 1].c;
+
+  /// Quão longe do preço um desenho precisa estar para valer como previsão.
+  /// Mesma conta de trader_leitura.distancia_minima: 1 ATR, com piso de 0,8% do preço.
+  double get _distMinima {
+    final v = widget.velas;
+    final ref = _refPreco;
+    final piso = max(0.008 * ref, 0.02);
+    final fim = _fimAnalise;
+    if (fim < 2) return piso;
+    var soma = 0.0;
+    var n = 0;
+    for (var i = max(1, fim - 14); i < fim; i++) {
+      final ant = v[i - 1].c;
+      soma += max(v[i].h - v[i].l, max((v[i].h - ant).abs(), (ant - v[i].l).abs()));
+      n++;
+    }
+    return max(n == 0 ? 0.0 : soma / n, piso);
+  }
   late List<double?> _mm20 = media(widget.velas, 20), _mm50 = media(widget.velas, 50), _mm200 = media(widget.velas, 200);
 
   @override
@@ -175,6 +202,10 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
       return;
     }
     if (f.nivel) {
+      if ((pr - _refPreco).abs() < _distMinima) {
+        widget.aoAviso?.call('Muito perto do preço de agora: marque onde você acha que o preço VAI reagir, não onde ele já está.');
+        return;
+      }
       _adicionar(Desenho.nivel(f, pr));
     } else if (f.doisPontos) {
       final i = _candle(p.dx);
@@ -188,6 +219,15 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
       if (f == Ferramenta.tendencia && ia == i) {
         widget.aoAviso?.call('Escolha um candle diferente para o 2º ponto.');
         return;
+      }
+      if (f != Ferramenta.tendencia) {
+        final (b, t) = (min(pa, pr), max(pa, pr));                 // a zona não pode envolver o preço de agora: não há o que prever
+        if (b - _distMinima < _refPreco && _refPreco < t + _distMinima) {
+          _pulso.stop();
+          setState(() => _pendente = null);
+          widget.aoAviso?.call('A zona está em cima do preço de agora: desenhe onde você acha que o preço vai reagir.');
+          return;
+        }
       }
       _pulso.stop();
       _pendente = null;
