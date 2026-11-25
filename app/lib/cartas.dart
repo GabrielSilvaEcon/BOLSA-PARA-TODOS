@@ -66,7 +66,14 @@ class CatalogoCartas {
   }
 
   /// Junta os textos do catálogo com o que veio junto (da coleção ou do duelo).
-  static Map<String, dynamic> info(String tk, [Map? extra]) => {...?empresas[tk], ...?extra?.cast<String, dynamic>()};
+  /// Valores nulos do extra não sobrescrevem o catálogo (ex: arte pode vir null do /colecao antigo).
+  static Map<String, dynamic> info(String tk, [Map? extra]) {
+    final base = Map<String, dynamic>.from(empresas[tk] ?? {});
+    extra?.cast<String, dynamic>().forEach((k, v) {
+      if (v != null) base[k] = v;
+    });
+    return base;
+  }
 }
 
 /// A carta. [tk] pode ser o ticker ou o id da carta no duelo. [valores]: {pl, dy_12m, roe} → texto (sem valores mostra "?").

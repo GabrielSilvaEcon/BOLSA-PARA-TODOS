@@ -40,7 +40,8 @@ def test_rotas_cenario_e_home(cli, monkeypatch):
     c = cli.get("/cenario")
     assert c.status_code == 200 and c.json()["principais"][0]["id"] == "selic_meta"
     h = cli.get("/home").json()
-    assert h["hoje"][0]["rotulo"] == "Ibovespa" and "total" in h["missoes"]
+    assert "total" in h["missoes"] and "hoje" not in h        # a Home não espera a fonte externa de cotações
+    assert cli.get("/home/cotacoes").json()["hoje"][0]["rotulo"] == "Ibovespa"
     API._MERC_CACHE.clear()
     monkeypatch.setattr(MS, "cenario_compartilhado", lambda: {})
     assert cli.get("/cenario").status_code == 424

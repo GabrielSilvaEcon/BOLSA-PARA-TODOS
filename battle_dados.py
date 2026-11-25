@@ -39,7 +39,15 @@ NOMES_ETF = {"BOVA11": "iShares Ibovespa", "IVVB11": "iShares S&P 500", "SMAL11"
 def universo() -> list[dict]:
     """[{tk, classe, nome, codigo (para a coleta), moeda}] das cartas ativas do Battle (só categorias com análise real e arte de carta)."""
     import cartas_catalogo as CAT
-    out = [{"tk": t, "classe": "acao", "nome": n, "codigo": t, "moeda": "BRL"} for t, n in {**ACOES, **CAT.EXTRAS}.items()]
+    # todas as ações do catálogo de cartas + empresas extras do admin
+    vistos = set()
+    out = []
+    for e in CAT.EMPRESAS:
+        out.append({"tk": e["tk"], "classe": "acao", "nome": e["nome"], "codigo": e["tk"], "moeda": "BRL"})
+        vistos.add(e["tk"])
+    for t, n in CAT.EXTRAS.items():
+        if t not in vistos:
+            out.append({"tk": t, "classe": "acao", "nome": n, "codigo": t, "moeda": "BRL"})
     out += [{"tk": t, "classe": "fii", "nome": f"Fundo imobiliário {t[:4]}", "codigo": t, "moeda": "BRL"} for t in FIIS]
     out += [{"tk": t, "classe": "etf", "nome": NOMES_ETF.get(t, t), "codigo": t, "moeda": "BRL"} for t in ETFS]
     out += [{"tk": A.id_cripto(s), "classe": "cripto", "nome": A.NOMES_CRIPTO.get(s, s), "codigo": gid, "moeda": "USD", "simbolo": s} for s, gid in CRIPTOS.items()]
@@ -196,12 +204,13 @@ def atualizar(banco_, agora: datetime, coletor=coletar_padrao, lote: int = LOTE_
 
 # ------------------------------------------------------------------ estado da pessoa (baralho e histórico)
 def estado_vazio() -> dict:
-    return {"v": 1, "deck": [], "hist": []}
+    return {"v": 1, "deck": [], "hist": [], "tutorial_concluido": False}
 
 
 def normalizar_estado(e) -> dict:
     e = e if isinstance(e, dict) else {}
-    return {"v": 1, "deck": [str(t) for t in (e.get("deck") or [])][:B.BARALHO_MAX], "hist": list(e.get("hist") or [])[:MAX_HISTORICO]}
+    return {"v": 1, "deck": [str(t) for t in (e.get("deck") or [])][:B.BARALHO_MAX], "hist": list(e.get("hist") or [])[:MAX_HISTORICO],
+            "tutorial_concluido": bool(e.get("tutorial_concluido", False))}
 
 
 def ler_pessoa(banco_, email: str) -> dict:

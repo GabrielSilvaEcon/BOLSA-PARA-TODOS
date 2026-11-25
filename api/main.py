@@ -1202,8 +1202,35 @@ def ticker_central(q: Quem = Depends(quem)) -> dict:
             conta[h["final"]] += 1
     cartas = sorted((_tk_carta(c, hoje) for c in snap.values()), key=lambda c: (not c["jogavel"], c["tk"]))
     return {"cartas": cartas, "indicadores": _tk_meta(), "deck": deck, "valido": ok, "msg": msg, "min": BT.BARALHO_MIN, "max": BT.BARALHO_MAX,
-            "equipadas": [_tk_carta(jogo[t], hoje) for t in deck], "rodadas": BT.RODADAS, "sugestao": [], "historico": {**conta, "ultimos": [
+            "equipadas": [_tk_carta(jogo[t], hoje) for t in deck], "rodadas": BT.RODADAS, "sugestao": [],
+            "tutorial_pendente": not bool(pes.get("tutorial_concluido")),
+            "historico": {**conta, "ultimos": [
                 {"id": h.get("id"), "ts": str(h.get("ts") or "")[:16].replace("T", " "), "final": h.get("final"), "placar": h.get("placar")} for h in hist[:5]]}}
+
+
+@app.post("/ticker/tutorial/bau")
+def ticker_tutorial_bau(q: Quem = Depends(quem)) -> dict:
+    """Tutorial: entrega o Baú Iniciante (1 Comum + 1 Rara + 1 Épica, uma por slot) e marca o tutorial concluído no Battle."""
+    import battle_dados as BD
+    import cartas as C
+    import cartas_dados as CD
+    pes = BD.ler_pessoa(banco, q.email)
+    if pes.get("tutorial_concluido"):
+        return {"ja": True, "cartas": []}
+    doc, _ = CD.garantir_inicial(q.email)
+    cat, cfg = CD.catalogo(), CD.regras()
+    tks = C.sortear_inicial(banco._h_conta(q.email), ["comum", "rara", "epica"], CD.por_raridade(cat))
+    agora = CD._agora_iso()
+    res = C.entregar(doc, "tutorial_battle", tks, lambda t: cat[t]["raridade_fixa"], "tutorial_battle", agora)
+    if not res["ja"]:
+        for t in tks:                                                       # equipa automaticamente (1 por raridade = 3 slots)
+            if not doc["equip"].get(doc["cartas"][t]["rar"]):
+                try: C.equipar(doc, t, agora)
+                except C.ErroCarta: pass
+        CD.gravar(q.email, doc)
+    pes["tutorial_concluido"] = True
+    BD.gravar_pessoa(banco, q.email, pes)
+    return {"ja": res["ja"], "cartas": [{**i, **CD.visao_empresa(cat.get(i["tk"]))} for i in res["itens"]]}
 
 
 class BaralhoTk(BaseModel):
@@ -1927,15 +1954,27 @@ def aprender_responder(r: RespostaApr, q: Quem = Depends(quem)) -> dict:
 _MERC_CACHE: dict = {}
 
 
+_MERC_TTL_VAZIO = 60.0   # a fonte falhou: espera um pouco antes de tentar de novo
+
+
 def _merc_cache(chave: str, ttl: float, f):
-    """Guarda a resposta de `f()` por `ttl` segundos (cotações mudam devagar e as fontes limitam consultas). Falha não é guardada."""
+    """Guarda a resposta de `f()` por `ttl` segundos (cotações mudam devagar e as fontes limitam consultas).
+
+    A falha também é guardada, por `_MERC_TTL_VAZIO`. Sem isso, uma fonte fora do ar ou lenta faz CADA
+    pedido pagar a espera dela — e a Home é a primeira tela de todo mundo. Pior: como a fonte limita
+    consultas, repetir a chamada a cada pedido alimenta o próprio bloqueio que causou a falha.
+    HTTPException passa direto: é resposta deliberada (ex.: cripto inexistente), não fonte indisponível."""
     agora = time.time()
     c = _MERC_CACHE.get(chave)
-    if c and agora - c[0] < ttl:
+    if c and agora - c[0] < (ttl if c[1] else _MERC_TTL_VAZIO):
         return c[1]
-    v = f()
-    if v:
-        _MERC_CACHE[chave] = (agora, v)
+    try:
+        v = f()
+    except HTTPException:
+        raise
+    except Exception:
+        v = None
+    _MERC_CACHE[chave] = (agora, v)
     return v
 
 
@@ -2050,13 +2089,8 @@ def home(q: Quem = Depends(quem)) -> dict:
     """O que a tela inicial mostra além do /eu: Pregão Orbit (4 indicadores do Mercado hoje), missões do dia e o último veredito
     do cenário econômico (leitura já gravada, sem consultar as fontes)."""
     import home_game as HG
-    import inicio_painel as IP
     import jogar
     import macro_servico as MS
-    try:
-        hoje = _merc_cache("hoje", 600, IP.mercado_hoje) or []
-    except Exception:
-        hoje = []
     try:
         prog = ED.normalizar((banco.ler_dados(q.ator, q.email) or {}).get("edu_progresso"))
         miss = HG.resumo_missoes(jogar.resumo(prog)["missoes"])
@@ -2092,7 +2126,19 @@ def home(q: Quem = Depends(quem)) -> dict:
         pedidos = sum(1 for r in (banco.social_relacoes(q.ator) or {}).values() if r.get("estado") == AM.RECEBIDA)
     except Exception:
         pedidos = 0
-    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen, "desafio": dsd, "competicao": comp, "torneio": trn, "amigos": {"pedidos": pedidos}}
+    return {"missoes": miss, "cenario": cen, "desafio": dsd, "competicao": comp, "torneio": trn, "amigos": {"pedidos": pedidos}}
+
+
+@app.get("/home/cotacoes")
+def home_cotacoes(q: Quem = Depends(quem)) -> dict:
+    """Ibovespa e dólar do dia, à parte da Home: dependem de uma fonte externa que pode demorar ou cair, e a
+    primeira tela do app não pode esperar por ela. O app desenha a Home na hora e preenche quando isto chega."""
+    import inicio_painel as IP
+    try:
+        hoje = _merc_cache("hoje", 600, IP.mercado_hoje) or []
+    except Exception:
+        hoje = []
+    return {"hoje": hoje[:4]}
 
 
 # ------------------------------------------------------------------ Histórico de partidas e Missões

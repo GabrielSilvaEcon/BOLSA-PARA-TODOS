@@ -810,7 +810,10 @@ function desenhaMesa(i0,i1){
     marca(q.indice_saida,q.preco_saida,"o",q.pct>0?COR.up:(q.pct<0?COR.dn:COR.gold),k===m.operacoes.length-1&&!m.posicao?"SAÍDA":"")});
   if(m.posicao)marca(m.posicao.indice_entrada,m.posicao.preco_entrada,m.posicao.direcao==="alta"?"up":"dn",COR.e,"ENTRADA");
   if(o.pend)hline(o.pend.preco,COR.e,[5,4],(o.pend.tipo==="limite"?"LIMITE ":"STOP ENT. ")+(o.pend.direcao==="alta"?"▲":"▼"),false);
-  else if(o.entrada!=null)hline(o.entrada,COR.e,[],(o.dir==="alta"?"COMPRA ":"VENDA ")+(corrida()&&m.posicao?nLotes(m.posicao.q)+" ":"")+(o.dir==="alta"?"▲":"▼"),false);
+  else if(o.entrada!=null){   // com posição aberta a linha mostra o retorno da operação (verde/vermelho), não o rótulo da entrada
+    const ap=m.posicao?m.aberto_pct:null,lot=corrida()&&m.posicao?nLotes(m.posicao.q)+" ":"",seta=o.dir==="alta"?"▲":"▼";
+    hline(o.entrada,ap==null?COR.e:(ap>0?COR.up:ap<0?COR.dn:COR.e),[],
+      ap!=null?pc(ap)+" "+lot+seta:(o.dir==="alta"?"COMPRA ":"VENDA ")+lot+seta,false)}
   if(o.stop!=null)hline(o.stop,COR.s,[],"STOP",true);
   if(o.alvo!=null)hline(o.alvo,COR.a,[],"ALVO",true);
   if(m.posicao&&m.limite&&m.limite.preco!=null)hline(m.limite.preco,COR.s,[2,4],"LIMITE "+m.limite.pct_pat+"%",false)}   // nível em que a perda acumulada da rodada chega ao limite
@@ -872,10 +875,13 @@ function uiMesa(){   // atualiza só textos e estados dos botões (a tela não �
   if(pz)l2+=` · <span class="pz">⏸ pausa técnica</span>`;
   if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
   if(m&&m.qtd){   // partida corrida: quantidade, preço médio, poder de compra e exposição
-    const p=m.posicao,fila=(m.fila||[]).length?` · <span class="pz">⏳ ordem a mercado: executa na abertura do próximo candle</span>`:"";
+    const p=m.posicao,naFila=(m.fila||[]).length>0;
+    const fila=naFila&&p?` · <span class="pz">⏳ ordem a mercado: executa na abertura do próximo candle</span>`:"";
     const sa2=p&&p.trail?sa.replace("STOP ","STOP MÓVEL "):sa;
     if(p)l1=`<span class="e">${p.direcao==="alta"?"Comprado":"Vendido"} ${p.q} · PM ${fmt(p.preco_entrada)}</span>${sa2}`;
     else if(o.pend)l1=`<span class="e">Ordem ${o.pend.tipo==="limite"?"limite":"stop"} ${o.pend.direcao==="alta"?"compra":"venda"} ${o.pend.q||""} em ${fmt(o.pend.preco)}</span>${sa}`;
+    // sem a linha abaixo o painel dizia "Sem posição · pronto para operar" logo após enviar a ordem, e a espera do candle parecia o app travado
+    else if(naFila)l1=`<span class="e">⏳ Ordem enviada</span><span class="pz">executa na abertura do próximo candle</span>`;
     else l1=`<span class="e">Sem posição</span><span class="pz">pronto para operar</span>`;
     if(lm&&lm.bloqueado)l1=`<span class="s">🛑 a perda chegou ao capital da partida: sem novas entradas</span>`;
     l2=`Aberto <b class="op ${m.cor_aberto}">${esc(m.aberto_txt)}</b> · Partida <b class="op ${m.cor_acum}">${esc(m.acum_txt)}</b> · Poder T$ ${fmt(m.poder)}<span class="opc"> · exposição ${fmt(m.exposicao_pct)}% · candle ${A.revelados}/${A.total_replay}</span>${fila}`;
@@ -1064,7 +1070,9 @@ $("q-mais").onclick=()=>{qSet(qVal()+(corrida()?1:Math.max(1,Math.round(qVal()/1
 $("q-val").addEventListener("input",()=>{if(corrida())ui()});
 document.querySelectorAll("#qrow .qp").forEach(b=>b.onclick=()=>{const m=mz();if(!m)return;const mx=m.max_q||0;
   if(!mx){const p=m.posicao;if(p){qSet(Math.max(1,Math.round(p.q/LOTE())));return flash("Capital todo aplicado: venda lotes para reduzir ou zere a posição")}return flash("Sem capital livre para comprar")}
-  qSet(Math.max(1,Math.floor(mx*(+b.dataset.qp)/100/LOTE())))});
+  const teto=Math.floor(mx/LOTE());                                  // lotes INTEIROS que ainda cabem no capital livre
+  if(teto<1)return flash("Falta capital para mais um lote: reduza a posição para liberar");
+  qSet(Math.min(teto,Math.max(1,Math.floor(mx*(+b.dataset.qp)/100/LOTE()))));ui()});   // sem o teto, 'Máx' passava do máximo
 $("m-enc").onclick=()=>{if(!sendAcao({tipo:"encerrar"}))flash("Aguarde a ordem anterior")};
 $("m-can").onclick=()=>{sendAcao({tipo:"cancelar",qual:"todas"})};
 $("m-stop").onclick=()=>{S.tool=S.tool==="mstop"?null:"mstop";ui()};

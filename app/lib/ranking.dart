@@ -164,7 +164,7 @@ class _RankingTelaState extends State<RankingTela> {
                     if (_jogo != 'semana') _filtros(),
                     const SizedBox(height: 10),
                     if (_carregando && _d == null)
-                      const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator()))
+                      const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: EsqueletoLista(linhas: 6, altura: 58))
                     else if (_falhou && _d == null)
                       _vazio('O ranking não carregou agora. Tente de novo em instantes.')
                     else if (total == 0) ...[

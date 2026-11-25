@@ -42,6 +42,21 @@ def test_zona_de_reacao_e_nota():
     assert TL.avaliar_desenhos(m, 100, CAI_E_VOLTA, REF, ATR)["nota"] == 0.0
 
 
+def test_desenho_em_cima_do_preco_nao_conta():
+    """Brecha fechada: alvo e rompimento colados no preço acertavam quase sempre, porque o preço já estava lá."""
+    sobe = [v(10, 10.6, 9.9, 10.5), v(10.5, 11.2, 10.4, 11.1)]
+    for papel in ("alvo", "rompimento", "suporte", "resistencia"):
+        r = TL.avaliar_desenhos(nivel(papel, 10.05), 100, sobe, REF, ATR)
+        assert r["itens"][0]["ok"] is None and r["avaliados"] == 0, papel
+    assert TL.avaliar_desenhos(nivel("alvo", 11.0), 100, sobe, REF, ATR)["avaliados"] == 1   # longe do preço continua valendo
+
+
+def test_zona_em_volta_do_preco_nao_conta():
+    m = {"zonas": [{"i1": 90, "i2": 99, "p1": 9.8, "p2": 10.2, "reacao": "alta"}]}
+    r = TL.avaliar_desenhos(m, 100, CAI_E_VOLTA, REF, ATR)
+    assert r["itens"][0]["ok"] is None and r["nota"] is None
+
+
 def test_tendencia_de_alta_respeitada():
     sobe = [v(10 + k * 0.1, 10.2 + k * 0.1, 9.95 + k * 0.1, 10.1 + k * 0.1) for k in range(10)]
     t = {"tendencias": [{"i1": 90, "p1": 9.0, "i2": 99, "p2": 9.9}]}                       # linha de alta abaixo do preço

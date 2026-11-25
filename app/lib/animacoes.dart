@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Pequenas animações reaproveitáveis do app. Todas respeitam "reduzir movimento" do sistema (mostram direto o estado final).
 
@@ -29,10 +30,12 @@ class Entrada extends StatelessWidget {
 }
 
 /// Afunda um pouco quando o dedo encosta e volta com mola ao soltar.
+/// Responde no encostar (afunda e vibra), não na soltura: o retorno imediato é o que faz o toque parecer rápido.
 class Pressionavel extends StatefulWidget {
-  const Pressionavel({super.key, required this.child, required this.aoTocar});
+  const Pressionavel({super.key, required this.child, required this.aoTocar, this.vibrar = true});
   final Widget child;
   final VoidCallback? aoTocar;
+  final bool vibrar;
 
   @override
   State<Pressionavel> createState() => _PressionavelState();
@@ -41,10 +44,15 @@ class Pressionavel extends StatefulWidget {
 class _PressionavelState extends State<Pressionavel> {
   bool _baixo = false;
 
+  void _descer() {
+    setState(() => _baixo = true);
+    if (widget.vibrar && widget.aoTocar != null) HapticFeedback.selectionClick();
+  }
+
   @override
   Widget build(BuildContext context) => GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => setState(() => _baixo = true),
+        onTapDown: (_) => _descer(),
         onTapCancel: () => setState(() => _baixo = false),
         onTapUp: (_) => setState(() => _baixo = false),
         onTap: widget.aoTocar,
@@ -157,6 +165,60 @@ class _PulsoState extends State<Pulso> with SingleTickerProviderStateMixin {
             ),
           );
         },
+      );
+}
+
+/// Bloco que pulsa no lugar do conteúdo enquanto ele chega.
+/// Esperar vendo a forma do que vem parece mais rápido do que esperar vendo um giro no vazio.
+class Esqueleto extends StatefulWidget {
+  const Esqueleto({super.key, this.largura, this.altura = 14, this.raio = 8});
+  final double? largura;
+  final double altura;
+  final double raio;
+
+  @override
+  State<Esqueleto> createState() => _EsqueletoState();
+}
+
+class _EsqueletoState extends State<Esqueleto> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _c,
+        builder: (ctx, _) => Container(
+          width: widget.largura,
+          height: widget.altura,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.raio),
+            color: Color.lerp(const Color(0x1F4B82D6), const Color(0x4D4B82D6), _parado(context) ? 0.5 : Curves.easeInOut.transform(_c.value)),
+          ),
+        ),
+      );
+}
+
+/// Algumas fileiras de esqueleto no lugar de uma lista que ainda está chegando.
+class EsqueletoLista extends StatelessWidget {
+  const EsqueletoLista({super.key, this.linhas = 4, this.altura = 64, this.raio = 14, this.espaco = 10});
+  final int linhas;
+  final double altura;
+  final double raio;
+  final double espaco;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          for (var i = 0; i < linhas; i++) ...[
+            if (i > 0) SizedBox(height: espaco),
+            Esqueleto(altura: altura, raio: raio),
+          ],
+        ],
       );
 }
 

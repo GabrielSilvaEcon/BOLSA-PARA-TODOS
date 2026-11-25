@@ -33,7 +33,7 @@ jobs:
         run: |
           mkdir -p assets/mesa && cp ../trader_front/index.html assets/mesa/index.html   # mesa do Trade Battle (a mesma do app antigo)
           flutter create --project-name tickerhunters --org com.tickerhunters --platforms android . --no-overwrite || true
-          rm -rf test
+          rm -f test/widget_test.dart                # só o exemplo gerado pelo flutter create; os testes do app ficam
           M=android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' $M || sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <application#' $M
           sed -i 's#android:label="[^"]*"#android:label="TickerHunters"#' $M
@@ -41,6 +41,7 @@ jobs:
           dart run flutter_launcher_icons            # ícone do TickerHunters (app/icone/icone.png)
           dart run flutter_native_splash:create      # cor de fundo ao abrir (sem clarão branco antes da tela de abertura)
           flutter analyze --no-fatal-infos
+          flutter test
       - name: Chave fixa do APK de teste
         # Sempre a MESMA chave (app/assinatura/teste.keystore, chave de teste no padrão "debug" do Android, sem valor secreto):
         # assim o celular aceita instalar a versão nova por cima da antiga. A versão da Play Store terá outra chave, guardada em segredo.
