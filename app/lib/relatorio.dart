@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'animacoes.dart';
 import 'grafico/grafico.dart';
@@ -33,6 +34,30 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
   late final List<bool?> _ok = [for (final x in _itens) if (_desenho(x) != null) x['ok'] as bool?];
 
   static const _papel = {'suporte': Ferramenta.suporte, 'resistencia': Ferramenta.resistencia, 'rompimento': Ferramenta.rompimento, 'alvo': Ferramenta.alvo};
+
+  bool _comemorou = false;
+
+  /// O número grande diz QUANTO; o veredito diz O QUÊ. Sem ele o jogador junta pontos, lucro e nota sozinho para saber como foi.
+  static (String, String, Color) _veredito(double pts, double? pnl, double? nota) {
+    if (pts > 0 && (pnl ?? 0) > 0 && (nota ?? 0) >= 70) {
+      return ('PARTIDA CHEIA!', 'Lucro na operação e leitura confirmada.', const Color(0xFFFFC93C));
+    }
+    if (pts > 0) return ('VOCÊ PONTUOU!', 'Boa partida. Dá para subir ainda mais.', const Color(0xFF26D07C));
+    if (pts == 0) return ('EMPATE TÉCNICO', 'Ficou no zero a zero. A próxima desempata.', const Color(0xFFB9C4FF));
+    if ((nota ?? 0) >= 70) return ('LEITURA CERTA', 'Você leu o gráfico bem; faltou a operação acompanhar.', const Color(0xFFB9C4FF));
+    return ('ESSA ESCAPOU', 'Faz parte. Veja no gráfico onde o preço virou.', const Color(0xFFFF8FA3));
+  }
+
+  /// Fim da contagem dos pontos: é o auge da tela, e é onde a vibração marca o resultado.
+  void _comemorar(double pts) {
+    if (_comemorou) return;
+    _comemorou = true;
+    if (pts > 0) {
+      HapticFeedback.heavyImpact();
+    } else if (pts < 0) {
+      HapticFeedback.lightImpact();
+    }
+  }
 
   Desenho? _desenho(Map x) {
     double n(Object? v) => (v as num).toDouble();
@@ -93,6 +118,23 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
                 const SizedBox(height: 12),
                 Entrada(ordem: 3, child: _lista()),
                 const SizedBox(height: 14),
+                // O relatório completo vem antes: quem sai desta tela sai pelo botão de jogar, que fica por último.
+                Pressionavel(
+                  aoTocar: widget.aoCompleto,
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0x996CA3FF), width: 1.5),
+                    ),
+                    child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.bar_chart_rounded, color: Color(0xFFC8D6EE), size: 20),
+                      SizedBox(width: 8),
+                      Text('Relatório completo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFFC8D6EE))),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Reflexo(
                   raio: 999,
                   atraso: const Duration(milliseconds: 2500),
@@ -111,23 +153,6 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
                         Text(widget.rotuloAcao, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF06361F))),
                       ]),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Pressionavel(
-                  aoTocar: widget.aoCompleto,
-                  child: Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      color: const Color(0xCC143362),
-                      border: Border.all(color: const Color(0xFF6CA3FF), width: 2),
-                    ),
-                    child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.bar_chart_rounded, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text('Relatório completo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-                    ]),
                   ),
                 ),
               ],
@@ -245,10 +270,13 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: const Color(0xCC0B2C5E), border: Border.all(color: cor.withValues(alpha: 0.7), width: 2)),
       child: Column(children: [
+        _vereditoFaixa(pts, pnl, nota),
+        const SizedBox(height: 8),
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: pts),
           duration: const Duration(milliseconds: 1600),
           curve: Curves.easeOutCubic,
+          onEnd: () => _comemorar(pts),
           builder: (ctx, v, _) => Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(pts >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: cor, size: 40),
             const SizedBox(width: 8),
@@ -270,6 +298,29 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
           const SizedBox(width: 6),
           chip(Icons.star_rounded, 'XP', xp == null ? '—' : '+$xp', const Color(0xFFFFD66B), nota: xp == 0 ? 'limite do dia' : null),
         ]),
+      ]),
+    );
+  }
+
+  /// Veredito: entra crescendo, logo acima dos pontos, no mesmo estilo da tela de troféus.
+  Widget _vereditoFaixa(double pts, double? pnl, double? nota) {
+    final (titulo, sub, cor) = _veredito(pts, pnl, nota);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.7, end: 1),
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOutBack,
+      builder: (ctx, s, f) => Transform.scale(scale: s, child: f),
+      child: Column(children: [
+        ShaderMask(
+          shaderCallback: (r) =>
+              LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.lerp(cor, Colors.white, 0.55)!, cor]).createShader(r),
+          child: Text(titulo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 25, fontWeight: FontWeight.w900, letterSpacing: 0.6, color: Colors.white, shadows: [Shadow(color: Color(0xCC000814), blurRadius: 10)])),
+        ),
+        const SizedBox(height: 2),
+        Text(sub, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.5, color: Color(0xFFC8D6EE), height: 1.25)),
       ]),
     );
   }
