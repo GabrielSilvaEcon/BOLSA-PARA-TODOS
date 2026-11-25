@@ -883,9 +883,12 @@ function uiMesa(){   // atualiza só textos e estados dos botões (a tela não �
   if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
   if(m&&m.qtd){   // partida corrida: quantidade, preço médio, poder de compra e exposição
     const p=m.posicao,naFila=(m.fila||[]).length>0;
-    const fila=naFila&&p?` · <span class="pz">⏳ ordem a mercado: executa na abertura do próximo candle</span>`:"";
+    const zerando=naFila&&p&&(m.fila||[]).some(f=>f.reduz&&f.q>=p.q);      // ordem na fila que fecha a posição inteira
+    const fila="";
     const sa2=p&&p.trail?sa.replace("STOP ","STOP MÓVEL "):sa;
-    if(p)l1=`<span class="e">${p.direcao==="alta"?"Comprado":"Vendido"} ${p.q} · PM ${fmt(p.preco_entrada)}</span>${sa2}`;
+    // com ordem a caminho a linha principal avisa: antes ela repetia "Comprado 3 · PM ..." como se o toque não tivesse valido
+    if(p&&naFila)l1=`<span class="e">⏳ ${zerando?"Zerando a posição":"Ordem enviada"}</span><span class="pz">executa na abertura do próximo candle</span>`;
+    else if(p)l1=`<span class="e">${p.direcao==="alta"?"Comprado":"Vendido"} ${p.q} · PM ${fmt(p.preco_entrada)}</span>${sa2}`;
     else if(o.pend)l1=`<span class="e">Ordem ${o.pend.tipo==="limite"?"limite":"stop"} ${o.pend.direcao==="alta"?"compra":"venda"} ${o.pend.q||""} em ${fmt(o.pend.preco)}</span>${sa}`;
     // sem a linha abaixo o painel dizia "Sem posição · pronto para operar" logo após enviar a ordem, e a espera do candle parecia o app travado
     else if(naFila)l1=`<span class="e">⏳ Ordem enviada</span><span class="pz">executa na abertura do próximo candle</span>`;
