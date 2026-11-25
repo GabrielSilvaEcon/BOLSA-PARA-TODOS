@@ -10,6 +10,7 @@ import 'escudo.dart';
 import 'estrategia.dart';
 import 'mesa/mesa_host.dart';
 import 'navegacao.dart';
+import 'ordem_respostas.dart';
 import 'relatorio.dart';
 
 /// Partida solo do Trade Battle. A mesa (gráfico, boleta, placar) é a MESMA do app antigo; aqui o app só faz a ponte com o servidor:
@@ -44,6 +45,9 @@ class _PartidaTelaState extends State<PartidaTela> {
 
   /// Fase da estratégia na partida corrida: o app mostra o gráfico próprio com as ferramentas de desenho (a mesa fica por baixo).
   bool _estrategia = false;
+
+  /// O relógio e as jogadas pedem ao servidor ao mesmo tempo: descarta a resposta que chega atrasada.
+  final _ordem = OrdemRespostas();
 
   // o que a mesa precisa saber das jogadas já tratadas (no Streamlit vinha do "estado" da sessão)
   int _seqTratada = 0;
@@ -89,8 +93,10 @@ class _PartidaTelaState extends State<PartidaTela> {
   Future<void> _consultar() async {
     if (_ocupado || _pid == null || _fim) return;
     _ocupado = true;
+    final id = _ordem.novo();
     try {
-      _aplicar(await widget.api.get(_base));
+      final r = await widget.api.get(_base);
+      if (_ordem.aceitar(id)) _aplicar(r);   // chegou depois de uma jogada mais nova: o retrato já está velho
     } catch (_) {
       // falha de rede passageira: tenta de novo no próximo segundo
     } finally {
@@ -160,6 +166,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       return;
     }
     _ocupado = true;
+    final id = _ordem.novo();
     try {
       final Map<String, dynamic> r;
       if (ev == 'confirmar') {
@@ -171,7 +178,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       }
       _erro = '';
       _seqTratada = seq;
-      _aplicar(r);
+      if (_ordem.aceitar(id)) _aplicar(r);
     } catch (e) {
       _erro = e.toString();
       _seqErro = seq;
