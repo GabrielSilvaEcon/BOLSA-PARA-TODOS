@@ -88,7 +88,7 @@ class SetupCarta extends StatelessWidget {
 }
 
 /// Aviso de setup novo vindo de um baú.
-Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {VoidCallback? abrirMeusSetups}) {
+Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {VoidCallback? abrirMeusSetups, String titulo = 'NOVA CARTA DE SETUP!'}) {
   final cor = _corDe(setup);
   return showDialog<void>(
     context: context,
@@ -101,7 +101,7 @@ Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {Voi
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('NOVA CARTA DE SETUP!', style: TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w900, fontSize: 16)),
+            Text(titulo, style: TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w900, fontSize: 16)),
             const SizedBox(height: 12),
             SetupCarta(setup: setup, largura: 170),
             const SizedBox(height: 10),

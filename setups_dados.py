@@ -11,6 +11,8 @@ import cartas_dados as CD
 import setups as SU
 
 CH_COLECAO = "setups_colecao"
+PRESENTE_ID = "setup_classico"        # o setup de boas-vindas: o mais simples, para todo mundo começar com um
+PRESENTE_REF = "presente:inicial"
 
 
 def ler(email: str) -> dict:
@@ -52,6 +54,32 @@ def desequipar(email: str, setup_id: str) -> dict:
     r = SU.desequipar(doc, setup_id, CD._agora_iso())
     gravar(email, doc)
     return r
+
+
+def presente_inicial(email: str) -> dict | None:
+    """Presente de boas-vindas: a carta do setup básico, uma vez só por conta (contas antigas e novas). Já entra equipada se houver espaço.
+    Devolve o setup (com nova=True) quando entregou agora, ou None se já tinha sido entregue (ou a pessoa já tinha o setup)."""
+    doc = ler(email)
+    if PRESENTE_REF in doc["ids"]:
+        return None
+    agora = CD._agora_iso()
+    doc["ids"] = (doc["ids"] + [PRESENTE_REF])[-SU.IDS_MAX:]
+    novo = SU.conquistar(doc, PRESENTE_ID, "presente_inicial", agora)
+    if novo and len(doc["equipados"]) < SU.MAX_EQUIPADOS:
+        SU.equipar(doc, PRESENTE_ID, agora)
+    gravar(email, doc)
+    if not novo:
+        return None
+    s = SU.info(PRESENTE_ID)
+    try:                                                     # o aviso no sino; se falhar, o presente continua valendo
+        banco.sis_notif_inserir(email, {"dedup": "setup_presente|" + PRESENTE_ID, "categoria": "sistema", "importancia": "media",
+                                        "titulo": f"🎁 Presente: carta do {s['nome']}",
+                                        "texto": f"Você ganhou a carta do {s['nome']}. Com ela, o setup já vale nas suas partidas X1 (ele foi equipado em Meus Setups; "
+                                                 f"você pode usar até {SU.MAX_EQUIPADOS} ao mesmo tempo).",
+                                        "origem": "presente", "pagina": "setups"})
+    except Exception as e:
+        banco.registrar_erro("setups.presente_aviso", e)
+    return {**_visao(s, doc), "nova": True}
 
 
 def recompensa_bau(email: str, ref: str, rar_bau: str) -> dict:

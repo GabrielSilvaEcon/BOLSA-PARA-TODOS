@@ -599,10 +599,60 @@ def test_api_bau_pode_trazer_setup_uma_vez_so_e_nao_mexe_nas_outras_recompensas(
     r = cli.post("/loja/bau").json()
     assert r["cartas"] and all(c["tk"] and c["raridade"] for c in r["cartas"])                        # as cartas do baú continuam as mesmas
     assert r["setup"]["nova"] is True and r["setup"]["id"] in {s["id"] for s in SU.catalogo()}
-    assert cli.get("/setups").json()["conquistados"] == 1                                              # gravado para sempre
+    assert r["setup"]["id"] != "setup_classico"                                                        # o brinde do Baú Iniciante já é dela
+    assert cli.get("/setups").json()["conquistados"] == 2                                              # brinde + o do baú, gravados para sempre
     de_novo = cli.post("/loja/bau").json()
     assert "setup" not in de_novo and "cartas" not in de_novo                                          # o mesmo baú não entrega duas vezes
-    assert cli.get("/setups").json()["conquistados"] == 1
+    assert cli.get("/setups").json()["conquistados"] == 2
+
+
+def test_api_bau_iniciante_traz_o_presente_com_aviso_no_sino_uma_vez_so(cli):
+    import test_api as T
+    T._cartas_teste()
+    t = cli.post("/ticker/tutorial/bau").json()
+    assert t["cartas"] and t["setup"]["id"] == "setup_classico" and t["setup"]["nova"] is True and t["setup"]["equipado"] is True
+    r = cli.get("/setups").json()
+    assert r["equipados"] == ["setup_classico"] and r["conquistados"] == 1                              # já entra equipado
+    avisos = [a for a in cli.get("/alertas").json()["itens"] if "Presente" in a["titulo"]]
+    assert len(avisos) == 1 and "Setup Clássico" in avisos[0]["titulo"] and not avisos[0]["lida"]
+    assert "setup" not in cli.post("/ticker/tutorial/bau").json()                                       # o tutorial não repete o brinde
+    cli.get("/eu")
+    assert len([a for a in cli.get("/alertas").json()["itens"] if "Presente" in a["titulo"]]) == 1      # nem o aviso
+
+
+def test_api_conta_antiga_recebe_o_presente_ao_abrir_o_app_e_conta_nova_espera_o_bau(cli):
+    import battle_dados as BD
+    import banco
+    from test_api import EU
+    cli.get("/eu")
+    assert cli.get("/setups").json()["conquistados"] == 0                                               # ainda no tutorial: o presente vem no Baú Iniciante
+    pes = BD.ler_pessoa(banco, EU)
+    pes["tutorial_concluido"] = True                                                                    # conta antiga: já passou do tutorial
+    BD.gravar_pessoa(banco, EU, pes)
+    cli.get("/eu")
+    r = cli.get("/setups").json()
+    assert [i["id"] for i in r["itens"]] == ["setup_classico"] and r["equipados"] == ["setup_classico"]
+    assert len([a for a in cli.get("/alertas").json()["itens"] if "Presente" in a["titulo"]]) == 1
+    cli.get("/eu")
+    cli.get("/eu")
+    assert cli.get("/setups").json()["conquistados"] == 1 and len([a for a in cli.get("/alertas").json()["itens"] if "Presente" in a["titulo"]]) == 1
+
+
+def test_presente_nao_toma_o_lugar_de_quem_ja_tem_os_dois_espacos_cheios(cli):
+    import setups_dados as SD
+    from test_api import EU
+    _conquistar(EU, "larry_williams", "turtle_trading", equipar=["larry_williams", "turtle_trading"])
+    st = SD.presente_inicial(EU)
+    assert st and st["equipado"] is False                                                                # ganhou a carta, sem tirar ninguém
+    assert SD.ler(EU)["equipados"] == ["larry_williams", "turtle_trading"] and SD.presente_inicial(EU) is None
+
+
+def test_presente_de_quem_ja_tinha_o_setup_basico_nao_duplica_nem_avisa(cli):
+    import setups_dados as SD
+    from test_api import EU
+    _conquistar(EU, "setup_classico")
+    assert SD.presente_inicial(EU) is None and SD.ler(EU)["equipados"] == []
+    assert not [a for a in cli.get("/alertas").json()["itens"] if "Presente" in a["titulo"]]
 
 
 def test_api_se_a_roleta_de_setup_falhar_o_bau_continua_igual(cli, monkeypatch):
@@ -621,6 +671,9 @@ def test_api_x1_de_ponta_a_ponta_com_dois_jogadores(dois, monkeypatch):
     ana, bia = dois
     t = {"agora": 5_000_000.0}
     monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    for c in (ana, bia):
+        c.get("/eu")
+        c.post("/setups/desequipar", json={"id": "setup_classico"})                                 # o brinde de boas-vindas sai do caminho: só a Ana ativa
     _conquistar("ana@x.com", "turtle_trading")
     assert ana.post("/setups/equipar", json={"id": "turtle_trading"}).status_code == 200
     sala = ana.post("/trade/salas", json={"corrida": "rapida"}).json()
