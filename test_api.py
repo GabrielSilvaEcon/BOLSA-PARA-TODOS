@@ -537,3 +537,59 @@ def test_catalogo_e_admin_das_cartas(cli):
     assert cli.post("/admin/cartas/regras", json={"baus": {"comum": {"qtd": 3}}}).json()["baus"]["comum"]["qtd"] == 3
     import cartas_catalogo as CAT
     CAT.EXTRAS.clear()
+
+
+def test_sinergia_de_setor_chega_na_carta_do_duelo(cli):
+    """Duas cartas do mesmo setor no baralho ganham bônus nos indicadores; a de outro setor não muda; o dado real nunca muda."""
+    import cartas as C
+    import cartas_dados as CD
+    snap = _cartas_teste()
+    cat = CD.catalogo()
+    por_setor = {}
+    for t in snap:
+        if t in cat:
+            por_setor.setdefault(cat[t]["setor"], []).append(t)
+    forte = {"epica", "lendaria"}                                             # o baralho aceita só 1 de cada: escolhe cartas que caibam juntas
+    par = next((s, [t for t in ts if cat[t]["raridade_fixa"] not in forte][:2]) for s, ts in por_setor.items()
+               if len([t for t in ts if cat[t]["raridade_fixa"] not in forte]) >= 2)
+    setor, (a, b) = par
+    outra = next(t for s, ts in por_setor.items() if s != setor for t in ts if cat[t]["raridade_fixa"] not in forte)
+    doc = C.colecao_vazia()
+    for t in (a, b, outra):
+        C.adicionar(doc, t, cat[t]["raridade_fixa"], "2026-11-25T10:00:00")
+        C.equipar(doc, t, "2026-11-25T10:00:00")
+    jogo = CD.cartas_de_jogo(EU, snap, doc)
+    ca, cb, co = (jogo[CD.id_jogo(EU, t)] for t in (a, b, outra))
+    assert ca["sinergia"] == cb["sinergia"] == {"setor": setor, "n": 2, "passos": 1}
+    assert "sinergia" not in co and co["ind"] == snap[outra]["ind"]            # setor sozinho: sem bônus
+    for carta, base in ((ca, snap[a]), (cb, snap[b])):
+        assert carta["real"] == base["ind"]                                    # o dado financeiro real fica intacto
+        if isinstance(base["ind"].get("roe"), (int, float)):
+            assert carta["ind"]["roe"] > base["ind"]["roe"]                    # +1 passo de ROE
+
+
+def test_colecao_expoe_as_sinergias_do_baralho(cli):
+    import cartas as C
+    import cartas_dados as CD
+    snap = _cartas_teste()
+    cat = CD.catalogo()
+    forte = {"epica", "lendaria"}
+    por_setor = {}
+    for t in snap:
+        if t in cat and cat[t]["raridade_fixa"] not in forte:
+            por_setor.setdefault(cat[t]["setor"], []).append(t)
+    setor, tks = next((s, ts[:3]) for s, ts in por_setor.items() if len(ts) >= 3)
+    doc = C.colecao_vazia()
+    for t in tks:
+        C.adicionar(doc, t, cat[t]["raridade_fixa"], "2026-11-25T10:00:00")
+    C.equipar(doc, tks[0], "2026-11-25T10:00:00")
+    CD.gravar(EU, doc)
+    assert cli.get("/cartas/colecao").json()["sinergias"] == []                  # uma carta do setor: ainda não há sinergia
+    C.equipar(doc, tks[1], "2026-11-25T10:00:00")
+    CD.gravar(EU, doc)
+    s = cli.get("/cartas/colecao").json()["sinergias"]
+    assert [(x["setor"], x["n"], x["passos"]) for x in s] == [(setor, 2, 1)]
+    C.equipar(doc, tks[2], "2026-11-25T10:00:00")
+    CD.gravar(EU, doc)
+    s = cli.get("/cartas/colecao").json()["sinergias"]
+    assert [(x["n"], x["passos"]) for x in s] == [(3, 2)] and s[0]["tks"] == tks     # 3 cartas: o teto de 2 passos

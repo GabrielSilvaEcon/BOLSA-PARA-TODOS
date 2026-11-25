@@ -255,3 +255,31 @@ def carta_de_jogo(base: dict, c: dict, cfg: dict, ident: str) -> dict:
     out["ind"] = {k: (aplicar_bonus(k, float(v), vezes.get(k, 0), cfg["bonus"]) if k in vezes else v) for k, v in real.items()}
     out.update(id=ident, real=real, nivel=c["nivel"], rar=c["rar"], melhorias=vezes)
     return out
+
+
+# ------------------------------------------------------------------ sinergia de setor
+SINERGIA_MAX = 2   # teto em passos de evolução: uma sinergia nunca passa por cima da progressão (o nível máximo dá 9 passos)
+
+
+def passos_sinergia(n_mesmo_setor: int) -> int:
+    """Passos de bônus (a mesma unidade da evolução) que cada carta ganha por ter `n` cartas do seu setor no baralho: 2 → 1, 3 ou mais → 2.
+    Calibrado em todos os pares do catálogo: 1 passo vira 2,4% das disputas e 2 passos vira 4,9%. É um empurrão, não uma alavanca."""
+    return 0 if n_mesmo_setor < 2 else min(SINERGIA_MAX, n_mesmo_setor - 1)
+
+
+def sinergias(tks: list[str], setor_de) -> list[dict]:
+    """As sinergias ativas num baralho: [{"setor", "n", "passos", "tks"}], só para setores com 2 cartas ou mais, na ordem do baralho."""
+    por_setor: dict[str, list[str]] = {}
+    for t in tks:
+        s = setor_de(t)
+        if s:
+            por_setor.setdefault(s, []).append(t)
+    return [{"setor": s, "n": len(ts), "passos": passos_sinergia(len(ts)), "tks": ts} for s, ts in por_setor.items() if len(ts) >= 2]
+
+
+def aplicar_sinergia(carta: dict, passos: int, cfg: dict) -> dict:
+    """Soma `passos` de bônus aos indicadores da carta de jogo, por cima da evolução. Os valores reais (`real`) não se mexem."""
+    if passos:
+        carta["ind"] = {k: (aplicar_bonus(k, float(v), passos, cfg["bonus"]) if k in cfg["bonus"] and isinstance(v, (int, float)) else v)
+                        for k, v in (carta.get("ind") or {}).items()}
+    return carta

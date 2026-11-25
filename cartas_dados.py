@@ -178,7 +178,18 @@ def cartas_de_jogo(email: str, snap: dict, doc: dict | None = None) -> dict:
     """{id: cópia da carta do snapshot com os atributos de jogo} das equipadas que têm dados no snapshot."""
     doc = doc if doc is not None else garantir_inicial(email)[0]
     cfg = regras()
-    return {id_jogo(email, t): C.carta_de_jogo(snap[t], doc["cartas"][t], cfg, id_jogo(email, t)) for t in C.equipadas(doc) if t in snap}
+    equip = [t for t in C.equipadas(doc) if t in snap]
+    cat = catalogo()
+    sin = {s["setor"]: s for s in C.sinergias(equip, lambda t: (cat.get(t) or {}).get("setor"))}   # sinergia de setor, vista pelo baralho inteiro
+    out = {}
+    for t in equip:
+        carta = C.carta_de_jogo(snap[t], doc["cartas"][t], cfg, id_jogo(email, t))
+        s = sin.get((cat.get(t) or {}).get("setor"))
+        if s:
+            C.aplicar_sinergia(carta, s["passos"], cfg)
+            carta["sinergia"] = {"setor": s["setor"], "n": s["n"], "passos": s["passos"]}
+        out[id_jogo(email, t)] = carta
+    return out
 
 
 def snapshot_com(snap: dict, emails: list[str]) -> dict:

@@ -158,9 +158,36 @@ class _ColecaoTelaState extends State<ColecaoTela> {
               for (var i = 0; i < nMax; i++) _slot(i < eq.length ? eq[i] : null, w),
             ]);
           }),
+          ..._chipsSinergia(d),
         ]),
       ),
     );
+  }
+
+  /// Sinergia de setor: cartas do mesmo setor no baralho ganham nível de evolução extra nos indicadores. Sem mostrar, seria um bônus invisível.
+  List<Widget> _chipsSinergia(Map d) {
+    final sin = ((d['sinergias'] as List?) ?? const []).cast<Map>();
+    if (sin.isEmpty) return const [];
+    return [
+      const SizedBox(height: 10),
+      Wrap(spacing: 8, runSpacing: 6, children: [
+        for (final s in sin)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              color: const Color(0x33FFC93C),
+              border: Border.all(color: const Color(0xFFFFC93C), width: 1.2),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.bolt_rounded, size: 16, color: Color(0xFFFFC93C)),
+              const SizedBox(width: 4),
+              Text('${s['setor']} ×${s['n']} · +${s['passos']} ${s['passos'] == 1 ? 'nível' : 'níveis'} nos indicadores',
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFFFFE08A))),
+            ]),
+          ),
+      ]),
+    ];
   }
 
   Widget _slot(String? tk, double w) {

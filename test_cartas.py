@@ -136,3 +136,31 @@ def test_bonus_da_raridade_nao_existe_so_do_nivel():
     a = C.carta_de_jogo(base, {"rar": "lendaria", "nivel": 1, "escolhas": []}, cfg, "a")
     b = C.carta_de_jogo(base, {"rar": "comum", "nivel": 1, "escolhas": []}, cfg, "b")
     assert a["ind"] == b["ind"] == base["ind"]                       # lendária não vence só por ser lendária
+
+
+# ------------------------------------------------------------------ sinergia de setor
+def test_passos_de_sinergia_por_cartas_do_setor():
+    assert [C.passos_sinergia(n) for n in (0, 1, 2, 3, 4, 5)] == [0, 0, 1, 2, 2, 2]      # teto de 2: nunca passa por cima da evolução
+
+
+def test_sinergias_so_para_setor_com_duas_cartas_ou_mais():
+    setor = {"A": "Bancos", "B": "Bancos", "C": "Varejo", "D": "Varejo", "E": "Varejo", "F": "Saúde", "G": None}
+    s = C.sinergias(list("ABCDEFG"), setor.get)
+    assert [(x["setor"], x["n"], x["passos"]) for x in s] == [("Bancos", 2, 1), ("Varejo", 3, 2)]    # Saúde (1) e sem setor ficam de fora
+    assert s[0]["tks"] == ["A", "B"] and C.sinergias([], setor.get) == []
+
+
+def test_aplicar_sinergia_melhora_no_sentido_certo_e_preserva_o_real():
+    cfg = C.config_padrao()
+    carta = {"ind": {"pl": 10.0, "dy_12m": 0.05, "roe": 0.15, "vol": 0.3}, "real": {"pl": 10.0, "dy_12m": 0.05, "roe": 0.15, "vol": 0.3}}
+    out = C.aplicar_sinergia(carta, 2, cfg)
+    assert out["ind"]["pl"] < 10.0                                    # P/L: menor é melhor
+    assert out["ind"]["dy_12m"] > 0.05 and out["ind"]["roe"] > 0.15   # DY e ROE: maior é melhor
+    assert out["ind"]["vol"] == 0.3                                   # indicador sem bônus configurado não muda
+    assert out["real"] == {"pl": 10.0, "dy_12m": 0.05, "roe": 0.15, "vol": 0.3}   # o dado financeiro real nunca é alterado
+
+
+def test_aplicar_sinergia_sem_passos_ou_com_valor_ausente_nao_quebra():
+    cfg = C.config_padrao()
+    assert C.aplicar_sinergia({"ind": {"pl": 10.0}}, 0, cfg)["ind"] == {"pl": 10.0}
+    assert C.aplicar_sinergia({"ind": {"pl": None, "roe": 0.1}}, 1, cfg)["ind"]["pl"] is None

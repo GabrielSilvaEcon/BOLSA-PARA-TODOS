@@ -1509,7 +1509,8 @@ def _ct_visao(q: Quem, doc: dict | None = None) -> dict:
     ordem = {r: i for i, r in enumerate(CAT.RARIDADES)}
     lista.sort(key=lambda x: (not x["possui"], -ordem[x["raridade"]], x["tk"]))
     bonus = {i: ("−4% no P/L" if i == "pl" else "+0,25 p.p. no DY" if i == "dy_12m" else "+1 p.p. no ROE") for i in CAT.INDICADORES}
-    return {"cartas": lista, "equip": doc["equip"], "equip_max": C.BARALHO_EQUIP, "equip_por_raridade": C.MAX_POR_RARIDADE,
+    sinergias = C.sinergias(list(doc["equip"]), lambda t: (cat.get(t) or {}).get("setor"))
+    return {"cartas": lista, "equip": doc["equip"], "equip_max": C.BARALHO_EQUIP, "equip_por_raridade": C.MAX_POR_RARIDADE, "sinergias": sinergias,
             "setores": sorted({e["setor"] for e in cat.values()}), "raridades": list(CAT.RARIDADES),
             "rotulos": CAT.ROTULO_RARIDADE, "indicadores": CAT.ROTULO_IND, "bonus": bonus,
             "descobertas": len(doc["cartas"]), "total": len(cat), "log": doc["log"][:20]}
