@@ -1,31 +1,34 @@
 {
   "id": "setup_classico",
   "nome": "Setup Clássico",
-  "raridade": "comum",
-  "resumo": "O cruzamento de médias móveis que todo trader aprende primeiro, confirmado pela força do movimento.",
+  "raridade": "epica",
+  "resumo": "Estratégia tradicional de análise técnica focada na confirmação de tendência.",
   "caracteristicas": [
-    "Segue a tendência de curto prazo",
-    "Funciona melhor em mercado com direção definida",
-    "O sinal nasce na virada do cruzamento"
+    "Price Action / Tendência",
+    "Gatilho: compra no rompimento do pivô de alta com aumento de volume",
+    "Alvo de 2 para 1, com stop no fundo do pivô",
+    "Timeframe: diário / 60 minutos",
+    "Só vale o primeiro rompimento daquele pivô"
   ],
   "indicadores": [
-    "Média exponencial de 9 candles",
-    "Média exponencial de 21 candles",
-    "IFR (RSI) de 14"
+    "Pivô de alta (topo local confirmado)",
+    "Volume acima da média dos últimos 20 candles",
+    "Média de 21 períodos (filtro de tendência)"
   ],
   "regra": {
-    "compra": "A média de 9 cruza para cima a de 21, o candle fecha acima da de 21 e o IFR está em 57 ou mais.",
-    "venda": "A média de 9 cruza para baixo a de 21, o candle fecha abaixo da de 21 e o IFR está em 43 ou menos."
+    "compra": "O candle fecha acima do último pivô de alta, pela primeira vez, com volume acima da média e acima da média de 21. Stop no fundo do pivô e alvo de 2 vezes o risco.",
+    "venda": "Este setup só compra."
   },
   "cores": {
-    "principal": "#8FB4F0",
-    "brilho": "#DDEBFF"
+    "principal": "#2EE59D",
+    "brilho": "#FFD76A"
   },
   "assets": {
-    "carta": null,
+    "carta": "carta.jpg",
     "ativacao": null,
     "moldura": null,
     "icone": null,
     "efeitos": []
-  }
+  },
+  "fonte_regra": "Este setup não tem um criador: a regra de ativação é a descrita na carta."
 }

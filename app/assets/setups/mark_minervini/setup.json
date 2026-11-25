@@ -1,33 +1,34 @@
 {
   "id": "mark_minervini",
   "nome": "Mark Minervini",
-  "raridade": "lendaria",
-  "resumo": "Tendência de alta saudável, volatilidade que se aperta e rompimento do pivô: o método de quem só compra ação em força.",
+  "raridade": "epica",
+  "resumo": "Criado pelo campeão Mark Minervini, busca ações líderes saindo de bases sólidas.",
   "caracteristicas": [
-    "Só compra, nunca vende a descoberto",
-    "Exige uma tendência de alta já estabelecida",
-    "O sinal mais raro e mais seletivo"
+    "Trend Template: preço acima das médias de 50, 150 e 200, com 50 > 150 > 200 e a de 200 subindo",
+    "A no máximo 25% do topo e pelo menos 30% acima do fundo de 52 semanas",
+    "VCP: contrações sucessivas, cada uma mais rasa, com o volume secando",
+    "Rompimento do pivô com volume 40% acima da média",
+    "Stop no fundo da última contração (máx. 8%) e alvo de 3 para 1"
   ],
   "indicadores": [
-    "Médias de 50, 150 e 200 candles",
-    "Topo da janela de 250 candles",
-    "Amplitude dos candles (contração)",
-    "Máxima dos 5 candles anteriores (pivô)",
-    "Volume médio de 20 candles"
+    "Médias de 50, 150 e 200 períodos",
+    "Contrações de preço (VCP) e volume",
+    "Volume médio de 50 candles"
   ],
   "regra": {
-    "compra": "O preço está acima das médias de 50, 150 e 200, que estão em ordem, com a de 200 subindo; fecha a no máximo 25% do topo; a volatilidade recente é menor que a anterior; e o candle rompe a máxima dos 5 anteriores sem o volume secar.",
-    "venda": "Este setup não vende: ele só procura compras."
+    "compra": "Tendência de alta saudável, pelo menos 2 contrações cada vez mais rasas (a última com até 12%) com o volume secando, e fechamento acima do pivô com volume 40% acima da média. Stop no fundo da contração e alvo de 3 vezes o risco.",
+    "venda": "Este setup só compra."
   },
   "cores": {
-    "principal": "#FFC93C",
-    "brilho": "#FFF1BF"
+    "principal": "#2EE59D",
+    "brilho": "#FFD76A"
   },
   "assets": {
-    "carta": null,
+    "carta": "carta.jpg",
     "ativacao": null,
     "moldura": null,
     "icone": null,
     "efeitos": []
-  }
+  },
+  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto."
 }

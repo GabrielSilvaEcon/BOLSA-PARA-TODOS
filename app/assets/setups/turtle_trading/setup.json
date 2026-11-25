@@ -1,29 +1,33 @@
 {
   "id": "turtle_trading",
   "nome": "Turtle Trading",
-  "raridade": "rara",
-  "resumo": "Rompimento de canal, a regra dos Turtles: comprar a força que cria uma nova máxima e vender a fraqueza que cria uma nova mínima.",
+  "raridade": "epica",
+  "resumo": "Criado por Richard Dennis, busca capturar grandes tendências de mercado.",
   "caracteristicas": [
-    "Aposta que o rompimento continua",
-    "Sinal raro e de alta convicção",
-    "Só vale o primeiro rompimento, nunca os seguintes"
+    "Price Action / Tendência",
+    "Rompimento do canal de 20 dias (Sistema 1) ou de 55 dias (Sistema 2), para comprar ou vender",
+    "O Sistema 1 pula o sinal se o rompimento anterior teria dado lucro; o de 55 dias entra sempre",
+    "Stop de 2N (N = ATR de 20 candles)",
+    "A saída dos Turtles é na mínima (máxima) de 10 candles"
   ],
   "indicadores": [
-    "Canal de máximas e mínimas dos últimos 200 candles (Donchian)"
+    "Canais de máxima e mínima de 20, 55 e 10 candles (Donchian)",
+    "N: média do intervalo verdadeiro de 20 candles"
   ],
   "regra": {
-    "compra": "O candle é o primeiro a fechar acima da máxima dos 200 candles anteriores.",
-    "venda": "O candle é o primeiro a fechar abaixo da mínima dos 200 candles anteriores."
+    "compra": "O candle é o primeiro a superar a máxima dos 20 candles anteriores (se o rompimento anterior teria dado prejuízo) ou a dos 55 candles anteriores. Stop em 2N abaixo.",
+    "venda": "O espelho: o primeiro candle a perder a mínima dos 20 (com o filtro) ou dos 55 candles anteriores. Stop em 2N acima."
   },
   "cores": {
-    "principal": "#3DDC97",
-    "brilho": "#C9FFE6"
+    "principal": "#2EE59D",
+    "brilho": "#FFD76A"
   },
   "assets": {
-    "carta": null,
+    "carta": "carta.jpg",
     "ativacao": null,
     "moldura": null,
     "icone": null,
     "efeitos": []
-  }
+  },
+  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto."
 }

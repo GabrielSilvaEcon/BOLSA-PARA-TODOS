@@ -55,117 +55,195 @@ def _ema(v: list[float], n: int) -> list[float | None]:
     return out
 
 
-def _rsi(c: list[float], n: int = 14) -> float | None:
-    """IFR de Wilder no último candle."""
-    if len(c) <= n:
-        return None
-    ganho = perda = 0.0
-    for i in range(1, n + 1):
-        d = c[i] - c[i - 1]
-        ganho, perda = ganho + max(d, 0.0), perda + max(-d, 0.0)
-    ganho, perda = ganho / n, perda / n
-    for i in range(n + 1, len(c)):
-        d = c[i] - c[i - 1]
-        ganho, perda = (ganho * (n - 1) + max(d, 0.0)) / n, (perda * (n - 1) + max(-d, 0.0)) / n
-    return 100.0 if perda == 0 else 100 - 100 / (1 + ganho / perda)
-
-
 # ------------------------------------------------------------------ detectores
-# Parâmetros nomeados: são o que se ajusta para o setup ficar mais ou menos frequente. Cada ativação pausa os DOIS jogadores por alguns segundos,
-# então a frequência é parte do jogo. Valores escolhidos por medição, em 360 partidas simuladas (60 por duração, com e sem regimes de tendência),
-# com as constantes finais do motor (recarga de 8 candles, teto de 2 por jogador): média de ativações por partida e % das partidas com pelo menos uma —
-#   Clássico 0,94 (66%) · Turtle 1,03 (64%) · Larry Williams 1,30 (74%) · Minervini 0,39 (24%).
-# É mercado simulado (o ambiente não tem dado real): serve para dar a ordem de grandeza, não para prometer a frequência do mercado de verdade.
-# Os primeiros valores que escolhi davam 30 sinais a cada 100 candles num setup e quase nenhum em outro.
-CLASSICO_RAPIDA, CLASSICO_LENTA, CLASSICO_MARGEM_IFR = 9, 21, 7      # compra pede IFR >= 50 + margem; venda, IFR <= 50 - margem
-TURTLE_CANAL = 200
-LW_MEDIA, LW_ALVO_R, LW_VALIDADE, LW_MIN_CANDLES = 9, 2.0, 1, 40   # MME9; alvo = 2x o risco; o gatilho vale só para o candle seguinte
-LW_TENDENCIA, LW_VENDE = 50, False                                  # só opera a favor da MME50; a carta só descreve a COMPRA (LW_VENDE liga o espelho)
-MM_TOPO = 0.75                                                         # fechamento a no máximo 25% do topo da janela (a regra original)
-MM_JANELA, MM_CONTRACAO, MM_PIVO, MM_VOLUME = 250, 1.0, 5, 0.8
+# Parâmetros nomeados: cada setup segue o método do CRIADOR (o texto da carta é só ilustrativo por enquanto; o Clássico não tem criador e segue a carta).
+# Cada ativação pausa os DOIS jogadores por alguns segundos, então a frequência é parte do jogo: o motor limita a 2 ativações por jogador e 8 candles de carência.
+# Sinais a cada 100 candles em 120 mercados simulados (lateral · tendência): Turtle ≈ 13 · 14, Larry Williams (gatilhos armados) ≈ 24 · 20, Minervini ≈ 0 · 0,2,
+# Clássico ≈ 0,9 · 1,5. O Minervini quase não dispara porque o VCP real é raro: é seletivo de propósito. São mercados sorteados, não dado real.
+# --- Setup Clássico (sem criador: a regra é a da carta): rompimento de pivô de alta com volume
+CL_K, CL_JANELA, CL_VOLUME, CL_TENDENCIA, CL_ALVO_R = 3, 30, 1.2, 21, 2.0   # pivô = topo com 3 candles menores de cada lado, dos últimos 30; volume > 1,2x a média de 20; acima da média de 21; alvo 2:1
+# --- Turtle Trading (Richard Dennis e William Eckhardt, o "Sistema 1" e o "Sistema 2" das regras dos Turtles)
+TURTLE_S1, TURTLE_S1_SAIDA, TURTLE_S2, TURTLE_N, TURTLE_STOP_N = 20, 10, 55, 20, 2.0     # entrada em 20 dias (saída em 10) e 55 dias; N = ATR de 20; stop de 2N
+TURTLE_OLHAR = 400                                                                       # até onde se procura o rompimento anterior (filtro do Sistema 1)
+# --- Larry Williams (setup "9.1": a média exponencial de 9 vira e a máxima/mínima do candle vira o gatilho; stop no outro extremo)
+LW_MEDIA, LW_VALIDADE, LW_MIN_CANDLES = 9, 1, 40                      # o gatilho vale só para o candle seguinte e é reposicionado enquanto a média seguir na mesma direção
+# --- Mark Minervini (Trend Template + VCP): tendência de alta, contrações sucessivas menores com o volume secando e rompimento do pivô com volume
+MM_TOPO, MM_ACIMA_FUNDO, MM_JANELA = 0.75, 1.30, 250                  # a no máximo 25% do topo e pelo menos 30% acima do fundo de 52 semanas
+MM_K, MM_BASE_MAX, MM_CONTRACOES, MM_PROF_ULT = 3, 65, 2, 0.12        # swings de 3 candles; base de até 65 candles; ao menos 2 contrações; a última com no máximo 12% de profundidade
+MM_VOLUME, MM_STOP_MAX, MM_ALVO_R = 1.4, 0.08, 3.0                    # rompimento com volume 40% acima da média de 50; stop no fundo da última contração, no máximo 8%; alvo 3:1
 
 
 def _classico(v: list[dict]) -> dict | None:
-    """Setup Clássico: a média exponencial de 9 cruza a de 21, o candle fecha do lado certo da de 21 e o IFR confirma a força (57 ou mais na
-    compra, 43 ou menos na venda)."""
-    if len(v) < CLASSICO_LENTA + 15:
+    """Setup Clássico (só compra, como na carta): o candle fecha PELA PRIMEIRA VEZ acima do último pivô de alta (topo local confirmado por `CL_K` candles
+    menores à direita e não maiores à esquerda), com volume acima da média e acima da média de `CL_TENDENCIA` (confirmação de tendência). Stop no fundo do pivô (a mínima desde o
+    topo até agora); alvo `CL_ALVO_R` vezes o risco. Só usa candles já fechados."""
+    n = len(v)
+    if n < max(CL_JANELA, 21) + CL_K + 2:
         return None
-    c = [x["c"] for x in v]
-    rapida, lenta = _ema(c, CLASSICO_RAPIDA), _ema(c, CLASSICO_LENTA)
-    ifr = _rsi(c)
-    if None in (rapida[-1], rapida[-2], lenta[-1], lenta[-2], ifr):
+    h, c, lo, vol = ([x[k] for x in v] for k in ("h", "c", "l", "v"))
+    ult = n - 1
+    pivo = next((p for p in range(ult - CL_K - 1, max(CL_K, ult - CL_JANELA) - 1, -1)
+                 if all(h[p] >= h[p - k] and h[p] > h[p + k] for k in range(1, CL_K + 1))), None)
+    if pivo is None or max(c[pivo + 1:ult], default=0.0) > h[pivo] or c[ult] <= h[pivo]:
+        return None                                                  # sem pivô, ou o pivô já tinha sido rompido antes, ou ainda não rompeu
+    media_vol = _sma(vol[:-1], 20)
+    media = _sma(c, CL_TENDENCIA)
+    if not media_vol or vol[ult] <= CL_VOLUME * media_vol or media is None or c[ult] <= media:
         return None
-    if rapida[-2] <= lenta[-2] and rapida[-1] > lenta[-1] and c[-1] > lenta[-1] and ifr >= 50 + CLASSICO_MARGEM_IFR:
-        return {"direcao": "alta", "motivo": f"A média de {CLASSICO_RAPIDA} cruzou para cima a de {CLASSICO_LENTA}, com IFR em {ifr:.0f}."}
-    if rapida[-2] >= lenta[-2] and rapida[-1] < lenta[-1] and c[-1] < lenta[-1] and ifr <= 50 - CLASSICO_MARGEM_IFR:
-        return {"direcao": "baixa", "motivo": f"A média de {CLASSICO_RAPIDA} cruzou para baixo a de {CLASSICO_LENTA}, com IFR em {ifr:.0f}."}
+    stop = min(lo[pivo:ult + 1])
+    if stop >= c[ult]:
+        return None
+    return {"direcao": "alta", "stop": round(stop, 4), "alvo": round(c[ult] + CL_ALVO_R * (c[ult] - stop), 4),
+            "motivo": "Rompimento do pivô de alta com volume acima da média."}
+
+
+def _n_turtle(v: list[dict]) -> list[float | None]:
+    """N dos Turtles: média do intervalo verdadeiro de `TURTLE_N` candles, atualizada de forma exponencial (N = ((n-1)·N anterior + TR) / n)."""
+    tr = [v[0]["h"] - v[0]["l"]] + [max(x["h"] - x["l"], abs(x["h"] - v[k]["c"]), abs(x["l"] - v[k]["c"])) for k, x in enumerate(v[1:])]
+    out: list[float | None] = [None] * len(v)
+    if len(v) < TURTLE_N:
+        return out
+    n = sum(tr[:TURTLE_N]) / TURTLE_N
+    out[TURTLE_N - 1] = n
+    for i in range(TURTLE_N, len(v)):
+        n = ((TURTLE_N - 1) * n + tr[i]) / TURTLE_N
+        out[i] = n
+    return out
+
+
+def _rompe(v: list[dict], i: int, d: int, alta: bool) -> bool:
+    """O candle `i` é o PRIMEIRO a superar (alta) ou perder (baixa) o canal dos `d` candles anteriores?"""
+    if i - d - 1 < 0:
+        return False
+    h, lo = v[i]["h"], v[i]["l"]
+    ant_h, ant_l = v[i - 1]["h"], v[i - 1]["l"]
+    if alta:
+        return h > max(x["h"] for x in v[i - d:i]) and not ant_h > max(x["h"] for x in v[i - d - 1:i - 1])
+    return lo < min(x["l"] for x in v[i - d:i]) and not ant_l < min(x["l"] for x in v[i - d - 1:i - 1])
+
+
+def _s1_anterior_deu_lucro(v: list[dict], t: int, alta: bool, n: list[float | None]) -> bool | None:
+    """Filtro do Sistema 1: o rompimento de 20 dias ANTERIOR (no mesmo sentido) teria dado lucro? Simula a operação dos Turtles (entrada no canal, stop de 2N,
+    saída na mínima/máxima de 10 dias). None se não houve rompimento anterior ou se aquela operação ainda estaria aberta."""
+    p = next((i for i in range(t - 1, max(TURTLE_S1 + 1, t - TURTLE_OLHAR), -1) if _rompe(v, i, TURTLE_S1, alta)), None)
+    if p is None or n[p] is None:
+        return None
+    nivel = max(x["h"] for x in v[p - TURTLE_S1:p]) if alta else min(x["l"] for x in v[p - TURTLE_S1:p])
+    stop = nivel - TURTLE_STOP_N * n[p] if alta else nivel + TURTLE_STOP_N * n[p]
+    for k in range(p + 1, t):
+        saida = min(x["l"] for x in v[k - TURTLE_S1_SAIDA:k]) if alta else max(x["h"] for x in v[k - TURTLE_S1_SAIDA:k])
+        if alta and v[k]["l"] <= stop:
+            return False
+        if not alta and v[k]["h"] >= stop:
+            return False
+        if (alta and v[k]["l"] < saida) or (not alta and v[k]["h"] > saida):
+            return (saida > nivel) if alta else (saida < nivel)
     return None
 
 
 def _turtle(v: list[dict]) -> dict | None:
-    """Turtle Trading: o candle fecha acima da máxima (ou abaixo da mínima) dos `TURTLE_CANAL` candles anteriores (canal de Donchian) e é o
-    PRIMEIRO a fazer isso: depois de um rompimento os candles seguintes também fecham acima do canal antigo, e isso não é um sinal novo."""
-    if len(v) < TURTLE_CANAL + 2:
+    """Turtle Trading, como os Turtles operavam (compra e venda). Sistema 1: rompimento do canal de 20 dias, só se o rompimento anterior (no mesmo sentido)
+    teria dado prejuízo (se teria dado lucro, pula). Sistema 2: rompimento de 55 dias, sempre (a rede de segurança). Só vale o primeiro candle do rompimento.
+    Stop de 2N (N = ATR de 20). A saída dos Turtles é na mínima (máxima) de 10 dias: é regra de saída, não de entrada, então fica a cargo do jogador."""
+    t = len(v) - 1
+    if t < TURTLE_S2 + 1:
         return None
-    janela, a, ant = v[-TURTLE_CANAL - 1:-1], v[-1], v[-2]
-    canal_ant = v[-TURTLE_CANAL - 2:-2]
-    if a["c"] > max(x["h"] for x in janela) and not ant["c"] > max(x["h"] for x in canal_ant):
-        return {"direcao": "alta", "motivo": f"Primeiro fechamento acima da máxima dos últimos {TURTLE_CANAL} candles."}
-    if a["c"] < min(x["l"] for x in janela) and not ant["c"] < min(x["l"] for x in canal_ant):
-        return {"direcao": "baixa", "motivo": f"Primeiro fechamento abaixo da mínima dos últimos {TURTLE_CANAL} candles."}
+    n = _n_turtle(v)
+    if n[t] is None:
+        return None
+    for alta in (True, False):
+        s2 = _rompe(v, t, TURTLE_S2, alta)
+        s1 = _rompe(v, t, TURTLE_S1, alta) and _s1_anterior_deu_lucro(v, t, alta, n) is not True
+        if not (s1 or s2):
+            continue
+        c = v[t]["c"]
+        stop = c - TURTLE_STOP_N * n[t] if alta else c + TURTLE_STOP_N * n[t]
+        lado = ("acima da máxima" if alta else "abaixo da mínima")
+        return {"direcao": "alta" if alta else "baixa", "stop": round(stop, 4),
+                "motivo": f"Rompimento de {TURTLE_S2 if s2 else TURTLE_S1} dias: fechamento {lado} dos últimos {TURTLE_S2 if s2 else TURTLE_S1} candles."}
     return None
 
 
 def _larry(v: list[dict]) -> dict | None:
-    """Larry Williams, como diz a carta: "compra na superação da máxima do candle que fez a MME9 virar para cima". Alvo 2:1, stop na mínima.
-    Este é um setup ARMADO: no fechamento do candle de virada ele só prepara o gatilho (a máxima do candle); quem dispara é o preço, nos candles
-    seguintes. Devolve o gatilho, o stop (a mínima do candle) e o alvo (2 vezes o risco). Espelhado para a venda."""
-    if len(v) < LW_MIN_CANDLES:
+    """Larry Williams, setup 9.1: quando a média exponencial de 9 VIRA (para cima, ou para baixo), a máxima (mínima) desse candle vira o gatilho de compra
+    (venda) e a mínima (máxima) dele, o stop. Se o candle seguinte não acionar, o gatilho é reposicionado para o novo candle enquanto a média continuar na mesma
+    direção; depois de acionado, não se entra de novo na mesma virada. Sem alvo fixo: a saída é a média virar contra. Setup ARMADO: aqui só se prepara o gatilho."""
+    n = len(v)
+    if n < LW_MIN_CANDLES:
         return None
-    c = [x["c"] for x in v]
-    e = _ema(c, LW_MEDIA)
-    if None in (e[-1], e[-2], e[-3]):
+    e = _ema([x["c"] for x in v], LW_MEDIA)
+    if None in (e[-1], e[-2]) or e[-1] == e[-2]:
         return None
+    alta = e[-1] > e[-2]
+    r = n - 1                                                           # a virada: o primeiro candle desta corrida da média
+    while r - 2 >= 0 and e[r - 2] is not None and ((e[r - 1] > e[r - 2]) if alta else (e[r - 1] < e[r - 2])):
+        r -= 1
+    if any((v[k]["h"] > v[k - 1]["h"]) if alta else (v[k]["l"] < v[k - 1]["l"]) for k in range(r + 1, n)):
+        return None                                                     # o gatilho já foi acionado nesta virada: não se entra de novo
     a = v[-1]
-    tend = _ema(c, LW_TENDENCIA)[-1] if LW_TENDENCIA else None
-    if e[-1] > e[-2] and e[-2] <= e[-3] and (tend is None or a["c"] > tend):
-        risco = a["h"] - a["l"]
-        if risco > 0:
-            return {"direcao": "alta", "gatilho": a["h"], "stop": a["l"], "alvo": a["h"] + LW_ALVO_R * risco, "validade": LW_VALIDADE,
-                    "motivo": f"A média de {LW_MEDIA} virou para cima: compra na superação da máxima do candle."}
-    if LW_VENDE and e[-1] < e[-2] and e[-2] >= e[-3] and (tend is None or a["c"] < tend):
-        risco = a["h"] - a["l"]
-        if risco > 0:
-            return {"direcao": "baixa", "gatilho": a["l"], "stop": a["h"], "alvo": a["l"] - LW_ALVO_R * risco, "validade": LW_VALIDADE,
-                    "motivo": f"A média de {LW_MEDIA} virou para baixo: venda na perda da mínima do candle."}
-    return None
+    if a["h"] - a["l"] <= 0:
+        return None
+    if alta:
+        return {"direcao": "alta", "gatilho": a["h"], "stop": a["l"], "validade": LW_VALIDADE,
+                "motivo": f"A média de {LW_MEDIA} está para cima: compra na superação da máxima do candle."}
+    return {"direcao": "baixa", "gatilho": a["l"], "stop": a["h"], "validade": LW_VALIDADE,
+            "motivo": f"A média de {LW_MEDIA} está para baixo: venda na perda da mínima do candle."}
+
+
+def _swings(v: list[dict], ini: int, fim: int) -> list[tuple[int, str, float]]:
+    """Topos e fundos locais (`MM_K` candles de cada lado) em [ini, fim), alternados: dois do mesmo tipo seguidos ficam só com o mais extremo."""
+    h, lo, brutos = [x["h"] for x in v], [x["l"] for x in v], []
+    for i in range(max(ini, MM_K), fim - MM_K):
+        if all(h[i] >= h[i - k] and h[i] >= h[i + k] for k in range(1, MM_K + 1)):
+            brutos.append((i, "H", h[i]))
+        if all(lo[i] <= lo[i - k] and lo[i] <= lo[i + k] for k in range(1, MM_K + 1)):
+            brutos.append((i, "L", lo[i]))
+    out: list[tuple[int, str, float]] = []
+    for i, tp, pr in sorted(brutos, key=lambda x: (x[0], x[1])):
+        if out and out[-1][1] == tp:
+            if (tp == "H" and pr >= out[-1][2]) or (tp == "L" and pr <= out[-1][2]):
+                out[-1] = (i, tp, pr)
+        else:
+            out.append((i, tp, pr))
+    return out
 
 
 def _minervini(v: list[dict]) -> dict | None:
-    """Mark Minervini (SEPA/VCP simplificado, só compra): tendência de alta saudável (fechamento > média 50 > 150 > 200, com a de 200 subindo),
-    preço a no máximo 25% do topo da janela, volatilidade contraída e rompimento do pivô sem o volume secar."""
-    if len(v) < 221:
+    """Mark Minervini (só compra). Trend Template: fechamento > médias de 50, 150 e 200, com 50 > 150 > 200 e a de 200 subindo; a no máximo 25% do topo e pelo menos
+    30% acima do fundo de 52 semanas. (A força relativa contra o mercado não entra: o jogo não tem o índice.) VCP: contrações sucessivas, cada uma mais rasa que a
+    anterior, a última curta, com o volume secando; compra no rompimento do pivô (o topo onde começou a última contração) com volume 40% acima da média de 50.
+    Stop no fundo da última contração (no máximo 8% abaixo); alvo de 3 vezes o risco."""
+    n = len(v)
+    if n < 221:
         return None
     c, h, lo, vol = ([x[k] for x in v] for k in ("c", "h", "l", "v"))
-    m50, m150, m200 = _sma(c, 50), _sma(c, 150), _sma(c, 200)
-    m200_antes = _sma(c, 200, len(c) - 20)
-    if None in (m50, m150, m200, m200_antes):
-        return None
-    if not (c[-1] > m50 > m150 > m200 and m200 > m200_antes):
+    m50, m150, m200, m200_antes = _sma(c, 50), _sma(c, 150), _sma(c, 200), _sma(c, 200, n - 20)
+    if None in (m50, m150, m200, m200_antes) or not (c[-1] > m50 > m150 > m200 and m200 > m200_antes):
         return None
     janela = v[-MM_JANELA:]
-    if c[-1] < MM_TOPO * max(x["h"] for x in janela):
+    if c[-1] < MM_TOPO * max(x["h"] for x in janela) or c[-1] < MM_ACIMA_FUNDO * min(x["l"] for x in janela):
         return None
-    amp = [h[i] - lo[i] for i in range(len(v))]
-    recente, anterior = _sma(amp[:-1], 5), _sma(amp[:-6], 15)
-    if not recente or not anterior or recente >= MM_CONTRACAO * anterior:
+    sw = _swings(v, n - 1 - MM_BASE_MAX, n - 1)
+    pares = [(sw[i], sw[i + 1]) for i in range(len(sw) - 1) if sw[i][1] == "H" and sw[i + 1][1] == "L"]
+    pares = pares[-4:]
+    if len(pares) < MM_CONTRACOES:
         return None
-    if c[-1] <= max(h[-MM_PIVO - 1:-1]):
+    prof = [(a[2] - b[2]) / a[2] for a, b in pares]
+    if any(prof[i] >= prof[i - 1] for i in range(1, len(prof))) or prof[-1] > MM_PROF_ULT:
+        return None                                                     # as contrações precisam ir diminuindo, e a última ser curta
+    topo_i, fundo = pares[-1][0][0], pares[-1][1][2]
+    pivo = max(h[topo_i:n - 1])
+    media_vol = _sma(vol[:-1], 50)
+    seca = _sma(vol[topo_i:n - 1], len(vol[topo_i:n - 1]))
+    if not media_vol or seca is None or seca >= media_vol or vol[-1] < MM_VOLUME * media_vol:
+        return None                                                     # o volume tem que ter secado na contração e explodir no rompimento
+    if c[-1] <= pivo or max(c[topo_i:n - 1]) > pivo:
         return None
-    media_vol = _sma(vol[:-1], 20)
-    if not media_vol or vol[-1] < MM_VOLUME * media_vol:
+    stop = max(fundo, c[-1] * (1 - MM_STOP_MAX))
+    if stop >= c[-1]:
         return None
-    return {"direcao": "alta", "motivo": "Tendência de alta, volatilidade contraída e rompimento do pivô."}
+    return {"direcao": "alta", "stop": round(stop, 4), "alvo": round(c[-1] + MM_ALVO_R * (c[-1] - stop), 4),
+            "motivo": "Contrações sucessivas com volume secando e rompimento do pivô com volume."}
 
 
 DETECTORES = {"setup_classico": _classico, "turtle_trading": _turtle, "larry_williams": _larry, "mark_minervini": _minervini}
@@ -200,7 +278,7 @@ def _ler_um(pasta: str) -> dict:
     return {"id": id_, "nome": str(d["nome"]).strip(), "raridade": d["raridade"], "resumo": str(d.get("resumo") or ""),
             "caracteristicas": [str(x) for x in d.get("caracteristicas") or []], "indicadores": [str(x) for x in d.get("indicadores") or []],
             "regra": {"compra": str((d.get("regra") or {}).get("compra") or ""), "venda": str((d.get("regra") or {}).get("venda") or "")},
-            "cores": cores, "assets": assets, "provisorio": not (assets["carta"] and assets["ativacao"])}
+            "fonte_regra": str(d.get("fonte_regra") or ""), "cores": cores, "assets": assets, "provisorio": not (assets["carta"] and assets["ativacao"])}
 
 
 @functools.lru_cache(maxsize=1)
