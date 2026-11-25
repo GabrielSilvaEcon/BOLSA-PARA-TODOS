@@ -944,6 +944,11 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
     """Avança pelo relógio do servidor e devolve o que a tela desenha. No fim: lança o resultado na Carteira e no placar (uma vez)."""
     agora = _agora()
     TB.avancar(p, agora, TD.por_id([cen]))
+    try:                                                   # setups equipados: prazo do evento em curso e sinais do candle que acabou de fechar
+        import setups_vivo as SV
+        SV.processar(p, cen, agora)
+    except Exception as e:
+        banco.registrar_erro("api.setups_solo", e)
     if p["fase"] == "resultado":
         TB.proxima_rodada(p, agora)
     v = TB.visao(p, cen, agora, q.email)
@@ -958,7 +963,13 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
             _desafio_nota(q, d["desafio"], pid, fz)
     d["p"] = p
     _gravar_solo(q, pid, d)
-    args = TG.args_mesa(v, p, d.get("estado") or {}, agora)
+    try:
+        import setups_vivo as SV
+        pub = {**p, "setup": SV.visao(p, q.email, agora)}  # o evento e as marcas dos sinais ativados (None se a partida não tem setups)
+    except Exception as e:
+        banco.registrar_erro("api.setups_solo_visao", e)
+        pub = p
+    args = TG.args_mesa(v, pub, d.get("estado") or {}, agora)
     out = {"id": pid, "fase": p["fase"], "tela": args}
     if fim:
         res = (p.get("resultados") or {}).get(TB._chave(1, q.email))
@@ -984,6 +995,12 @@ def trade_solo_nova(d: NovaPartida, q: Quem = Depends(quem)) -> dict:
         _erro(e, 409)
     except TB.ErroTrader as e:
         _erro(e, 409)
+    try:                                                   # os setups equipados valem também no solo, congelados no começo (trocar na central não muda esta partida)
+        import setups_dados as SD
+        import setups_vivo as SV
+        p["setups"] = SV.iniciar([q.email], {q.email: SD.equipados(q.email)})
+    except Exception as e:
+        banco.registrar_erro("api.setups_solo_inicio", e)
     reg = {"p": p, "cen": TD.referencia_corrida(cen, semente), "estado": {}}
     return _estado_solo(q, pid, reg, p, cen)
 
@@ -1021,6 +1038,27 @@ def trade_solo_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
     d, p, cen = _ler_solo(q, pid)
     try:
         TB.registrar_acao(p, cen, q.email, TG.acao_de(a.dados), _agora())
+    except TB.ErroTrader as x:
+        _erro(x)
+    return _estado_solo(q, pid, d, p, cen)
+
+
+class DecisaoSetup(BaseModel):
+    acao: str
+    q: float | None = None
+
+
+@app.post("/trade/solo/{pid}/setup")
+def trade_solo_setup(pid: str, b: DecisaoSetup, q: Quem = Depends(quem)) -> dict:
+    """Aceitar (ordem a mercado pelo sistema atual, na quantidade `q` da boleta) ou recusar o setup ativado. O prazo é o do servidor."""
+    import setups_vivo as SV
+    if b.acao not in ("aceitar", "recusar"):
+        raise HTTPException(400, "Escolha aceitar ou recusar.")
+    d, p, cen = _ler_solo(q, pid)
+    agora = _agora()
+    TB.avancar(p, agora, TD.por_id([cen]))
+    try:
+        SV.decidir(p, cen, q.email, b.acao == "aceitar", b.q, agora)
     except TB.ErroTrader as x:
         _erro(x)
     return _estado_solo(q, pid, d, p, cen)
@@ -1135,11 +1173,6 @@ def sala_estrategia(pid: str, e: Estrategia, q: Quem = Depends(quem)) -> dict:
 def sala_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
     _sala(OL.agir, pid, q.email, TG.acao_de(a.dados), _agora())
     return sala_ver(pid, q)
-
-
-class DecisaoSetup(BaseModel):
-    acao: str
-    q: float | None = None
 
 
 @app.post("/trade/salas/{pid}/setup")

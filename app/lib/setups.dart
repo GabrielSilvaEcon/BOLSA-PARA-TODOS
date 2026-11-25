@@ -108,7 +108,7 @@ Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {Voi
             Text('${setup['nome']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
             Text(rotulosRaridade[setup['raridade']] ?? '', style: TextStyle(color: cor, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
-            const Text('Com esta carta você já pode usar o setup. Equipe em Meus Setups (até 2) para usar nas partidas X1.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+            const Text('Com esta carta você já pode usar o setup. Equipe em Meus Setups (até 2) para usar nas partidas X1 e solo.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 12.5)),
             const SizedBox(height: 14),
             Row(children: [
               Expanded(child: OutlinedButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('OK'))),
@@ -130,7 +130,7 @@ Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {Voi
   );
 }
 
-/// "Meus Setups": as cartas de setup que a pessoa tem, as características de cada uma e quais estão equipadas (até 2; valem sozinhas nas partidas X1).
+/// "Meus Setups": as cartas de setup que a pessoa tem, as características de cada uma e quais estão equipadas (até 2; valem sozinhas nas partidas X1 e solo).
 class SetupsTela extends StatefulWidget {
   const SetupsTela({super.key, required this.api});
   final Api api;
@@ -217,7 +217,7 @@ class _SetupsTelaState extends State<SetupsTela> {
                   child: Text(equipado ? 'DESEQUIPAR' : (cheio ? 'DESEQUIPE UM SETUP PRIMEIRO' : 'EQUIPAR')),
                 ),
                 const SizedBox(height: 6),
-                Text('Você pode usar até $_limite setups ao mesmo tempo, só os das cartas que você tem. Eles são usados automaticamente nas partidas X1, sem escolher antes de cada partida.',
+                Text('Você pode usar até $_limite setups ao mesmo tempo, só os das cartas que você tem. Eles são usados automaticamente nas partidas X1 e solo, sem escolher antes de cada partida.',
                     textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 11.5)),
               ],
             ),
@@ -256,7 +256,7 @@ class _SetupsTelaState extends State<SetupsTela> {
                   children: [
                     Text('${itens.length} de $total cartas de setup · $_nEquipados/$_limite equipados', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    const Text('As cartas de setup vêm dos baús. Sem a carta, não há setup para usar. Equipe até 2 para serem monitorados em tempo real nas suas partidas X1.', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
+                    const Text('As cartas de setup vêm dos baús. Sem a carta, não há setup para usar. Equipe até 2 para serem monitorados em tempo real nas suas partidas X1 e solo (menos no Desafio do dia, que é igual para todos).', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
                     const SizedBox(height: 14),
                     if (itens.isEmpty)
                       Container(
