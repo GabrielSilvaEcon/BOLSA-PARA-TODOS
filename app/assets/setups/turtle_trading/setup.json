@@ -5,19 +5,18 @@
   "resumo": "Criado por Richard Dennis, busca capturar grandes tendências de mercado.",
   "caracteristicas": [
     "Price Action / Tendência",
-    "Gatilho: compra no rompimento da máxima dos últimos 20 candles",
-    "Stop: o mais curto entre a mínima de 10 candles e 2 ATR",
-    "Timeframe: diário",
-    "Só vale o primeiro rompimento, nunca os seguintes"
+    "Rompimento do canal de 20 dias (Sistema 1) ou de 55 dias (Sistema 2), para comprar ou vender",
+    "O Sistema 1 pula o sinal se o rompimento anterior teria dado lucro; o de 55 dias entra sempre",
+    "Stop de 2N (N = ATR de 20 candles)",
+    "A saída dos Turtles é na mínima (máxima) de 10 candles"
   ],
   "indicadores": [
-    "Máxima dos últimos 20 candles (canal de Donchian)",
-    "Mínima dos últimos 10 candles",
-    "ATR de 20 períodos (2 ATR de stop)"
+    "Canais de máxima e mínima de 20, 55 e 10 candles (Donchian)",
+    "N: média do intervalo verdadeiro de 20 candles"
   ],
   "regra": {
-    "compra": "O candle é o primeiro a fechar acima da máxima dos 20 candles anteriores. Stop no mais curto entre a mínima dos últimos 10 candles e 2 ATR abaixo da entrada.",
-    "venda": "Este setup só compra."
+    "compra": "O candle é o primeiro a superar a máxima dos 20 candles anteriores (se o rompimento anterior teria dado prejuízo) ou a dos 55 candles anteriores. Stop em 2N abaixo.",
+    "venda": "O espelho: o primeiro candle a perder a mínima dos 20 (com o filtro) ou dos 55 candles anteriores. Stop em 2N acima."
   },
   "cores": {
     "principal": "#2EE59D",
@@ -29,5 +28,6 @@
     "moldura": null,
     "icone": null,
     "efeitos": []
-  }
+  },
+  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto."
 }

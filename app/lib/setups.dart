@@ -201,6 +201,8 @@ class _SetupsTelaState extends State<SetupsTela> {
                 Text('${s['nome']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20)),
                 Text(rotulosRaridade[s['raridade']] ?? '', textAlign: TextAlign.center, style: TextStyle(color: _corDe(s), fontWeight: FontWeight.w800)),
                 if ('${s['resumo']}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: Text('${s['resumo']}', style: const TextStyle(color: Colors.white70, height: 1.35))),
+                if ('${s['fonte_regra'] ?? ''}'.isNotEmpty)
+                  Padding(padding: const EdgeInsets.only(top: 8), child: Text('${s['fonte_regra']}', style: const TextStyle(color: Colors.white54, fontStyle: FontStyle.italic, fontSize: 11.5, height: 1.3))),
                 _bloco('Como entra', [if ('${(s['regra'] as Map)['compra']}'.isNotEmpty) 'Compra: ${(s['regra'] as Map)['compra']}', if ('${(s['regra'] as Map)['venda']}'.isNotEmpty) 'Venda: ${(s['regra'] as Map)['venda']}']),
                 _bloco('Características', (s['caracteristicas'] as List).map((e) => '$e').toList()),
                 _bloco('Indicadores', (s['indicadores'] as List).map((e) => '$e').toList()),

@@ -4,18 +4,19 @@
   "raridade": "epica",
   "resumo": "Criado pelo campeão Mark Minervini, busca ações líderes saindo de bases sólidas.",
   "caracteristicas": [
-    "Price Action / Tendência",
-    "Gatilho: compra no rompimento da contração de volatilidade (VCP) com volume",
-    "Alvo de 3 para 1, com stop no fundo da contração (VCP)",
-    "Timeframe: diário / semanal"
+    "Trend Template: preço acima das médias de 50, 150 e 200, com 50 > 150 > 200 e a de 200 subindo",
+    "A no máximo 25% do topo e pelo menos 30% acima do fundo de 52 semanas",
+    "VCP: contrações sucessivas, cada uma mais rasa, com o volume secando",
+    "Rompimento do pivô com volume 40% acima da média",
+    "Stop no fundo da última contração (máx. 8%) e alvo de 3 para 1"
   ],
   "indicadores": [
-    "Médias de 50, 150 e 200 períodos (tendência de alta)",
-    "Contração da amplitude dos candles (VCP)",
-    "Volume acima da média"
+    "Médias de 50, 150 e 200 períodos",
+    "Contrações de preço (VCP) e volume",
+    "Volume médio de 50 candles"
   ],
   "regra": {
-    "compra": "Tendência de alta saudável, preço perto do topo, volatilidade contraída e rompimento da máxima recente com volume. Stop no fundo da contração e alvo de 3 vezes o risco.",
+    "compra": "Tendência de alta saudável, pelo menos 2 contrações cada vez mais rasas (a última com até 12%) com o volume secando, e fechamento acima do pivô com volume 40% acima da média. Stop no fundo da contração e alvo de 3 vezes o risco.",
     "venda": "Este setup só compra."
   },
   "cores": {
@@ -28,5 +29,6 @@
     "moldura": null,
     "icone": null,
     "efeitos": []
-  }
+  },
+  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto."
 }

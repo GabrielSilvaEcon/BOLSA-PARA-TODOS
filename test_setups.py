@@ -91,19 +91,40 @@ def sinais(setup_id, v, desde=0):
     return [(i, SU.detectar(setup_id, v[:i + 1])) for i in range(desde, len(v)) if SU.detectar(setup_id, v[:i + 1])]
 
 
-def test_turtle_so_o_primeiro_fechamento_alem_do_canal_e_sinal():
-    base = [100.0] * 30
-    v = velas(base + [102.0, 103.0, 104.0], amp=0.02)                 # o canal de 20 candles vai até a máxima 101; três fechamentos acima dele
-    s = sinais("turtle_trading", v, 25)
-    assert [(i, x["direcao"]) for i, x in s] == [(30, "alta")]        # só o primeiro: os seguintes não são sinais novos
+def _turtle_serie(partes, amp=0.002):
+    """Série de fechamentos montada por trechos: ('plano', n, preço) ou ('rampa', n, preço_final)."""
+    c = []
+    for tp, n, pr in partes:
+        ini = c[-1] if c else pr
+        c += [pr] * n if tp == "plano" else [ini + (pr - ini) * (k + 1) / n for k in range(n)]
+    return velas(c, amp=amp)
+
+
+def test_turtle_rompimento_de_20_dias_nos_dois_sentidos_so_o_primeiro_candle():
+    alta = _turtle_serie([("plano", 70, 100.0), ("rampa", 1, 102.0), ("rampa", 2, 104.0)])
+    s = sinais("turtle_trading", alta, 60)
+    assert [(i, x["direcao"]) for i, x in s] == [(70, "alta")]                  # só o primeiro: os seguintes não são sinal novo
     x = s[0][1]
-    assert x["stop"] < 102.0 and "alvo" not in x                       # stop (o mais curto entre mínima de 10 e 2 ATR); sem alvo fixo
-    assert sinais("turtle_trading", velas(base + [98.0, 97.0], amp=0.02), 25) == []     # a carta só compra: rompimento para baixo não é sinal
-    assert sinais("turtle_trading", velas(base + [100.5], amp=0.02), 25) == []          # fechou dentro do canal: nada
+    assert x["stop"] < alta[70]["c"] and "alvo" not in x and "gatilho" not in x   # stop de 2N; sem alvo fixo (a saída é na mínima de 10 dias)
+    baixa = _turtle_serie([("plano", 70, 100.0), ("rampa", 1, 98.0), ("rampa", 2, 96.0)])
+    sb = sinais("turtle_trading", baixa, 60)
+    assert [(i, x["direcao"]) for i, x in sb] == [(70, "baixa")] and sb[0][1]["stop"] > baixa[70]["c"]       # os Turtles também vendiam
+    assert sinais("turtle_trading", _turtle_serie([("plano", 71, 100.0)]), 60) == []     # sem superar o canal: nada
+
+
+def test_turtle_sistema_1_pula_o_rompimento_se_o_anterior_teria_dado_lucro_mas_o_de_55_dias_nao_pula():
+    ganhou = [("plano", 60, 100.0), ("rampa", 5, 110.0), ("rampa", 9, 101.0), ("plano", 25, 101.0), ("rampa", 8, 108.0)]
+    v = _turtle_serie(ganhou)
+    assert sinais("turtle_trading", v, 90) == []                                # novo rompimento de 20 dias, mas o anterior deu lucro: o Sistema 1 pula
+    perdeu = [("plano", 60, 100.0), ("rampa", 1, 102.0), ("rampa", 3, 96.0), ("plano", 30, 99.0), ("rampa", 1, 102.0)]
+    v = _turtle_serie(perdeu)
+    assert [x["direcao"] for _, x in sinais("turtle_trading", v, 90)] == ["alta"]       # o anterior perdeu (stop de 2N): pega este
+    de55 = _turtle_serie([("plano", 60, 100.0), ("rampa", 5, 110.0), ("rampa", 9, 101.0), ("plano", 25, 101.0), ("rampa", 8, 112.0)])
+    assert [x["direcao"] for _, x in sinais("turtle_trading", de55, 90)] == ["alta"]    # passou da máxima de 55 dias: o Sistema 2 entra sempre
 
 
 def test_turtle_precisa_de_historico_suficiente():
-    assert SU.detectar("turtle_trading", velas([100.0] * 10 + [110.0])) is None
+    assert SU.detectar("turtle_trading", velas([100.0] * 30 + [110.0])) is None
 
 
 def _serie_classico(vol_final=2000.0, depois=()):
@@ -137,53 +158,67 @@ def _tendencia_com_recuo(recuo=True, tendencia=1):
 
 def test_larry_williams_arma_na_virada_da_mme9_e_so_depois_o_preco_dispara():
     v = velas(_tendencia_com_recuo())
-    arm = [(i, x) for i, x in sinais("larry_williams", v, 100)]
-    assert len(arm) == 1
+    arm = [(i, x) for i, x in sinais("larry_williams", v, 100) if x["direcao"] == "alta"]
+    assert len(arm) == 1                                                   # uma virada para cima, um gatilho: depois de acionado não se entra de novo
     i, x = arm[0]
     a = v[i]
     assert x["direcao"] == "alta" and "gatilho" in x                       # armado, não dispara sozinho
     assert x["gatilho"] == a["h"] and x["stop"] == a["l"]                  # gatilho na máxima e stop na mínima do candle de virada
-    assert x["alvo"] == pytest.approx(a["h"] + 2 * (a["h"] - a["l"]))      # alvo 2:1
-    assert x["validade"] == 1
+    assert "alvo" not in x and x["validade"] == 1                          # sem alvo fixo: a saída do 9.1 é a média virar contra
 
 
-def test_larry_williams_so_compra_como_diz_a_carta_e_so_a_favor_da_tendencia(monkeypatch):
+def test_larry_williams_opera_os_dois_sentidos_e_reposiciona_o_gatilho_enquanto_a_media_segue():
     queda = velas(_tendencia_com_recuo(tendencia=-1))
-    assert sinais("larry_williams", queda, 100) == []                      # a carta só descreve a compra
-    monkeypatch.setattr(SU, "LW_VENDE", True)
-    venda = sinais("larry_williams", queda, 100)
-    assert len(venda) == 1 and venda[0][1]["direcao"] == "baixa"           # o espelho existe, desligado por padrão
-    assert venda[0][1]["gatilho"] == queda[venda[0][0]]["l"]
-    contra = [100 * 0.997 ** i for i in range(120)] + [50 * 1.02 ** k for k in range(1, 4)]       # MME9 vira para cima, mas abaixo da MME50
-    assert sinais("larry_williams", velas(contra), 100) == []
+    venda = [(k, x) for k, x in sinais("larry_williams", queda, 100) if x["direcao"] == "baixa"]
+    assert len(venda) == 1                                                 # a média vira para baixo: venda na perda da mínima
+    assert venda[0][1]["gatilho"] == queda[venda[0][0]]["l"] and venda[0][1]["stop"] == queda[venda[0][0]]["h"]
+    base = _tendencia_com_recuo()
+    base += [base[-1] * 1.01, base[-1] * 1.02, base[-1] * 1.03]            # a média segue para cima depois da virada
+    v = velas(base)
+    i = [k for k, x in sinais("larry_williams", v, 100) if x["direcao"] == "alta"][0]
+    v2 = velas(base)
+    v2[i + 1]["h"] = v2[i]["h"] * 0.9999                                    # o candle seguinte NÃO supera a máxima: o gatilho não é acionado
+    rearma = [(k, x) for k, x in sinais("larry_williams", v2, 100) if k > i and x["direcao"] == "alta"]
+    assert rearma and rearma[0][0] == i + 1 and rearma[0][1]["gatilho"] == v2[i + 1]["h"]       # e passa para a máxima do novo candle
 
 
-def _serie_minervini(final_close=0.0035, final_vol=1600.0, contracao=True):
-    n = 260
-    c = [100 * 1.002 ** i for i in range(n)]
-    v = velas(c, amp=0.008)
-    if contracao:
-        for j, i in enumerate(range(n - 26, n - 1)):                       # a volatilidade vai se apertando nos 25 candles antes do rompimento
-            hr = 0.004 - (0.004 - 0.0004) * j / 24
-            v[i]["h"], v[i]["l"] = c[i] * (1 + hr), c[i] * (1 - hr)
-    ant = c[-2]
-    v[-1] = {"t": "x", "o": ant, "c": ant * (1 + final_close), "h": ant * (1 + final_close) * 1.0005, "l": ant, "v": final_vol}
+def _serie_minervini(final_vol=1600.0, final_close=1.01, profundidades=(0.15, 0.061, 0.03), vol_base=1000.0, vol_seca=600.0):
+    """Tendência de alta de 220 candles e uma base com 3 contrações (cada uma mais rasa) com o volume secando; o último candle rompe o pivô."""
+    c = [100 * 1.0025 ** i for i in range(220)]
+    topo = c[-1]
+    # pontos de passagem: topo -> fundo1 -> topo1 -> fundo2 -> topo2 -> fundo3 -> topo3
+    d1, d2, d3 = profundidades
+    wp = [(topo * (1 - d1), 8), (topo * 0.985, 8), (topo * 0.985 * (1 - d2), 6), (topo * 0.99, 6), (topo * 0.99 * (1 - d3), 5), (topo * 0.985, 5)]
+    atual = topo
+    for alvo, n in wp:
+        c += [atual + (alvo - atual) * (k + 1) / n for k in range(n)]
+        atual = alvo
+    c.append(topo * final_close)
+    v = velas(c, amp=0.004)
+    for x in v:
+        x["v"] = vol_base
+    ini_seca = 220 + 8 + 8 + 6 + 6                                           # da última contração até o candle antes do rompimento
+    for x in v[ini_seca - 1:-1]:
+        x["v"] = vol_seca
+    v[-1]["v"] = final_vol
     return v
 
 
-def test_minervini_tendencia_contracao_e_rompimento_do_pivo():
-    s = SU.detectar("mark_minervini", _serie_minervini())
-    assert s and s["direcao"] == "alta"
+def test_minervini_trend_template_vcp_e_rompimento_do_pivo_com_volume():
     v = _serie_minervini()
-    assert s["stop"] == round(min(x["l"] for x in v[-SU.MM_BASE - 1:-1]), 4) and s["stop"] < v[-1]["c"]       # stop no fundo da contração
-    assert s["alvo"] == pytest.approx(v[-1]["c"] + 3 * (v[-1]["c"] - s["stop"]), abs=1e-3)                    # alvo 3:1, como na carta
-    assert SU.detectar("mark_minervini", _serie_minervini(final_close=0.0001)) is None        # não rompeu o pivô
-    assert SU.detectar("mark_minervini", _serie_minervini(final_vol=100.0)) is None            # o volume secou
-    assert SU.detectar("mark_minervini", _serie_minervini(final_vol=1100.0)) is None           # acima da média, mas sem os 40% do critério original
-    assert SU.detectar("mark_minervini", _serie_minervini(contracao=False)) is None            # a volatilidade não contraiu
+    s = SU.detectar("mark_minervini", v)
+    assert s and s["direcao"] == "alta"
+    fundo = min(x["l"] for x in v[-12:-1])
+    assert s["stop"] == pytest.approx(max(fundo, v[-1]["c"] * 0.92), abs=0.05) and s["stop"] < v[-1]["c"]       # stop no fundo da última contração (máx. 8%)
+    assert s["alvo"] == pytest.approx(v[-1]["c"] + 3 * (v[-1]["c"] - s["stop"]), abs=1e-3)                        # alvo 3:1
+    assert SU.detectar("mark_minervini", _serie_minervini(final_close=0.985)) is None                              # não rompeu o pivô
+    assert SU.detectar("mark_minervini", _serie_minervini(final_vol=1100.0)) is None                               # volume sem os 40% a mais
+    assert SU.detectar("mark_minervini", _serie_minervini(vol_seca=1500.0)) is None                                # o volume não secou na contração
+    assert SU.detectar("mark_minervini", _serie_minervini(profundidades=(0.06, 0.12, 0.03))) is None              # as contrações não vão diminuindo
+    assert SU.detectar("mark_minervini", _serie_minervini(profundidades=(0.20, 0.15, 0.14))) is None              # a última contração não é curta
     queda = velas([100 * 0.998 ** i for i in range(260)])
-    assert SU.detectar("mark_minervini", queda) is None                                         # sem tendência de alta
-    assert SU.detectar("mark_minervini", velas([100.0] * 100)) is None                          # histórico curto demais
+    assert SU.detectar("mark_minervini", queda) is None                                                             # sem tendência de alta
+    assert SU.detectar("mark_minervini", velas([100.0] * 100)) is None                                              # histórico curto demais
 
 
 def test_detector_so_olha_para_tras():

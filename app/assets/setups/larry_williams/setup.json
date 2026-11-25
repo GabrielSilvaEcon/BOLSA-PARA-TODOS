@@ -4,19 +4,19 @@
   "raridade": "epica",
   "resumo": "Compra na superação da máxima do candle que fez a média exponencial de 9 virar para cima, para capturar reversões rápidas de curto prazo.",
   "caracteristicas": [
-    "Price Action / Tendência",
-    "Gatilho: superar a máxima do candle que virou a MME9 para cima",
-    "Alvo de 2 para 1, com stop na mínima do candle",
-    "Busca reversões rápidas de curto prazo"
+    "Setup 9.1: a média exponencial de 9 vira",
+    "Compra na superação da máxima do candle da virada; venda na perda da mínima",
+    "Stop no outro extremo do candle",
+    "Se o candle seguinte não acionar, o gatilho vai para o novo candle enquanto a média seguir na direção",
+    "Sem alvo fixo: a saída é a média virar contra"
   ],
   "indicadores": [
     "Média móvel exponencial de 9 períodos (MME9)",
-    "Máxima e mínima do candle de virada",
-    "Média exponencial de 50 (filtro de tendência)"
+    "Máxima e mínima do candle de virada"
   ],
   "regra": {
-    "compra": "A MME9 vira para cima num candle que fecha acima da MME50. A compra fica armada na máxima desse candle e dispara se o preço a superar no candle seguinte. Stop na mínima do candle e alvo de 2 vezes o risco.",
-    "venda": "Este setup só compra."
+    "compra": "A MME9 vira para cima: a compra fica armada na máxima do candle e dispara se o preço a superar no candle seguinte (senão, o gatilho é reposicionado). Stop na mínima do candle.",
+    "venda": "A MME9 vira para baixo: a venda fica armada na mínima do candle e dispara se o preço a perder. Stop na máxima do candle."
   },
   "cores": {
     "principal": "#2EE59D",
@@ -28,5 +28,6 @@
     "moldura": null,
     "icone": null,
     "efeitos": []
-  }
+  },
+  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto."
 }
