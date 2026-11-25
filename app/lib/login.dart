@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -56,6 +57,28 @@ class _LoginTelaState extends State<LoginTela> {
     }
   }
 
+  /// Entrar com o Google: quem já entrava assim no app antigo cai na MESMA conta do jogo (o servidor liga pelo e-mail confirmado).
+  Future<void> _google() async {
+    setState(() {
+      _ocupado = true;
+      _aviso = null;
+    });
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: kIsWeb ? linkDeTeste : linkGoogleApp,
+        queryParams: const {'prompt': 'select_account'},
+      );
+      // o navegador abre a tela do Google; ao voltar, a sessão aparece e a tela principal troca sozinha (ver main.dart)
+    } on AuthException catch (e) {
+      setState(() => _aviso = _traduzir(e.message));
+    } catch (_) {
+      setState(() => _aviso = 'Não consegui abrir o login do Google agora. Tente de novo em instantes.');
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
   Future<void> _esqueci() async {
     final email = _email.text.trim();
     if (!email.contains('@')) {
@@ -72,7 +95,7 @@ class _LoginTelaState extends State<LoginTela> {
 
   String _traduzir(String msg) {
     final m = msg.toLowerCase();
-    if (m.contains('invalid login')) return 'E-mail ou senha incorretos.';
+    if (m.contains('invalid login')) return 'E-mail ou senha incorretos. Se você costuma entrar com o Google, toque em "Entrar com o Google".';
     if (m.contains('not confirmed')) return 'Confirme seu e-mail antes de entrar. Abra o link que enviamos.';
     if (m.contains('already registered') || m.contains('already been registered')) return 'Este e-mail já tem conta. Toque em "Já tenho conta".';
     return msg;
@@ -135,6 +158,14 @@ class _LoginTelaState extends State<LoginTela> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    key: const Key('entrar_google'),
+                    onPressed: _ocupado ? null : _google,
+                    style: OutlinedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF1F1F1F), side: const BorderSide(color: Color(0xFFDADCE0))),
+                    icon: const Text('G', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF4285F4))),
+                    label: const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('Entrar com o Google', style: TextStyle(fontWeight: FontWeight.w700))),
+                  ),
+                  const SizedBox(height: 4),
                   TextButton(
                     onPressed: _ocupado ? null : () => setState(() {
                       _criando = !_criando;
