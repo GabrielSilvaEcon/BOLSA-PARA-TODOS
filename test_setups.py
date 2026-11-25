@@ -34,7 +34,7 @@ def test_so_a_arte_que_existe_vale_e_o_setup_se_declara_provisorio_sozinho():
     assert larry["assets"]["ativacao"] is None and larry["provisorio"]               # falta a arte da animação: ainda provisório
     for sid in ("turtle_trading", "mark_minervini"):                                  # as artes enviadas, usadas como vieram
         assert SU.info(sid)["assets"]["carta"] == f"assets/setups/{sid}/carta.jpg" and SU.info(sid)["provisorio"]
-    assert SU.info("setup_classico")["assets"]["carta"] is None and SU.info("setup_classico")["provisorio"]
+    assert SU.info("setup_classico")["assets"]["carta"] == "assets/setups/setup_classico/carta.jpg" and SU.info("setup_classico")["provisorio"]
 
 
 def test_trocar_arte_provisoria_pela_definitiva_nao_pede_codigo(tmp_path, monkeypatch):
@@ -106,17 +106,23 @@ def test_turtle_precisa_de_historico_suficiente():
     assert SU.detectar("turtle_trading", velas([100.0] * 10 + [110.0])) is None
 
 
-def _alta_depois_de_queda():
-    return [100 - 0.6 * i for i in range(60)] + [64 * 1.03 ** k for k in range(1, 12)]
+def _serie_classico(vol_final=2000.0, depois=()):
+    closes = [100.0] * 40 + [101.0, 102.0, 103.0, 104.0] + [103.0, 102.5, 102.0] + [105.0] + list(depois)
+    v = velas(closes)
+    v[44]["h"] = v[44]["c"] * 1.001                                       # o candle seguinte ao topo abre abaixo dele (sem empate de máximas)
+    v[47]["v"] = vol_final                                                # o candle do rompimento
+    return v
 
 
-def test_classico_cruzamento_de_medias_com_ifr_confirmando():
-    v = velas(_alta_depois_de_queda())
-    s = sinais("setup_classico", v)
-    assert len(s) == 1 and s[0][1]["direcao"] == "alta"
-    assert s[0][0] >= 60                                              # nasce na virada, nunca durante a queda
-    espelho = velas([200 - c for c in _alta_depois_de_queda()])
-    assert [x["direcao"] for _, x in sinais("setup_classico", espelho)] == ["baixa"]
+def test_classico_rompimento_do_pivo_de_alta_com_volume():
+    v = _serie_classico()
+    s = sinais("setup_classico", v, 30)
+    assert [(i, x["direcao"]) for i, x in s] == [(47, "alta")]            # só no candle que rompe o pivô
+    x = s[0][1]
+    assert x["stop"] < v[47]["c"] and x["stop"] == round(min(c["l"] for c in v[43:48]), 4)         # stop no fundo do pivô
+    assert x["alvo"] == pytest.approx(v[47]["c"] + 2 * (v[47]["c"] - x["stop"]), abs=1e-3)           # alvo 2:1, como na carta
+    assert sinais("setup_classico", _serie_classico(vol_final=1000.0), 30) == []                     # sem aumento de volume: nada
+    assert sinais("setup_classico", _serie_classico(depois=[106.0, 107.0]), 46) == [(47, s[0][1])]   # os candles seguintes não são sinal novo
     assert sinais("setup_classico", velas([100.0 + (i % 2) * 0.01 for i in range(80)])) == []        # mercado parado: nada
 
 
@@ -242,13 +248,15 @@ def test_bau_e_deterministico_e_so_traz_setup_que_ela_ainda_nao_tem():
     assert SU.sortear_do_bau("y", "lendario", d, baus, {"lendario": 1.0}) is None   # tem todos: nada mais sai
 
 
-def test_bau_sem_chance_nao_traz_setup_e_a_raridade_segue_os_pesos_do_proprio_bau():
+def test_bau_sem_chance_nao_traz_setup_e_a_raridade_segue_os_pesos_do_proprio_bau(monkeypatch):
     d = SU.colecao_vazia()
     assert all(SU.sortear_do_bau(f"z{i}", "comum", d, CAT.BAUS, {"comum": 0.0}) is None for i in range(200))
     assert SU.sortear_do_bau("w", "tier_que_nao_existe", d, CAT.BAUS) is None        # tier sem chance configurada: nada
 
-    def parte_de_epica(tier):          # o catálogo tem setups comuns e épicos: a fatia de épicos acompanha os pesos do baú
-        n = sum(SU.info(SU.sortear_do_bau(f"{tier}{i}", tier, d, CAT.BAUS, {tier: 1.0}))["raridade"] == "epica" for i in range(3000))
+    monkeypatch.setattr(SU, "catalogo", lambda: [{"id": "a", "raridade": "comum"}, {"id": "b", "raridade": "epica"}])      # os setups de verdade são todos épicos
+
+    def parte_de_epica(tier):          # a fatia de épicos acompanha os pesos do baú
+        n = sum(SU.sortear_do_bau(f"{tier}{i}", tier, d, CAT.BAUS, {tier: 1.0}) == "b" for i in range(3000))
         return n / 3000
     comum, lendario = parte_de_epica("comum"), parte_de_epica("lendario")
     assert comum < 0.10 and 0.45 < lendario < 0.62 and lendario > 5 * comum          # baú melhor favorece setup mais raro
