@@ -19,15 +19,16 @@ def dois(monkeypatch):
         import battle_dados as BD
         import test_api as T
         from datetime import date
-        sug = BT.baralho_padrao(T._cartas_teste(), date.today())
-        for e in ("ana@x.com", "bia@x.com"):
-            BD.gravar_pessoa(banco, e, {"deck": sug[:4], "hist": []})
+        T._cartas_teste()
         cs = []
         for e, u in (("ana@x.com", "ana_h"), ("bia@x.com", "bia_h")):
             banco.sis_atualizar_conta("id-" + e, {"status": "ativa"})
             c = TestClient(API.app)
             c.headers["Authorization"] = f"Bearer {contas.criar_sessao('id-' + e)}"
             assert c.post("/perfil", json={"usuario": u, "nome": u.upper()}).status_code == 200
+            t = c.post("/ticker/tutorial/bau").json()        # desde INICIAL = (), o baralho só existe depois do Baú Iniciante
+            for it in t["cartas"]:
+                c.post("/cartas/equipar", json={"tk": it["tk"]})
             cs.append(c)
         yield cs
 
