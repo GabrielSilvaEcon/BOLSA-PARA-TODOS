@@ -32,7 +32,9 @@ def test_so_a_arte_que_existe_vale_e_o_setup_se_declara_provisorio_sozinho():
     larry = SU.info("larry_williams")
     assert larry["assets"]["carta"] == "assets/setups/larry_williams/carta.jpg"      # a arte enviada, usada como veio
     assert larry["assets"]["ativacao"] is None and larry["provisorio"]               # falta a arte da animação: ainda provisório
-    assert SU.info("turtle_trading")["assets"]["carta"] is None and SU.info("turtle_trading")["provisorio"]
+    for sid in ("turtle_trading", "mark_minervini"):                                  # as artes enviadas, usadas como vieram
+        assert SU.info(sid)["assets"]["carta"] == f"assets/setups/{sid}/carta.jpg" and SU.info(sid)["provisorio"]
+    assert SU.info("setup_classico")["assets"]["carta"] is None and SU.info("setup_classico")["provisorio"]
 
 
 def test_trocar_arte_provisoria_pela_definitiva_nao_pede_codigo(tmp_path, monkeypatch):
@@ -90,17 +92,18 @@ def sinais(setup_id, v, desde=0):
 
 
 def test_turtle_so_o_primeiro_fechamento_alem_do_canal_e_sinal():
-    base = [100.0] * 210
-    v = velas(base + [102.0, 103.0, 104.0], amp=0.02)                 # o canal vai até a máxima 101; três fechamentos acima dele
-    s = sinais("turtle_trading", v, 205)
-    assert [(i, x["direcao"]) for i, x in s] == [(210, "alta")]       # só o primeiro: os seguintes não são sinais novos
-    baixo = velas(base + [98.0, 97.0], amp=0.02)
-    assert [(i, x["direcao"]) for i, x in sinais("turtle_trading", baixo, 205)] == [(210, "baixa")]
-    assert sinais("turtle_trading", velas(base + [100.5], amp=0.02), 205) == []        # fechou dentro do canal: nada
+    base = [100.0] * 30
+    v = velas(base + [102.0, 103.0, 104.0], amp=0.02)                 # o canal de 20 candles vai até a máxima 101; três fechamentos acima dele
+    s = sinais("turtle_trading", v, 25)
+    assert [(i, x["direcao"]) for i, x in s] == [(30, "alta")]        # só o primeiro: os seguintes não são sinais novos
+    x = s[0][1]
+    assert x["stop"] < 102.0 and "alvo" not in x                       # stop (o mais curto entre mínima de 10 e 2 ATR); sem alvo fixo
+    assert sinais("turtle_trading", velas(base + [98.0, 97.0], amp=0.02), 25) == []     # a carta só compra: rompimento para baixo não é sinal
+    assert sinais("turtle_trading", velas(base + [100.5], amp=0.02), 25) == []          # fechou dentro do canal: nada
 
 
 def test_turtle_precisa_de_historico_suficiente():
-    assert SU.detectar("turtle_trading", velas([100.0] * 50 + [110.0])) is None
+    assert SU.detectar("turtle_trading", velas([100.0] * 10 + [110.0])) is None
 
 
 def _alta_depois_de_queda():
@@ -165,6 +168,9 @@ def _serie_minervini(final_close=0.0035, final_vol=1000.0, contracao=True):
 def test_minervini_tendencia_contracao_e_rompimento_do_pivo():
     s = SU.detectar("mark_minervini", _serie_minervini())
     assert s and s["direcao"] == "alta"
+    v = _serie_minervini()
+    assert s["stop"] == round(min(x["l"] for x in v[-SU.MM_BASE - 1:-1]), 4) and s["stop"] < v[-1]["c"]       # stop no fundo da contração
+    assert s["alvo"] == pytest.approx(v[-1]["c"] + 3 * (v[-1]["c"] - s["stop"]), abs=1e-3)                    # alvo 3:1, como na carta
     assert SU.detectar("mark_minervini", _serie_minervini(final_close=0.0001)) is None        # não rompeu o pivô
     assert SU.detectar("mark_minervini", _serie_minervini(final_vol=100.0)) is None            # o volume secou
     assert SU.detectar("mark_minervini", _serie_minervini(contracao=False)) is None            # a volatilidade não contraiu
@@ -241,11 +247,11 @@ def test_bau_sem_chance_nao_traz_setup_e_a_raridade_segue_os_pesos_do_proprio_ba
     assert all(SU.sortear_do_bau(f"z{i}", "comum", d, CAT.BAUS, {"comum": 0.0}) is None for i in range(200))
     assert SU.sortear_do_bau("w", "tier_que_nao_existe", d, CAT.BAUS) is None        # tier sem chance configurada: nada
 
-    def parte_de_lendaria(tier):
-        n = sum(SU.info(SU.sortear_do_bau(f"{tier}{i}", tier, d, CAT.BAUS, {tier: 1.0}))["raridade"] == "lendaria" for i in range(3000))
+    def parte_de_epica(tier):          # o catálogo tem setups comuns e épicos: a fatia de épicos acompanha os pesos do baú
+        n = sum(SU.info(SU.sortear_do_bau(f"{tier}{i}", tier, d, CAT.BAUS, {tier: 1.0}))["raridade"] == "epica" for i in range(3000))
         return n / 3000
-    comum, lendario = parte_de_lendaria("comum"), parte_de_lendaria("lendario")
-    assert comum < 0.04 and 0.08 < lendario < 0.17 and lendario > 3 * comum          # baú melhor favorece setup mais raro (pesos 1 e 12)
+    comum, lendario = parte_de_epica("comum"), parte_de_epica("lendario")
+    assert comum < 0.10 and 0.45 < lendario < 0.62 and lendario > 5 * comum          # baú melhor favorece setup mais raro
 
 
 # ====================================================================================== ativação ao vivo (sobre o estado da partida)
@@ -576,7 +582,7 @@ def test_api_meus_setups_lista_so_o_conquistado_e_equipar_confere_a_propriedade(
     assert [i["id"] for i in r["itens"]] == ["turtle_trading"] and r["conquistados"] == 1 and r["total"] == 4 and r["equipados"] == []
     assert "larry_williams" not in json.dumps(r) and "Minervini" not in json.dumps(r)               # o que não desbloqueou não aparece
     i = r["itens"][0]
-    assert i["caracteristicas"] and i["indicadores"] and i["regra"]["compra"] and i["assets"]["carta"] is None and i["provisorio"]
+    assert i["caracteristicas"] and i["indicadores"] and i["regra"]["compra"] and i["assets"]["carta"] == "assets/setups/turtle_trading/carta.jpg" and i["provisorio"]
     assert cli.post("/setups/equipar", json={"id": "larry_williams"}).status_code == 400
     assert cli.post("/setups/equipar", json={"id": "inventado"}).status_code == 400
     assert cli.post("/setups/equipar", json={"id": "turtle_trading"}).json()["equipados"] == ["turtle_trading"]

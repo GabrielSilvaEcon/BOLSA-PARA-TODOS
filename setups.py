@@ -78,11 +78,12 @@ def _rsi(c: list[float], n: int = 14) -> float | None:
 # É mercado simulado (o ambiente não tem dado real): serve para dar a ordem de grandeza, não para prometer a frequência do mercado de verdade.
 # Os primeiros valores que escolhi davam 30 sinais a cada 100 candles num setup e quase nenhum em outro.
 CLASSICO_RAPIDA, CLASSICO_LENTA, CLASSICO_MARGEM_IFR = 9, 21, 7      # compra pede IFR >= 50 + margem; venda, IFR <= 50 - margem
-TURTLE_CANAL = 200
+TURTLE_CANAL, TURTLE_SAIDA, TURTLE_ATR, TURTLE_STOP_ATR = 20, 10, 20, 2.0      # a carta: máxima de 20 candles; stop = o mais curto entre a mínima de 10 e 2 ATR
 LW_MEDIA, LW_ALVO_R, LW_VALIDADE, LW_MIN_CANDLES = 9, 2.0, 1, 40   # MME9; alvo = 2x o risco; o gatilho vale só para o candle seguinte
 LW_TENDENCIA, LW_VENDE = 50, False                                  # só opera a favor da MME50; a carta só descreve a COMPRA (LW_VENDE liga o espelho)
 MM_TOPO = 0.75                                                         # fechamento a no máximo 25% do topo da janela (a regra original)
 MM_JANELA, MM_CONTRACAO, MM_PIVO, MM_VOLUME = 250, 1.0, 5, 0.8
+MM_BASE, MM_ALVO_R = 15, 3.0                                           # fundo da contração (VCP) = mínima dos últimos 15 candles; alvo 3:1 (a carta)
 
 
 def _classico(v: list[dict]) -> dict | None:
@@ -102,18 +103,31 @@ def _classico(v: list[dict]) -> dict | None:
     return None
 
 
+def _atr(v: list[dict], n: int) -> float | None:
+    """Média do intervalo verdadeiro dos últimos `n` candles (o candle atual entra)."""
+    if len(v) < n + 1:
+        return None
+    tr = [max(v[i]["h"] - v[i]["l"], abs(v[i]["h"] - v[i - 1]["c"]), abs(v[i]["l"] - v[i - 1]["c"])) for i in range(len(v) - n, len(v))]
+    return sum(tr) / n
+
+
 def _turtle(v: list[dict]) -> dict | None:
-    """Turtle Trading: o candle fecha acima da máxima (ou abaixo da mínima) dos `TURTLE_CANAL` candles anteriores (canal de Donchian) e é o
-    PRIMEIRO a fazer isso: depois de um rompimento os candles seguintes também fecham acima do canal antigo, e isso não é um sinal novo."""
-    if len(v) < TURTLE_CANAL + 2:
+    """Turtle Trading (só compra, como na carta): o candle fecha acima da máxima dos `TURTLE_CANAL` candles anteriores (canal de Donchian) e é o
+    PRIMEIRO a fazer isso: depois de um rompimento os candles seguintes também fecham acima do canal antigo, e isso não é um sinal novo.
+    Stop: o mais curto entre a mínima dos últimos `TURTLE_SAIDA` candles e `TURTLE_STOP_ATR` ATR abaixo da entrada. Sem alvo fixo: segue a tendência."""
+    if len(v) < max(TURTLE_CANAL + 2, TURTLE_ATR + 2):
         return None
     janela, a, ant = v[-TURTLE_CANAL - 1:-1], v[-1], v[-2]
     canal_ant = v[-TURTLE_CANAL - 2:-2]
-    if a["c"] > max(x["h"] for x in janela) and not ant["c"] > max(x["h"] for x in canal_ant):
-        return {"direcao": "alta", "motivo": f"Primeiro fechamento acima da máxima dos últimos {TURTLE_CANAL} candles."}
-    if a["c"] < min(x["l"] for x in janela) and not ant["c"] < min(x["l"] for x in canal_ant):
-        return {"direcao": "baixa", "motivo": f"Primeiro fechamento abaixo da mínima dos últimos {TURTLE_CANAL} candles."}
-    return None
+    if not (a["c"] > max(x["h"] for x in janela) and not ant["c"] > max(x["h"] for x in canal_ant)):
+        return None
+    atr = _atr(v, TURTLE_ATR)
+    if not atr:
+        return None
+    stop = max(min(x["l"] for x in v[-TURTLE_SAIDA - 1:-1]), a["c"] - TURTLE_STOP_ATR * atr)
+    if stop >= a["c"]:
+        return None
+    return {"direcao": "alta", "stop": round(stop, 4), "motivo": f"Primeiro fechamento acima da máxima dos últimos {TURTLE_CANAL} candles."}
 
 
 def _larry(v: list[dict]) -> dict | None:
@@ -165,7 +179,11 @@ def _minervini(v: list[dict]) -> dict | None:
     media_vol = _sma(vol[:-1], 20)
     if not media_vol or vol[-1] < MM_VOLUME * media_vol:
         return None
-    return {"direcao": "alta", "motivo": "Tendência de alta, volatilidade contraída e rompimento do pivô."}
+    stop = min(lo[-MM_BASE - 1:-1])
+    if stop >= c[-1]:
+        return None
+    return {"direcao": "alta", "stop": round(stop, 4), "alvo": round(c[-1] + MM_ALVO_R * (c[-1] - stop), 4),
+            "motivo": "Tendência de alta, volatilidade contraída e rompimento do pivô."}
 
 
 DETECTORES = {"setup_classico": _classico, "turtle_trading": _turtle, "larry_williams": _larry, "mark_minervini": _minervini}

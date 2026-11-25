@@ -1,26 +1,30 @@
 {
   "id": "turtle_trading",
   "nome": "Turtle Trading",
-  "raridade": "rara",
-  "resumo": "Rompimento de canal, a regra dos Turtles: comprar a força que cria uma nova máxima e vender a fraqueza que cria uma nova mínima.",
+  "raridade": "epica",
+  "resumo": "Criado por Richard Dennis, busca capturar grandes tendências de mercado.",
   "caracteristicas": [
-    "Aposta que o rompimento continua",
-    "Sinal raro e de alta convicção",
+    "Price Action / Tendência",
+    "Gatilho: compra no rompimento da máxima dos últimos 20 candles",
+    "Stop: o mais curto entre a mínima de 10 candles e 2 ATR",
+    "Timeframe: diário",
     "Só vale o primeiro rompimento, nunca os seguintes"
   ],
   "indicadores": [
-    "Canal de máximas e mínimas dos últimos 200 candles (Donchian)"
+    "Máxima dos últimos 20 candles (canal de Donchian)",
+    "Mínima dos últimos 10 candles",
+    "ATR de 20 períodos (2 ATR de stop)"
   ],
   "regra": {
-    "compra": "O candle é o primeiro a fechar acima da máxima dos 200 candles anteriores.",
-    "venda": "O candle é o primeiro a fechar abaixo da mínima dos 200 candles anteriores."
+    "compra": "O candle é o primeiro a fechar acima da máxima dos 20 candles anteriores. Stop no mais curto entre a mínima dos últimos 10 candles e 2 ATR abaixo da entrada.",
+    "venda": "Este setup só compra."
   },
   "cores": {
-    "principal": "#3DDC97",
-    "brilho": "#C9FFE6"
+    "principal": "#2EE59D",
+    "brilho": "#FFD76A"
   },
   "assets": {
-    "carta": null,
+    "carta": "carta.jpg",
     "ativacao": null,
     "moldura": null,
     "icone": null,
