@@ -161,7 +161,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       if (mounted) Navigator.of(context).maybePop();
       return;
     }
-    if (ev != 'confirmar' && ev != 'acao') {
+    if (ev != 'confirmar' && ev != 'acao' && ev != 'setup') {
       await _consultar(); // tempo, próxima etc.: o servidor anda sozinho pelo relógio
       return;
     }
@@ -173,6 +173,9 @@ class _PartidaTelaState extends State<PartidaTela> {
         final plano = (v['plano'] as Map?) ?? {'direcao': v['direcao'], 'tipo': v['tipo']};
         r = await widget.api.post('$_base/estrategia', {'direcao': plano['direcao'], 'tipo': plano['tipo']});
         _seqOk = seq;
+      } else if (ev == 'setup') {
+        // decisão da janela do setup (entrar/recusar): quem vale é o servidor, com o prazo dele
+        r = await widget.api.post('$_base/setup', {'acao': (v['dados'] as Map?)?['acao'], 'q': (v['dados'] as Map?)?['q']});
       } else {
         r = await widget.api.post('$_base/acao', {'dados': v['dados'] ?? {}});
       }
