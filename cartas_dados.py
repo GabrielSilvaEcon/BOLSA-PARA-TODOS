@@ -126,9 +126,11 @@ def garantir_inicial(email: str, doc: dict | None = None) -> tuple[dict, dict | 
     tks = C.sortear_inicial(banco._h_conta(email), cfg["inicial"], por_raridade(cat))
     agora = _agora_iso()
     res = C.entregar(doc, "inicial", tks, lambda t: cat[t]["raridade_fixa"], "inicial", agora)
-    for t in tks:
-        if not doc["equip"].get(doc["cartas"][t]["rar"]):
+    for t in tks:                                          # monta o baralho com o que couber (teto por raridade em cartas.py)
+        try:
             C.equipar(doc, t, agora)
+        except C.ErroCarta:
+            pass
     gravar(email, doc)
     return doc, res
 

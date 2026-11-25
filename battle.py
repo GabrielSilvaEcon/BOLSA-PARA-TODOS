@@ -21,7 +21,9 @@ from datetime import date, datetime
 
 RODADAS = 3
 BARALHO_MIN = 3
-BARALHO_MAX = 10
+BARALHO_MAX = 5
+MAX_POR_RARIDADE = {"epica": 1, "lendaria": 1}   # as fortes não repetem no baralho; comum e rara, sem teto
+ROTULO_RAR = {"comum": "Comum", "rara": "Rara", "epica": "Épica", "lendaria": "Lendária"}
 MAX_IDADE_DIAS = 10          # dado de referência mais velho que isso não entra em disputa
 MIN_ATRIBUTOS_CARTA = 2      # carta com menos indicadores válidos não é jogável
 PRECISAO = 4                 # casas usadas para decidir empate (em fração/razão; ex.: 0,0001 = 0,01 p.p.)
@@ -240,6 +242,7 @@ def validar_baralho(tks: list[str], cartas: dict, hoje: date) -> tuple[bool, str
         return False, f"Escolha pelo menos {BARALHO_MIN} cartas (uma para cada rodada)."
     if len(tks) > BARALHO_MAX:
         return False, f"O baralho aceita no máximo {BARALHO_MAX} cartas."
+    contas: dict[str, int] = {}
     for t in tks:
         c = cartas.get(t)
         if not c:
@@ -247,6 +250,11 @@ def validar_baralho(tks: list[str], cartas: dict, hoje: date) -> tuple[bool, str
         ok, m = jogavel(c, hoje)
         if not ok:
             return False, f"{t}: {m}"
+        r = c.get("rar")                          # baralhos de sistema não trazem raridade: aí não há teto a conferir
+        if r in MAX_POR_RARIDADE:
+            contas[r] = contas.get(r, 0) + 1
+            if contas[r] > MAX_POR_RARIDADE[r]:
+                return False, f"O baralho aceita no máximo {MAX_POR_RARIDADE[r]} carta {ROTULO_RAR[r]}."
     return True, ""
 
 

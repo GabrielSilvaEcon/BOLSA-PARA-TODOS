@@ -58,28 +58,41 @@ def test_nivel_maximo():
         C.evoluir(d, cfg, "PETR4", "pl", AG)
 
 
-def test_equipar_uma_por_raridade_substitui():
+def test_baralho_repete_comum_mas_nao_epica_nem_lendaria():
     d = C.colecao_vazia()
-    for t, r in (("CVCB3", "comum"), ("VAMO3", "comum"), ("SUZB3", "rara"), ("WEGE3", "epica"), ("PETR4", "lendaria")):
+    for t, r in (("CVCB3", "comum"), ("VAMO3", "comum"), ("SUZB3", "rara"), ("WEGE3", "epica"), ("ITUB4", "epica"),
+                 ("PETR4", "lendaria"), ("VALE3", "lendaria")):
         C.adicionar(d, t, r, AG)
-    assert C.equipar(d, "CVCB3", AG)["saiu"] is None
-    assert C.equipar(d, "VAMO3", AG)["saiu"] == "CVCB3"             # troca dentro da mesma raridade
-    for t in ("SUZB3", "WEGE3", "PETR4"):
+    for t in ("CVCB3", "VAMO3", "SUZB3", "WEGE3", "PETR4"):          # duas comuns juntas: antes era impossível
         C.equipar(d, t, AG)
-    assert C.equipadas(d) == ["VAMO3", "SUZB3", "WEGE3", "PETR4"]    # no máximo 4, uma de cada
-    with pytest.raises(C.ErroCarta):
-        C.equipar(d, "ITUB4", AG)                                    # carta que não tem
-    C.desequipar(d, "rara", AG)
-    assert C.equipadas(d) == ["VAMO3", "WEGE3", "PETR4"]
+    assert C.equipadas(d) == ["CVCB3", "VAMO3", "SUZB3", "WEGE3", "PETR4"]
+    with pytest.raises(C.ErroCarta):                                 # 2ª épica
+        C.equipar(d, "ITUB4", AG)
+    C.desequipar(d, "WEGE3", AG)
+    with pytest.raises(C.ErroCarta):                                 # 2ª lendária, mesmo com espaço
+        C.equipar(d, "VALE3", AG)
+    assert C.equipadas(d) == ["CVCB3", "VAMO3", "SUZB3", "PETR4"]
 
 
-def test_normalizar_descarta_equipada_invalida():
+def test_baralho_cheio_e_carta_que_nao_tem():
     d = C.colecao_vazia()
-    C.adicionar(d, "CVCB3", "comum", AG)
-    d["equip"]["rara"] = "CVCB3"                                     # adulterado: comum no espaço da rara
-    d["equip"]["epica"] = "XXXX3"
+    for i in range(C.BARALHO_EQUIP + 1):
+        C.adicionar(d, f"AAA{i}", "comum", AG)
+    for i in range(C.BARALHO_EQUIP):
+        C.equipar(d, f"AAA{i}", AG)
+    with pytest.raises(C.ErroCarta):                                 # passou do tamanho do baralho
+        C.equipar(d, f"AAA{C.BARALHO_EQUIP}", AG)
+    with pytest.raises(C.ErroCarta):
+        C.equipar(d, "NAOTENHO3", AG)
+
+
+def test_normalizar_migra_formato_antigo_e_descarta_invalida():
+    d = C.colecao_vazia()
+    for t, r in (("CVCB3", "comum"), ("SUZB3", "rara")):
+        C.adicionar(d, t, r, AG)
+    d["equip"] = {"comum": "CVCB3", "rara": "SUZB3", "epica": "XXXX3", "lendaria": None}   # formato antigo em disco
     n = C.normalizar(d)
-    assert n["equip"]["rara"] is None and n["equip"]["epica"] is None
+    assert n["equip"] == ["CVCB3", "SUZB3"]                          # vira lista, sem a carta que a pessoa não tem
 
 
 def test_bau_deterministico_com_garantia_e_entrega_unica():

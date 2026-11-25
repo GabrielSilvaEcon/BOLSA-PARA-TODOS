@@ -499,13 +499,16 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     m = next(k for k in d["mao"] if k["ticker"] == alvo)
     roe = next(i for i in m["ind"] if i["id"] == "roe")
     assert m["nivel"] == 2 and roe["real"] != roe["txt"]
-    # equipar: troca dentro da mesma raridade
+    # baralho: até BARALHO_EQUIP cartas, sem exigir uma de cada raridade
+    import cartas as C
     outra = next((k["tk"] for k in cli.get("/cartas/colecao").json()["cartas"] if k["possui"] and not k["equipada"]), None)
     if outra:
         r = cli.post("/cartas/equipar", json={"tk": outra}).json()
-        assert r["equipar"]["tk"] == outra and sum(1 for k in r["cartas"] if k.get("equipada")) <= 4
+        assert sum(1 for k in r["cartas"] if k.get("equipada")) <= C.BARALHO_EQUIP
     assert cli.post("/cartas/equipar", json={"tk": "NAOTEM3"}).status_code == 400
-    assert cli.post("/cartas/desequipar", json={"rar": "comum"}).json()["equip"]["comum"] is None
+    eq = [k["tk"] for k in cli.get("/cartas/colecao").json()["cartas"] if k.get("equipada")]
+    if eq:
+        assert eq[0] not in cli.post("/cartas/desequipar", json={"tk": eq[0]}).json()["equip"]
     assert cli.post("/ticker/duelo").status_code in (200, 400)
 
 
