@@ -1067,7 +1067,9 @@ $("q-mais").onclick=()=>{qSet(qVal()+(corrida()?1:Math.max(1,Math.round(qVal()/1
 $("q-val").addEventListener("input",()=>{if(corrida())ui()});
 document.querySelectorAll("#qrow .qp").forEach(b=>b.onclick=()=>{const m=mz();if(!m)return;const mx=m.max_q||0;
   if(!mx){const p=m.posicao;if(p){qSet(Math.max(1,Math.round(p.q/LOTE())));return flash("Capital todo aplicado: venda lotes para reduzir ou zere a posição")}return flash("Sem capital livre para comprar")}
-  qSet(Math.max(1,Math.floor(mx*(+b.dataset.qp)/100/LOTE())))});
+  const teto=Math.floor(mx/LOTE());                                  // lotes INTEIROS que ainda cabem no capital livre
+  if(teto<1)return flash("Falta capital para mais um lote: reduza a posição para liberar");
+  qSet(Math.min(teto,Math.max(1,Math.floor(mx*(+b.dataset.qp)/100/LOTE()))));ui()});   // sem o teto, 'Máx' passava do máximo
 $("m-enc").onclick=()=>{if(!sendAcao({tipo:"encerrar"}))flash("Aguarde a ordem anterior")};
 $("m-can").onclick=()=>{sendAcao({tipo:"cancelar",qual:"todas"})};
 $("m-stop").onclick=()=>{S.tool=S.tool==="mstop"?null:"mstop";ui()};
