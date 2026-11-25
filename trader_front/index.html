@@ -810,7 +810,10 @@ function desenhaMesa(i0,i1){
     marca(q.indice_saida,q.preco_saida,"o",q.pct>0?COR.up:(q.pct<0?COR.dn:COR.gold),k===m.operacoes.length-1&&!m.posicao?"SAÍDA":"")});
   if(m.posicao)marca(m.posicao.indice_entrada,m.posicao.preco_entrada,m.posicao.direcao==="alta"?"up":"dn",COR.e,"ENTRADA");
   if(o.pend)hline(o.pend.preco,COR.e,[5,4],(o.pend.tipo==="limite"?"LIMITE ":"STOP ENT. ")+(o.pend.direcao==="alta"?"▲":"▼"),false);
-  else if(o.entrada!=null)hline(o.entrada,COR.e,[],(o.dir==="alta"?"COMPRA ":"VENDA ")+(corrida()&&m.posicao?nLotes(m.posicao.q)+" ":"")+(o.dir==="alta"?"▲":"▼"),false);
+  else if(o.entrada!=null){   // com posição aberta a linha mostra o retorno da operação (verde/vermelho), não o rótulo da entrada
+    const ap=m.posicao?m.aberto_pct:null,lot=corrida()&&m.posicao?nLotes(m.posicao.q)+" ":"",seta=o.dir==="alta"?"▲":"▼";
+    hline(o.entrada,ap==null?COR.e:(ap>0?COR.up:ap<0?COR.dn:COR.e),[],
+      ap!=null?pc(ap)+" "+lot+seta:(o.dir==="alta"?"COMPRA ":"VENDA ")+lot+seta,false)}
   if(o.stop!=null)hline(o.stop,COR.s,[],"STOP",true);
   if(o.alvo!=null)hline(o.alvo,COR.a,[],"ALVO",true);
   if(m.posicao&&m.limite&&m.limite.preco!=null)hline(m.limite.preco,COR.s,[2,4],"LIMITE "+m.limite.pct_pat+"%",false)}   // nível em que a perda acumulada da rodada chega ao limite
