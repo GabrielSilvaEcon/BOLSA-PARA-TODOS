@@ -312,19 +312,14 @@ class _Face extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          // P/L · DY · ROE
+          // os 5 indicadores da carta, em duas fileiras (3 + 2)
           _painel(
             rar,
-            SizedBox(
-              height: 46,
-              child: Row(children: [
-                Expanded(child: _ind(Icons.trending_up_rounded, const Color(0xFF2EE59D), 'P/L', valores?['pl'])),
-                Container(width: 1, height: 34, color: cor.withValues(alpha: 0.5)),
-                Expanded(child: _ind(Icons.monetization_on_rounded, const Color(0xFFFFC93C), 'DY', valores?['dy_12m'])),
-                Container(width: 1, height: 34, color: cor.withValues(alpha: 0.5)),
-                Expanded(child: _ind(Icons.insights_rounded, const Color(0xFFC07BFF), 'ROE', valores?['roe'])),
-              ]),
-            ),
+            Column(children: [
+              SizedBox(height: 40, child: Row(children: _fileira(cor, _indsCarta.sublist(0, 3), valores))),
+              Container(height: 1, margin: const EdgeInsets.symmetric(vertical: 2), color: cor.withValues(alpha: 0.5)),
+              SizedBox(height: 40, child: Row(children: _fileira(cor, _indsCarta.sublist(3), valores))),
+            ]),
             pad: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           ),
           const SizedBox(height: 6),
@@ -346,17 +341,34 @@ class _Face extends StatelessWidget {
     );
   }
 
+  /// Uma fileira de indicadores, com um risco fino entre eles.
+  List<Widget> _fileira(Color cor, List<(String, IconData, Color, String)> itens, Map<String, String>? valores) => [
+        for (final (k, m) in itens.indexed) ...[
+          if (k > 0) Container(width: 1, height: 28, color: cor.withValues(alpha: 0.5)),
+          Expanded(child: _ind(m.$2, m.$3, m.$4, valores?[m.$1])),
+        ],
+      ];
+
   Widget _ind(IconData ic, Color c, String nome, String? v) => Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(ic, size: 26, color: c, shadows: [Shadow(color: c.withValues(alpha: 0.7), blurRadius: 8)]),
+        Icon(ic, size: 22, color: c, shadows: [Shadow(color: c.withValues(alpha: 0.7), blurRadius: 8)]),
         const SizedBox(width: 3),
         Flexible(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(nome, style: _txt(12, c == const Color(0xFFC07BFF) ? c : const Color(0xFF9CC7FF))),
-            FittedBox(child: Text(v ?? '?', style: _txt(14, Colors.white))),
+            Text(nome, style: _txt(11, c == const Color(0xFFC07BFF) ? c : const Color(0xFF9CC7FF))),
+            FittedBox(child: Text(v ?? '?', style: _txt(13, Colors.white))),
           ]),
         ),
       ]);
 }
+
+/// Os 5 indicadores da carta, na ordem em que aparecem (a mesma de TK_INDICADORES no servidor).
+const _indsCarta = <(String, IconData, Color, String)>[
+  ('pl', Icons.trending_up_rounded, Color(0xFF2EE59D), 'P/L'),
+  ('dy_12m', Icons.monetization_on_rounded, Color(0xFFFFC93C), 'DY'),
+  ('roe', Icons.insights_rounded, Color(0xFFC07BFF), 'ROE'),
+  ('ret_12m', Icons.show_chart_rounded, Color(0xFF4FC3F7), 'Ret'),
+  ('margem_liq', Icons.percent_rounded, Color(0xFFFF8A65), 'Marg'),
+];
 
 Widget _selo(String rar, Widget child) {
   final (cor, _, escura) = coresRaridade[rar]!;

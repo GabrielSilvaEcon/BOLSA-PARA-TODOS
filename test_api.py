@@ -326,7 +326,7 @@ def test_ticker_battle_duelo_inteiro(cli):
     c = cli.get("/ticker/central").json()
     assert len(c["cartas"]) >= 10 and len(c["deck"]) >= 1 and c["valido"]   # baralho formado pelas cartas equipadas
     assert c["cartas"][0]["ind"] and c["cartas"][0]["ind"][0]["txt"]
-    assert all(len(k["ind"]) <= 3 for k in c["cartas"]) and set(c["indicadores"]) == {"dy_12m", "roe", "pl"}
+    assert all(len(k["ind"]) <= len(API.TK_INDICADORES) for k in c["cartas"]) and set(c["indicadores"]) == set(API.TK_INDICADORES)
     assert all("-" in t for t in c["deck"]) and [e["tk"] for e in c["equipadas"]] == c["deck"]
     r = cli.post("/ticker/baralho", json={"deck": ["PETR4", "VALE3", "ITUB4"]}).json()
     assert r["deck"] == c["deck"]                                           # o baralho vem da Coleção, não do pedido
@@ -337,8 +337,8 @@ def test_ticker_battle_duelo_inteiro(cli):
         carta = next(m["tk"] for m in d["mao"] if not m["sem_adv"])
         adv = cli.get(f"/ticker/duelo/{did}/adversaria", params={"carta": carta}).json()
         assert adv["adversaria"]["tk"] != carta and "ind" not in adv["adversaria"]     # os valores do sistema ficam escondidos
-        assert set(adv["disputaveis"]) <= {"dy_12m", "roe", "pl"} and adv["adversaria"]["ticker"] != carta.split("-")[0]
-        assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "vol"}).status_code == 400   # fora dos 3
+        assert set(adv["disputaveis"]) <= set(API.TK_INDICADORES) and adv["adversaria"]["ticker"] != carta.split("-")[0]
+        assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "vol"}).status_code == 400   # fora dos da carta
         d = cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": adv["disputaveis"][0]}).json()
         assert len(d["rodadas"]) == n and d["rodadas"][-1]["raio_x"]["porque"]
     assert d["final"] in ("vitoria", "derrota", "empate") and sum(d["placar"].values()) == BT.RODADAS
@@ -375,7 +375,7 @@ def test_ticker_online_sala_duas_pessoas(cli):
         eb = bia.get(f"/ticker/online/{pid}").json()
         ta = next(t for t in ea["eu"]["deck"] if t not in ea["eu"]["usadas"])
         tb = next(t for t in eb["eu"]["deck"] if t not in eb["eu"]["usadas"])
-        assert cli.post(f"/ticker/online/{pid}/jogar", json={"carta": ta, "ind": "vol"}).status_code == 400   # fora dos 3
+        assert cli.post(f"/ticker/online/{pid}/jogar", json={"carta": ta, "ind": "vol"}).status_code == 400   # fora dos da carta
         va = cli.post(f"/ticker/online/{pid}/jogar", json={"carta": ta, "ind": "dy_12m"}).json()
         assert va["eu"]["escolha"] and "escolha" not in (bia.get(f"/ticker/online/{pid}").json()["op"] or {})   # a escolha fica secreta
         vb = bia.post(f"/ticker/online/{pid}/jogar", json={"carta": tb, "ind": "dy_12m"}).json()
