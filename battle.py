@@ -4,7 +4,8 @@ Este módulo NÃO calcula indicadores financeiros: recebe as "cartas" prontas (v
 decide o duelo. Tudo aqui é determinístico e roda no servidor; o navegador nunca envia valores, só escolhas (qual carta, qual atributo).
 
 REGRAS
- · Duelo Clássico: 3 rodadas. Vence quem ganhar 2 (ou mais pontos no total). Cada carta só pode ser usada UMA vez por duelo.
+ · Duelo Clássico: 5 rodadas, uma carta contra a outra. Vence quem somar mais rodadas. Cada carta só pode ser usada UMA vez por duelo,
+   então o baralho tem exatamente RODADAS cartas.
  · Por rodada: o jogador escolhe uma carta; o sistema escolhe a adversária por regra fixa (`escolher_adversaria`); o jogador escolhe o atributo;
    o servidor lê os valores da própria carta e aplica a regra do indicador (`resolver`).
  · Regra de cada indicador (INDICADORES): "maior" ou "menor" vence; "menor_positivo" vence o menor valor MAIOR QUE ZERO (P/L e P/VP negativos não valem).
@@ -19,8 +20,8 @@ import hashlib
 import math
 from datetime import date, datetime
 
-RODADAS = 3
-BARALHO_MIN = 3
+RODADAS = 5
+BARALHO_MIN = 5              # uma carta por rodada, sem repetir: o baralho tem exatamente RODADAS cartas
 BARALHO_MAX = 5
 MAX_POR_RARIDADE = {"epica": 1, "lendaria": 1}   # as fortes não repetem no baralho; comum e rara, sem teto
 ROTULO_RAR = {"comum": "Comum", "rara": "Rara", "epica": "Épica", "lendaria": "Lendária"}

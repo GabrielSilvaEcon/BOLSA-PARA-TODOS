@@ -88,7 +88,7 @@ class _OnlineTelaState extends State<OnlineTela> {
         Entrada(ordem: 0, child: Image.asset('assets/ticker/modo_on.webp')),
         const SizedBox(height: 12),
         if (!widget.baralhoValido)
-          _aviso('Monte um baralho válido (3 a 10 cartas) antes de jogar online.')
+          _aviso('Monte um baralho válido (5 cartas) antes de jogar online.')
         else ...[
           Entrada(ordem: 1, child: _botao(Icons.travel_explore_rounded, 'Encontrar adversário', 'Entra na fila e joga com quem estiver procurando agora', const Color(0xFF26D07C), _buscar)),
           const SizedBox(height: 10),
@@ -102,7 +102,7 @@ class _OnlineTelaState extends State<OnlineTela> {
             'Os dois escolhem a carta e o indicador ao mesmo tempo, em segredo. Quando os dois confirmam, as cartas são reveladas. '
                 'Se escolheram o mesmo indicador, vence o melhor valor. Se escolheram indicadores diferentes, cada um precisa vencer o '
                 'indicador que escolheu: se só um vencer, ele leva a rodada; se os dois vencerem (ou os dois perderem), empata. '
-                'Melhor de 3. Quem sai no meio perde por abandono. Duelos online contam para o ranking.'),
+                '5 rodadas, uma por carta. Quem sai no meio perde por abandono. Duelos online contam para o ranking.'),
         if (_ocupado) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
       ]),
     );

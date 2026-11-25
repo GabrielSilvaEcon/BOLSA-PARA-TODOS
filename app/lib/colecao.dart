@@ -8,7 +8,7 @@ import 'aprender.dart' show FundoCidade;
 import 'cartas.dart';
 
 /// COLEÇÃO: cartas descobertas e silhuetas das que faltam, filtros por raridade e setor, nível, cópias e progresso,
-/// evoluir (escolhendo P/L, DY ou ROE) e equipar (1 por raridade, 4 espaços). Tudo é validado no servidor.
+/// evoluir (escolhendo P/L, DY ou ROE) e montar o baralho (5 cartas, máx 1 Épica e 1 Lendária). Tudo é validado no servidor.
 class ColecaoTela extends StatefulWidget {
   const ColecaoTela({super.key, required this.api});
   final Api api;

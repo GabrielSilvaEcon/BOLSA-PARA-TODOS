@@ -212,8 +212,15 @@ def sortear_bau(seed: str, conf: dict, por_raridade: dict) -> list[str]:
 
 
 def sortear_inicial(seed: str, raridades: list[str], por_raridade: dict) -> list[str]:
+    """Uma carta para cada raridade pedida, sem repetir ticker — a mesma raridade pode aparecer mais de uma vez na lista
+    (o baralho aceita duas comuns), e aí repetir o ticker daria cópia em vez de carta nova."""
     rng = _rng("inicial|" + seed)
-    return [rng.choice(sorted(por_raridade[r])) for r in raridades if por_raridade.get(r)]
+    out: list[str] = []
+    for r in raridades:
+        cand = sorted(t for t in (por_raridade.get(r) or ()) if t not in out)
+        if cand:
+            out.append(rng.choice(cand))
+    return out
 
 
 def entregar(doc: dict, ref: str, tks: list[str], raridade_de, origem: str, agora_iso: str) -> dict:

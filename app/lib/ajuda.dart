@@ -51,7 +51,7 @@ const _faq = [
       ),
       (
         'Como funciona o Ticker Battle?',
-        'Você monta um baralho de 3 a 10 cartas de empresas. Em cada rodada, escolhe uma carta e um dos 5 indicadores; vence quem tiver o melhor número. É melhor de 3.'
+        'Você monta um baralho de 5 cartas de empresas, no máximo 1 Épica e 1 Lendária. São 5 rodadas, uma por carta: você escolhe a carta e o indicador, e vence quem tiver o melhor número. Ganha a batalha quem somar mais rodadas.'
       ),
       ('Quais partidas contam para o ranking?', 'Só as online (contra outras pessoas). As partidas contra o sistema são treino: aparecem no seu Histórico de partidas, mas não mudam o ranking.'),
     ]

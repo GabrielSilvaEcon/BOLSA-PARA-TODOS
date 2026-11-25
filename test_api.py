@@ -319,8 +319,9 @@ def _cartas_teste():
 def test_ticker_battle_duelo_inteiro(cli):
     _cartas_teste()
     t = cli.post("/ticker/tutorial/bau").json()
-    assert not t["ja"] and len(t["cartas"]) == 3                            # tutorial: 3 cartas (1 Rara garantida + 2 Comuns)
-    for it in t["cartas"]:                                                  # equipa as 3 cartas recebidas (simula passo da Coleção)
+    import battle as BT
+    assert not t["ja"] and len(t["cartas"]) == BT.BARALHO_MIN               # o Baú entrega o baralho inteiro: uma carta por rodada
+    for it in t["cartas"]:                                                  # equipa as cartas recebidas (simula passo da Coleção)
         cli.post("/cartas/equipar", json={"tk": it["tk"]})
     c = cli.get("/ticker/central").json()
     assert len(c["cartas"]) >= 10 and len(c["deck"]) >= 1 and c["valido"]   # baralho formado pelas cartas equipadas
@@ -331,8 +332,8 @@ def test_ticker_battle_duelo_inteiro(cli):
     assert r["deck"] == c["deck"]                                           # o baralho vem da Coleção, não do pedido
     d = cli.post("/ticker/duelo").json()
     did = d["id"]
-    assert d["rodada"] == 1 and len(d["mao"]) == 3 and d["final"] is None
-    for n in range(1, 4):
+    assert d["rodada"] == 1 and len(d["mao"]) == BT.BARALHO_MIN and d["final"] is None
+    for n in range(1, BT.RODADAS + 1):                                          # uma rodada por carta do baralho
         carta = next(m["tk"] for m in d["mao"] if not m["sem_adv"])
         adv = cli.get(f"/ticker/duelo/{did}/adversaria", params={"carta": carta}).json()
         assert adv["adversaria"]["tk"] != carta and "ind" not in adv["adversaria"]     # os valores do sistema ficam escondidos
@@ -340,7 +341,7 @@ def test_ticker_battle_duelo_inteiro(cli):
         assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "vol"}).status_code == 400   # fora dos 3
         d = cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": adv["disputaveis"][0]}).json()
         assert len(d["rodadas"]) == n and d["rodadas"][-1]["raio_x"]["porque"]
-    assert d["final"] in ("vitoria", "derrota", "empate") and sum(d["placar"].values()) == 3
+    assert d["final"] in ("vitoria", "derrota", "empate") and sum(d["placar"].values()) == BT.RODADAS
     assert cli.post(f"/ticker/duelo/{did}/rodada", json={"carta": carta, "ind": "roe"}).status_code == 400      # acabou
     h = cli.get("/ticker/central").json()["historico"]
     assert h["ultimos"][0]["id"] == did and h[d["final"]] == 1              # entrou no histórico uma vez
@@ -368,7 +369,8 @@ def test_ticker_online_sala_duas_pessoas(cli):
     cli.post(f"/ticker/online/{pid}/pronto")
     v = bia.post(f"/ticker/online/{pid}/pronto").json()
     assert v["fase"] == "em_jogo" and v["op"]["nick"]
-    for n in range(3):
+    import battle as BT
+    for n in range(BT.RODADAS):                                                   # uma rodada por carta do baralho
         ea = cli.get(f"/ticker/online/{pid}").json()
         eb = bia.get(f"/ticker/online/{pid}").json()
         ta = next(t for t in ea["eu"]["deck"] if t not in ea["eu"]["usadas"])
@@ -467,11 +469,12 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     c0 = cli.get("/cartas/colecao").json()
     assert len([x for x in c0["cartas"] if x["possui"]]) == 0
     t = cli.post("/ticker/tutorial/bau").json()
-    assert not t["ja"] and len(t["cartas"]) == 3                           # tutorial: 1 Comum + 1 Rara + 1 Épica
+    import battle as BT
+    assert not t["ja"] and len(t["cartas"]) == BT.BARALHO_MIN              # o Baú entrega o baralho inteiro
     c = cli.get("/cartas/colecao").json()
     minhas = [x for x in c["cartas"] if x["possui"]]
-    assert len(minhas) == 3 and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"}
-    assert all(x["equipada"] for x in minhas) and c["descobertas"] == 3 and c["total"] >= 19
+    assert len(minhas) == BT.BARALHO_MIN and {x["raridade"] for x in minhas} == {"comum", "rara", "epica"}
+    assert all(x["equipada"] for x in minhas) and c["descobertas"] == BT.BARALHO_MIN and c["total"] >= 19
     trancada = next(x for x in c["cartas"] if not x["possui"])
     assert "nome" not in trancada and trancada["setor"]                    # silhueta: só raridade e setor
     assert cli.post("/ticker/tutorial/bau").json()["ja"]                   # o baú tutorial sai uma vez só
@@ -479,7 +482,7 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     assert r["cartas"] and all(k["tk"] and k["raridade"] for k in r["cartas"])
     assert "cartas" not in cli.post("/loja/bau").json()                    # mesmo baú não dá cartas de novo
     c2 = cli.get("/cartas/colecao").json()
-    assert sum(x.get("total", 0) for x in c2["cartas"]) == 3 + len(r["cartas"])
+    assert sum(x.get("total", 0) for x in c2["cartas"]) == BT.BARALHO_MIN + len(r["cartas"])
     # evolução: dá cópias de uma carta e evolui escolhendo o ROE
     import cartas_dados as CD
     import cartas as C
@@ -499,16 +502,18 @@ def test_colecao_pacote_inicial_bau_evolucao_e_equipar(cli):
     m = next(k for k in d["mao"] if k["ticker"] == alvo)
     roe = next(i for i in m["ind"] if i["id"] == "roe")
     assert m["nivel"] == 2 and roe["real"] != roe["txt"]
-    # baralho: até BARALHO_EQUIP cartas, sem exigir uma de cada raridade
+    # baralho: o Baú já entrega as BARALHO_EQUIP cartas, então ele nasce cheio
     import cartas as C
-    outra = next((k["tk"] for k in cli.get("/cartas/colecao").json()["cartas"] if k["possui"] and not k["equipada"]), None)
+    col = cli.get("/cartas/colecao").json()
+    assert len(col["equip"]) == C.BARALHO_EQUIP and col["equip_max"] == C.BARALHO_EQUIP
+    outra = next((k["tk"] for k in col["cartas"] if k["possui"] and not k["equipada"]), None)
     if outra:
-        r = cli.post("/cartas/equipar", json={"tk": outra}).json()
-        assert sum(1 for k in r["cartas"] if k.get("equipada")) <= C.BARALHO_EQUIP
+        assert cli.post("/cartas/equipar", json={"tk": outra}).status_code == 400   # cheio: não entra mais
     assert cli.post("/cartas/equipar", json={"tk": "NAOTEM3"}).status_code == 400
-    eq = [k["tk"] for k in cli.get("/cartas/colecao").json()["cartas"] if k.get("equipada")]
-    if eq:
-        assert eq[0] not in cli.post("/cartas/desequipar", json={"tk": eq[0]}).json()["equip"]
+    saiu = col["equip"][0]
+    dep = cli.post("/cartas/desequipar", json={"tk": saiu}).json()
+    assert saiu not in dep["equip"] and len(dep["equip"]) == C.BARALHO_EQUIP - 1
+    assert cli.post("/cartas/equipar", json={"tk": saiu}).status_code == 200        # abriu espaço, volta a caber
     assert cli.post("/ticker/duelo").status_code in (200, 400)
 
 
