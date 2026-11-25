@@ -89,6 +89,10 @@ class _HomeTelaState extends State<HomeTela> {
       _erro = null;
     });
     try {
+      // as cotações vêm à parte, sem segurar a tela: dependem de fonte externa que pode demorar ou cair
+      widget.api.get('/home/cotacoes').then((c) {
+        if (mounted) setState(() => _cot = ((c['hoje'] as List?) ?? const []).cast<Map>());
+      }).catchError((_) {});
       final r = await Future.wait([widget.api.get('/eu'), widget.api.get('/home').catchError((_) => <String, dynamic>{})]);
       if (mounted) {
         setState(() {
@@ -116,7 +120,8 @@ class _HomeTelaState extends State<HomeTela> {
   Map get _comp => (_home?['competicao'] as Map?) ?? const {};
   String get _jogo => '${_comp['jogo'] ?? 'trade'}';
   Map get _div => (_comp['divisao'] as Map?) ?? const {};
-  List<Map> get _hoje => ((_home?['hoje'] as List?) ?? const []).cast<Map>();
+  List<Map> _cot = const [];
+  List<Map> get _hoje => _cot;
 
   /// Marca um elemento para o tour guiado (sem id, devolve o próprio elemento).
   Widget _alvo(String? id, Widget w) => id == null ? w : TourAlvo(id: id, child: w);
@@ -533,7 +538,7 @@ class _HomeTelaState extends State<HomeTela> {
     final ibov = _hoje.where((x) => x['rotulo'] == 'Ibovespa').firstOrNull;
     final v = ibov?['var'];
     final alta = v is! num || v >= 0;
-    final cor = alta ? _verde : _vermelho;
+    final cor = v is! num ? _texto2 : (alta ? _verde : _vermelho);   // sem cotação ainda: não afirma direção nenhuma
     return Pressionavel(
       aoTocar: () => _abrir(MercadoTela(api: widget.api)),
       child: Container(
@@ -553,10 +558,10 @@ class _HomeTelaState extends State<HomeTela> {
           Padding(
             padding: const EdgeInsets.fromLTRB(9, 6, 8, 6),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              FittedBox(child: Text(alta ? 'Mercado em Alta' : 'Mercado em Baixa', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))),
+              FittedBox(child: Text(v is! num ? 'Mercado' : (alta ? 'Mercado em Alta' : 'Mercado em Baixa'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))),
               FittedBox(
                 child: Row(children: [
-                  Icon(alta ? Icons.trending_up_rounded : Icons.trending_down_rounded, color: cor, size: 30),
+                  Icon(v is! num ? Icons.show_chart_rounded : (alta ? Icons.trending_up_rounded : Icons.trending_down_rounded), color: cor, size: 30),
                   const SizedBox(width: 4),
                   Text(v is num ? '${alta ? '+' : ''}${v.toStringAsFixed(2).replaceAll('.', ',')}%' : '—',
                       style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: cor, shadows: const [Shadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 3)])),

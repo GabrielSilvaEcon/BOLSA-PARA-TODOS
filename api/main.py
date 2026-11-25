@@ -2089,13 +2089,8 @@ def home(q: Quem = Depends(quem)) -> dict:
     """O que a tela inicial mostra além do /eu: Pregão Orbit (4 indicadores do Mercado hoje), missões do dia e o último veredito
     do cenário econômico (leitura já gravada, sem consultar as fontes)."""
     import home_game as HG
-    import inicio_painel as IP
     import jogar
     import macro_servico as MS
-    try:
-        hoje = _merc_cache("hoje", 600, IP.mercado_hoje) or []
-    except Exception:
-        hoje = []
     try:
         prog = ED.normalizar((banco.ler_dados(q.ator, q.email) or {}).get("edu_progresso"))
         miss = HG.resumo_missoes(jogar.resumo(prog)["missoes"])
@@ -2131,7 +2126,19 @@ def home(q: Quem = Depends(quem)) -> dict:
         pedidos = sum(1 for r in (banco.social_relacoes(q.ator) or {}).values() if r.get("estado") == AM.RECEBIDA)
     except Exception:
         pedidos = 0
-    return {"hoje": hoje[:4], "missoes": miss, "cenario": cen, "desafio": dsd, "competicao": comp, "torneio": trn, "amigos": {"pedidos": pedidos}}
+    return {"missoes": miss, "cenario": cen, "desafio": dsd, "competicao": comp, "torneio": trn, "amigos": {"pedidos": pedidos}}
+
+
+@app.get("/home/cotacoes")
+def home_cotacoes(q: Quem = Depends(quem)) -> dict:
+    """Ibovespa e dólar do dia, à parte da Home: dependem de uma fonte externa que pode demorar ou cair, e a
+    primeira tela do app não pode esperar por ela. O app desenha a Home na hora e preenche quando isto chega."""
+    import inicio_painel as IP
+    try:
+        hoje = _merc_cache("hoje", 600, IP.mercado_hoje) or []
+    except Exception:
+        hoje = []
+    return {"hoje": hoje[:4]}
 
 
 # ------------------------------------------------------------------ Histórico de partidas e Missões
