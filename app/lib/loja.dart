@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade;
 import 'cartas.dart' show revelarCartas;
@@ -175,9 +176,13 @@ class _LojaTelaState extends State<LojaTela> {
                         _cartao(child: Text(_erro!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white))),
                         const SizedBox(height: 8),
                         FilledButton(onPressed: _carregar, child: const Text('Tentar de novo')),
-                      ] else if (d == null)
-                        const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
-                      else ...[
+                      ] else if (d == null) ...[
+                        const Esqueleto(altura: 64, raio: 18),
+                        const SizedBox(height: 12),
+                        const Esqueleto(altura: 44, raio: 18),
+                        const SizedBox(height: 12),
+                        const EsqueletoLista(linhas: 4, altura: 92, raio: 18),
+                      ] else ...[
                         _saldo(d),
                         const SizedBox(height: 12),
                         _seletorAbas(),

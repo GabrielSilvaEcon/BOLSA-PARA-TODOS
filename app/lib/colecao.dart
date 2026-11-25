@@ -81,7 +81,14 @@ class _ColecaoTelaState extends State<ColecaoTela> {
           child: d == null
               ? Center(
                   child: _erro == null
-                      ? const CircularProgressIndicator()
+                      ? const Padding(
+                          padding: EdgeInsets.all(14),
+                          child: Column(children: [
+                            Esqueleto(altura: 52, raio: 16),
+                            SizedBox(height: 12),
+                            Expanded(child: Esqueleto(raio: 16)),
+                          ]),
+                        )
                       : Padding(
                           padding: const EdgeInsets.all(24),
                           child: Column(mainAxisSize: MainAxisSize.min, children: [

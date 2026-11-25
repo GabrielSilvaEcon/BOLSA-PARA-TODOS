@@ -158,7 +158,7 @@ class _HomeTelaState extends State<HomeTela> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
                   child: _carregando && _eu == null
-                      ? const Center(child: CircularProgressIndicator())
+                      ? _esqueleto()
                       : _erro != null && _eu == null
                           ? _erroTela()
                           : Column(children: [
@@ -622,6 +622,23 @@ class _HomeTelaState extends State<HomeTela> {
           ),
         ),
       );
+
+  /// Home ainda chegando: os mesmos blocos em cinza, no lugar de um giro no vazio.
+  Widget _esqueleto() => const Column(children: [
+        Esqueleto(altura: 58, raio: 18),
+        SizedBox(height: 8),
+        Expanded(child: Esqueleto(raio: 18)),
+        SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: Esqueleto(altura: 74, raio: 18)),
+          SizedBox(width: 8),
+          Expanded(child: Esqueleto(altura: 74, raio: 18)),
+        ]),
+        SizedBox(height: 8),
+        Esqueleto(altura: 96, raio: 18),
+        SizedBox(height: 8),
+        Esqueleto(altura: 40, raio: 18),
+      ]);
 
   Widget _erroTela() => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
