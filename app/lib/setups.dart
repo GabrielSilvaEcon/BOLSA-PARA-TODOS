@@ -162,6 +162,7 @@ class _SetupsTelaState extends State<SetupsTela> {
     }
   }
 
+  bool get _liberados => _d?['todos_liberados'] == true;
   int get _limite => ((_d?['limite'] as num?) ?? 2).toInt();
   int get _nEquipados => (_d?['equipados'] as List? ?? []).length;
 
@@ -217,10 +218,12 @@ class _SetupsTelaState extends State<SetupsTela> {
                           await _equipar('${s['id']}', tirar: equipado);
                           set(() {});
                         },
-                  child: Text(equipado ? 'DESEQUIPAR' : (cheio ? 'DESEQUIPE UM SETUP PRIMEIRO' : 'EQUIPAR')),
+                  child: Text(equipado ? 'DESEQUIPAR' : (cheio ? 'DESEQUIPE UM SETUP PRIMEIRO' : 'USAR ESTE SETUP')),
                 ),
                 const SizedBox(height: 6),
-                Text('Você pode usar até $_limite setups ao mesmo tempo, só os das cartas que você tem. Eles são usados automaticamente nas partidas X1 e solo, sem escolher antes de cada partida.',
+                Text(_liberados
+                    ? 'Você pode usar até $_limite setups ao mesmo tempo. Eles são usados automaticamente nas partidas X1 e solo, sem escolher antes de cada partida.'
+                    : 'Você pode usar até $_limite setups ao mesmo tempo, só os das cartas que você tem. Eles são usados automaticamente nas partidas X1 e solo, sem escolher antes de cada partida.',
                     textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 11.5)),
               ],
             ),
@@ -257,9 +260,13 @@ class _SetupsTelaState extends State<SetupsTela> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    Text('${itens.length} de $total cartas de setup · $_nEquipados/$_limite equipados', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+                    Text(_liberados ? '${itens.length} setups disponíveis · $_nEquipados/$_limite equipados' : '${itens.length} de $total cartas de setup · $_nEquipados/$_limite equipados', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    const Text('As cartas de setup vêm dos baús. Sem a carta, não há setup para usar. Equipe até 2 para serem monitorados em tempo real nas suas partidas X1 e solo (menos no Desafio do dia, que é igual para todos).', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
+                    Text(
+                        _liberados
+                            ? 'Por enquanto todos os setups estão liberados: escolha até 2 para serem monitorados em tempo real nas suas partidas X1 e solo (menos no Desafio do dia, que é igual para todos).'
+                            : 'As cartas de setup vêm dos baús. Sem a carta, não há setup para usar. Equipe até 2 para serem monitorados em tempo real nas suas partidas X1 e solo (menos no Desafio do dia, que é igual para todos).',
+                        style: const TextStyle(color: Colors.white54, fontSize: 12.5)),
                     const SizedBox(height: 14),
                     if (itens.isEmpty)
                       Container(
@@ -294,7 +301,7 @@ class _SetupsTelaState extends State<SetupsTela> {
                             ),
                         ],
                       ),
-                    if (itens.length < total) ...[
+                    if (!_liberados && itens.length < total) ...[
                       const SizedBox(height: 22),
                       Center(child: Text('${total - itens.length} ainda para descobrir', style: const TextStyle(color: Colors.white38, fontWeight: FontWeight.w700))),
                     ],

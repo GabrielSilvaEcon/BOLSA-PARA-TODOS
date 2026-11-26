@@ -416,6 +416,15 @@ def colecao_vazia() -> dict:
 
 
 IDS_MAX, LOG_MAX = 500, 100
+
+# Por enquanto TODOS os setups estão liberados: o jogador só escolhe quais usar (até MAX_EQUIPADOS). A coleção por cartas continua intacta (o que alguém já
+# conquistou fica registrado) e volta a valer, sem mexer em mais nada, trocando esta chave para False.
+LIBERAR_TODOS = True
+
+
+def tem(doc: dict, setup_id: str) -> bool:
+    """O jogador pode usar este setup? (liberado para todos, ou a carta dele está na coleção.)"""
+    return bool(info(setup_id)) and (LIBERAR_TODOS or setup_id in doc["itens"])
 MAX_EQUIPADOS = 2      # cada jogador usa até 2 setups ao mesmo tempo, desde que tenha a carta de cada um
 
 
@@ -428,7 +437,7 @@ def normalizar(doc) -> dict:
             bruto = [doc.get("equipado")]                                                                          # formato antigo (um só)
         eqs = []
         for x in bruto if isinstance(bruto, list) else []:
-            if x in d["itens"] and info(x) and x not in eqs:                                                       # só se equipa o que existe e é dela
+            if tem(d, x) and x not in eqs:                                                                           # só se equipa o que existe e o jogador pode usar
                 eqs.append(x)
         d["equipados"] = eqs[:MAX_EQUIPADOS]
         d["ids"] = list(doc.get("ids") or [])[-IDS_MAX:]
@@ -455,7 +464,7 @@ def equipar(doc: dict, setup_id: str, agora_iso: str) -> dict:
     """Equipa um setup cuja carta a pessoa tem. Até MAX_EQUIPADOS ao mesmo tempo; com todos os espaços ocupados, é preciso desequipar um antes."""
     if not info(setup_id):
         raise ErroSetup("Setup desconhecido.")
-    if setup_id not in doc["itens"]:
+    if not tem(doc, setup_id):
         raise ErroSetup("Você ainda não tem a carta deste setup.")
     if setup_id not in doc["equipados"]:
         if len(doc["equipados"]) >= MAX_EQUIPADOS:
