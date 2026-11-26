@@ -5,6 +5,7 @@ import 'api.dart';
 import 'aprender.dart' show FundoCidade;
 import 'arte_cartao.dart';
 import 'perfil.dart' show imagemAvatar;
+import 'perfil_jogador.dart';
 import 'sala.dart';
 import 'ticker.dart';
 import 'ticker_online.dart';
@@ -548,56 +549,7 @@ class _SocialTelaState extends State<SocialTela> {
     );
   }
 
-  Future<void> _verPerfil(Map a) async {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF10274A),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (ctx) => FutureBuilder<Map<String, dynamic>>(
-        future: widget.api.get('/social/perfil/${a['h']}'),
-        builder: (ctx, s) {
-          if (!s.hasData) {
-            return SizedBox(height: 220, child: Center(child: s.hasError ? Text('${s.error}', style: const TextStyle(color: Colors.white)) : const CircularProgressIndicator()));
-          }
-          final p = s.data!;
-          final jg = (p['jogos'] as Map?) ?? const {};
-          final t = (jg['trade'] as Map?) ?? const {}, k = (jg['ticker'] as Map?) ?? const {};
-          final cq = p['conquistas'] as Map?;
-          Widget dado(String v, String r, Color c) => Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: c.withValues(alpha: 0.2), border: Border.all(color: c)),
-                  child: Column(children: [
-                    FittedBox(child: Text(v, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white))),
-                    Text(r, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                  ]),
-                ),
-              );
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 26),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              _avatar(p, tam: 86),
-              const SizedBox(height: 8),
-              Text('${p['nome']}', style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: Colors.white)),
-              Text(['@${p['usuario']}', if (p['nivel'] != null) 'Nível ${p['nivel']}', if ('${p['titulo'] ?? ''}'.isNotEmpty) '${p['titulo']}'].join(' · '), style: const TextStyle(color: _lilas)),
-              if ('${p['bio'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('${p['bio']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white))),
-              if (p['restrito'] == true) const Padding(padding: EdgeInsets.only(top: 10), child: Text('Este perfil mostra mais coisas só para amigos.', style: TextStyle(color: _lilas))),
-              if (jg.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                Row(children: [
-                  dado(t['pontos'] is num ? (t['pontos'] as num).toStringAsFixed(1).replaceAll('.', ',') : '0', 'pts Trade', _verde),
-                  dado('${k['vitorias'] ?? 0}', 'vitórias Ticker', const Color(0xFF4B7DFF)),
-                  if (cq != null) dado('${cq['ok']}/${cq['total']}', 'conquistas', _ouro),
-                ]),
-              ],
-            ]),
-          );
-        },
-      ),
-    );
-  }
+  Future<void> _verPerfil(Map a) async => abrirPerfilJogador(context, widget.api, '${a['h']}');
 
   // ---- rodapé: Jogo rápido e Adicionar amigos
   Widget _rodape() => Container(

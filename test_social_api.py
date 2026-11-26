@@ -47,6 +47,8 @@ def test_fluxo_de_amizade_e_desafio(dois):
     h_bia = s["amigos"][0]["h"]
     p = ana.get(f"/social/perfil/{h_bia}").json()
     assert p["usuario"] == "bia_h" and p["rel"] == "amigos" and not p["restrito"]
+    assert p["desde"] and "posicao" in p["jogos"]["trade"] and "posicao" in p["jogos"]["ticker"]     # data da conta e posição nos rankings (antes saíam vazias)
+    assert 0 <= p["xp_pct"] <= 1 and isinstance(p["xp_max"], bool)
     h_ana = bia.get("/social").json()["amigos"][0]["h"]
     for jogo in ("ticker", "trade"):
         d = ana.post("/social/desafiar", json={"h": h_bia, "jogo": jogo}).json()
