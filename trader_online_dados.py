@@ -76,10 +76,11 @@ def _status(d: dict) -> str:
     return "finalizada" if p["fase"] == "fim" else "em_jogo"
 
 
-def _mutar(pid: str, fn, agora: float) -> dict:
-    """Lê, aplica `fn(dados) -> novos dados` e grava só se a versão não mudou (CAS). Devolver o MESMO objeto = nada a gravar."""
-    for _ in range(TENTATIVAS_CAS):
-        r = _row(pid)
+def _mutar(pid: str, fn, agora: float, row: dict | None = None) -> dict:
+    """Lê, aplica `fn(dados) -> novos dados` e grava só se a versão não mudou (CAS). Devolver o MESMO objeto = nada a gravar.
+    `row`: linha que o chamador acabou de ler (na 1ª tentativa evita reler: uma ida ao banco a menos por consulta; se a versão mudou, relê)."""
+    for i in range(TENTATIVAS_CAS):
+        r = row if (i == 0 and row) else _row(pid)
         if not r:
             raise ErroSala("Partida não encontrada.")
         d = r["dados"]
@@ -498,7 +499,7 @@ def _publico(p: dict, email: str, agora: float | None = None) -> dict:
             "setup": SV.visao(p, email, time.time() if agora is None else agora)}   # só o evento e as marcas dos sinais ATIVADOS, do ponto de vista de quem pergunta
 
 
-def _sincronizar(pid: str, agora: float) -> dict:
+def _sincronizar(pid: str, agora: float, row: dict | None = None) -> dict:
     """Aplica o que o relógio já determinou (fases, fechamento e abertura de rodadas). Só grava se algo mudou; corridas se resolvem pelo CAS."""
     def f(d):
         if not d.get("p") or d.get("cancelada"):
@@ -509,13 +510,14 @@ def _sincronizar(pid: str, agora: float) -> dict:
         SV.processar(n["p"], cen, agora)                              # setups: prazo do evento em curso e sinais do candle que acabou de fechar
         BJ.agir(n["p"], cen, agora)                                   # bots de treino: as operações do plano que já chegaram na hora
         return d if n["p"]["versao"] == d["p"]["versao"] else n
-    return _mutar(pid, f, agora)
+    return _mutar(pid, f, agora, row)
 
 
-def ler(pid: str, email: str, agora: float | None = None) -> dict:
-    """Consulta de sincronização (polling): confere a participação, aplica o relógio e devolve SÓ o que este jogador pode ver (via TB.visao)."""
+def ler(pid: str, email: str, agora: float | None = None, dados: dict | None = None) -> dict:
+    """Consulta de sincronização (polling): confere a participação, aplica o relógio e devolve SÓ o que este jogador pode ver (via TB.visao).
+    `dados`: estado que uma ação acabou de gravar (já com o relógio aplicado): responde dele, sem reler nem regravar nada."""
     agora = time.time() if agora is None else agora
-    r = _row(pid)
+    r = {"dados": dados} if dados is not None else _row(pid)
     if not r:
         raise ErroSala("Partida não encontrada.")
     _participante(r["dados"], email)
@@ -529,7 +531,7 @@ def ler(pid: str, email: str, agora: float | None = None) -> dict:
         return {"estado": "sala", "sala": {"codigo": s["codigo"], "tf": s["tf"], "formato": s.get("formato"), "corrida": s.get("corrida"), "n": len(s["jogadores"]), "max": MAX_JOG, "min": MIN_JOG,
                                            "criador": s["criador"] == email,
                                            "jogadores": [{"nick": j["nick"], "voce": j["email"] == email, "criador": j["email"] == s["criador"]} for j in s["jogadores"]]}}
-    d = _sincronizar(pid, agora)
+    d = d if dados is not None else _sincronizar(pid, agora, r)
     if d.get("cancelada"):
         return {"estado": "cancelada"}
     cen = _cenario(d)
@@ -537,7 +539,7 @@ def ler(pid: str, email: str, agora: float | None = None) -> dict:
     return {"estado": "jogo", "v": v, "p": _publico(d["p"], email, agora)}
 
 
-def _acao(pid: str, email: str, agora: float, fn) -> None:
+def _acao(pid: str, email: str, agora: float, fn) -> dict:
     """Aplica uma ação INDIVIDUAL sobre os dados recém-lidos (CAS). `fn(p, cen)` pode levantar TB.ErroTrader (nada é gravado)."""
     def f(d):
         _participante(d, email)
@@ -549,39 +551,44 @@ def _acao(pid: str, email: str, agora: float, fn) -> None:
         fn(n["p"], cen)
         TB.avancar(n["p"], agora, {cen["id"]: cen})
         return d if n["p"]["versao"] == d["p"]["versao"] else n
-    _mutar(pid, f, agora)
+    return _mutar(pid, f, agora)
 
 
-def salvar(pid: str, email: str, est: dict, marcas: dict | None, agora: float | None = None) -> None:
+def salvar(pid: str, email: str, est: dict, marcas: dict | None, agora: float | None = None) -> dict:
     agora = time.time() if agora is None else agora
 
     def fn(p, cen):
         ini = TB.inicio_rodada(cen, p["rodada"], TB._nrp(p))
         ref = cen["candles"][ini - 1]["c"]                              # preço de referência calculado aqui, não vindo do navegador
         TB.salvar_estrategia(p, email, est, marcas, ref, agora)
-    _acao(pid, email, agora, fn)
+    return _acao(pid, email, agora, fn)
 
 
-def encerrar(pid: str, email: str, agora: float | None = None) -> None:
+def encerrar(pid: str, email: str, agora: float | None = None) -> dict:
     """O jogador encerra a própria operação durante o replay (o servidor fixa o momento pelo relógio dele)."""
     agora = time.time() if agora is None else agora
-    _acao(pid, email, agora, lambda p, cen: TB.encerrar_operacao(p, cen, email, agora))
+    return _acao(pid, email, agora, lambda p, cen: TB.encerrar_operacao(p, cen, email, agora))
 
 
-def agir(pid: str, email: str, dados: dict, agora: float | None = None) -> None:
+def agir(pid: str, email: str, dados: dict, agora: float | None = None) -> dict:
     """Ação da mesa (comprar, vender, ordem, mover, cancelar, encerrar). Tudo roda dentro do CAS sobre os dados recém-lidos, com o relógio do servidor:
     fase, pausa, candles revelados, duplicidade (`aid`) e regras da mesa são conferidos aqui. Erro ou clique repetido = nada é gravado de novo."""
     agora = time.time() if agora is None else agora
-    _acao(pid, email, agora, lambda p, cen: TB.registrar_acao(p, cen, email, dados, agora))
+    return _acao(pid, email, agora, lambda p, cen: TB.registrar_acao(p, cen, email, dados, agora))
 
 
 def decidir_setup(pid: str, email: str, aceitar: bool, q=None, agora: float | None = None) -> dict:
     """O dono do setup ativado aceita (manda uma ordem a mercado pelo sistema atual) ou recusa. Fase, prazo, dono e duplicidade são conferidos aqui,
     dentro do CAS, com o relógio do servidor."""
+    return decidir_setup_com_estado(pid, email, aceitar, q, agora)[0]
+
+
+def decidir_setup_com_estado(pid: str, email: str, aceitar: bool, q=None, agora: float | None = None) -> tuple[dict, dict]:
+    """Como `decidir_setup`, mas devolve também o estado gravado (a resposta da API sai dele, sem reler o banco)."""
     agora = time.time() if agora is None else agora
     out: dict = {}
-    _acao(pid, email, agora, lambda p, cen: out.update(SV.decidir(p, cen, email, aceitar, q, agora)))
-    return out
+    d = _acao(pid, email, agora, lambda p, cen: out.update(SV.decidir(p, cen, email, aceitar, q, agora)))
+    return out, d
 
 
 def pronto(pid: str, email: str, agora: float | None = None) -> None:

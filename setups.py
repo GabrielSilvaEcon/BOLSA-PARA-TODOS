@@ -167,7 +167,9 @@ def _turtle(v: list[dict]) -> dict | None:
         c = v[t]["c"]
         stop = c - TURTLE_STOP_N * n[t] if alta else c + TURTLE_STOP_N * n[t]
         lado = ("acima da máxima" if alta else "abaixo da mínima")
-        return {"direcao": "alta" if alta else "baixa", "stop": round(stop, 4),
+        ult = v[t - TURTLE_S1_SAIDA + 1:t + 1]                                  # nível de referência da saída dos Turtles (mínima/máxima de 10 candles): só uma linha informativa, não é ordem
+        ref = min(x["l"] for x in ult) if alta else max(x["h"] for x in ult)
+        return {"direcao": "alta" if alta else "baixa", "stop": round(stop, 4), "saida_ref": round(ref, 4),
                 "motivo": f"Rompimento de {TURTLE_S2 if s2 else TURTLE_S1} dias: fechamento {lado} dos últimos {TURTLE_S2 if s2 else TURTLE_S1} candles."}
     return None
 

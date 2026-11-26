@@ -1240,8 +1240,13 @@ def sala_iniciar(pid: str, q: Quem = Depends(quem)) -> dict:
 def sala_ver(pid: str, q: Quem = Depends(quem)) -> dict:
     """Sala de espera ("sala": código e jogadores), partida ("jogo": o que a mesa desenha, como na partida solo) ou "cancelada".
     No fim: placar dos jogos e XP (uma vez por partida, como no app antigo)."""
+    return _sala_resposta(pid, q)
+
+
+def _sala_resposta(pid: str, q: Quem, dados: dict | None = None) -> dict:
+    """Resposta da partida. `dados` = estado que uma ação acabou de gravar: a resposta sai dele (sem reler o banco), então a jogada responde mais rápido."""
     agora = _agora()
-    b = _sala(OL.ler, pid, q.email, agora)
+    b = _sala(OL.ler, pid, q.email, agora, dados)
     if b.get("estado") != "jogo":
         return b
     v, p = b["v"], b["p"]
@@ -1266,14 +1271,12 @@ def sala_relatorio(pid: str, q: Quem = Depends(quem)) -> dict:
 @app.post("/trade/salas/{pid}/estrategia")
 def sala_estrategia(pid: str, e: Estrategia, q: Quem = Depends(quem)) -> dict:
     est = {"direcao": None, "tipo": "aguardar"} if e.direcao in (None, "", "lateral") else {"direcao": e.direcao, "tipo": e.tipo or "continuacao"}
-    _sala(OL.salvar, pid, q.email, est, e.marcas, _agora())
-    return sala_ver(pid, q)
+    return _sala_resposta(pid, q, _sala(OL.salvar, pid, q.email, est, e.marcas, _agora()))
 
 
 @app.post("/trade/salas/{pid}/acao")
 def sala_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
-    _sala(OL.agir, pid, q.email, TG.acao_de(a.dados), _agora())
-    return sala_ver(pid, q)
+    return _sala_resposta(pid, q, _sala(OL.agir, pid, q.email, TG.acao_de(a.dados), _agora()))
 
 
 @app.post("/trade/salas/{pid}/setup")
@@ -1281,8 +1284,8 @@ def sala_setup(pid: str, d: DecisaoSetup, q: Quem = Depends(quem)) -> dict:
     """O dono do setup ativado aceita (ordem a mercado pelo sistema atual, na quantidade `q` da boleta) ou recusa. Prazo, dono e duplicidade são do servidor."""
     if d.acao not in ("aceitar", "recusar"):
         raise HTTPException(400, "Escolha aceitar ou recusar.")
-    _sala(OL.decidir_setup, pid, q.email, d.acao == "aceitar", d.q, _agora())
-    return sala_ver(pid, q)
+    _, estado = _sala(OL.decidir_setup_com_estado, pid, q.email, d.acao == "aceitar", d.q, _agora())
+    return _sala_resposta(pid, q, estado)
 
 
 @app.post("/trade/salas/{pid}/sair")

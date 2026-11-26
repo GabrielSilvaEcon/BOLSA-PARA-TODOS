@@ -969,3 +969,11 @@ def test_setup_que_nao_e_padrao_nao_tem_fase_de_destaque(jogo, monkeypatch):
     ev = p["setups"]["evento"]
     assert ev["prazo"] - ev["t_ini"] == pytest.approx(SV.ANIM_S + SV.JANELA_S)
     assert SV.visao(p, A, ev["t_ini"] + 1)["evento"]["destaque_ms"] == 0
+
+
+def test_turtle_traz_a_saida_de_referencia_dos_10_candles():
+    alta = _turtle_serie([("plano", 70, 100.0), ("rampa", 1, 102.0), ("rampa", 2, 104.0)])
+    (i, s), = sinais("turtle_trading", alta, 60)                                                                             # o candle do rompimento
+    fechados = alta[:i + 1]
+    assert s["direcao"] == "alta" and s["saida_ref"] == round(min(x["l"] for x in fechados[-SU.TURTLE_S1_SAIDA:]), 4)       # mínima dos últimos 10 candles
+    assert "alvo" not in s                                                                                                  # continua sem alvo fixo (regra do criador)
