@@ -32,14 +32,16 @@ def equipados(email: str) -> list[str]:
 
 
 def _visao(s: dict, doc: dict) -> dict:
-    return {**s, "desde": doc["itens"][s["id"]]["desde"], "origem": doc["itens"][s["id"]]["origem"], "equipado": s["id"] in doc["equipados"]}
+    meu = doc["itens"].get(s["id"]) or {}
+    return {**s, "desde": meu.get("desde"), "origem": meu.get("origem") or "liberado", "equipado": s["id"] in doc["equipados"]}
 
 
 def listar(email: str) -> dict:
-    """Só o que ela conquistou. O resto do catálogo não aparece: nem o nome, nem a regra, só quantos faltam."""
+    """Tudo liberado: o catálogo inteiro. Com a liberação desligada: só o que ela conquistou (o resto não aparece: nem o nome, nem a regra, só quantos faltam)."""
     doc = ler(email)
-    itens = [_visao(s, doc) for s in SU.catalogo() if s["id"] in doc["itens"]]
-    return {"itens": itens, "equipados": doc["equipados"], "limite": SU.MAX_EQUIPADOS, "conquistados": len(itens), "total": len(SU.catalogo())}
+    itens = [_visao(s, doc) for s in SU.catalogo() if SU.tem(doc, s["id"])]
+    return {"itens": itens, "equipados": doc["equipados"], "limite": SU.MAX_EQUIPADOS, "conquistados": len(itens), "total": len(SU.catalogo()),
+            "todos_liberados": SU.LIBERAR_TODOS}
 
 
 def equipar(email: str, setup_id: str) -> dict:
@@ -59,6 +61,8 @@ def desequipar(email: str, setup_id: str) -> dict:
 def presente_inicial(email: str) -> dict | None:
     """Presente de boas-vindas: a carta do setup básico, uma vez só por conta (contas antigas e novas). Já entra equipada se houver espaço.
     Devolve o setup (com nova=True) quando entregou agora, ou None se já tinha sido entregue (ou a pessoa já tinha o setup)."""
+    if SU.LIBERAR_TODOS:                                     # tudo liberado: não há brinde nem aviso de "carta ganha"
+        return None
     doc = ler(email)
     if PRESENTE_REF in doc["ids"]:
         return None
@@ -84,6 +88,8 @@ def presente_inicial(email: str) -> dict | None:
 
 def recompensa_bau(email: str, ref: str, rar_bau: str) -> dict:
     """Setup de um baú já aberto. Mesmo baú (mesma `ref`) = mesmo resultado, entregue uma vez só. {'ja': bool, 'setup': {...nova: True} | None}"""
+    if SU.LIBERAR_TODOS:                                     # tudo liberado: o baú não sorteia setup (não há o que ganhar)
+        return {"ja": True, "setup": None}
     doc = ler(email)
     chave = "bau:" + ref
     if chave in doc["ids"]:

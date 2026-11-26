@@ -18,6 +18,12 @@ T0 = 1002.0                                   # instante em que o replay começa
 AG = "2026-11-25T10:00:00"
 
 
+@pytest.fixture(autouse=True)
+def _cartas_valem(monkeypatch):
+    """Os testes abaixo cobrem o jogo por cartas (sem a carta, sem o setup). A liberação geral tem os seus testes mais adiante."""
+    monkeypatch.setattr(SU, "LIBERAR_TODOS", False)
+
+
 # ====================================================================================== catálogo e artes modulares
 def test_catalogo_tem_os_setups_com_todos_os_campos():
     cat = {s["id"]: s for s in SU.catalogo()}
@@ -633,7 +639,7 @@ def test_x1_sem_resposta_o_servidor_recusa_na_consulta_de_qualquer_jogador(monke
 
 def test_api_meus_setups_lista_so_o_conquistado_e_equipar_confere_a_propriedade(cli):
     from test_api import EU
-    assert cli.get("/setups").json() == {"itens": [], "equipados": [], "limite": 2, "conquistados": 0, "total": 7}
+    assert cli.get("/setups").json() == {"itens": [], "equipados": [], "limite": 2, "conquistados": 0, "total": 7, "todos_liberados": False}
     assert cli.post("/setups/equipar", json={"id": "turtle_trading"}).status_code == 400            # ainda não desbloqueou
     _conquistar(EU, "turtle_trading")
     r = cli.get("/setups").json()
@@ -859,3 +865,51 @@ def test_api_x1_de_ponta_a_ponta_com_dois_jogadores(dois, monkeypatch):
     assert r.status_code == 200 and r.json()["tela"]["setup"]["evento"] is None and not r.json()["tela"]["pausada"]
     assert r.json()["tela"]["mesa"]["fila"][0]["q"] == 3                                          # a ordem entrou no sistema atual de execução
     assert ana.post(f"/trade/salas/{pid}/setup", json={"acao": "aceitar"}).status_code == 400    # e não duplica
+
+
+# ====================================================================================== todos os setups liberados (por enquanto)
+@pytest.fixture
+def liberado(monkeypatch):
+    monkeypatch.setattr(SU, "LIBERAR_TODOS", True)
+
+
+def test_liberado_a_coleta_lista_todos_e_o_jogador_so_escolhe_ate_dois(cli, liberado):
+    r = cli.get("/setups").json()
+    assert r["todos_liberados"] is True and r["total"] == 7 and len(r["itens"]) == 7 and r["equipados"] == []
+    assert {i["id"] for i in r["itens"]} == {s["id"] for s in SU.catalogo()}
+    assert cli.post("/setups/equipar", json={"id": "martelo"}).json()["equipados"] == ["martelo"]                     # sem ter carta nenhuma
+    assert cli.post("/setups/equipar", json={"id": "mark_minervini"}).json()["equipados"] == ["martelo", "mark_minervini"]
+    assert cli.post("/setups/equipar", json={"id": "turtle_trading"}).status_code == 400                               # continua o limite de 2
+    assert cli.post("/setups/equipar", json={"id": "inventado"}).status_code == 400                                    # e o que não existe não vale
+    assert cli.post("/setups/desequipar", json={"id": "martelo"}).json()["equipados"] == ["mark_minervini"]
+    assert cli.post("/setups/equipar", json={"id": "turtle_trading"}).json()["equipados"] == ["mark_minervini", "turtle_trading"]
+
+
+def test_liberado_nao_ha_brinde_nem_aviso_e_o_bau_nao_sorteia_setup(cli, liberado):
+    import setups_dados as SD
+    from test_api import EU
+    assert SD.presente_inicial(EU) is None and SD.recompensa_bau(EU, "x", "lendario")["setup"] is None
+    cli.get("/eu")
+    assert not [a for a in cli.get("/alertas").json()["itens"] if "Presente" in a["titulo"]]
+
+
+def test_liberado_o_que_a_pessoa_ja_conquistou_continua_registrado_e_volta_a_valer_se_a_liberacao_for_desligada(cli, monkeypatch):
+    import setups_dados as SD
+    from test_api import EU
+    _conquistar(EU, "turtle_trading")
+    monkeypatch.setattr(SU, "LIBERAR_TODOS", True)
+    assert cli.post("/setups/equipar", json={"id": "martelo"}).status_code == 200
+    assert SD.ler(EU)["itens"].keys() == {"turtle_trading"}                                                           # a coleção por cartas não foi tocada
+    monkeypatch.setattr(SU, "LIBERAR_TODOS", False)
+    r = cli.get("/setups").json()
+    assert [i["id"] for i in r["itens"]] == ["turtle_trading"] and r["equipados"] == [] and r["todos_liberados"] is False   # sem a carta, o martelo deixa de valer
+
+
+def test_liberado_a_partida_usa_o_que_o_jogador_escolheu(cli, liberado, monkeypatch):
+    import api.main as API
+    t = {"agora": 9_000_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    assert cli.post("/setups/equipar", json={"id": "larry_williams"}).status_code == 200
+    pid = cli.post("/trade/solo", json={"corrida": "rapida"}).json()["id"]
+    v = cli.get(f"/trade/solo/{pid}").json()
+    assert v["tela"]["setup"] is not None and v["tela"]["setup"]["evento"] is None                                      # a partida nasceu com setups ligados
