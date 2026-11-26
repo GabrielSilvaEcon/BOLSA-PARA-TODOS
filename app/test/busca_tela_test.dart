@@ -29,7 +29,7 @@ void main() {
     testWidgets('tela de busca (${tela.width.toInt()}x${tela.height.toInt()}) mostra você, o jogador buscando, a dica e o cancelar, sem estourar', (t) async {
       await _abre(t, tela, _ApiFalsa([]));
       expect(t.takeException(), isNull);
-      expect(find.textContaining('PROCURANDO'), findsOneWidget);
+      expect(find.textContaining('Procurando'), findsOneWidget);
       expect(find.text('Bússola'), findsOneWidget);
       expect(find.text('Nível 12'), findsOneWidget);
       expect(find.text('Buscando…'), findsOneWidget);
