@@ -1,3 +1,4 @@
+import 'dart:ui' show FontFeature;
 import 'dart:async';
 import 'dart:math';
 
@@ -123,6 +124,7 @@ class BuscaTela extends StatefulWidget {
 class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMixin {
   late final AnimationController _giro = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
   Timer? _t;
+  Timer? _relogio; // conta os segundos da busca por conta própria (não depende do servidor responder)
   int _seg = 0;
   bool _saiu = false;
   int _falhas = 0;
@@ -132,6 +134,9 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    _relogio = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _seg++);
+    });
     if (widget.entrar == null) {
       _t = Timer.periodic(const Duration(seconds: 2), (_) => _consultar());
     } else {
@@ -146,6 +151,7 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
   @override
   void dispose() {
     _t?.cancel();
+    _relogio?.cancel();
     _giro.dispose();
     if (!_saiu) widget.api.post('${widget.rota}/sair').catchError((_) => <String, dynamic>{});
     super.dispose();
@@ -174,7 +180,6 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
   }
 
   Future<void> _consultar() async {
-    _seg += 2;
     try {
       final r = await widget.api.get(widget.rota);
       if (!mounted) return;
@@ -243,7 +248,13 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
                     Expanded(child: _jogador('JOGADOR', 'Buscando…', 'Nível ?', '??? troféus', const Color(0xFFB45CFF), Icons.help_outline_rounded)),
                   ]),
                   const SizedBox(height: 6),
-                  Text(seg, style: const TextStyle(fontSize: 14, color: lilas)),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.timer_outlined, size: 22, color: Color(0xFF4FC3FF)),
+                    const SizedBox(width: 6),
+                    Text(seg, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white, fontFeatures: [FontFeature.tabularFigures()])),
+                  ]),
+                  if (_seg >= 15 && _t != null && _t!.isActive)
+                    const Padding(padding: EdgeInsets.only(top: 4), child: Text('O servidor está lento agora, continuamos tentando…', style: TextStyle(fontSize: 12, color: Color(0xFFB9D0F5)))),
                   const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.all(12),

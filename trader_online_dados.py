@@ -391,6 +391,9 @@ def _partida_com_bot(email: str, pid: str, agora: float) -> dict:
         except (TB.ErroTrader, ErroSala) as e:                        # sem gráfico real guardado (ou cenário inválido): encerra a busca e avisa, em vez de ficar tentando até expirar
             sair(pid, email, agora)
             return {"estado": "sem_graficos", "mensagem": str(e)}
+        except Exception as e:                                        # falha inesperada (banco lento, etc.): registra e deixa a próxima consulta tentar de novo, sem derrubar a busca com erro 500
+            banco.registrar_erro("trade.bot_iniciar", e)
+            return {"estado": "fila", "id": pid, "aviso": "tentando de novo"}
         return {"estado": "partida", "id": pid}
     return {"estado": "fila", "id": pid}
 

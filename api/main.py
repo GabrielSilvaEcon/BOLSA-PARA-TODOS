@@ -1191,13 +1191,21 @@ class Busca(BaseModel):
 @app.post("/trade/fila")
 def trade_fila_entrar(b: Busca, q: Quem = Depends(quem)) -> dict:
     """Procurar adversário online (1 contra 1). Quem estiver procurando a mesma duração ao mesmo tempo se encontra e a partida começa na hora."""
-    return _sala(OL.buscar, q.email, b.corrida, _agora())
+    t0 = time.time()
+    r = _sala(OL.buscar, q.email, b.corrida, _agora())
+    if time.time() - t0 > 3:
+        print(f"[lento] POST /trade/fila levou {time.time() - t0:.1f}s -> {r.get('estado')}", flush=True)
+    return r
 
 
 @app.get("/trade/fila")
 def trade_fila(q: Quem = Depends(quem)) -> dict:
     """Chamado a cada 2 s enquanto procura. {'estado': 'partida'|'fila'|'fora'|'expirou', 'id'?}"""
-    return _sala(OL.consultar_busca, q.email, _agora())
+    t0 = time.time()
+    r = _sala(OL.consultar_busca, q.email, _agora())
+    if time.time() - t0 > 3:                                  # aparece nos logs do servidor: a busca está lenta (banco, servidor dormindo...)
+        print(f"[lento] GET /trade/fila levou {time.time() - t0:.1f}s -> {r.get('estado')}", flush=True)
+    return r
 
 
 @app.post("/trade/fila/sair")
