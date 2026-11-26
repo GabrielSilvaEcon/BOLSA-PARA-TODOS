@@ -12,6 +12,8 @@ import 'mesa/mesa_host.dart';
 import 'navegacao.dart';
 import 'ordem_respostas.dart';
 import 'relatorio.dart';
+import 'fim_partida.dart';
+import 'ticker_online.dart' show BuscaTela;
 
 /// Partida solo do Trade Battle. A mesa (gráfico, boleta, placar) é a MESMA do app antigo; aqui o app só faz a ponte com o servidor:
 /// cria a partida (`POST /trade/solo`) ou entra na da sala (`/trade/salas/{id}`), consulta o andamento a cada segundo e manda as jogadas
@@ -215,6 +217,31 @@ class _PartidaTelaState extends State<PartidaTela> {
       ),
     ));
     _resultadoAberto = false;
+    if (mounted) _mostrarFimModal();
+  }
+
+  bool _modalFim = false;
+
+  /// Fim da partida: um pop-up que prende a tela (não fecha tocando fora nem no voltar). Só dois caminhos: jogar novamente ou voltar ao menu.
+  Future<void> _mostrarFimModal() async {
+    if (_modalFim || !mounted) return;
+    _modalFim = true;
+    final solo = widget.salaId == null;
+    await mostrarFimDePartida(context, jogarNovamente: () => _jogarNovamente(solo), voltarAoMenu: () => Navigator.of(context).maybePop());
+    _modalFim = false;
+  }
+
+  /// Solo: outra partida de treino. Online: volta a procurar adversário (a busca abre na hora, como no BATALHAR).
+  void _jogarNovamente(bool solo) {
+    if (!mounted) return;
+    final corrida = solo ? widget.corrida : 'rapida'; // online: só existe a partida de 15 minutos
+    if (solo) {
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: corrida)));
+      return;
+    }
+    Route<void> partida(String id) => MaterialPageRoute<void>(builder: (_) => PartidaTela(api: widget.api, salaId: id));
+    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+        builder: (_) => BuscaTela(api: widget.api, rota: '/trade/fila', titulo: 'Trade Battle · Online', abrir: partida, entrar: () => widget.api.post('/trade/fila', {'corrida': corrida}))));
   }
 
   Future<void> _abrirRelatorio() async {
@@ -308,41 +335,6 @@ class _PartidaTelaState extends State<PartidaTela> {
               ),
             ),
           if (_pid == null) const Positioned.fill(child: _Carregando()),
-          if (_fim)
-            Positioned(
-              left: 10,
-              right: 10,
-              bottom: 10,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _abrirResultado,
-                      icon: const Icon(Icons.bar_chart),
-                      label: const Text('Ver resultado'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: widget.salaId == null
-                        ? FilledButton.icon(
-                            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12A83C)),
-                            onPressed: () => Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: widget.corrida)),
-                            ),
-                            icon: const Icon(Icons.replay),
-                            label: const Text('Jogar de novo'),
-                          )
-                        : FilledButton.icon(
-                            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF12A83C)),
-                            onPressed: () => Navigator.of(context).maybePop(),
-                            icon: const Icon(Icons.home),
-                            label: const Text('Voltar ao Trade Battle'),
-                          ),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
