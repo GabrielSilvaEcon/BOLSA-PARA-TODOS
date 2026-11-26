@@ -20,6 +20,7 @@ DOIS MOTORES CONVIVEM (um único arquivo, sem motor paralelo):
 """
 from __future__ import annotations
 
+import bots as BOTS
 import math
 import re
 import uuid
@@ -776,7 +777,7 @@ def entradas_adversarios(p: dict, cenario: dict, agora: float, jog: str) -> list
             continue
         e = entrada_executada(p, cenario, agora, p["rodada"], j)
         if e:
-            out.append({"rotulo": f"Jogador {n}", "preco": e["preco"], "indice": e["indice"]})
+            out.append({"rotulo": f"{BOTS.rotulo(j)} {n}", "preco": e["preco"], "indice": e["indice"]})
     return out
 
 
@@ -867,7 +868,7 @@ def _adversarios_mesa(p: dict, cenario: dict, agora: float, jog: str) -> list[di
                 import trader_qtd as TQ
                 aberto = TQ.aberto(st, st["preco_atual"]) / st["cap"] if st["cap"] else 0.0
             # resultado da rodada (realizado + aberto, em % da aposta), calculado só com o que já é público: entradas e saídas executadas
-            out.append({"rotulo": f"Jogador {n}", "ops": _ops_publicas(st, r[1]), "total_pct": round((sum(t["ret"] for t in st["trades"]) + aberto) * 100, 3)})
+            out.append({"rotulo": f"{BOTS.rotulo(j)} {n}", "ops": _ops_publicas(st, r[1]), "total_pct": round((sum(t["ret"] for t in st["trades"]) + aberto) * 100, 3)})
     return out
 
 
@@ -1009,7 +1010,7 @@ def xp_da_partida(p: dict, jog: str) -> dict:
 
 def _rotulos(p: dict, jog: str) -> dict:
     """Como cada jogador aparece para `jog`: ele mesmo é 'Você', os outros 'Jogador N' (nunca o e-mail)."""
-    return {j: ("Você" if j == jog else f"Jogador {n}") for n, j in enumerate(p["jogadores"], 1)}
+    return {j: ("Você" if j == jog else f"{BOTS.rotulo(j)} {n}") for n, j in enumerate(p["jogadores"], 1)}
 
 
 def placar_rodada(p: dict, jog: str) -> list[dict]:

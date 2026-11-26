@@ -74,6 +74,7 @@ class _TradeTelaState extends State<TradeTela> {
                 rota: '/trade/fila',
                 titulo: 'Trade Battle · Online',
                 abrir: partida,
+                avisoBot: true,
                 rotuloAlternativa: 'Treinar solo enquanto isso',
                 alternativa: () => MaterialPageRoute<void>(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida)))));
       }

@@ -24,6 +24,7 @@ import bisect
 import copy
 import math
 
+import bots as BOTS
 import setups as SU
 import trader_battle as TB
 
@@ -94,6 +95,31 @@ def _disparar(p: dict, cen: dict, s: dict, sinal: dict, agora: float) -> bool:
     return True
 
 
+def _disparar_ou_entrar(p: dict, cen: dict, s: dict, sinal: dict, agora: float) -> bool:
+    """Sinal de gente: pausa a partida e abre a janela. Sinal de BOT: entra na hora pelo sistema de ordens, sem pausa e sem janela (True só se abriu janela)."""
+    if not BOTS.eh_bot(sinal["jogador"]):
+        return _disparar(p, cen, s, sinal, agora)
+    jog = sinal["jogador"]
+    ini = TB.inicio_rodada(cen, p["rodada"], int(TB.cfg_de(p)["n_replay"]))
+    base = {"aid": f"setup:{sinal['id']}"[:48], "tipo": "mercado", "direcao": sinal["direcao"], "q": _lote(p, cen, jog, ini)}
+    protecao = {k: sinal[k] for k in ("stop", "alvo") if sinal.get(k) is not None}
+    try:
+        try:
+            TB.registrar_acao(p, cen, jog, {**base, **protecao}, agora)
+        except TB.ErroTrader as e:
+            if not protecao or not any(w in str(e) for w in ("stop", "alvo")):
+                raise
+            TB.registrar_acao(p, cen, jog, base, agora)               # o preço já passou do stop/alvo: entra sem eles, como a gente
+            protecao = {}
+    except TB.ErroTrader:
+        return False                                                  # a ordem não valeu (sem capital, etc.): o bot só deixa passar
+    s["sinais"].append({**sinal, "estado": "aceito", "t_dec": float(agora), "protegido": bool(protecao)})
+    s["n"][jog] = s["n"].get(jog, 0) + 1
+    s["ultimo"][jog] = sinal["candle"]
+    p["versao"] += 1
+    return False
+
+
 def _resolver(p: dict, s: dict, sinal_id: str, estado: str, agora: float) -> None:
     sinal = next(x for x in s["sinais"] if x["id"] == sinal_id)
     sinal["estado"], sinal["t_dec"] = estado, float(agora)
@@ -147,7 +173,7 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
                 candle = ini + (g[k] if g else k)
                 if idade <= FRESCOR_S and total - (candle - ini + 1) >= RESTANTES and candle - s["ultimo"].get(jog, -999) >= RECARGA:
                     sinal = _sinal(p, s, jog, sid, candle, arm, arm["gatilho"], agora)
-                    if sinal and _disparar(p, cen, s, sinal, agora):
+                    if sinal and _disparar_ou_entrar(p, cen, s, sinal, agora):
                         return True                                  # um evento por vez: o resto espera a janela fechar
             elif n >= b:
                 armados.pop(sid, None)                               # a validade acabou sem o preço chegar
@@ -168,7 +194,7 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
                     s["armado"][jog] = armados
                 elif candle - s["ultimo"].get(jog, -999) >= RECARGA:
                     sinal = _sinal(p, s, jog, sid, candle, sig, fechados[-1]["c"], agora)
-                    if sinal and _disparar(p, cen, s, sinal, agora):
+                    if sinal and _disparar_ou_entrar(p, cen, s, sinal, agora):
                         return True
     if mudou:
         p["versao"] += 1
