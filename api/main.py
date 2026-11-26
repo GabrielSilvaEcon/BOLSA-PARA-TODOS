@@ -22,6 +22,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import json
 import banco
 from paralelo import paralelo
 import contas
@@ -1062,7 +1063,7 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict, marca: tuple | 
     if fim:
         res = (p.get("resultados") or {}).get(TB._chave(1, q.email))
         out["fim"] = {"resultado": res, "revelado": TB.revelacao(p, cen), "final": TB.resumo_final(p, q.email), "xp": d.get("xp_pago")}
-    return out
+    return _com_etag(out)
 
 
 class NovaPartida(BaseModel):
@@ -1093,9 +1094,51 @@ def trade_solo_nova(d: NovaPartida, q: Quem = Depends(quem)) -> dict:
     return _estado_solo(q, pid, reg, p, cen)
 
 
+# ---- Consulta INCREMENTAL da partida (Etapa 2). O servidor sempre monta o estado completo (a verdade é dele) e decide o que ENVIAR:
+#   · cliente sem parâmetros (app antigo) ........ resposta completa, igual a antes (mais o campo `e`);
+#   · `e` igual ao estado atual .................. resposta mínima {sem_mudanca, e, vol:{seg, prox_ms}} (nada de candles);
+#   · mudou, e o cliente declara `n`, `u`, `fk` ... estado completo, mas só com a CAUDA dos candles (a partir do último que o cliente tem);
+#   · qualquer divergência (candles a menos, soma diferente, outra fase/rodada, fim da partida) ... resposta completa: o cliente nunca fica com dado incompleto.
+# `e` é um hash do estado SEM os campos que mudam a cada segundo (seg, prox_ms), que vão sempre em `vol`.
+_VOLATEIS_TELA = ("seg", "prox_ms")
+
+
+def _etag_tela(tela: dict) -> str:
+    import hashlib
+    base = {k: v for k, v in tela.items() if k not in _VOLATEIS_TELA}
+    return hashlib.md5(json.dumps(base, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()[:16]
+
+
+def _soma_candle(c: dict) -> float:
+    return round(float(c.get("o", 0)) + float(c.get("h", 0)) + float(c.get("l", 0)) + float(c.get("c", 0)), 6)
+
+
+def _com_etag(out: dict) -> dict:
+    """Marca a resposta completa com a versão do estado (`e`). Respostas de jogadas também levam, para o cliente já consultar de forma incremental depois."""
+    tela = out.get("tela")
+    if isinstance(tela, dict) and out.get("fase") != "fim" and "fim" not in out and "candles" in tela:
+        out["e"] = _etag_tela(tela)
+    return out
+
+
+def _enxuga(out: dict, e: str | None, n: int | None, u: float | None, fk: str | None) -> dict:
+    tela = out.get("tela")
+    if "e" not in out or not isinstance(tela, dict):
+        return out                                                 # fim da partida e telas sem candles: sempre completo
+    et = out["e"]
+    if e and e == et:
+        return {k: out[k] for k in ("estado", "id", "fase", "e") if k in out} | {"sem_mudanca": True, "vol": {k: tela.get(k) for k in _VOLATEIS_TELA}}
+    cs = tela["candles"]
+    if n and u is not None and fk and fk == tela.get("fase_key") and 2 <= n <= len(cs) and abs(_soma_candle(cs[n - 2]) - u) < 1e-4:
+        t2 = {k: v for k, v in tela.items() if k != "candles"}
+        t2.update(candles_desde=n - 1, candles_cauda=cs[n - 1:], candles_total=len(cs))
+        return {**out, "tela": t2}
+    return out
+
+
 @app.get("/trade/solo/{pid}")
-def trade_solo_ver(pid: str, q: Quem = Depends(quem)) -> dict:
-    return _com_solo(q, pid, lambda d, p, cen, m: _estado_solo(q, pid, d, p, cen, m))
+def trade_solo_ver(pid: str, q: Quem = Depends(quem), e: str | None = None, n: int | None = None, u: float | None = None, fk: str | None = None) -> dict:
+    return _enxuga(_com_solo(q, pid, lambda d, p, cen, m: _estado_solo(q, pid, d, p, cen, m)), e, n, u, fk)
 
 
 class Estrategia(BaseModel):
@@ -1256,10 +1299,10 @@ def sala_iniciar(pid: str, q: Quem = Depends(quem)) -> dict:
 
 
 @app.get("/trade/salas/{pid}")
-def sala_ver(pid: str, q: Quem = Depends(quem)) -> dict:
+def sala_ver(pid: str, q: Quem = Depends(quem), e: str | None = None, n: int | None = None, u: float | None = None, fk: str | None = None) -> dict:
     """Sala de espera ("sala": código e jogadores), partida ("jogo": o que a mesa desenha, como na partida solo) ou "cancelada".
-    No fim: placar dos jogos e XP (uma vez por partida, como no app antigo)."""
-    return _sala_resposta(pid, q)
+    No fim: placar dos jogos e XP (uma vez por partida, como no app antigo). Parâmetros e/n/u/fk: consulta incremental (ver _enxuga)."""
+    return _enxuga(_sala_resposta(pid, q), e, n, u, fk)
 
 
 def _sala_resposta(pid: str, q: Quem, dados: dict | None = None) -> dict:
@@ -1276,7 +1319,7 @@ def _sala_resposta(pid: str, q: Quem, dados: dict | None = None) -> dict:
                       "trofeus": _trof_ultimo(q, pid),
                       # o que a tela de resultado do app lê (o mesmo da partida solo). Sem isto ela mostrava "ativo —", lucro "—", 0,0 pts e sempre "EMPATE TÉCNICO"
                       "resultado": v.get("resultado"), "revelado": v.get("revelado"), "final": v.get("final")}
-    return out
+    return _com_etag(out)
 
 
 @app.get("/trade/salas/{pid}/relatorio")

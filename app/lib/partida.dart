@@ -12,6 +12,7 @@ import 'mesa/mesa_host.dart';
 import 'navegacao.dart';
 import 'ordem_respostas.dart';
 import 'relatorio.dart';
+import 'estado_partida.dart';
 import 'fim_partida.dart';
 import 'ticker_online.dart' show BuscaTela;
 
@@ -97,7 +98,7 @@ class _PartidaTelaState extends State<PartidaTela> {
     _ocupado = true;
     final id = _ordem.novo();
     try {
-      final r = await widget.api.get(_base);
+      final r = await widget.api.get(_inc.consulta(_base));
       if (_ordem.aceitar(id)) _aplicar(r);   // chegou depois de uma jogada mais nova: o retrato já está velho
     } catch (_) {
       // falha de rede passageira: tenta de novo no próximo segundo
@@ -107,7 +108,9 @@ class _PartidaTelaState extends State<PartidaTela> {
   }
 
   /// Manda o estado do servidor para a mesa desenhar, com o retorno das jogadas já tratadas.
-  void _aplicar(Map<String, dynamic> r) {
+  void _aplicar(Map<String, dynamic> bruta) {
+    final r = _inc.aplicar(bruta); // resposta completa (junta a cauda dos candles / reaproveita o estado sem mudança)
+    if (r == null) return; // não encaixou: descarta; a próxima consulta pede o estado completo
     if (r['estado'] == 'cancelada') {
       _relogio?.cancel();
       if (mounted) setState(() => _erroInicio = 'A sala foi cancelada.');
@@ -221,6 +224,7 @@ class _PartidaTelaState extends State<PartidaTela> {
   }
 
   bool _modalFim = false;
+  final _inc = EstadoIncremental(); // consulta incremental: só o que mudou vem do servidor
 
   /// Fim da partida: um pop-up que prende a tela (não fecha tocando fora nem no voltar). Só dois caminhos: jogar novamente ou voltar ao menu.
   Future<void> _mostrarFimModal() async {
