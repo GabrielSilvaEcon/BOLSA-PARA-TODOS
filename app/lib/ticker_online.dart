@@ -9,7 +9,8 @@ import 'api.dart';
 import 'escudo.dart';
 import 'ticker.dart';
 
-/// Ticker Battle ONLINE: encontrar um adversário na fila ou jogar com um amigo (sala com código).
+/// Ticker Battle ONLINE: encontrar um adversário entre quem está procurando agora. Não há criar sala nem código: para jogar com um amigo, o desafio
+/// sai de Meus Amigos (cria a partida escondida e manda o convite).
 /// As regras são as do app antigo (battle_online.py), aplicadas no servidor: cada um escolhe carta e indicador EM SEGREDO;
 /// quando os dois confirmam, o servidor revela e compara. Duelos online contam para o ranking do Ticker Battle.
 class OnlineTela extends StatefulWidget {
@@ -45,41 +46,6 @@ class _OnlineTelaState extends State<OnlineTela> {
         await Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => BuscaTela(api: widget.api)));
       });
 
-  void _criarSala() => _acao(() async {
-        final r = await widget.api.post('/ticker/online/sala');
-        if (mounted) await _abrirPartida('${r['id']}');
-      });
-
-  void _entrarCodigo() async {
-    final campo = TextEditingController();
-    final cod = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF10274A),
-        title: const Text('Entrar na sala do amigo', style: TextStyle(fontWeight: FontWeight.w900)),
-        content: TextField(
-          controller: campo,
-          autofocus: true,
-          maxLength: 6,
-          textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(labelText: 'Código da sala', hintText: '6 letras/números'),
-          onSubmitted: (v) => Navigator.of(ctx).pop(v),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.of(ctx).pop(campo.text), child: const Text('Entrar')),
-        ],
-      ),
-    );
-    campo.dispose();
-    final c = (cod ?? '').trim();
-    if (c.isEmpty) return;
-    _acao(() async {
-      final r = await widget.api.post('/ticker/online/sala/entrar', {'codigo': c});
-      if (mounted) await _abrirPartida('${r['id']}');
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return _Fundo(
@@ -92,9 +58,7 @@ class _OnlineTelaState extends State<OnlineTela> {
         else ...[
           Entrada(ordem: 1, child: _botao(Icons.travel_explore_rounded, 'Encontrar adversário', 'Entra na fila e joga com quem estiver procurando agora', const Color(0xFF26D07C), _buscar)),
           const SizedBox(height: 10),
-          Entrada(ordem: 2, child: _botao(Icons.group_add_rounded, 'Criar sala para um amigo', 'Gera um código de 6 letras para passar ao amigo', const Color(0xFF6CA3FF), _criarSala)),
-          const SizedBox(height: 10),
-          Entrada(ordem: 3, child: _botao(Icons.login_rounded, 'Entrar com código', 'Digite o código que o amigo passou', const Color(0xFFF2B84B), _entrarCodigo)),
+          _caixaTexto('Quer jogar com um amigo?', 'Abra Meus Amigos e toque em "Desafiar no Ticker Battle". Quando ele aceitar, a batalha começa na hora.'),
         ],
         const SizedBox(height: 14),
         _caixaTexto(
@@ -135,8 +99,12 @@ class _OnlineTelaState extends State<OnlineTela> {
 
 /// Procurando adversário: radar girando enquanto o servidor tenta emparelhar (a cada 2 s). Cancelar tira da fila.
 class BuscaTela extends StatefulWidget {
-  const BuscaTela({super.key, required this.api});
+  /// Por padrão procura duelo do Ticker Battle; o Trade Battle usa a mesma tela com a sua rota e a sua partida (`abrir`).
+  const BuscaTela({super.key, required this.api, this.rota = '/ticker/online/fila', this.titulo = 'Duelo Online', this.abrir});
   final Api api;
+  final String rota;
+  final String titulo;
+  final Route<void> Function(String id)? abrir;
 
   @override
   State<BuscaTela> createState() => _BuscaTelaState();
@@ -159,25 +127,25 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
   void dispose() {
     _t?.cancel();
     _giro.dispose();
-    if (!_saiu) widget.api.post('/ticker/online/fila/sair').catchError((_) => <String, dynamic>{});
+    if (!_saiu) widget.api.post('${widget.rota}/sair').catchError((_) => <String, dynamic>{});
     super.dispose();
   }
 
   Future<void> _consultar() async {
     _seg += 2;
     try {
-      final r = await widget.api.get('/ticker/online/fila');
+      final r = await widget.api.get(widget.rota);
       if (!mounted) return;
       switch (r['estado']) {
         case 'partida':
           _saiu = true;
           _t?.cancel();
           HapticFeedback.heavyImpact();
-          Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PartidaOnlineTela(api: widget.api, pid: '${r['id']}')));
+          Navigator.of(context).pushReplacement(widget.abrir?.call('${r['id']}') ?? MaterialPageRoute<void>(builder: (_) => PartidaOnlineTela(api: widget.api, pid: '${r['id']}')));
         case 'expirou':
         case 'fora':
           _t?.cancel();
-          setState(() => _msg = 'Ninguém apareceu agora. Tente de novo em instantes ou chame um amigo com o código da sala.');
+          setState(() => _msg = 'Ninguém apareceu agora. Tente de novo em instantes ou desafie um amigo em Meus Amigos.');
         default:
           setState(() => _msg = r['reservado'] == true ? 'Adversário encontrado! Montando a partida…' : 'Procurando um adversário…');
       }
@@ -187,7 +155,7 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return _Fundo(
-      titulo: 'Duelo Online',
+      titulo: widget.titulo,
       child: Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           SizedBox(

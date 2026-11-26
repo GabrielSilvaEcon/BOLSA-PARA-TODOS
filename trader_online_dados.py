@@ -212,7 +212,11 @@ def entrar_na_sala(email: str, codigo: str, agora: float | None = None) -> dict:
     achadas = banco._selecionar("tb_partidas", {"codigo": cod, "status": "aguardando"}, ["id"], limite=1)
     if not achadas:
         raise ErroSala("Sala não encontrada, já começou ou expirou.")
-    pid = achadas[0]["id"]
+    return _entrar(email, achadas[0]["id"], agora)
+
+
+def _entrar(email: str, pid: str, agora: float, publica: bool = False) -> dict:
+    """Entra na sala `pid`. `publica`: entrada pela BUSCA de adversário (só em sala de busca, no máximo 2 jogadores)."""
     ja = partida_ativa(email)
     if ja == pid:
         return {"id": pid}
@@ -231,6 +235,8 @@ def entrar_na_sala(email: str, codigo: str, agora: float | None = None) -> dict:
             raise ErroSala("Esta partida já começou.")
         if any(j["email"] == email for j in d["sala"]["jogadores"]):
             return d
+        if publica and (not d["sala"].get("publica") or len(d["sala"]["jogadores"]) >= 2):
+            raise ErroSala("Esta busca já achou adversário.")
         if len(d["sala"]["jogadores"]) >= MAX_JOG:
             raise ErroSala("Sala cheia: o máximo é 4 jogadores.")
         n = copy.deepcopy(d)
@@ -261,6 +267,133 @@ def sair(pid: str, email: str, agora: float | None = None) -> None:
     d = _mutar(pid, f, agora)
     if not d.get("p") and (d.get("cancelada") or email not in [j["email"] for j in d["sala"]["jogadores"]]):
         banco._atualizar_n("tb_jogadores", {"id": f"{pid}|{email}", "ativo": 1}, {"ativo": 0})      # liberou a vaga ativa da pessoa
+
+
+# ------------------------------------------------------------------ busca de adversário (Trade Battle online, 1 contra 1)
+# Não há criar sala nem código: quem quer jogar online "procura", e quem estiver procurando ao mesmo tempo (mesma duração) se encontra. Cada busca é uma sala
+# marcada como `publica`; quem chega depois entra na mais ANTIGA que ainda esteja viva, então duas buscas nunca se escolhem uma à outra. Amigos se desafiam
+# pelo convite (social), que cria a sala escondida e começa na hora.
+BUSCA_VIVA_S = 12          # a busca só vale enquanto o app dela continua consultando (a cada 2 s)
+BUSCA_MAX_ESPERA_S = 90    # depois disso a busca expira ("ninguém apareceu")
+
+
+def _buscas_vivas(corrida: str, agora: float, ignorar: str) -> list[dict]:
+    """Buscas públicas esperando adversário, da mais antiga para a mais nova (desempate pelo id)."""
+    out = []
+    for r in banco._selecionar("tb_partidas", {"status": "aguardando"}, ["id"], ordem="criado_em", limite=60):
+        row = _row(r["id"])
+        d = (row or {}).get("dados") or {}
+        sala = d.get("sala") or {}
+        if (not sala.get("publica") or d.get("cancelada") or d.get("p") or sala.get("corrida") != corrida or sala.get("criador") == ignorar
+                or len(sala.get("jogadores") or []) >= 2 or agora - float(sala.get("visto") or 0) > BUSCA_VIVA_S):
+            continue
+        out.append({"id": row["id"], "criador": sala["criador"], "criada": float(sala.get("criada") or 0)})
+    return sorted(out, key=lambda x: (x["criada"], x["id"]))
+
+
+def _entrar_na_mais_antiga(email: str, corrida: str, agora: float, mais_nova_que: tuple | None = None) -> dict | None:
+    for c in _buscas_vivas(corrida, agora, email):
+        if mais_nova_que is not None and (c["criada"], c["id"]) >= mais_nova_que:
+            continue                                                   # só entra em buscas MAIS ANTIGAS que a sua
+        try:
+            _entrar(email, c["id"], agora, publica=True)
+        except ErroSala:
+            continue                                                   # outro chegou primeiro: tenta a próxima
+        iniciar(c["id"], c["criador"], agora)                          # os dois já estão: a partida começa na hora (o servidor inicia pelo criador da busca)
+        return {"estado": "partida", "id": c["id"]}
+    return None
+
+
+def buscar(email: str, corrida: str, agora: float | None = None) -> dict:
+    """Entra na busca: se há uma busca mais antiga esperando, a partida já começa; senão fica esperando. {'estado': 'partida'|'fila', 'id'}."""
+    agora = time.time() if agora is None else agora
+    if corrida not in TB.CORRIDAS:
+        raise ErroSala("Duração de partida inválida.")
+    limpar(agora)
+    ja = partida_ativa(email)
+    if ja:
+        return consultar_busca(email, agora)
+    _capital(email)
+    achou = _entrar_na_mais_antiga(email, corrida, agora)
+    if achou:
+        return achou
+    sala = criar_sala(email, "", agora, corrida=corrida)
+    pid = sala["id"]
+
+    def f(d):
+        n = copy.deepcopy(d)
+        n["sala"]["publica"], n["sala"]["visto"] = True, agora
+        return n
+    _mutar(pid, f, agora)
+    return {"estado": "fila", "id": pid}
+
+
+def consultar_busca(email: str, agora: float | None = None) -> dict:
+    """Chamado a cada 2 s por quem está procurando: renova a presença e tenta achar uma busca mais antiga. {'estado': 'partida'|'fila'|'fora'|'expirou', 'id'?}"""
+    agora = time.time() if agora is None else agora
+    pid = partida_ativa(email)
+    if not pid:
+        return {"estado": "fora"}
+    d = (_row(pid) or {}).get("dados") or {}
+    sala = d.get("sala") or {}
+    if d.get("p"):
+        return {"estado": "partida", "id": pid}
+    if d.get("cancelada") or not sala.get("publica"):
+        return {"estado": "fora"}
+    if email == sala.get("criador"):
+        if len(sala.get("jogadores") or []) >= 2:                      # alguém entrou e ainda não começou: começa agora
+            try:
+                iniciar(pid, email, agora)
+            except ErroSala:
+                pass
+            return {"estado": "partida", "id": pid}
+        if agora - float(sala.get("criada") or agora) > BUSCA_MAX_ESPERA_S:
+            sair(pid, email, agora)
+            return {"estado": "expirou"}
+        minha = (float(sala.get("criada") or 0), pid)
+        outra = _entrar_na_mais_antiga_trocando(email, sala.get("corrida"), pid, agora, minha)
+        if outra:
+            return outra
+        if agora - float(sala.get("visto") or 0) > 3:                  # renova a presença sem gravar a cada consulta
+            def f(dd):
+                n = copy.deepcopy(dd)
+                n["sala"]["visto"] = agora
+                return n
+            _mutar(pid, f, agora)
+    return {"estado": "fila", "id": pid}
+
+
+def _entrar_na_mais_antiga_trocando(email: str, corrida: str, meu_pid: str, agora: float, minha: tuple) -> dict | None:
+    """Duas buscas criadas ao mesmo tempo: a mais nova desiste da sua e entra na mais antiga (a mais antiga nunca faz o contrário)."""
+    for c in _buscas_vivas(corrida, agora, email):
+        if (c["criada"], c["id"]) >= minha:
+            continue
+        sair(meu_pid, email, agora)                                    # cancela a minha busca (libera a vaga ativa) e entra na outra
+        achou = _entrar_na_mais_antiga(email, corrida, agora, mais_nova_que=minha)
+        return achou or {"estado": "fila", "id": criar_busca_de_novo(email, corrida, agora)}
+    return None
+
+
+def criar_busca_de_novo(email: str, corrida: str, agora: float) -> str:
+    sala = criar_sala(email, "", agora, corrida=corrida)
+
+    def f(d):
+        n = copy.deepcopy(d)
+        n["sala"]["publica"], n["sala"]["visto"] = True, agora
+        return n
+    _mutar(sala["id"], f, agora)
+    return sala["id"]
+
+
+def sair_da_busca(email: str, agora: float | None = None) -> None:
+    """Cancelar a busca (a sala de busca só existe enquanto ninguém entrou)."""
+    agora = time.time() if agora is None else agora
+    pid = partida_ativa(email)
+    if not pid:
+        return
+    d = (_row(pid) or {}).get("dados") or {}
+    if (d.get("sala") or {}).get("publica") and not d.get("p"):
+        sair(pid, email, agora)
 
 
 def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
