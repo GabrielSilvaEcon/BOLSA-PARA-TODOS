@@ -412,7 +412,7 @@ html{background:#0A0630}body{background:transparent !important}
   <div class="row tbr" id="t2"><button id="b-buy" class="buy" style="flex:1.3"><span class="ar">▲ </span>Compra</button><button id="b-sell" class="sell" style="flex:1.25"><span class="ar">▼ </span>Venda</button>
     <button id="b-entrada" style="flex:1.2">Entrada</button><button id="b-stop">Stop</button><button id="b-alvo">Alvo</button>
     <button id="b-apagar" title="Apagar marcação" style="flex:.7">⌫<span class="rot-c"> Apagar</span></button><button id="b-limpar" title="Limpar operação" style="flex:.7">✕</button><button id="b-mais" style="flex:.7"><span class="dots">⋯</span><span class="rot-c">Indicadores</span></button></div>
-  <div id="cvw"><canvas id="cv"></canvas><canvas id="cvfx"></canvas><button id="g-ind" title="Indicadores">ƒx Indicadores</button><button id="aovivo" title="Voltar aos candles novos">▶ Ao vivo</button><div id="dica"></div><div id="stp"><div class="fx" id="stp-fx"></div><div class="dec" id="stp-dec"><button id="stp-x" aria-label="Recusar" title="Recusar">✕</button><h3 id="stp-h"></h3><div class="hd"><span class="hx" id="stp-ic"></span><div class="tt"><b id="stp-nome"></b><small id="stp-resumo"></small></div><span class="bd" id="stp-bd"></span></div><p id="stp-p"></p><div class="dt" id="stp-dt"></div><div class="rr" id="stp-rr"></div><div class="cnt"><div id="stp-c"></div><div class="bar"><i id="stp-b"></i></div></div><div class="bt" id="stp-bt"><button class="sim" id="stp-sim">ENTRAR NA OPERAÇÃO</button><button class="nao" id="stp-nao">RECUSAR</button></div><div class="prov" id="stp-prov"></div><img class="art" id="stp-art" alt=""></div></div></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
+  <div id="cvw"><canvas id="cv"></canvas><canvas id="cvfx"></canvas><button id="g-ind" title="Indicadores">ƒx Indicadores</button><button id="aovivo" title="Voltar aos candles novos">▶ Ao vivo</button><div id="dica"></div><div id="stp"><div class="fx" id="stp-fx"></div><div class="dec" id="stp-dec"><button id="stp-x" aria-label="Recusar" title="Recusar">✕</button><h3 id="stp-h"></h3><div class="hd"><span class="hx" id="stp-ic"></span><div class="tt"><b id="stp-nome"></b><small id="stp-resumo"></small></div><span class="bd" id="stp-bd"></span></div><p id="stp-p"></p><div class="dt" id="stp-dt"></div><div class="rr" id="stp-rr"></div><div class="cnt"><div id="stp-c"></div><div class="bar"><i id="stp-b"></i></div></div><div class="bt" id="stp-bt"><button class="sim" id="stp-sim">ENTRAR NA OPERAÇÃO</button><button class="nao" id="stp-nao">RECUSAR</button></div><div class="prov" id="stp-prov"></div><img class="art" id="stp-art" alt=""></div></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
     <div id="mais"><div class="g an">ESTRATÉGIA</div><button id="b-tipo" class="an"></button><button id="b-conf" class="an"></button><div class="g">INDICADORES</div><button data-i="vol">Volume</button><button data-i="sma">Média simples (20)</button><button data-i="ema">Média exponencial (9)</button><button data-i="rsi">RSI (14)</button><button data-i="sr">Suporte/Resistência</button>
       <div class="g an">MARCAÇÕES DE ANÁLISE</div><button data-t="nivel" class="an">Nível de preço</button><button data-t="tend" class="an">Linha de tendência</button><button data-t="nota" class="an">Anotação</button></div>
     <div id="res"></div><button id="res-ver">🏆 Ver resultado da rodada</button>
@@ -826,7 +826,7 @@ function sendAcao(d){
 const SVs={ev:null,recv:0,id:null,img:null,imgSrc:null,env:false};
 const svEv=()=>A&&A.setup&&A.setup.evento||null;
 function svRecebe(){   // a cada leitura do servidor o relógio da animação é realinhado com o do servidor (nada de temporizador próprio que desande)
-  const ev=svEv();
+  svAvisaSemProtecao();const ev=svEv();
   if(!ev){SVs.ev=null;SVs.id=null;SVs.env=false;svUI();desenhaMira();return}
   if(SVs.id!==ev.sinal){SVs.id=ev.sinal;SVs.env=false}
   SVs.ev=ev;SVs.recv=performance.now();
@@ -850,7 +850,11 @@ function svUI(){
   else if(t<anim){tx=nome;sub="Oportunidade identificada"}
   fx.style.display=tx?"block":"none";fx.classList.toggle("al",al);fx.innerHTML=tx?`${esc(tx)}<small>${esc(sub)}</small>`:"";
   const mostra=t>=anim&&svRest()>0;dec.classList.toggle("on",mostra);
-  if(mostra&&L&&L.y){const emBaixo=L.y(ev.preco)>L.mTop+L.mH*0.5;dec.style.top=emBaixo?"44px":"auto";dec.style.bottom=emBaixo?"auto":"8px"}   // o cartão fica do lado oposto ao alvo: o ponto de entrada continua à vista
+  if(mostra&&L&&L.y){   // o cartão vai para o lado (em cima ou embaixo) que menos cobre entrada, stop e alvo: as linhas do setup continuam à vista
+    const ys=[ev.preco,ev.stop,ev.alvo].filter(v=>v!=null).map(v=>L.y(v)),lo=Math.min(...ys)-14,hi=Math.max(...ys)+14,h=dec.offsetHeight||300,Hc=L.mTop+L.mH;
+    const topo=[44,44+h],base=[Hc-8-h,Hc-8],ov=(r)=>Math.max(0,Math.min(r[1],hi)-Math.max(r[0],lo));
+    const emBaixo=ov(base)<ov(topo)||(ov(base)===ov(topo)&&L.y(ev.preco)<L.mTop+L.mH*0.5);
+    dec.style.top=emBaixo?"auto":"44px";dec.style.bottom=emBaixo?"8px":"auto"}
   if(!mostra)return;
   const rest=svRest(),seg=Math.max(0,Math.ceil(Math.min(rest,ev.janela_ms)/1000)),st=ev.setup||{};
   $("stp-h").textContent=dono?"SEU SETUP FOI ATIVADO!":`${ev.dono} ativou ${nome}`;
@@ -881,6 +885,18 @@ function svEnvia(acao){
   post({type:"streamlit:setComponentValue",value:{seq:S.seq,evento:"setup",dados:d},dataType:"json"});svUI()}
 $("stp-sim").onclick=()=>svEnvia("aceitar");$("stp-nao").onclick=()=>svEnvia("recusar");$("stp-x").onclick=()=>svEnvia("recusar");
 const svEase=t=>t<0?0:t>1?1:t*t*(3-2*t);
+function svNiveis(){   // entrada, stop e alvo do setup no gráfico: na janela de decisão e, depois de aceitar, até a posição aparecer com eles
+  const ev=SVs.ev,m=mz(),out=[];
+  if(ev&&ev.voce_e_dono&&svT()>=ev.anim_ms&&svRest()>0){
+    out.push({t:"entrada",p:ev.preco});if(ev.stop!=null)out.push({t:"stop",p:ev.stop});if(ev.alvo!=null)out.push({t:"alvo",p:ev.alvo});return out}
+  const sv=A&&A.setup,ult=sv&&(sv.marcas||[]).filter(x=>x.meu&&x.estado==="aceito").slice(-1)[0],o=m?linhasMesa():{};
+  if(ult&&m&&(m.fila||[]).length){   // a ordem entrou na fila e ainda não virou posição: as linhas já ficam à vista, sem piscar
+    if(ult.stop!=null&&o.stop==null)out.push({t:"stop",p:ult.stop});if(ult.alvo!=null&&o.alvo==null)out.push({t:"alvo",p:ult.alvo})}
+  return out}
+function svAvisaSemProtecao(){   // a entrada saiu, mas o preço já tinha passado do stop/alvo do setup e o servidor entrou sem eles: avisa uma vez
+  const sv=A&&A.setup;if(!sv||!S)return;SVs.av=SVs.av||{};
+  for(const x of sv.marcas||[]){if(x.meu&&x.estado==="aceito"&&(x.stop!=null||x.alvo!=null)&&x.protegido===false&&!SVs.av[x.id]){SVs.av[x.id]=1;S.dicaPuxa=true;   // o aviso já diz o que fazer: a dica genérica de arrastar não o cobre
+    flash("Você entrou, mas o preço já passou do stop ou do alvo do setup: a posição ficou sem eles. Arraste a linha da entrada para colocar.",7000)}}}
 function desenhaSetup(){   // marcas dos sinais ativados + mira. Só desenha o que o servidor mandou: nunca calcula sinal aqui.
   const sv=A&&A.setup;if(!sv||!S||!L)return;
   for(const m of sv.marcas||[]){
@@ -891,6 +907,11 @@ function desenhaSetup(){   // marcas dos sinais ativados + mira. Só desenha o q
     if(up){ctx.moveTo(x,y-3);ctx.lineTo(x-7,y+9);ctx.lineTo(x+7,y+9)}else{ctx.moveTo(x,y+3);ctx.lineTo(x-7,y-9);ctx.lineTo(x+7,y-9)}
     ctx.closePath();ctx.fill();ctx.stroke();
     ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=cor;ctx.fillText(m.meu?"SETUP":"SETUP ADV.",x,up?y+20:y-20);ctx.restore()}
+  const nv=svNiveis();
+  if(nv.length){const ent=nv.find(n=>n.t==="entrada");   // faixas de risco e retorno, como as da posição, só que tracejadas: é uma prévia
+    for(const n of nv){if(n.t==="entrada")continue;const ref=ent?ent.p:(S.cands.length?S.cands[S.cands.length-1].c:n.p);
+      ctx.fillStyle=n.t==="stop"?"rgba(255,77,109,.10)":"rgba(38,208,124,.10)";const a=L.y(ref),b=L.y(n.p);ctx.fillRect(0,Math.min(a,b),L.pw,Math.abs(b-a))}
+    for(const n of nv)hline(n.p,n.t==="stop"?COR.s:(n.t==="alvo"?COR.a:COR.e),[6,4],n.t==="stop"?"STOP DO SETUP":(n.t==="alvo"?"ALVO DO SETUP":"ENTRADA DO SETUP"),n.t!=="entrada")}
   desenhaMira()}
 function svRgba(hex,a){const m=/^#([0-9a-f]{6})$/i.exec(hex||"");const n=m?parseInt(m[1],16):0x8FB4F0;return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`}
 function svZoom(z,ox,oy){   // zoom de verdade no gráfico: a camada do gráfico cresce em volta do alvo (o alvo não sai do lugar) e a mira, que fica numa camada à parte, não é esticada
@@ -1041,7 +1062,8 @@ function placarUI(){   // placar da rodada (o servidor já manda ordenado e form
 }
 function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)
   moveEnc();if(corrida()&&mz()&&mz().posicao&&!S.dicaPuxa){S.dicaPuxa=true;const c=mz().posicao.direcao==="alta";
-    flash(c?"Arraste a linha da entrada: para baixo põe o stop, para cima põe o alvo":"Arraste a linha da entrada: para cima põe o stop, para baixo põe o alvo",5000)}
+    if(mz().posicao.stop==null&&mz().posicao.alvo==null)   // entrou pelo setup: stop e alvo já vieram, não há o que ensinar
+      flash(c?"Arraste a linha da entrada: para baixo põe o stop, para cima põe o alvo":"Arraste a linha da entrada: para cima põe o stop, para baixo põe o alvo",5000)}
   else if(corrida()&&S.erroLocal&&S.erroLocal!==S.erroMostrado){S.erroMostrado=S.erroLocal;flash(S.erroLocal)}else if(!S.erroLocal)S.erroMostrado="";
   const m=mz(),pz=!!A.pausada,liv=livreEnvio(),at=!!m&&!pz,o=linhasMesa();
   const dt=o.dir==="alta"?"COMPRA ▲":(o.dir==="baixa"?"VENDA ▼":"");

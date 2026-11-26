@@ -254,7 +254,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          for (final f in Ferramenta.values) ...[
+          for (final f in Ferramenta.paleta) ...[
             _chip(f),
             const SizedBox(width: 6),
           ],

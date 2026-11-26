@@ -915,6 +915,43 @@ def _gravar_solo(q: Quem, pid: str, d: dict) -> None:
     banco.cfg_gravar(_chave_solo(q, pid), d)
 
 
+class _ConflitoSolo(Exception):
+    """Alguém gravou a partida no meio da operação: refazer a partir do estado novo."""
+
+
+def _ler_solo_tok(q: Quem, pid: str) -> tuple[dict, dict, dict, tuple]:
+    """Como `_ler_solo`, mais a marca: (`atualizado` que a leitura viu, retrato do estado lido). A gravação só vale se ninguém gravou depois
+    (compare-and-set), e o retrato diz se alguma coisa mudou desde a leitura (jogada ou relógio)."""
+    r = banco._selecionar("config_sistema", {"id": _chave_solo(q, pid)[:80]}, ["dados", "atualizado"], limite=1)
+    d = banco._de_js(r[0]["dados"]) if r else None
+    if not d or not d.get("p"):
+        raise HTTPException(404, "partida não encontrada")
+    return d, d["p"], TD.resolver(d["cen"]), (str(r[0]["atualizado"]), banco._js(d["p"]))
+
+
+def _gravar_solo_se(q: Quem, pid: str, d: dict, marca: tuple) -> None:
+    """Grava só se o estado ainda é o que foi lido. Sem isso, a consulta de cada segundo lia, a jogada gravava e a consulta gravava de volta o estado
+    velho: a jogada do jogador sumia (confirmar a estratégia 'resetava'; zerar, comprar e vender 'não faziam nada' até o 2º clique)."""
+    import seguranca as seg
+    marca = marca[0]
+    nova = seg.iso()
+    if nova == marca:                                      # duas gravações no mesmo milissegundo: a marca precisa mudar sempre
+        nova = seg.iso(seg.agora() + __import__("datetime").timedelta(milliseconds=1))
+    if not banco._atualizar_n("config_sistema", {"id": _chave_solo(q, pid)[:80], "atualizado": marca}, {"dados": banco._js(d), "atualizado": nova}):
+        raise _ConflitoSolo()
+
+
+def _com_solo(q: Quem, pid: str, op):
+    """Roda `op(d, p, cen, marca)` (ler, aplicar a jogada, gravar) e, se outra requisição gravou no meio, refaz com o estado novo."""
+    for _ in range(8):
+        d, p, cen, marca = _ler_solo_tok(q, pid)
+        try:
+            return op(d, p, cen, marca)
+        except _ConflitoSolo:
+            continue
+    raise HTTPException(409, "A partida está muito movimentada agora. Tente de novo.")
+
+
 def _pagar_xp(q: Quem, pid: str, info: dict) -> dict:
     """XP da partida no progresso de estudo da conta, com as mesmas regras do app antigo (trader_battle_app._pagar_xp):
     uma vez por partida, só nas XP_PARTIDAS_DIA primeiras do dia, nunca TickerCoins. Falha aqui nunca derruba a partida."""
@@ -944,8 +981,9 @@ def _pagar_xp(q: Quem, pid: str, info: dict) -> dict:
         return {"xp": 0, "status": "erro"}
 
 
-def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
-    """Avança pelo relógio do servidor e devolve o que a tela desenha. No fim: lança o resultado na Carteira e no placar (uma vez)."""
+def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict, marca: tuple | None = None) -> dict:
+    """Avança pelo relógio do servidor e devolve o que a tela desenha. No fim: lança o resultado na Carteira e no placar (uma vez).
+    Com `marca` (leitura de `_ler_solo_tok`) a gravação é condicional e só acontece se algo mudou; sem ela (partida nova) grava direto."""
     agora = _agora()
     TB.avancar(p, agora, TD.por_id([cen]))
     try:                                                   # setups equipados: prazo do evento em curso e sinais do candle que acabou de fechar
@@ -957,7 +995,13 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
         TB.proxima_rodada(p, agora)
     v = TB.visao(p, cen, agora, q.email)
     fim = p["fase"] == "fim"
-    if fim and not d.get("fechada"):
+    fechar = fim and not d.get("fechada")
+    regravar = marca is None                               # partida nova: grava direto
+    if marca is not None:
+        d["p"] = p
+        if fechar or banco._js(p) != marca[1]:             # consulta sem novidade não regrava (menos atropelo); a versão do motor não sobe em toda jogada, então compara o conteúdo
+            _gravar_solo_se(q, pid, d, marca)              # perdeu para outra gravação? refaz tudo, ainda sem nenhum efeito colateral
+    if fechar:
         TCA.liquidar_seguro(p)
         fz = TB.resumo_final(p, q.email)
         _registrar_ranking(q, pid, p, fz, (p.get("resultados") or {}).get(TB._chave(1, q.email)))
@@ -965,8 +1009,10 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict) -> dict:
         d["fechada"] = True
         if d.get("desafio"):                              # partida do Desafio do dia: a nota entra no ranking do dia
             _desafio_nota(q, d["desafio"], pid, fz)
-    d["p"] = p
-    _gravar_solo(q, pid, d)
+        regravar = True                                    # grava o fechamento (a jogada já estava gravada acima)
+    if regravar:
+        d["p"] = p
+        _gravar_solo(q, pid, d)
     try:
         import setups_vivo as SV
         pub = {**p, "setup": SV.visao(p, q.email, agora)}  # o evento e as marcas dos sinais ativados (None se a partida não tem setups)
@@ -1011,8 +1057,7 @@ def trade_solo_nova(d: NovaPartida, q: Quem = Depends(quem)) -> dict:
 
 @app.get("/trade/solo/{pid}")
 def trade_solo_ver(pid: str, q: Quem = Depends(quem)) -> dict:
-    d, p, cen = _ler_solo(q, pid)
-    return _estado_solo(q, pid, d, p, cen)
+    return _com_solo(q, pid, lambda d, p, cen, m: _estado_solo(q, pid, d, p, cen, m))
 
 
 class Estrategia(BaseModel):
@@ -1023,14 +1068,15 @@ class Estrategia(BaseModel):
 
 @app.post("/trade/solo/{pid}/estrategia")
 def trade_solo_estrategia(pid: str, e: Estrategia, q: Quem = Depends(quem)) -> dict:
-    d, p, cen = _ler_solo(q, pid)
-    ref = cen["candles"][cen["n_analise"] - 1]["c"]
-    est = {"direcao": None, "tipo": "aguardar"} if e.direcao in (None, "", "lateral") else {"direcao": e.direcao, "tipo": e.tipo or "continuacao"}
-    try:
-        TB.salvar_estrategia(p, q.email, est, e.marcas, ref, _agora())     # solo: confirmar já começa o gráfico
-    except TB.ErroTrader as x:
-        _erro(x)
-    return _estado_solo(q, pid, d, p, cen)
+    def op(d, p, cen, m):
+        ref = cen["candles"][cen["n_analise"] - 1]["c"]
+        est = {"direcao": None, "tipo": "aguardar"} if e.direcao in (None, "", "lateral") else {"direcao": e.direcao, "tipo": e.tipo or "continuacao"}
+        try:
+            TB.salvar_estrategia(p, q.email, est, e.marcas, ref, _agora())     # solo: confirmar já começa o gráfico
+        except TB.ErroTrader as x:
+            _erro(x)
+        return _estado_solo(q, pid, d, p, cen, m)
+    return _com_solo(q, pid, op)
 
 
 class Acao(BaseModel):
@@ -1039,12 +1085,13 @@ class Acao(BaseModel):
 
 @app.post("/trade/solo/{pid}/acao")
 def trade_solo_acao(pid: str, a: Acao, q: Quem = Depends(quem)) -> dict:
-    d, p, cen = _ler_solo(q, pid)
-    try:
-        TB.registrar_acao(p, cen, q.email, TG.acao_de(a.dados), _agora())
-    except TB.ErroTrader as x:
-        _erro(x)
-    return _estado_solo(q, pid, d, p, cen)
+    def op(d, p, cen, m):
+        try:
+            TB.registrar_acao(p, cen, q.email, TG.acao_de(a.dados), _agora())
+        except TB.ErroTrader as x:
+            _erro(x)
+        return _estado_solo(q, pid, d, p, cen, m)
+    return _com_solo(q, pid, op)
 
 
 class DecisaoSetup(BaseModel):
@@ -1058,14 +1105,15 @@ def trade_solo_setup(pid: str, b: DecisaoSetup, q: Quem = Depends(quem)) -> dict
     import setups_vivo as SV
     if b.acao not in ("aceitar", "recusar"):
         raise HTTPException(400, "Escolha aceitar ou recusar.")
-    d, p, cen = _ler_solo(q, pid)
-    agora = _agora()
-    TB.avancar(p, agora, TD.por_id([cen]))
-    try:
-        SV.decidir(p, cen, q.email, b.acao == "aceitar", b.q, agora)
-    except TB.ErroTrader as x:
-        _erro(x)
-    return _estado_solo(q, pid, d, p, cen)
+    def op(d, p, cen, m):
+        agora = _agora()
+        TB.avancar(p, agora, TD.por_id([cen]))
+        try:
+            SV.decidir(p, cen, q.email, b.acao == "aceitar", b.q, agora)
+        except TB.ErroTrader as x:
+            _erro(x)
+        return _estado_solo(q, pid, d, p, cen, m)
+    return _com_solo(q, pid, op)
 
 
 _ABAS_RELATORIO = """<style>
@@ -2768,8 +2816,7 @@ def desafio_jogar(q: Quem = Depends(quem)) -> dict:
     if feito:
         if feito.get("nota") is None and feito.get("pid"):
             try:
-                d, p, cen = _ler_solo(q, feito["pid"])
-                return _estado_solo(q, feito["pid"], d, p, cen)
+                return _com_solo(q, feito["pid"], lambda d, p, cen, m: _estado_solo(q, feito["pid"], d, p, cen, m))
             except HTTPException:
                 pass
         raise HTTPException(409, "Você já jogou o Desafio do dia hoje. Volte amanhã!")

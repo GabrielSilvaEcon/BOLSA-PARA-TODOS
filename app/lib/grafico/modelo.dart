@@ -29,6 +29,10 @@ enum Ferramenta {
   apagar('Apagar', Icons.backspace_rounded, Color(0xFFFF8FA3), 'Toque num desenho para apagar.');
 
   const Ferramenta(this.rotulo, this.icone, this.cor, this.dica);
+
+  /// O que o jogador pode escolher na estratégia. Alvo e Zonas saíram: o stop e o alvo agora vêm do setup, quando o jogador entra pela entrada dele
+  /// (já ficam marcados no gráfico). Os valores continuam no enum só para o relatório conseguir mostrar partidas antigas que tinham esses desenhos.
+  static const paleta = [suporte, resistencia, rompimento, tendencia, nota, apagar];
   final String rotulo;
   final IconData icone;
   final Color cor;

@@ -235,7 +235,8 @@ def visao(p: dict, email: str, agora: float) -> dict | None:
         return None
     rot = {j: (None if j == email else f"Jogador {i}") for i, j in enumerate(p["jogadores"], 1)}
     marcas = [{"id": x["id"], "candle": x["candle"], "preco": x["preco"], "direcao": x["direcao"], "setup": x["setup"], "estado": x["estado"],
-               "meu": x["jogador"] == email} for x in s["sinais"]]
+               "meu": x["jogador"] == email,
+               **({"stop": x["stop"], "alvo": x["alvo"], "protegido": x.get("protegido")} if x["jogador"] == email else {})} for x in s["sinais"]]
     ev, out = s["evento"], None
     if ev:
         x = next(x for x in s["sinais"] if x["id"] == ev["sinal"])

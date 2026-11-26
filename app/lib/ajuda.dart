@@ -47,7 +47,7 @@ const _faq = [
       ),
       (
         'Como a nota do Trade Battle é calculada?',
-        '70% vem da operação (resultado e controle de risco) e 30% da sua leitura do gráfico, quando você desenha suportes, resistências e alvos. Desenhar é opcional.'
+        '70% vem da operação (resultado e controle de risco) e 30% da sua leitura do gráfico, quando você desenha suportes, resistências, rompimentos e tendências. Stop e alvo vêm do setup, quando você entra pela entrada dele. Desenhar é opcional.'
       ),
       (
         'Como funciona o Ticker Battle?',
