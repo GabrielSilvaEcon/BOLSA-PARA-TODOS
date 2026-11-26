@@ -216,3 +216,29 @@ def test_lote_e_capital_da_tela_online_seguem_o_capital_real_do_jogador(dois, mo
     assert tela["plano_cfg"]["capital"] == 472.34
     assert tela["lote"] * tela["ref"] <= 472.34 * 0.1 + tela["ref"]                                      # 1 lote cabe (10% do capital)
     assert tela["lote"] * tela["ref"] < 472.34
+
+
+def test_so_no_fim_o_jogador_ve_o_retorno_das_operacoes_do_adversario(dois, monkeypatch):
+    ana, _ = dois
+    monkeypatch.setattr(TD, "escolher_corrida", lambda f, s, banco=None, permitir_demo=False: TD.demo_corrida(f, s))
+    t = {"agora": 6_500_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    r = ana.post("/trade/fila", json={"corrida": "rapida"}).json()
+    t["agora"] += BOTS.BOT_ESPERA_S + 1
+    ana.get("/trade/fila")
+    ana.post(f"/trade/salas/{r['id']}/estrategia", json={"direcao": "alta"})
+    visto_antes = False
+    for _ in range(90):
+        t["agora"] += 5
+        v = ana.get(f"/trade/salas/{r['id']}").json()
+        tela = v["tela"]
+        if v["fase"] != "fim":
+            assert tela["fim"] is False
+            ops = [o for a in tela["adversarios"] for o in a["ops"]]
+            assert all("pct" not in o for o in ops)                                 # durante a partida o retorno do adversário continua oculto
+            visto_antes = visto_antes or bool(ops)
+        else:
+            break
+    assert v["fase"] == "fim" and tela["fim"] is True
+    ops = [o for a in tela["adversarios"] for o in a["ops"]]
+    assert ops and all("pct" in o for o in ops if not o["aberta"])                  # no fim, cada operação fechada traz o retorno

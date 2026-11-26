@@ -843,10 +843,11 @@ def _sim_rodada(p: dict, cenario: dict, agora: float, jog: str):
     return _em_velas(st, cenario), ini, n
 
 
-def _ops_publicas(st: dict, ini: int) -> list[dict]:
-    """O que o adversário PODE ver: direção, preço de entrada e preço de saída já executados. Nunca stop, alvo, ordem pendente, motivo da saída ou ids."""
+def _ops_publicas(st: dict, ini: int, final: bool = False) -> list[dict]:
+    """O que o adversário PODE ver: direção, preço de entrada e preço de saída já executados. Nunca stop, alvo, ordem pendente, motivo da saída ou ids.
+    Com a partida encerrada (`final`) já não há o que esconder: vem também o retorno de cada operação, para o jogador ver o gráfico do adversário."""
     out = [{"direcao": t["direcao"], "preco_entrada": t["entrada"], "indice_entrada": ini + t["i_entrada"], "aberta": False,
-            "preco_saida": t["saida"], "indice_saida": ini + t["i_saida"]} for t in st["trades"]]
+            "preco_saida": t["saida"], "indice_saida": ini + t["i_saida"], **({"pct": round(t["ret"] * 100, 3)} if final else {})} for t in st["trades"]]
     pos = st["pos"]
     if pos:
         out.append({"direcao": pos["direcao"], "preco_entrada": pos["entrada"], "indice_entrada": ini + pos["i_entrada"], "aberta": True, "preco_saida": None, "indice_saida": None})
@@ -868,7 +869,7 @@ def _adversarios_mesa(p: dict, cenario: dict, agora: float, jog: str) -> list[di
                 import trader_qtd as TQ
                 aberto = TQ.aberto(st, st["preco_atual"]) / st["cap"] if st["cap"] else 0.0
             # resultado da rodada (realizado + aberto, em % da aposta), calculado só com o que já é público: entradas e saídas executadas
-            out.append({"rotulo": f"{BOTS.rotulo(j)} {n}", "ops": _ops_publicas(st, r[1]), "total_pct": round((sum(t["ret"] for t in st["trades"]) + aberto) * 100, 3)})
+            out.append({"rotulo": f"{BOTS.rotulo(j)} {n}", "ops": _ops_publicas(st, r[1], p.get("fase") == "fim"), "total_pct": round((sum(t["ret"] for t in st["trades"]) + aberto) * 100, 3)})
     return out
 
 

@@ -47,6 +47,7 @@ html,body{margin:0;height:100%;overflow:hidden;color-scheme:dark;background:#0F0
 #stp .dec .sim{flex:1.5;background:linear-gradient(180deg,#43F0A6,#17b878);color:#04281a;box-shadow:0 0 14px rgba(61,255,176,.35)}
 #stp .dec .nao{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)!important}
 #stp .dec button:disabled{opacity:.45;cursor:default}
+#vadv{position:absolute;top:34px;right:8px;display:none;gap:4px;z-index:6}#vadv button{padding:5px 10px;border-radius:10px;border:1.5px solid #4F6FC0;background:rgba(10,26,64,.85);color:#fff;font-weight:800;font-size:11px}#vadv button.on{background:#6C5CFF;border-color:#B79CFF}
 #stp-q{margin:6px 0 2px}#stp-q small{display:block;font-size:10px;color:#BFD0F5;margin-bottom:3px}#stp-q .ch{display:flex;gap:6px}#stp-q .ch button{flex:1;padding:6px 0;border-radius:10px;border:1.5px solid #4F6FC0;background:rgba(10,26,64,.7);color:#fff;font-weight:800;font-size:12px}#stp-q .ch button.on{background:#1FA85A;border-color:#7DFFB8}#stp-q .rk{font-size:11px;color:#E9F1FF;margin-top:4px}#stp-q .rk b{color:#FFD76A}
 #stp .dec .prov{margin-top:5px;text-align:center;font:700 9px system-ui;color:#8F87C4}
 #stp .dec img.art{display:none}
@@ -1018,8 +1019,23 @@ function fotoLinha(rot,p,sd){   // partida corrida: quem é o dono da linha, num
   ctx.save();ctx.beginPath();ctx.arc(x,yl,r+1.5,0,7);ctx.fillStyle=(av&&av.cor)||COR.gold;ctx.fill();
   ctx.beginPath();ctx.arc(x,yl,r,0,7);ctx.clip();if(im)ctx.drawImage(im,x-r,yl-r,2*r,2*r);else{ctx.fillStyle="#2A1F8E";ctx.fill()}ctx.restore();
   ctx.font="bold 10px system-ui";ctx.textAlign="left";ctx.textBaseline="middle";ctx.fillStyle=COR.gold;ctx.fillText(sd,x+r+3,yl)}
+function advVista(){return A&&A.fim&&S&&S.verAdv!=null?(A.adversarios||[])[S.verAdv]||null:null}   // fim da partida: o gráfico do adversário escolhido (null = o meu)
+function pctTxt(v){return v==null?"":(v>0?"+":v<0?"−":"")+Math.abs(v).toFixed(2).replace(".",",")+"%"}
+function uiVerAdv(){   // no fim da partida: alterna entre o seu gráfico e o de cada adversário
+  try{const w=$("cvw");if(!w||typeof document.createElement!=="function")return;let b=$("vadv");
+    const advs=(A&&A.fim)?(A.adversarios||[]):[];
+    if(!b){b=document.createElement("div");b.id="vadv";w.appendChild(b);b.addEventListener("click",e=>{const t=e.target&&e.target.closest?e.target.closest("button"):null;if(t&&S){S.verAdv=t.dataset.i===""?null:+t.dataset.i;uiVerAdv();kick()}})}
+    b.style.display=advs.length?"flex":"none";if(!advs.length){if(S)S.verAdv=null;return}
+    const sel=S&&S.verAdv!=null?S.verAdv:null;
+    b.innerHTML=`<button data-i=""${sel==null?' class="on"':""}>Meu gráfico</button>`+advs.map((a,i)=>`<button data-i="${i}"${sel===i?' class="on"':""}>${esc(a.rotulo)}</button>`).join("")}catch(e){}}
 function desenhaMesa(i0,i1){
   const m=mz();if(!m)return;const o=linhasMesa();
+  const va=advVista();
+  if(va){   // gráfico do adversário (só depois do fim): ligações, entradas e saídas com o retorno de cada operação
+    (va.ops||[]).forEach((q,k)=>{const ent=q.direcao==="alta"?"up":"dn",sd=q.pct;
+      if(q.indice_saida!=null)ligacao(q.indice_entrada,q.preco_entrada,q.indice_saida,q.preco_saida,"rgba(255,255,255,.4)",[2,3]);
+      marca(q.indice_entrada,q.preco_entrada,ent,COR.gold,"");
+      if(q.indice_saida!=null)marca(q.indice_saida,q.preco_saida,"o",sd>0?COR.up:(sd<0?COR.dn:COR.gold),pctTxt(sd))});return}
   if(o.entrada!=null&&o.stop!=null){ctx.fillStyle="rgba(255,77,109,.10)";const a=L.y(o.entrada),b=L.y(o.stop);ctx.fillRect(0,Math.min(a,b),L.pw,Math.abs(b-a))}
   if(o.entrada!=null&&o.alvo!=null){ctx.fillStyle="rgba(38,208,124,.10)";const a=L.y(o.entrada),b=L.y(o.alvo);ctx.fillRect(0,Math.min(a,b),L.pw,Math.abs(b-a))}
   for(const adv of A.adversarios||[])for(const q of adv.ops||[]){   // adversário: só entrada e saída JÁ executadas (o servidor não envia mais nada)
@@ -1064,7 +1080,7 @@ function uiLotes(m){   // partida corrida: quantidade em lotes (1 lote = 10% do 
   const e=$("m-enc");if(e&&e.lastChild&&e.lastChild.nodeType===3)e.lastChild.textContent="Zerar"}
 function rankAviso(){const t=$("rkb-t");if(!t||!A)return;const mm=mz(),jaOperou=!!(corrida()&&mm&&(mm.posicao||(mm.n_encerradas||0)>0));t.style.display=jaOperou?"none":"";const multi=!!(A.multi||(A.placar&&A.placar.jogadores.length>1));
   t.textContent=multi?"ⓘ Partida online: conta para o ranking!":"ⓘ Partida solo: treino, não conta para o ranking (só partidas online contam)."}
-function topoCorrida(){rankAviso();const pc=$("placar"),hd0=$("hd");
+function topoCorrida(){rankAviso();uiVerAdv();const pc=$("placar"),hd0=$("hd");
   if(corrida()&&pc&&hd0&&hd0.parentNode&&typeof hd0.parentNode.insertBefore==="function"&&hd0.nextSibling!==pc)hd0.parentNode.insertBefore(pc,hd0.nextSibling);   // sala: cards dos jogadores logo abaixo da faixa do topo
   const hd=$("hd"),vt=$("vt");if(!corrida()||!hd||!vt||typeof hd.insertBefore!=="function"||vt.parentNode===hd)return;hd.insertBefore(vt,hd.firstChild)}
 function placarUI(){   // placar da rodada (o servidor já manda ordenado e formatado): você em destaque, medalhas de 1º a 3º
