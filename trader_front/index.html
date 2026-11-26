@@ -15,7 +15,7 @@ html,body{margin:0;height:100%;overflow:hidden;color-scheme:dark;background:#0F0
 #stp .fx small{display:block;font:700 10px system-ui;letter-spacing:.04em;opacity:.85;text-transform:none;margin-top:2px}
 #stp .fx.al{animation:stpal .35s steps(2) infinite}
 @keyframes stpal{50%{opacity:.55}}
-#cvfx{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6}
+#cvfx,#cvfxb{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6}#cvfxb{z-index:5}   /* #cvfxb: efeitos de FUNDO (vinheta, apagão) que só são redesenhados quando mudam */
 #cv{will-change:transform}
 #stp .dec{max-height:calc(100% - 48px);overflow-y:auto;position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:min(95%,430px);padding:10px 12px 10px;border-radius:18px;background:linear-gradient(180deg,rgba(18,14,64,.97),rgba(6,4,34,.97));border:1.5px solid var(--sc,#8FB4F0);box-shadow:0 0 22px var(--sc,#8FB4F0),0 10px 28px rgba(0,0,0,.55);pointer-events:auto;display:none}
 #stp .dec.on{display:block;animation:stpin .5s cubic-bezier(.2,.9,.3,1)}
@@ -419,7 +419,7 @@ html{background:#0A0630}body{background:transparent !important}
   <div class="row tbr" id="t2"><button id="b-buy" class="buy" style="flex:1.3"><span class="ar">▲ </span>Compra</button><button id="b-sell" class="sell" style="flex:1.25"><span class="ar">▼ </span>Venda</button>
     <button id="b-entrada" style="flex:1.2">Entrada</button><button id="b-stop">Stop</button><button id="b-alvo">Alvo</button>
     <button id="b-apagar" title="Apagar marcação" style="flex:.7">⌫<span class="rot-c"> Apagar</span></button><button id="b-limpar" title="Limpar operação" style="flex:.7">✕</button><button id="b-mais" style="flex:.7"><span class="dots">⋯</span><span class="rot-c">Indicadores</span></button></div>
-  <div id="cvw"><canvas id="cv"></canvas><canvas id="cvfx"></canvas><button id="g-ind" title="Indicadores">ƒx Indicadores</button><button id="aovivo" title="Voltar aos candles novos">▶ Ao vivo</button><div id="dica"></div><div id="stp"><button id="stp-som" title="Som e vibração" aria-label="Som">🔊</button><div class="fx" id="stp-fx"></div><div class="dec" id="stp-dec"><button id="stp-x" aria-label="Recusar" title="Recusar">✕</button><h3 id="stp-h"></h3><div class="hd"><span class="hx" id="stp-ic"></span><div class="tt"><b id="stp-nome"></b><small id="stp-resumo"></small></div><span class="bd" id="stp-bd"></span></div><p id="stp-p"></p><div class="dt" id="stp-dt"></div><div class="lic" id="stp-lic"><div class="lr"><canvas id="stp-lc" width="170" height="104"></canvas><ul id="stp-lp"></ul></div><div class="lt" id="stp-lt"></div></div><div class="qs" id="stp-q"></div><div class="rr" id="stp-rr"></div><div class="cnt"><div id="stp-c"></div><div class="bar"><i id="stp-b"></i></div></div><div class="bt" id="stp-bt"><button class="sim" id="stp-sim">ENTRAR NA OPERAÇÃO</button><button class="nao" id="stp-nao">RECUSAR</button></div><div class="prov" id="stp-prov"></div><img class="art" id="stp-art" alt=""></div></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
+  <div id="cvw"><canvas id="cv"></canvas><canvas id="cvfxb"></canvas><canvas id="cvfx"></canvas><button id="g-ind" title="Indicadores">ƒx Indicadores</button><button id="aovivo" title="Voltar aos candles novos">▶ Ao vivo</button><div id="dica"></div><div id="stp"><button id="stp-som" title="Som e vibração" aria-label="Som">🔊</button><div class="fx" id="stp-fx"></div><div class="dec" id="stp-dec"><button id="stp-x" aria-label="Recusar" title="Recusar">✕</button><h3 id="stp-h"></h3><div class="hd"><span class="hx" id="stp-ic"></span><div class="tt"><b id="stp-nome"></b><small id="stp-resumo"></small></div><span class="bd" id="stp-bd"></span></div><p id="stp-p"></p><div class="dt" id="stp-dt"></div><div class="lic" id="stp-lic"><div class="lr"><canvas id="stp-lc" width="170" height="104"></canvas><ul id="stp-lp"></ul></div><div class="lt" id="stp-lt"></div></div><div class="qs" id="stp-q"></div><div class="rr" id="stp-rr"></div><div class="cnt"><div id="stp-c"></div><div class="bar"><i id="stp-b"></i></div></div><div class="bt" id="stp-bt"><button class="sim" id="stp-sim">ENTRAR NA OPERAÇÃO</button><button class="nao" id="stp-nao">RECUSAR</button></div><div class="prov" id="stp-prov"></div><img class="art" id="stp-art" alt=""></div></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
     <div id="mais"><div class="g an">ESTRATÉGIA</div><button id="b-tipo" class="an"></button><button id="b-conf" class="an"></button><div class="g">INDICADORES</div><button data-i="vol">Volume</button><button data-i="sma">Média simples (20)</button><button data-i="ema">Média exponencial (9)</button><button data-i="rsi">RSI (14)</button><button data-i="sr">Suporte/Resistência</button>
       <div class="g an">MARCAÇÕES DE ANÁLISE</div><button data-t="nivel" class="an">Nível de preço</button><button data-t="tend" class="an">Linha de tendência</button><button data-t="nota" class="an">Anotação</button></div>
     <div id="res"></div><button id="res-ver">🏆 Ver resultado da rodada</button>
@@ -480,7 +480,7 @@ const COR={e:"#4B8BFF",s:"#FF4D6D",a:"#26D07C",up:"#26D07C",dn:"#FF4D6D",niv:"#A
 const NOME={entrada:"ENT",stop:"STOP",alvo:"ALVO"},CORL={entrada:COR.e,stop:COR.s,alvo:COR.a};
 const $=id=>document.getElementById(id);
 const mesaOn=()=>!!(A&&A.motor===2);
-let A=null,S=null,cv,ctx,cvfx,fxx,W=0,H=0,L={},T0=0,frozen=null,raf=0;
+let A=null,S=null,cv,ctx,cvfx,fxx,cvfxb,fxb,W=0,H=0,L={},T0=0,frozen=null,raf=0;
 const fmt=p=>p==null?"—":p.toFixed(2).replace(".",",");
 const pc=p=>p==null?"":(p>=0?"+":"−")+Math.abs(p).toFixed(1).replace(".",",")+"%";
 
@@ -617,6 +617,7 @@ function resize(){
   W=Math.round(r.width);H=Math.round(r.height);
   cv.width=Math.round(W*d);cv.height=Math.round(H*d);ctx.setTransform(d,0,0,d,0,0);
   if(cvfx){cvfx.width=cv.width;cvfx.height=cv.height;fxx.setTransform(d,0,0,d,0,0)}
+  if(cvfxb){cvfxb.width=cv.width;cvfxb.height=cv.height;fxb.setTransform(d,0,0,d,0,0);if(typeof SVs!=="undefined")SVs.fundoSig=null}
   // o iframe nasce estreito e só depois ganha a largura real: o zoom inicial só fica valendo com largura de verdade,
   // e qualquer mudança de largura depois disso preserva os candles visíveis (escala a largura do candle, não a janela).
   if(S&&!S.zi){zoomInicial();if(W>=200)S.zi=1}
@@ -980,17 +981,55 @@ function svZoom(z,ox,oy){   // zoom de verdade no gráfico: a camada do gráfico
   if(!cv)return;
   if(z<=1.001){if(cv.style.transform)cv.style.transform="";return}
   cv.style.transformOrigin=ox.toFixed(1)+"px "+oy.toFixed(1)+"px";cv.style.transform="scale("+z.toFixed(3)+")"}
-function svMira(c,x,y,r,t,cor,br,prog,lock,al){   // a mira: anel com marcas girando, anel tracejado contrário, varredura, cruz com pontos, arco de travamento e colchetes
-  const rot=t/2600,cm=lock?br:cor,TAU=Math.PI*2;
-  c.save();c.translate(x,y);c.globalAlpha=al;c.lineCap="round";
-  const gl=c.createRadialGradient(0,0,r*0.15,0,0,r*1.7);gl.addColorStop(0,svRgba(cm,0.32));gl.addColorStop(1,svRgba(cm,0));
-  c.fillStyle=gl;c.beginPath();c.arc(0,0,r*1.7,0,TAU);c.fill();
-  c.strokeStyle=cm;c.fillStyle=cm;c.shadowColor=cm;c.shadowBlur=8+10*prog;
+let SVo=null;
+function svTemCanvas(){return typeof document!=="undefined"&&typeof document.createElement==="function"}
+function svOff(chave,w,h,pxW,pxH){   // camada auxiliar reaproveitada (uma por uso). O tamanho cresce em degraus de 64 px: nunca realoca a cada quadro; limpa só o que vai usar
+  const d=window.devicePixelRatio||1,W2=pxW||Math.max(1,Math.ceil(w*d)),H2=pxH||Math.max(1,Math.ceil(h*d)),Wb=Math.ceil(W2/64)*64,Hb=Math.ceil(H2/64)*64;SVo=SVo||{};let o=SVo[chave];
+  if(!o||o.cv.width<W2||o.cv.height<H2||o.cv.width>Wb*2||o.cv.height>Hb*2){const cv=document.createElement("canvas");cv.width=Wb;cv.height=Hb;o={cv,g:cv.getContext("2d"),k:null};SVo[chave]=o}
+  o.g.setTransform(d,0,0,d,0,0);o.g.clearRect(0,0,o.cv.width/d,o.cv.height/d);return o}
+function svDI(c,o,x0,y0,w,h){const d=window.devicePixelRatio||1;c.drawImage(o.cv,0,0,Math.ceil(w*d),Math.ceil(h*d),x0,y0,w,h)}   // desenha só a área usada da camada auxiliar
+function svSombraUnica(c,o,x0,y0,w,h,cor,blur,alpha){   // o brilho é calculado UMA vez sobre o desenho pronto (antes: uma sombra por traço) e em 1/4 da resolução: é um borrão suave, então a imagem é a mesma
+  const d=window.devicePixelRatio||1,f=4,sw=Math.max(1,Math.ceil(w*d/f)),sh=Math.max(1,Math.ceil(h*d/f));
+  const b=svOff("brilhoBaixo",1,1,sw,sh);const g=b.g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,sw,sh);
+  g.save();g.shadowColor=cor;g.shadowBlur=blur/f;g.shadowOffsetX=sw+4000;g.drawImage(o.cv,0,0,Math.ceil(w*d),Math.ceil(h*d),-sw-4000,0,sw,sh);g.restore();   // só a sombra entra na imagem pequena
+  c.save();c.globalAlpha=alpha;c.drawImage(b.cv,0,0,sw,sh,x0,y0,w,h);svDI(c,o,x0,y0,w,h);c.restore()}
+function svAssado(chave,sig,w,h,pintar,cor,blur){   // desenho com o brilho já aplicado, guardado enquanto a geometria não muda (o quadro só desenha a imagem pronta)
+  const d=window.devicePixelRatio||1,W2=Math.max(1,Math.ceil(w*d)),H2=Math.max(1,Math.ceil(h*d));SVo=SVo||{};let b=SVo[chave];
+  if(b&&b.k===sig&&b.cv.width>=W2&&b.cv.height>=H2)return b;
+  const t=svOff(chave+"_p",w,h);pintar(t.g);
+  b=svOff(chave,w,h);b.g.save();b.g.shadowColor=cor;b.g.shadowBlur=blur;svDI(b.g,t,0,0,w,h);b.g.restore();b.k=sig;return b}
+function svColchetesBrilho(c,a,b,tp,bt,k,cor,blur,lw,alpha){   // colchetes com brilho: antes recalculava a sombra de 4 traços a cada quadro
+  if(!svTemCanvas()){c.save();c.lineCap="round";c.lineJoin="round";c.strokeStyle=cor;c.shadowColor=cor;c.shadowBlur=blur;c.lineWidth=lw;c.globalAlpha=alpha;svColchetes(c,a,b,tp,bt,k);c.restore();return}
+  const m=Math.ceil(blur*2+lw+4),w=Math.ceil(b-a+2*m),hh=Math.ceil(bt-tp+2*m),x0=a-m,y0=tp-m;
+  const sig=[Math.round(b-a),Math.round(bt-tp),Math.round(k),cor,lw,blur].join("|");
+  const o=svAssado("colchetes",sig,w,hh,g=>{g.lineCap="round";g.lineJoin="round";g.strokeStyle=cor;g.lineWidth=lw;svColchetes(g,a-x0,b-x0,tp-y0,bt-y0,k)},cor,blur);
+  c.save();c.globalAlpha=alpha;svDI(c,o,x0,y0,w,hh);c.restore()}
+function svAnelBrilho(c,x,y,r,lw,cor,blur,alpha){   // anel com brilho: a imagem pronta é guardada, o quadro só a desenha com a transparência do pulso
+  if(!svTemCanvas()){c.save();c.globalAlpha=alpha;c.strokeStyle=cor;c.shadowColor=cor;c.shadowBlur=blur;c.lineWidth=lw;c.beginPath();c.arc(x,y,r,0,7);c.stroke();c.restore();return}
+  const m=Math.ceil(r+blur*2+lw+4),sz=2*m,o=svAssado("anel"+r,[r,lw,cor,blur].join("|"),sz,sz,g=>{g.strokeStyle=cor;g.lineWidth=lw;g.beginPath();g.arc(m,m,r,0,7);g.stroke()},cor,blur);
+  c.save();c.globalAlpha=alpha;svDI(c,o,x-m,y-m,sz,sz);c.restore()}
+let SVspr={};
+function svSprite(cor){   // pontinho de luz (miolo + brilho) pronto: no lugar de uma sombra por partícula
+  let s=SVspr[cor];if(s)return s;if(!svTemCanvas())return null;
+  const cv=document.createElement("canvas");cv.width=cv.height=48;const g=cv.getContext("2d"),gr=g.createRadialGradient(24,24,0,24,24,24);
+  gr.addColorStop(0,svRgba(cor,1));gr.addColorStop(0.22,svRgba(cor,0.95));gr.addColorStop(0.45,svRgba(cor,0.35));gr.addColorStop(1,svRgba(cor,0));g.fillStyle=gr;g.fillRect(0,0,48,48);
+  return SVspr[cor]={cv}}
+function svFundo(sig,pintar){   // camada de FUNDO: só é limpa e redesenhada quando o que ela mostra muda (sig). Enquanto a imagem é a mesma, o navegador só a recompõe
+  if(!fxb||SVs.fundoSig===sig)return;SVs.fundoSig=sig;fxb.clearRect(0,0,W,H);if(pintar)pintar(fxb)}
+function svVinheta(c,x,y,rIn,rOut,alpha){   // escurecimento suave em volta do alvo. O degradê é calculado em 1/8 da resolução e esticado: mesma imagem (é um degradê suave), bem menos pixels calculados por quadro
+  const f=8,w=Math.ceil(L.pw/f),h=Math.ceil(L.mH/f);
+  if(!svTemCanvas()){const vg=c.createRadialGradient(x,y,rIn,x,y,rOut);vg.addColorStop(0,"rgba(4,2,26,0)");vg.addColorStop(1,"rgba(4,2,26,"+alpha+")");c.fillStyle=vg;c.fillRect(0,L.mTop,L.pw,L.mH);return}
+  const o=svOff("vinheta",1,1,w,h);const g=o.g;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,w,h);
+  const vg=g.createRadialGradient(x/f,(y-L.mTop)/f,rIn/f,x/f,(y-L.mTop)/f,rOut/f);vg.addColorStop(0,"rgba(4,2,26,0)");vg.addColorStop(1,"rgba(4,2,26,"+alpha+")");g.fillStyle=vg;g.fillRect(0,0,w,h);
+  c.save();c.imageSmoothingEnabled=true;c.drawImage(o.cv,0,0,w,h,0,L.mTop,L.pw,L.mH);c.restore()}
+function svMiraCorpo(c,r,t,cm,br,prog,lock,rot,sombra){   // anéis, cruz, arco de travamento e colchetes da mira (centrada em 0,0)
+  const TAU=Math.PI*2;
+  c.strokeStyle=cm;c.fillStyle=cm;if(sombra){c.shadowColor=cm;c.shadowBlur=8+10*prog}
   c.save();c.rotate(rot);c.lineWidth=1.8;c.beginPath();c.arc(0,0,r,0,TAU);c.stroke();                       // anel externo com 48 marcas
   for(let i=0;i<48;i++){const a=i/48*TAU,l=i%6===0?r*0.17:r*0.07;c.lineWidth=i%6===0?2.4:1;c.beginPath();c.moveTo(Math.cos(a)*r,Math.sin(a)*r);c.lineTo(Math.cos(a)*(r-l),Math.sin(a)*(r-l));c.stroke()}
   c.restore();
   c.save();c.rotate(-rot*1.7);c.setLineDash([r*0.2,r*0.1]);c.lineWidth=1.3;c.beginPath();c.arc(0,0,r*0.7,0,TAU);c.stroke();c.restore();   // anel tracejado, em sentido contrário
-  if(!lock){const a=rot*6;c.save();c.shadowBlur=0;c.fillStyle=svRgba(cm,0.2);c.beginPath();c.moveTo(0,0);c.arc(0,0,r*0.7,a-0.7,a);c.closePath();c.fill();c.restore()}   // varredura de radar
+  if(sombra&&!lock){const a=rot*6;c.save();c.shadowBlur=0;c.fillStyle=svRgba(cm,0.2);c.beginPath();c.moveTo(0,0);c.arc(0,0,r*0.7,rot*6-0.7,a);c.closePath();c.fill();c.restore()}   // varredura de radar (versão sem sprite)
   const gap=r*0.2;c.lineWidth=1.8;                                                                                // cruz com pontos de medida
   for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){c.beginPath();c.moveTo(dx*gap,dy*gap);c.lineTo(dx*r*1.3,dy*r*1.3);c.stroke();
     for(const k of [0.42,0.62]){c.beginPath();c.arc(dx*r*k,dy*r*k,Math.max(1.4,r*0.025),0,TAU);c.fill()}}
@@ -998,7 +1037,21 @@ function svMira(c,x,y,r,t,cor,br,prog,lock,al){   // a mira: anel com marcas gir
   c.strokeStyle=cm;c.lineWidth=1.6;c.beginPath();c.arc(0,0,r*0.13,0,TAU);c.stroke();
   c.beginPath();c.arc(0,0,Math.max(2.4,r*0.045)*(1+0.3*Math.sin(t/110)),0,TAU);c.fill();
   if(prog>0){c.lineWidth=3.4;c.strokeStyle=lock?br:cm;const b=r*(1.55-0.4*prog),k=r*0.32;                         // colchetes que fecham sobre o alvo
-    for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){c.beginPath();c.moveTo(sx*b,sy*(b-k));c.lineTo(sx*b,sy*b);c.lineTo(sx*(b-k),sy*b);c.stroke()}}
+    for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){c.beginPath();c.moveTo(sx*b,sy*(b-k));c.lineTo(sx*b,sy*b);c.lineTo(sx*(b-k),sy*b);c.stroke()}}}
+function svMira(c,x,y,r,t,cor,br,prog,lock,al){   // a mira: anel com marcas girando, anel tracejado contrário, varredura, cruz com pontos, arco de travamento e colchetes
+  const rot=t/2600,cm=lock?br:cor,TAU=Math.PI*2;
+  c.save();c.translate(x,y);c.globalAlpha=al;c.lineCap="round";
+  if(svTemCanvas()){   // brilho redondo atrás da mira: degradê calculado em 1/4 da resolução e esticado
+    const f=4,d=window.devicePixelRatio||1,R=r*1.7,sz=Math.max(2,Math.ceil(2*R*d/f)),gb=svOff("brilhoMira",1,1,sz,sz),gg=gb.g;gg.setTransform(1,0,0,1,0,0);gg.clearRect(0,0,sz,sz);
+    const gr=gg.createRadialGradient(sz/2,sz/2,r*0.15*d/f,sz/2,sz/2,R*d/f);gr.addColorStop(0,svRgba(cm,0.32));gr.addColorStop(1,svRgba(cm,0));gg.fillStyle=gr;gg.fillRect(0,0,sz,sz);
+    c.drawImage(gb.cv,0,0,sz,sz,-R,-R,2*R,2*R)}
+  else{const gl=c.createRadialGradient(0,0,r*0.15,0,0,r*1.7);gl.addColorStop(0,svRgba(cm,0.32));gl.addColorStop(1,svRgba(cm,0));c.fillStyle=gl;c.beginPath();c.arc(0,0,r*1.7,0,TAU);c.fill()}
+  if(svTemCanvas()){   // o corpo vai para uma camada auxiliar e o brilho é aplicado uma vez só (antes: uma sombra por traço, ~60 por quadro)
+    const m=Math.ceil(r*1.75+16),sz=2*m,o=svOff("mira",sz,sz),g=o.g;g.translate(m,m);g.lineCap="round";
+    svMiraCorpo(g,r,t,cm,br,prog,lock,rot,false);
+    svSombraUnica(c,o,-m,-m,sz,sz,cm,8+10*prog,al);
+    if(!lock){const a=rot*6;c.save();c.fillStyle=svRgba(cm,0.2);c.beginPath();c.moveTo(0,0);c.arc(0,0,r*0.7,a-0.7,a);c.closePath();c.fill();c.restore()}   // varredura de radar
+  }else svMiraCorpo(c,r,t,cm,br,prog,lock,rot,true);
   c.restore()}
 function svPadraoBox(ev){   // caixa dos candles do padrão, em coordenadas do gráfico
   const pd=ev.padrao;if(!pd||!S||!L||!L.x)return null;const cs=pd.candles.filter(i=>S.cands[i]);if(!cs.length)return null;
@@ -1015,13 +1068,16 @@ function svDestaque(c,ev,bx,u0,D,cor,br){   // DESTAQUE DO PADRÃO (4 a 6 s): o 
   const Tx=mx+(L.pw*0.46-mx)*k,Ty=my+(L.mTop+L.mH*0.45-my)*k*0.9;
   if(z>1.001)svZoom(z,(Tx-z*mx)/(1-z),(Ty-z*my)/(1-z));else svZoom(1,0,0);
   const X=p=>Tx+(p-mx)*z,Y=p=>Ty+(p-my)*z,a=X(bx.a)-10,b=X(bx.b)+10,tp=Y(bx.t)-12,bt=Y(bx.bt)+12;
+  // apagão: tudo escurece, menos um "furo" em volta do padrão. Fica na camada de fundo e só é redesenhado quando a geometria ou a intensidade mudam
+  const sigD=["d",Math.round(a),Math.round(tp),Math.round(b),Math.round(bt),k.toFixed(2),cor].join("|");
+  svFundo(sigD,g=>{
+    g.fillStyle="rgba(3,2,20,"+(0.84*k).toFixed(3)+")";g.beginPath();g.rect(0,L.mTop,L.pw,L.mH);
+    const r=10;g.moveTo(a+r,tp);g.arcTo(b,tp,b,bt,r);g.arcTo(b,bt,a,bt,r);g.arcTo(a,bt,a,tp,r);g.arcTo(a,tp,b,tp,r);g.closePath();g.fill("evenodd");
+    const cx0=(a+b)/2,cy0=(tp+bt)/2,R0=Math.max(b-a,bt-tp)*1.1,gl=g.createRadialGradient(cx0,cy0,10,cx0,cy0,R0);gl.addColorStop(0,svRgba(cor,0.20*k));gl.addColorStop(1,svRgba(cor,0));
+    g.fillStyle=gl;g.fillRect(cx0-R0,cy0-R0,2*R0,2*R0)});
   c.save();c.lineCap="round";c.lineJoin="round";
-  // apagão: tudo escurece, menos um "furo" em volta do padrão
-  c.fillStyle="rgba(3,2,20,"+(0.84*k).toFixed(3)+")";c.beginPath();c.rect(0,L.mTop,L.pw,L.mH);
-  const r=10;c.moveTo(a+r,tp);c.arcTo(b,tp,b,bt,r);c.arcTo(b,bt,a,bt,r);c.arcTo(a,bt,a,tp,r);c.arcTo(a,tp,b,tp,r);c.closePath();c.fill("evenodd");
-  const gl=c.createRadialGradient((a+b)/2,(tp+bt)/2,10,(a+b)/2,(tp+bt)/2,Math.max(b-a,bt-tp)*1.1);gl.addColorStop(0,svRgba(cor,0.20*k));gl.addColorStop(1,svRgba(cor,0));c.fillStyle=gl;c.fillRect(0,L.mTop,L.pw,L.mH);
-  const pul=0.75+0.25*Math.sin(u0/240);c.strokeStyle=br;c.shadowColor=br;c.shadowBlur=14*pul;c.globalAlpha=k;c.lineWidth=2.4;
-  svColchetes(c,a,b,tp,bt,Math.max(10,Math.min(24,(b-a)*0.3)));
+  const pul=0.75+0.25*Math.sin(u0/240);
+  svColchetesBrilho(c,a,b,tp,bt,Math.max(10,Math.min(24,(b-a)*0.3)),br,12,2.4,k*(0.8+0.2*pul));
   // rótulos de cada parte do padrão, ligados por uma linha ao ponto do candle (entram um depois do outro)
   const rots=(ev.padrao.licao&&ev.padrao.licao.rotulos)||[],lados=[];c.shadowBlur=0;
   rots.forEach((rt,n)=>{const e=svEase(Math.min(1,Math.max(0,(u0-fade-300-n*450)/350)))*(1-vout);if(e<=0)return;
@@ -1035,38 +1091,38 @@ function svDestaque(c,ev,bx,u0,D,cor,br){   // DESTAQUE DO PADRÃO (4 a 6 s): o 
   c.restore()}
 function _desenhaMira(){
   const c=fxx;if(!c||!W)return;c.clearRect(0,0,W,H);
-  const ev=SVs.ev;if(!ev||svRest()<=0||!S||!L||!L.y){svZoom(1,0,0);return}
+  const ev=SVs.ev;if(!ev||svRest()<=0||!S||!L||!L.y){svZoom(1,0,0);svFundo(null);return}
   const t=svT(),A_=ev.anim_ms,st=ev.setup||{},cor=(st.cores&&st.cores.principal)||"#8FB4F0",br=(st.cores&&st.cores.brilho)||"#FFD76A";
   const ci=Math.min(ev.candle,S.cands.length-1),tx=Math.max(20,Math.min(L.pw-20,L.x(ci))),ty=Math.max(L.mTop+20,Math.min(L.mTop+L.mH-20,L.y(ev.preco)));
   const cx=L.pw/2,cy=L.mTop+L.mH/2,rGrande=Math.min(L.pw,L.mH)*0.4;
   const tDet=A_*0.2,tAq=A_*0.55,tTr=A_*0.82;
   const bx=svPadraoBox(ev),D=ev.destaque_ms||0;
   if(bx&&D>0&&t>=A_&&t<A_+D){svDestaque(c,ev,bx,t-A_,D,cor,br);svLicaoAnim();return}   // depois da mira: apaga o gráfico e destaca o padrão
-  if(bx&&t>=A_+D){   // janela de decisão de um padrão: colchetes firmes em volta dos candles (sem zoom) e um anel discreto na entrada
-    svZoom(1,0,0);const p=0.7+0.3*Math.sin(t/260);c.save();c.lineCap="round";c.strokeStyle=br;c.shadowColor=br;c.shadowBlur=10;c.globalAlpha=p;c.lineWidth=2.4;svColchetes(c,bx.a-4,bx.b+4,bx.t-4,bx.bt+4,Math.max(8,Math.min(22,(bx.b-bx.a)*0.28)));
-    c.globalAlpha=0.6*p;c.beginPath();c.arc(tx,ty,16,0,7);c.stroke();c.restore();svLicaoAnim();return}
+  if(bx&&t>=A_+D){svFundo(null);   // janela de decisão de um padrão: colchetes firmes em volta dos candles (sem zoom) e um anel discreto na entrada
+    svZoom(1,0,0);const p=0.7+0.3*Math.sin(t/260);
+    svColchetesBrilho(c,bx.a-4,bx.b+4,bx.t-4,bx.bt+4,Math.max(8,Math.min(22,(bx.b-bx.a)*0.28)),br,10,2.4,p);
+    svAnelBrilho(c,tx,ty,16,2.4,br,10,0.6*p);svLicaoAnim();return}
   let z=1;
   if(t>=tDet&&t<tAq)z=1+0.8*svEase((t-tDet)/(tAq-tDet));              // AQUISIÇÃO: o gráfico se aproxima do alvo
   else if(t>=tAq&&t<tTr)z=1.8+0.7*svEase((t-tAq)/(tTr-tAq));            // TRAVAMENTO: aproxima mais
   else if(t>=tTr&&t<A_)z=2.5-1.5*svEase((t-tTr)/(A_-tTr));              // ATIVAÇÃO: volta ao normal para a janela de decisão não esconder o gráfico
   svZoom(z,tx,ty);
   c.save();c.lineCap="round";
-  if(t<tDet){   // DETECÇÃO: alerta nas bordas e ondas saindo do centro
+  if(t<tDet){svFundo(null);   // DETECÇÃO: alerta nas bordas e ondas saindo do centro
     const a=0.12+0.14*Math.abs(Math.sin(t/160));c.strokeStyle=svRgba(cor,a);c.lineWidth=4;c.strokeRect(3,L.mTop+3,L.pw-6,L.mH-6);
   }else if(t<A_){
     let x,y,r,al=1,prog=0,lock=false;
     if(t<tAq){const u=svEase((t-tDet)/(tAq-tDet));x=cx+(tx-cx)*u;y=cy+(ty-cy)*u;r=rGrande+(78-rGrande)*u;al=(Math.floor(t/120)%2)?0.45:1}
     else if(t<tTr){const u=svEase((t-tAq)/(tTr-tAq));x=tx;y=ty;r=78+(34-78)*u;prog=u}
     else{x=tx;y=ty;r=34;prog=1;lock=true}
-    const vig=c.createRadialGradient(x,y,r*1.8,x,y,Math.max(L.pw,L.mH));vig.addColorStop(0,"rgba(4,2,26,0)");vig.addColorStop(1,"rgba(4,2,26,"+(0.45*Math.min(1,(t-tDet)/300))+")");
-    c.fillStyle=vig;c.fillRect(0,L.mTop,L.pw,L.mH);
+    {const al=0.45*Math.min(1,(t-tDet)/300),q=v=>Math.round(v/4)*4;svFundo(["v",q(x),q(y),q(r*1.8),al.toFixed(2)].join("|"),g=>svVinheta(g,q(x),q(y),q(r*1.8),Math.max(L.pw,L.mH),al))}
     svMira(c,x,y,r,t,cor,br,prog,lock,al);
     svEtiqueta(c,x,y+r*1.55,(st.nome||"Setup").toUpperCase()+" · "+(ev.direcao==="alta"?"▲ COMPRA":"▼ VENDA"),cor,lock?br:cor);   // uma só etiqueta (antes eram três linhas de texto)
     if(t>=tTr){const u=Math.min(1,(t-tTr)/(A_-tTr));   // ATIVAÇÃO: clarão e ondas de impacto
       c.shadowBlur=0;c.fillStyle="rgba(255,255,255,"+(0.14*(1-u)).toFixed(3)+")";c.fillRect(0,L.mTop,L.pw,L.mH);
       for(const d of [0,0.3]){const v=Math.max(0,Math.min(1,u*1.3-d));c.strokeStyle=svRgba(br,1-v);c.lineWidth=4*(1-v)+1;c.beginPath();c.arc(x,y,34+v*Math.min(L.pw,L.mH)*0.45,0,7);c.stroke()}}
-  }else{   // janela de decisão: só um anel discreto no ponto de entrada (o gráfico fica livre para leitura)
-    const p=0.6+0.4*Math.sin(t/220);c.globalAlpha=p;c.strokeStyle=br;c.shadowColor=br;c.shadowBlur=12;c.lineWidth=2.5;c.beginPath();c.arc(tx,ty,18,0,7);c.stroke()}
+  }else{svFundo(null);   // janela de decisão: só um anel discreto no ponto de entrada (o gráfico fica livre para leitura)
+    const p=0.6+0.4*Math.sin(t/220);svAnelBrilho(c,tx,ty,18,2.5,br,12,p)}
   c.restore()}
 /* ===== Efeitos de jogo: partículas, ondas de choque, tremor de câmera, vibração e sons sintetizados (nada de arquivo de áudio) ===== */
 let svAC=null;
@@ -1101,7 +1157,9 @@ function svJuice(){   // gatilhos por fase (cada um dispara uma vez por sinal) e
   for(const o of SVs.on||[]){const u=(agora-o.t0)/650;if(u>=1)continue;c.strokeStyle=svRgba(o.c,0.7*(1-u));c.lineWidth=4*(1-u)+0.8;c.beginPath();c.arc(o.x,o.y,10+u*Math.min(L.pw,L.mH)*0.5,0,7);c.stroke()}
   SVs.on=(SVs.on||[]).filter(o=>agora-o.t0<650);
   const pt=SVs.pt||[];for(const p of pt){p.l+=dt;p.x+=p.vx*dt*0.06;p.y+=p.vy*dt*0.06;p.vx*=0.985;p.vy=p.vy*0.985-0.0009*dt;const k=1-p.l/p.m;if(k<=0)continue;
-    c.fillStyle=svRgba(p.c,0.9*k);c.shadowColor=p.c;c.shadowBlur=8;c.beginPath();c.arc(p.x,p.y,p.r*(0.5+0.5*k),0,7);c.fill()}
+    const sp=svSprite(p.c),rd=p.r*(0.5+0.5*k);
+    if(sp){const s=rd+8;c.globalAlpha=0.9*k;c.drawImage(sp.cv,p.x-s,p.y-s,2*s,2*s)}      // luz pré-pronta (miolo + brilho) em vez de uma sombra por partícula
+    else{c.fillStyle=svRgba(p.c,0.9*k);c.shadowColor=p.c;c.shadowBlur=8;c.beginPath();c.arc(p.x,p.y,rd,0,7);c.fill()}}
   SVs.pt=pt.filter(p=>p.l<p.m);c.restore()}
 function svVivo(){return !!(SVs.pt&&SVs.pt.length)||!!(SVs.on&&SVs.on.length)}   // enquanto há partículas, o desenho continua
 function svBurstAceite(){const ev=SVs.ev;if(!ev||!S||!L||!L.y)return;const xy=SVs.xy||svAlvoXY(ev),st=ev.setup||{},br=(st.cores&&st.cores.brilho)||"#FFD76A";
@@ -1309,7 +1367,7 @@ function acharApagar(pt){
   return best;
 }
 function candleEm(x){return Math.max(0,Math.min(S.cands.length-1,Math.round((x-S.cw/2)/S.cw+S.off)))}
-cv=$("cv");ctx=cv.getContext("2d");cvfx=$("cvfx");fxx=cvfx?cvfx.getContext("2d"):null;
+cv=$("cv");ctx=cv.getContext("2d");cvfx=$("cvfx");fxx=cvfx?cvfx.getContext("2d"):null;cvfxb=$("cvfxb");fxb=cvfxb?cvfxb.getContext("2d"):null;
 $("aovivo").addEventListener("click",()=>{if(!S)return;S.follow=true;if(S.cw<(W-axisW())/(VIS_REPLAY*2))zoomReplay();aoVivoUI();kick()});
 cv.addEventListener("pointerdown",e=>{
   if(S.locked)return;try{cv.setPointerCapture(e.pointerId)}catch(_){}const p=pos(e);ptrs.set(e.pointerId,p);
