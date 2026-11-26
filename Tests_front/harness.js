@@ -334,4 +334,11 @@ t("setup: quando o evento acaba o zoom é desfeito", () => {
   yes(h.els.cv.style.transform, "com zoom");
   h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, setup: { evento: null, marcas: [] } })); eq(h.els.cv.style.transform || "", "");
 });
+t("estrutura da página: as divs fecham certo (uma a mais fecha o gráfico/aplicativo antes da hora e a boleta some) e a boleta está dentro do app", () => {
+  const corpo = html.split("<script>")[0], abre = (corpo.match(/<div[\s>]/g) || []).length, fecha = (corpo.match(/<\/div>/g) || []).length;
+  eq(abre, fecha, "divs abertas x fechadas");
+  const i = corpo.indexOf('<div id="app">'); let prof = 0, re = /<div[\s>]|<\/div>/g, m, iMesa = corpo.indexOf('<div id="mesa">'), dentro = null;
+  while ((m = re.exec(corpo))) { if (m.index < i) continue; prof += m[0] === "</div>" ? -1 : 1; if (m.index === iMesa) dentro = prof > 1; if (prof === 0) { yes(m.index > iMesa, "o app fechou antes da boleta"); break } }
+  yes(dentro, "a boleta precisa estar dentro do #app");
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);
