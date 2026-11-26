@@ -947,3 +947,25 @@ def test_padrao_de_candle_manda_os_candles_e_a_licao_para_os_dois_mas_regiao_so_
     dono, outro = SV.visao(p, A, T0 + 5)["evento"], SV.visao(p, B, T0 + 5)["evento"]
     assert dono["padrao"]["candles"] == outro["padrao"]["candles"] and dono["padrao"]["licao"]["ideia"] == outro["padrao"]["licao"]["ideia"]
     assert dono["regiao"] is not None and outro["regiao"] is None and outro["stop"] is None and not outro["pode_decidir"]
+
+
+def test_padrao_de_candle_ganha_a_fase_de_destaque_antes_da_janela_de_decisao(jogo, monkeypatch):
+    p, cen = jogo
+    p["setups"]["equip"][A] = ["martelo"]
+    monkeypatch.setattr(SU, "detectar", lambda sid, v, regioes=None: {"direcao": "alta", "stop": 1.0, "alvo": 99.0, "motivo": "t", "regiao": None})
+    tick(p, cen, T0 + 4.2)
+    ev = p["setups"]["evento"]
+    assert ev["prazo"] - ev["t_ini"] == pytest.approx(SV.ANIM_S + SV.DESTAQUE_S + SV.JANELA_S)               # mira + destaque (4 a 6 s) + decisão
+    assert 4.0 <= SV.DESTAQUE_S <= 6.0
+    v = SV.visao(p, A, ev["t_ini"] + 1)["evento"]
+    assert v["destaque_ms"] == int(SV.DESTAQUE_S * 1000) and v["padrao"]["licao"]["rotulos"]                  # rótulos de cada parte, para o gráfico
+    assert SV.visao(p, B, ev["t_ini"] + 1)["evento"]["destaque_ms"] == v["destaque_ms"]                       # o adversário vê a mesma sequência
+
+
+def test_setup_que_nao_e_padrao_nao_tem_fase_de_destaque(jogo, monkeypatch):
+    p, cen = jogo
+    sempre(monkeypatch)
+    tick(p, cen, T0 + 4.2)
+    ev = p["setups"]["evento"]
+    assert ev["prazo"] - ev["t_ini"] == pytest.approx(SV.ANIM_S + SV.JANELA_S)
+    assert SV.visao(p, A, ev["t_ini"] + 1)["evento"]["destaque_ms"] == 0
