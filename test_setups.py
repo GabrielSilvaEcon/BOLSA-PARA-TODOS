@@ -911,3 +911,25 @@ def test_liberado_a_partida_usa_o_que_o_jogador_escolheu(cli, liberado, monkeypa
     pid = cli.post("/trade/solo", json={"corrida": "rapida"}).json()["id"]
     v = cli.get(f"/trade/solo/{pid}").json()
     assert v["tela"]["setup"] is not None and v["tela"]["setup"]["evento"] is None                                      # a partida nasceu com setups ligados
+
+
+def test_setup_que_ativa_com_posicao_aberta_e_ignorado_sem_pausar_e_avisa(jogo, monkeypatch):
+    """Regra do vídeo: com posição aberta (ou entrada pendente) o setup não pausa o jogo nem mexe na posição; o sinal vira aviso e não gasta o teto."""
+    p, cen = jogo
+    sempre(monkeypatch)
+    TB.registrar_acao(p, cen, A, {"aid": "m1", "tipo": "mercado", "direcao": "alta", "q": 1}, T0 + 2.1)       # já está comprado
+    tick(p, cen, T0 + 4.2)
+    s = p["setups"]
+    assert s["evento"] is None and not TB.pausada(p)                                                       # nada de pausa nem janela
+    assert [x["estado"] for x in s["sinais"] if x["jogador"] == A] == ["ignorado"]
+    assert s["n"].get(A, 0) == 0                                                                           # não gastou uma das 2 ativações
+    v = SV.visao(p, A, T0 + 5)
+    assert v["marcas"] == [] and "posição aberta" in v["avisos"][0]["texto"] and "COMPRA" in v["avisos"][0]["texto"]
+    assert SV.visao(p, B, T0 + 5)["avisos"] == []                                                          # o adversário não vê o aviso do outro
+
+
+def test_setup_livre_continua_abrindo_a_janela(jogo, monkeypatch):
+    p, cen = jogo
+    sempre(monkeypatch)
+    tick(p, cen, T0 + 4.2)
+    assert p["setups"]["evento"] is not None and TB.pausada(p)

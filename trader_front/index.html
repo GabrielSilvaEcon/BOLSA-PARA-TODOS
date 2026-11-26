@@ -826,7 +826,7 @@ function sendAcao(d){
 const SVs={ev:null,recv:0,id:null,img:null,imgSrc:null,env:false};
 const svEv=()=>A&&A.setup&&A.setup.evento||null;
 function svRecebe(){   // a cada leitura do servidor o relógio da animação é realinhado com o do servidor (nada de temporizador próprio que desande)
-  svAvisaSemProtecao();const ev=svEv();
+  svAvisaSemProtecao();svAvisaIgnorados();const ev=svEv();
   if(!ev){SVs.ev=null;SVs.id=null;SVs.env=false;svUI();desenhaMira();return}
   if(SVs.id!==ev.sinal){SVs.id=ev.sinal;SVs.env=false}
   SVs.ev=ev;SVs.recv=performance.now();
@@ -898,6 +898,9 @@ function svNiveis(){   // entrada, stop e alvo do setup no gráfico: na janela d
   return out}
 function svRegiao(){   // a região que você marcou e onde o padrão fechou (só o dono vê): aparece junto com os níveis na janela de decisão
   const ev=SVs.ev;return ev&&ev.voce_e_dono&&ev.regiao&&svT()>=ev.anim_ms&&svRest()>0?ev.regiao:null}
+function svAvisaIgnorados(){   // um setup ativou com posição aberta (ou entrada pendente): o servidor ignorou o sinal e só avisa, uma vez por sinal
+  const sv=A&&A.setup;if(!sv||!S)return;SVs.avi=SVs.avi||{};
+  for(const x of sv.avisos||[]){if(!SVs.avi[x.id]){SVs.avi[x.id]=1;flash(x.texto,6500)}}}
 function svAvisaSemProtecao(){   // a entrada saiu, mas o preço já tinha passado do stop/alvo do setup e o servidor entrou sem eles: avisa uma vez
   const sv=A&&A.setup;if(!sv||!S)return;SVs.av=SVs.av||{};
   for(const x of sv.marcas||[]){if(x.meu&&x.estado==="aceito"&&(x.stop!=null||x.alvo!=null)&&x.protegido===false&&!SVs.av[x.id]){SVs.av[x.id]=1;S.dicaPuxa=true;   // o aviso já diz o que fazer: a dica genérica de arrastar não o cobre
@@ -1066,7 +1069,7 @@ function placarUI(){   // placar da rodada (o servidor já manda ordenado e form
   if(!P||!mesaOn()){el.classList.remove("on");return}
   const sg=JSON.stringify([P,A.moldura||"",A.avatares||{},A.mesa&&A.mesa.qtd?A.revelados:0,A.mesa&&A.mesa.acum_txt||""]);if(el.dataset.sg===sg&&el.classList.contains("on"))return;el.dataset.sg=sg;   // só redesenha quando muda (avatares são imagens)
   const solo=P.jogadores.length===1;el.classList.toggle("solo",solo);el.classList.toggle("c",P.jogadores.length>=3);const curto=P.jogadores.length>=3,nome=j=>curto&&!j.voce?j.rotulo.replace(/^Jogador /,"J"):j.rotulo;
-  el.innerHTML=(A.mesa&&A.mesa.qtd?`<div class="rd">Candle<b>${A.revelados}/${A.total_replay}</b></div>`:`<div class="rd">Rodada<b>${esc(P.rodada)}</b></div>`)+P.jogadores.map(j=>`<div class="pj p${j.pos}${j.voce?" eu":""}"><span class="avw">${avatarHTML(j,"av")}<span class="rk">${j.pos}º</span></span><span class="nm">${esc(nome(j))}${j.voce&&solo&&P.pat_txt?` <small>· ${esc(P.pat_txt)}</small>`:""}</span><b class="${corrida()&&j.voce&&A.mesa?(A.mesa.cor_acum||j.cor):j.cor}">${esc(corrida()&&j.voce&&A.mesa&&A.mesa.acum_txt?curtoT(A.mesa.acum_txt):j.txt)}</b></div>`).join("");
+  el.innerHTML=(A.mesa&&A.mesa.qtd?`<div class="rd">Candle<b>${A.revelados}/${A.total_replay}</b></div>`:`<div class="rd">Rodada<b>${esc(P.rodada)}</b></div>`)+P.jogadores.map(j=>`<div class="pj p${j.pos}${j.voce?" eu":""}"><span class="avw">${avatarHTML(j,"av")}<span class="rk">${j.pos}º</span></span><span class="nm">${esc(nome(j))}${j.voce&&solo&&P.pat_txt?` <small>· ${esc(P.pat_txt)}</small>`:""}</span><b class="${corrida()&&j.voce&&A.mesa?(A.mesa.cor_acum||j.cor):j.cor}">${esc(corrida()&&j.voce&&A.mesa&&A.mesa.acum_txt?curtoT(A.mesa.acum_txt)+" · "+j.txt:j.txt)}</b></div>`).join("");
   el.classList.add("on");
 }
 function uiMesa(){   // atualiza só textos e estados dos botões (a tela não é reconstruída)

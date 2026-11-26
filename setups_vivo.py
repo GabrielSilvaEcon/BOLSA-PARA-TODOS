@@ -94,6 +94,33 @@ def _disparar(p: dict, cen: dict, s: dict, sinal: dict, agora: float) -> bool:
     return True
 
 
+def _posicionado(p: dict, cen: dict, jog: str, ini: int, n: int) -> str | None:
+    """'aberta' se o jogador tem posição aberta, 'pendente' se tem uma ordem de entrada esperando; None se está livre. Usa o simulador da partida."""
+    acoes = TB.acoes_da_rodada(p, p["rodada"], jog)
+    if not acoes:
+        return None
+    sim = TB._sim_jog(p, jog, cen["candles"][ini:ini + n], acoes, cen["candles"][ini - 1]["c"], False)
+    if sim.get("pos"):
+        return "aberta"
+    return "pendente" if sim.get("pend") else None
+
+
+def _tentar(p: dict, cen: dict, s: dict, sinal: dict, ini: int, n: int, agora: float) -> bool:
+    """Regra para um setup que ativa com o jogador JÁ posicionado (posição aberta ou entrada pendente): o jogo não pausa nem abre a janela, porque uma
+    segunda ordem mexeria na posição e no stop/alvo que ele está acompanhando. O sinal fica registrado como 'ignorado' (não gasta o teto de ativações) e o
+    jogador recebe um aviso. Livre: abre a janela normalmente. True se abriu a janela."""
+    estado = _posicionado(p, cen, sinal["jogador"], ini, n)
+    if estado is None:
+        return _disparar(p, cen, s, sinal, agora)
+    sinal["estado"] = "ignorado"
+    sinal["motivo_ignorado"] = "posição aberta" if estado == "aberta" else "entrada pendente"
+    s["sinais"].append(sinal)
+    s["ultimo"][sinal["jogador"]] = sinal["candle"]                    # a recarga continua valendo: sem aviso repetido a cada candle
+    s["armado"].pop(sinal["jogador"], None)
+    p["versao"] += 1
+    return False
+
+
 def _resolver(p: dict, s: dict, sinal_id: str, estado: str, agora: float) -> None:
     sinal = next(x for x in s["sinais"] if x["id"] == sinal_id)
     sinal["estado"], sinal["t_dec"] = estado, float(agora)
@@ -147,7 +174,7 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
                 candle = ini + (g[k] if g else k)
                 if idade <= FRESCOR_S and total - (candle - ini + 1) >= RESTANTES and candle - s["ultimo"].get(jog, -999) >= RECARGA:
                     sinal = _sinal(p, s, jog, sid, candle, arm, arm["gatilho"], agora)
-                    if sinal and _disparar(p, cen, s, sinal, agora):
+                    if sinal and _tentar(p, cen, s, sinal, ini, n, agora):
                         return True                                  # um evento por vez: o resto espera a janela fechar
             elif n >= b:
                 armados.pop(sid, None)                               # a validade acabou sem o preço chegar
@@ -168,7 +195,7 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
                     s["armado"][jog] = armados
                 elif candle - s["ultimo"].get(jog, -999) >= RECARGA:
                     sinal = _sinal(p, s, jog, sid, candle, sig, fechados[-1]["c"], agora)
-                    if sinal and _disparar(p, cen, s, sinal, agora):
+                    if sinal and _tentar(p, cen, s, sinal, ini, n, agora):
                         return True
     if mudou:
         p["versao"] += 1
@@ -255,7 +282,10 @@ def visao(p: dict, email: str, agora: float) -> dict | None:
     rot = {j: (None if j == email else f"Jogador {i}") for i, j in enumerate(p["jogadores"], 1)}
     marcas = [{"id": x["id"], "candle": x["candle"], "preco": x["preco"], "direcao": x["direcao"], "setup": x["setup"], "estado": x["estado"],
                "meu": x["jogador"] == email,
-               **({"stop": x["stop"], "alvo": x["alvo"], "protegido": x.get("protegido")} if x["jogador"] == email else {})} for x in s["sinais"]]
+               **({"stop": x["stop"], "alvo": x["alvo"], "protegido": x.get("protegido")} if x["jogador"] == email else {})} for x in s["sinais"] if x["estado"] != "ignorado"]
+    avisos = [{"id": x["id"], "texto": f"{(SU.info(x['setup']) or {}).get('nome', 'Setup')} sinalizou {'COMPRA' if x['direcao'] == 'alta' else 'VENDA'}, mas você já tem "
+                                       + ("uma posição aberta" if x.get("motivo_ignorado") == "posição aberta" else "uma entrada pendente") + ": o sinal foi ignorado."}
+              for x in s["sinais"] if x["estado"] == "ignorado" and x["jogador"] == email]
     ev, out = s["evento"], None
     if ev:
         x = next(x for x in s["sinais"] if x["id"] == ev["sinal"])
@@ -269,4 +299,4 @@ def visao(p: dict, email: str, agora: float) -> dict | None:
                "anim_ms": int(ANIM_S * 1000), "janela_ms": int(JANELA_S * 1000),
                "decorrido_ms": max(0, int((agora - ev["t_ini"]) * 1000)), "restante_ms": max(0, int((ev["prazo"] - agora) * 1000)),
                "pode_decidir": bool(dono and agora < ev["prazo"])}
-    return {"evento": out, "marcas": marcas}
+    return {"evento": out, "marcas": marcas, "avisos": avisos}

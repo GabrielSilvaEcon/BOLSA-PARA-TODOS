@@ -51,7 +51,7 @@ def plano_do_bot(cen: dict, ini: int, n_passos: int, nivel: dict, semente: int) 
 def _posicao(p: dict, cen: dict, jog: str, n: int) -> dict | None:
     ini = TB.inicio_rodada(cen, p["rodada"], TB._nrp(p))
     sim = TB._sim_jog(p, jog, cen["candles"][ini:ini + n], TB.acoes_da_rodada(p, p["rodada"], jog), cen["candles"][ini - 1]["c"], False)
-    return sim.get("posicao")
+    return sim.get("pos")
 
 
 def _tamanho(p: dict, jog: str, preco: float, nivel: dict) -> int:
