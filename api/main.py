@@ -109,7 +109,14 @@ def _erro(e: Exception, status: int = 400):
 
 # ------------------------------------------------------------------ básico
 @app.get("/saude")
-def saude() -> dict:
+async def saude() -> dict:
+    """Health check do Render: responde na hora e SEM tocar no banco. Antes ele consultava o banco: com o Supabase lento, passava dos 5 s do Render,
+    o serviço era dado como falho e reiniciado no meio das partidas (o app via 'connection abort')."""
+    return {"ok": True}
+
+
+@app.get("/saude/banco")
+def saude_banco() -> dict:
     ok, msg = banco.pronto()
     return {"ok": True, "banco": bool(ok), "detalhe": msg if not ok else ""}
 
