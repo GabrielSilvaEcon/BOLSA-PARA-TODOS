@@ -16,6 +16,8 @@ from datetime import datetime, timedelta, timezone
 import banco
 import battle_dados as BD
 import battle_online as O
+import bot_ticker as BTK
+import bots as BOTS
 
 FILA_VALIDADE_S = 25            # cada consulta renova; sem renovar por este tempo a pessoa sai da fila
 FILA_MAX_ESPERA_S = 180         # depois disso a busca termina sem adversário
@@ -78,7 +80,7 @@ def nick_de(email: str) -> str:
 # ------------------------------------------------------------------ escrita atômica
 def _gravar_campos(d: dict, versao: int, agora: datetime) -> dict:
     campos = {"dados": banco._js(d), "versao": versao + 1, "status": d["fase"], "atualizado": O.iso(agora)}
-    if d["jog"]["b"] is not None:
+    if d["jog"]["b"] is not None and not BOTS.eh_bot(d["jog"]["b"]["email"]):          # o jogador da casa não tem conta: só vive dentro de `dados`
         campos["b_email"] = d["jog"]["b"]["email"]
     if d["fase"] in ("finalizada", "cancelada"):
         f = d["final"] or {}
@@ -195,7 +197,37 @@ def consultar_fila(email: str, agora: datetime | None = None) -> dict:
         banco._apagar("bt_fila", {"email": email})
         banco._apagar("bt_fila", {"email": c["email"]})
         return {"estado": "partida", "id": novo_id}
+    if BOTS.BOTS_ATIVOS and (agora - (O.de_iso(eu["criado_em"]) or agora)).total_seconds() >= BOTS.BOT_ESPERA_S:
+        return _partida_com_bot(email, eu, agora)
     return {"estado": "fila"}
+
+
+def _partida_com_bot(email: str, eu: dict, agora: datetime) -> dict:
+    """Ninguém apareceu na fila: entra um jogador da casa (nome comum, baralho do mesmo tamanho, nível pelos troféus do jogador)."""
+    novo_id = uuid.uuid4().hex[:16]
+    if not banco._atualizar_n("bt_fila", {"email": email, "partida_id": ""}, {"partida_id": novo_id}):
+        return {"estado": "fila", "reservado": True}
+    try:
+        try:
+            t = int((banco.sis_estado_ler(email, "trofeus") or {}).get("ticker", {}).get("t") or 0)
+        except Exception:
+            t = 0
+        bot = BOTS.novo(novo_id, int(agora.timestamp()) % 997, t)
+        snap = _snapshot_de(email)
+        puros = {k: v for k, v in _snapshot().items()}
+        deck_b = BTK.monta_baralho(puros, O.hoje_de(agora), len(eu["baralho"]), BOTS.semente_de(novo_id))
+        snap = {**puros, **snap}
+        d = O.novo(novo_id, email, eu["nick"], eu["baralho"], agora)
+        d = O.entrar(d, bot["email"], bot["nome"], deck_b, snap, agora, BD.referencia_dos_dados(snap, list(snap)))
+        d["bot"] = {"email": bot["email"], "nivel": bot["nivel"], "trofeus": bot["trofeus"], "nome": bot["nome"]}
+        banco._inserir("bt_partidas", {"id": novo_id, "codigo": None, "tipo": "rapida", "status": d["fase"], "a_email": email, "b_email": None,
+                                       "versao": 1, "criado_em": O.iso(agora), "atualizado": O.iso(agora), "dados": banco._js(d)})
+    except (O.ErroPartida, banco.Duplicado, banco.ErroBanco) as e:
+        banco.registrar_erro("ticker.bot_entrada", e)
+        banco._atualizar_n("bt_fila", {"email": email, "partida_id": novo_id}, {"partida_id": ""})
+        return {"estado": "fila"}
+    banco._apagar("bt_fila", {"email": email})
+    return {"estado": "partida", "id": novo_id}
 
 
 # ------------------------------------------------------------------ sala privada
@@ -257,9 +289,9 @@ def ler(pid: str, email: str, agora: datetime | None = None) -> dict:
         def f(x):
             # 1º registra a presença DESTE jogador (quem volta antes de ser julgado continua na partida); 2º aplica os prazos (só o outro pode estar vencido)
             n = O.batida(x, lado, agora) if (O.segundos_sem_sinal(x, lado, agora) or 999) >= SINAL_MIN_INTERVALO_S else x
-            return O.avaliar_prazos(n, agora)
+            return O.avaliar_prazos(BTK.agir(n, agora), agora)
 
-        if sinal_velho or O.avaliar_prazos(O.batida(d, lado, agora), agora)["fase"] != d["fase"]:
+        if sinal_velho or d.get("bot") or O.avaliar_prazos(O.batida(d, lado, agora), agora)["fase"] != d["fase"]:
             d = _mutar(pid, f, agora)
     return O.visao(d, lado, agora)
 
@@ -267,7 +299,7 @@ def ler(pid: str, email: str, agora: datetime | None = None) -> dict:
 def estou_pronto(pid: str, email: str, agora: datetime | None = None) -> dict:
     agora = agora or agora_utc()
     _, lado = _participante(pid, email)
-    d = _mutar(pid, lambda x: x if x["pronto"][lado] else O.marcar_pronto(O.batida(x, lado, agora), lado, agora), agora)
+    d = _mutar(pid, lambda x: x if x["pronto"][lado] else BTK.agir(O.marcar_pronto(O.batida(x, lado, agora), lado, agora), agora), agora)
     return O.visao(d, lado, agora)
 
 
@@ -275,7 +307,7 @@ def jogar(pid: str, email: str, tk: str, ind: str, agora: datetime | None = None
     """Confirma carta e atributo. O servidor valida, grava na hora e, se o adversário já confirmou, resolve a rodada na mesma gravação."""
     agora = agora or agora_utc()
     _, lado = _participante(pid, email)
-    d = _mutar(pid, lambda x: O.escolher(O.batida(x, lado, agora), lado, tk, ind, agora), agora)
+    d = _mutar(pid, lambda x: BTK.agir(O.escolher(O.batida(x, lado, agora), lado, tk, ind, agora), agora), agora)
     return O.visao(d, lado, agora)
 
 

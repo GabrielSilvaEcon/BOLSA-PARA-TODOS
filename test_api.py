@@ -593,3 +593,44 @@ def test_colecao_expoe_as_sinergias_do_baralho(cli):
     CD.gravar(EU, doc)
     s = cli.get("/cartas/colecao").json()["sinergias"]
     assert [(x["n"], x["passos"]) for x in s] == [(3, 2)] and s[0]["tks"] == tks     # 3 cartas: o teto de 2 passos
+
+
+def test_ticker_online_sem_ninguem_entra_um_jogador_da_casa_que_joga_e_conta_troféus(cli):
+    import bots as BOTS
+    import battle_online as BO
+    import battle_online_dados as BOD
+    from datetime import timedelta
+    _cartas_teste()
+    t = cli.post("/ticker/tutorial/bau").json()
+    for it in t["cartas"]:
+        cli.post("/cartas/equipar", json={"tk": it["tk"]})
+    t0 = BOD.agora_utc()
+    assert BOD.entrar_na_fila(EU, t0)["estado"] == "fila"
+    assert BOD.consultar_fila(EU, t0 + timedelta(seconds=BOTS.BOT_ESPERA_S - 2))["estado"] == "fila"   # ainda dá tempo de aparecer gente
+    r = BOD.consultar_fila(EU, t0 + timedelta(seconds=BOTS.BOT_ESPERA_S + 1))
+    assert r["estado"] == "partida" and "bot" not in r                                                 # não se anuncia
+    pid = r["id"]
+    d = BOD._partida_row(pid)["dados"]
+    assert BOTS.eh_bot(d["jog"]["b"]["email"]) and d["jog"]["b"]["nick"] in BOTS.NOMES and d["bot"]["trofeus"] >= 0
+    assert len(d["jog"]["b"]["deck"]) == len(d["jog"]["a"]["deck"])
+    assert BOD.partida_ativa(EU) == pid
+    t = t0 + timedelta(seconds=BOTS.BOT_ESPERA_S + 2)
+    v = BOD.ler(pid, EU, t)
+    assert v["op"]["nick"] in BOTS.NOMES
+    t += timedelta(seconds=4)
+    assert BOD.ler(pid, EU, t)["op"]["pronto"]                                                         # o bot ficou pronto sozinho
+    BOD.estou_pronto(pid, EU, t)
+    for _ in range(BO.B.RODADAS):
+        v = BOD.ler(pid, EU, t)
+        livre = next(x for x in v["eu"]["deck"] if x not in v["eu"]["usadas"])
+        ind = BO.atributos_da_carta(BOD._partida_row(pid)["dados"], livre)[0]
+        BOD.jogar(pid, EU, livre, ind, t)
+        for _ in range(40):                                                                            # o bot "pensa" e joga
+            t += timedelta(seconds=1)
+            v = BOD.ler(pid, EU, t)
+            if v["encerrada"] or v["rod"] > len(v["reg"]) and len(v["reg"]) >= 1 and v["eu"]["escolha"] is None:
+                break
+    assert v["encerrada"] and v["final"]["motivo"] in ("normal",) and sum(v["placar"].values()) == BO.B.RODADAS
+    from fastapi.testclient import TestClient  # noqa: F401
+    r = cli.get(f"/ticker/online/{pid}").json()                                                        # a leitura pela API registra ranking e troféus
+    assert r["trofeus"] is not None

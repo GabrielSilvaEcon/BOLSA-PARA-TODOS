@@ -19,6 +19,9 @@ import secrets
 import time
 
 import banco
+import random
+
+import bot_jogo as BJ
 import bots as BOTS
 import setups_dados as SD
 import setups_vivo as SV
@@ -368,19 +371,23 @@ def consultar_busca(email: str, agora: float | None = None) -> dict:
 
 def _partida_com_bot(email: str, pid: str, agora: float) -> dict:
     """Coloca um bot na busca do jogador e começa a partida na hora. Idempotente: se o bot já está lá, só devolve a partida."""
-    bot = BOTS.novo(pid, int(agora) % 997)
+    try:
+        troféus = int((banco.sis_estado_ler(email, "trofeus") or {}).get("trade", {}).get("t") or 0)
+    except Exception:
+        troféus = 0
+    bot = BOTS.novo(pid, int(agora) % 997, troféus)
 
     def f(d):
         if d.get("p") or d.get("cancelada") or any(BOTS.eh_bot(j["email"]) for j in d["sala"]["jogadores"]) or len(d["sala"]["jogadores"]) != 1:
             return d
         n = copy.deepcopy(d)
-        n["sala"]["jogadores"].append({"email": bot["email"], "nick": bot["nome"], "em": agora, "bot": True, "setup": bot["setup"]})
+        n["sala"]["jogadores"].append({"email": bot["email"], "nick": bot["nome"], "em": agora, "bot": True, "nivel": bot["nivel"], "trofeus": bot["trofeus"], "semente": bot["semente"]})
         return n
     d = _mutar(pid, f, agora)
     b = next((j for j in d["sala"]["jogadores"] if BOTS.eh_bot(j["email"])), None)
     if b:
         iniciar(pid, email, agora)                                    # (o bot não tem conta: não entra em tb_jogadores, só na sala e na partida)
-        return {"estado": "partida", "id": pid, "bot": b["nick"]}
+        return {"estado": "partida", "id": pid}
     return {"estado": "fila", "id": pid}
 
 
@@ -445,12 +452,20 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
                 if BOTS.eh_bot(j["email"]):
                     apostas[j["email"]] = {**next(iter(apostas.values())), "conta": ""}
             n["p"] = TB.nova_partida(cen, cen["tf"], jogs, agora, pid=pid, multi=True, apostas=apostas, corrida=corrida)
-            equip = {j["email"]: ([j["setup"]] if BOTS.eh_bot(j["email"]) else SD.equipados(j["email"])) for j in d["sala"]["jogadores"]}
+            equip = {j["email"]: ([] if BOTS.eh_bot(j["email"]) else SD.equipados(j["email"])) for j in d["sala"]["jogadores"]}
             n["p"]["setups"] = SV.iniciar(jogs, equip)                    # o setup de cada um fica congelado: trocar na central não muda esta partida
             ref = cen["candles"][cen["n_analise"] - 1]["c"]
-            for j in jogs:
-                if BOTS.eh_bot(j):                                        # o bot "confirma" a estratégia na hora (Aguardar) e opera pelo setup dele
-                    TB.salvar_estrategia(n["p"], j, {"direcao": None, "tipo": "aguardar"}, None, ref, agora)
+            ini_r = TB.inicio_rodada(cen, 1, TB._nrp(n["p"]))
+            for j in d["sala"]["jogadores"]:
+                if not BOTS.eh_bot(j["email"]):
+                    continue
+                nivel = BOTS.NIVEL[j["nivel"]]                            # o bot tem plano de operações e nível de dificuldade; confirma a estratégia na hora
+                plano = BJ.plano_do_bot(cen, ini_r, TB._nrp(n["p"]), nivel, int(j.get("semente") or semente))
+                n["p"].setdefault("bots", {})[j["email"]] = {"nivel": nivel["id"], "nome": j["nick"], "trofeus": int(j["trofeus"]), "plano": plano["plano"]}
+                rnd = random.Random(int(j.get("semente") or semente) + 7)
+                certo = plano["direcao"]                                  # estratégia como a de uma pessoa: tipo variado e, às vezes, o lado errado
+                lado = certo if rnd.random() < nivel["acerto"] else ("baixa" if certo == "alta" else "alta")
+                TB.salvar_estrategia(n["p"], j["email"], {"direcao": lado, "tipo": rnd.choice(("continuacao", "continuacao", "reversao", "rompimento")), "confianca": rnd.randint(2, 4)}, None, ref, agora)
             return n
         cen = TD.escolher(tf, semente, rodadas=TB.FORMATOS[formato]) if formato in TB.FORMATOS else TD.escolher(tf, semente)
         n = copy.deepcopy(d)
@@ -483,6 +498,7 @@ def _sincronizar(pid: str, agora: float) -> dict:
         cen = _cenario(n)
         TB.avancar(n["p"], agora, {cen["id"]: cen})
         SV.processar(n["p"], cen, agora)                              # setups: prazo do evento em curso e sinais do candle que acabou de fechar
+        BJ.agir(n["p"], cen, agora)                                   # bots de treino: as operações do plano que já chegaram na hora
         return d if n["p"]["versao"] == d["p"]["versao"] else n
     return _mutar(pid, f, agora)
 

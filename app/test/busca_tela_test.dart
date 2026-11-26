@@ -38,18 +38,10 @@ void main() {
     });
   }
 
-  testWidgets('depois de alguns segundos sem ninguém a tela avisa, sem esconder, que pode entrar um bot de treino', (t) async {
-    await _abre(t, const Size(390, 800), _ApiFalsa([]));
-    await t.pump(const Duration(seconds: 8)); // 4 consultas: passa dos 6 s
-    expect(find.textContaining('treina contra um bot'), findsOneWidget);
-    await t.pumpWidget(const SizedBox());
-  });
-
-  testWidgets('quando o servidor devolve a partida com bot, o jogador é avisado que é treino contra bot', (t) async {
-    await _abre(t, const Size(390, 800), _ApiFalsa([{'estado': 'partida', 'id': 'p1', 'bot': 'Bot Touro'}]));
+  testWidgets('quando o servidor devolve a partida, a tela abre direto, sem aviso de bot', (t) async {
+    await _abre(t, const Size(390, 800), _ApiFalsa([{'estado': 'partida', 'id': 'p1'}]));
     await t.pump(const Duration(seconds: 3));
-    expect(find.textContaining('Bot Touro'), findsOneWidget);
-    expect(find.textContaining('não vale troféus'), findsOneWidget);
+    expect(find.textContaining('bot'), findsNothing);
     await t.pumpWidget(const SizedBox());
   });
 }
