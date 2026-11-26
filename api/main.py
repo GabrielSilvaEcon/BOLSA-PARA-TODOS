@@ -817,13 +817,14 @@ def _trof_meu(q: "Quem") -> dict:
     return doc
 
 
-def _trof_registrar(q: "Quem", jogo: str, pid: str, adversarios: list[str], placar: float) -> None:
+def _trof_registrar(q: "Quem", jogo: str, pid: str, adversarios: list[str], placar: float, bots: dict | None = None) -> None:
     """Troféus de UMA partida online, contra a média de troféus dos adversários. Guarda o último resultado para a tela de fim."""
     import trofeus as TF
     try:
         doc = _trof_meu(q)
         antes = TF.divisao(doc[jogo]["t"])
-        deles = [_trof_doc(e)[jogo]["t"] for e in adversarios if e and e != q.email] or [doc[jogo]["t"]]
+        bots = bots or {}
+        deles = [(bots[e]["trofeus"] if e in bots else _trof_doc(e)[jogo]["t"]) for e in adversarios if e and e != q.email] or [doc[jogo]["t"]]
         doc, d = TF.registrar(doc, jogo, pid, sum(deles) / len(deles), placar)
         if d is None:
             return
@@ -833,9 +834,12 @@ def _trof_registrar(q: "Quem", jogo: str, pid: str, adversarios: list[str], plac
         TF.anotar_torneio(doc, TF.torneio_id(hoje), d)
         advs = [e for e in adversarios if e and e != q.email]
         for e in advs:
-            TF.anotar_h2h(doc, banco._h_conta(e), placar)
+            if e not in bots:                                # bot não tem conta: sem confronto direto
+                TF.anotar_h2h(doc, banco._h_conta(e), placar)
         rev = None
-        if len(advs) == 1:                                   # duelo: dá para pedir revanche (se forem amigos)
+        if len(advs) == 1 and advs[0] in bots:               # contra bot: sem revanche de amigo; o nome do adversário é o do bot
+            rev = {"h": "", "amigo": False, "placar": None, "nome": bots[advs[0]].get("nome") or "Bot", "avatar_img": ""}
+        elif len(advs) == 1:                                 # duelo: dá para pedir revanche (se forem amigos)
             import amigos as AM
             h = banco._h_conta(advs[0])
             try:
@@ -867,10 +871,7 @@ def _trof_ultimo(q: "Quem", pid: str) -> dict | None:
 
 def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -> None:
     """Partida terminada no placar dos jogos (a regra de só contar partida online fica em jogos.registrar_trade).
-    Partida com BOT é treino: não conta para o ranking nem para os troféus."""
-    import bots as BOTS
-    if BOTS.tem_bot(p):
-        return
+    Partida contra BOT conta como qualquer outra: o bot vale, nos troféus, os do jogador mais o bônus do nível dele (p["bots"])."""
     try:
         meu = next(x for x in fz["placar"] if x["voce"])
         n = len(fz["placar"])
@@ -888,7 +889,7 @@ def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -
         n = len(fz["placar"])
         if n >= 2:
             import trofeus as TF
-            _trof_registrar(q, "trade", pid, [j for j in p.get("jogadores") or [] if j != q.email], TF.placar_por_posicao(meu["pos"], n))
+            _trof_registrar(q, "trade", pid, [j for j in p.get("jogadores") or [] if j != q.email], TF.placar_por_posicao(meu["pos"], n), p.get("bots"))
     except Exception as e:
         banco.registrar_erro("api.trofeus_trade", e)
     try:                                                   # histórico pessoal (solo e online), só para o jogador ver suas partidas

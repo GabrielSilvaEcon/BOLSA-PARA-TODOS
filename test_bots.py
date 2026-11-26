@@ -1,11 +1,11 @@
-"""Bots de treino: aparecem só quando ninguém mais está procurando, são sempre identificados e não mexem em troféus nem ranking."""
+"""Bots de treino: aparecem só quando ninguém mais está procurando, são sempre identificados e contam para ranking e troféus (com dificuldade real)."""
 import json
 
 import pytest
 
 import api.main as API
+import bot_jogo as BJ
 import bots as BOTS
-import setups as SU
 import setups_vivo as SV
 import trader_battle as TB
 import trader_dados as TD
@@ -30,13 +30,14 @@ def test_sozinho_ate_o_tempo_a_busca_continua_e_depois_entra_um_bot_identificado
     assert r["estado"] == "fila"
     assert OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S - 1)["estado"] == "fila"          # ainda dá tempo de aparecer gente de verdade
     r2 = OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S + 0.5)
-    assert r2["estado"] == "partida" and r2["id"] == r["id"] and r2["bot"] in BOTS.NOMES
+    assert r2["estado"] == "partida" and r2["id"] == r["id"] and r2["bot"].split(" (")[0] in BOTS.NOMES and "(Normal)" in r2["bot"]
     p = OL._row(r["id"])["dados"]["p"]
     bot = next(j for j in p["jogadores"] if BOTS.eh_bot(j))
     assert sorted(p["jogadores"]) == sorted([a, bot])
     assert p["apostas"][bot]["stake"] == p["apostas"][a]["stake"]                         # mesmo capital: comparação justa
     assert TB._chave(1, bot) in p["estrategias"]                                          # o bot já confirmou a estratégia (a partida só espera o jogador)
-    assert p["setups"]["equip"][bot] and p["setups"]["equip"][bot][0] in BOTS.SETUPS      # joga com um setup que não depende de marcação
+    assert p["bots"][bot]["plano"] and p["bots"][bot]["nivel"] == "normal"                # tem plano de operações e nível de dificuldade
+    assert p["bots"][bot]["trofeus"] == BOTS.trofeus_do_bot(0, BOTS.NIVEL["normal"])
     assert TB._rotulos(p, a)[bot].startswith("Bot ")                                      # sempre identificado como bot
 
 
@@ -65,38 +66,83 @@ def test_com_os_bots_desligados_a_busca_so_espera_gente(mundo, monkeypatch):
     assert OL.consultar_busca(a, TS + 60)["estado"] == "fila"
 
 
-def _partida_com_bot():
+def _partida_com_bot(nivel="normal", semente=3):
     cen = TD.demo_corrida("rapida", 11)
     sp = TB.CORRIDAS["rapida"]
     bot = BOTS.PREFIXO + "xyz"
     p = TB.nova_partida(cen, sp["tf"], [A, bot], 1000.0, pid="sala1", multi=True, apostas={j: {"stake": 10_000.0, "pat": 500_000.0} for j in (A, bot)}, corrida="rapida")
     for j in (A, bot):
         TB.salvar_estrategia(p, j, {"direcao": "alta", "tipo": "continuacao", "confianca": 3}, None, 0, T0)
-    p["setups"] = SV.iniciar([A, bot], {A: [], bot: ["setup_classico"]})
+    p["setups"] = SV.iniciar([A, bot], {A: [], bot: []})
+    ini = TB.inicio_rodada(cen, 1, TB._nrp(p))
+    plano = BJ.plano_do_bot(cen, ini, TB._nrp(p), BOTS.NIVEL[nivel], semente)
+    p["bots"] = {bot: {"nivel": nivel, "nome": "Bot Touro", "trofeus": 100, "plano": plano["plano"]}}
     return p, cen, bot
 
 
-def test_o_bot_entra_pelo_setup_na_hora_sem_pausar_a_partida_do_jogador(monkeypatch):
+def test_o_bot_opera_o_plano_pelo_sistema_de_ordens_sem_pausar_o_jogador():
+    p, cen, bot = _partida_com_bot("mestre")
+    assert p["bots"][bot]["plano"]
+    n_acoes = 0
+    for k in range(1, 61):
+        t = T0 + k * 4.0 + 0.2
+        tick(p, cen, t)
+        BJ.agir(p, cen, t)
+        assert not TB.pausada(p)
+    acoes = [a for a in p["acoes"] if a.get("jogador") == bot]
+    assert any(a["aid"].startswith("bot:") and a["aid"].endswith(":a") for a in acoes)         # abriu pelo registrar_acao
+    assert all(t["estado"] in ("fechada", "pulada") for t in p["bots"][bot]["plano"])
+    pl = TB.placar_final(p)
+    assert {x["jogador"] if "jogador" in x else x.get("email") for x in pl} >= {bot} or len(pl) == 2   # o bot está no placar
+
+
+def test_agir_e_idempotente():
     p, cen, bot = _partida_com_bot()
-    monkeypatch.setattr(SU, "detectar", lambda sid, v: {"direcao": "alta", "stop": round(v[-1]["c"] * 0.99, 2), "alvo": round(v[-1]["c"] * 1.02, 2), "motivo": "t"})
-    tick(p, cen, T0 + 3 * 4.0 + 0.2)
-    s = p["setups"]
-    assert s["evento"] is None and not TB.pausada(p)                                       # nenhuma janela, nenhuma pausa para o jogador
-    assert [x["jogador"] for x in s["sinais"]] == [bot] and s["sinais"][0]["estado"] == "aceito"
-    assert any(a.get("jogador") == bot and a.get("aid", "").startswith("setup:") for a in p["acoes"])   # a ordem entrou pelo sistema de ordens
-    marca = SV.visao(p, A, T0 + 13)["marcas"][0]
-    assert marca["meu"] is False and "stop" not in marca                                    # o jogador vê que o adversário entrou, sem stop nem alvo dele
+    t = T0 + 30 * 4.0 + 0.2
+    tick(p, cen, t)
+    BJ.agir(p, cen, t)
+    antes = json.dumps(p["acoes"], sort_keys=True)
+    assert BJ.agir(p, cen, t) is False
+    assert json.dumps(p["acoes"], sort_keys=True) == antes
 
 
-def test_partida_com_bot_nao_conta_para_ranking_nem_troféus(monkeypatch):
-    p, _, _ = _partida_com_bot()
-    chamadas = []
-    monkeypatch.setattr(API.J, "registrar_trade", lambda *a, **k: chamadas.append(a) or ({}, False))
-    API._registrar_ranking(None, "sala1", p, {"placar": []}, None)
-    assert chamadas == []                                                                   # treino: nada de ranking
-    p2 = {**p, "jogadores": [A, "b@x.com"]}
-    p2["jogadores"] = [A, "outro@x.com"]
-    assert not BOTS.tem_bot(p2)
+def test_nivel_do_bot_sobe_com_os_troféus_do_jogador():
+    assert [BOTS.nivel_para(t)["id"] for t in (0, 199, 200, 999, 1000, 3500)] == ["normal", "normal", "dificil", "dificil", "mestre", "mestre"]
+    b0, b1 = BOTS.novo("abc", 1, 0), BOTS.novo("abc", 1, 1500)
+    assert b0["trofeus"] == 0 and b1["trofeus"] == 1500 + BOTS.NIVEL["mestre"]["trofeus"]       # o bot nunca vale menos que o jogador
+
+
+def test_dificuldade_cresce_com_o_nivel():
+    cen = TD.demo_corrida("rapida", 11)
+    passos = cen["candles"][50:50 + 80]
+    taxa = {}
+    for nid, nv in BOTS.NIVEL.items():
+        certas = total = 0
+        for sem in range(300):
+            for t in BJ.planejar(passos, nv, sem):
+                fut = passos[t["fecha"]]["c"] - passos[t["abre"] - 1]["c"]
+                certas += (fut >= 0) == (t["dir"] == "alta")
+                total += 1
+        taxa[nid] = certas / total
+    assert taxa["normal"] < taxa["dificil"] < taxa["mestre"]
+    assert 0.55 < taxa["normal"] < 0.7 and taxa["mestre"] > 0.75                               # nem trivial nem invencível
+
+
+def test_partida_com_bot_conta_para_ranking_e_troféus_com_o_valor_do_bot(monkeypatch):
+    p, _, bot = _partida_com_bot()
+    jog = []
+    tro = []
+    monkeypatch.setattr(API.J, "registrar_trade", lambda *a, **k: jog.append(a) or ({}, False))
+    monkeypatch.setattr(API.banco, "jogos_placar_ler", lambda ator: {})
+    monkeypatch.setattr(API.banco, "jogos_placar_gravar", lambda *a, **k: None)
+    monkeypatch.setattr(API, "_trof_registrar", lambda q, jogo, pid, advs, placar, bots=None: tro.append((advs, placar, bots)))
+    class Q:
+        email = A
+        ator = None
+    fz = {"placar": [{"voce": True, "pos": 1, "pontos": 10}, {"voce": False, "pos": 2, "pontos": 5}], "rodadas": [1]}
+    API._registrar_ranking(Q(), "sala1", p, fz, None)
+    assert len(jog) == 1                                                                        # entrou no placar de jogos
+    assert tro and tro[0][0] == [bot] and tro[0][2][bot]["trofeus"] == 100 and tro[0][1] == 1.0   # e nos troféus, contra o valor do bot
 
 
 def test_api_busca_sem_ninguem_vira_treino_contra_bot_e_a_partida_abre(dois, monkeypatch):

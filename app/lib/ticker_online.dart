@@ -153,7 +153,7 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
           _t?.cancel();
           HapticFeedback.heavyImpact();
           if (r['bot'] != null) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 6), content: Text('Ninguém online agora: você vai treinar contra o ${r['bot']}. Partida de treino não vale troféus.')));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 6), content: Text('Ninguém online agora: você vai enfrentar o ${r['bot']}. A partida vale ranking e troféus.')));
           }
           Navigator.of(context).pushReplacement(widget.abrir?.call('${r['id']}') ?? MaterialPageRoute<void>(builder: (_) => PartidaOnlineTela(api: widget.api, pid: '${r['id']}')));
         case 'expirou':
@@ -163,7 +163,7 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
         default:
           setState(() => _msg = r['reservado'] == true
               ? 'Adversário encontrado! Montando a partida…'
-              : (widget.avisoBot && _seg >= 6 ? 'Poucos jogadores online agora. Se ninguém aparecer, você treina contra um bot.' : 'Procurando um adversário…'));
+              : (widget.avisoBot && _seg >= 6 ? 'Poucos jogadores online agora. Se ninguém aparecer, você enfrenta um bot (vale ranking e troféus).' : 'Procurando um adversário…'));
       }
     } catch (_) {}
   }
