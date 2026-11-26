@@ -7,7 +7,7 @@ const ids = [...html.split("<script>")[0].matchAll(/id="([^"]+)"/g)].map(m => m[
 
 function carregar() {
   const posts = [], timers = [], els = {}; let agora = 1000;
-  const ctx = new Proxy({}, { get: (t, k) => k === "measureText" ? () => ({ width: 10 }) : (k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true } });
+  const ctx = new Proxy({}, { get: (t, k) => k === "measureText" ? () => ({ width: 10 }) : k === "createRadialGradient" ? () => ({ addColorStop() {} }) : (k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true } });
   const mk = id => { const e = { id, style: { setProperty(k, v) { this[k] = v } }, _c: new Set(), innerHTML: "", textContent: "", value: "", disabled: false, src: "", className: "", dataset: {}, L: {},
     classList: { toggle: (c, on) => { if (on === undefined) on = !e._c.has(c); on ? e._c.add(c) : e._c.delete(c) }, add: c => e._c.add(c), remove: c => e._c.delete(c), contains: c => e._c.has(c) },
     addEventListener(t, f) { (e.L[t] = e.L[t] || []).push(f) }, getBoundingClientRect: () => ({ width: 360, height: 420, top: 0, left: 0 }), querySelectorAll: () => [], closest: () => null,
@@ -306,5 +306,32 @@ t("setup: arte de ativação enviada entra pelo caminho relativo da mesa; sem el
 t("setup: marcas só dos sinais ativados e o desenho não quebra com marcas fora da tela", () => {
   const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, setup: { evento: null, marcas: [{ id: "a", candle: 120, preco: 11.3, direcao: "alta", setup: "larry_williams", estado: "aceito", meu: true }, { id: "b", candle: 9999, preco: 11, direcao: "baixa", setup: "x", estado: "recusado", meu: false }] } }));
   yes(!h.els.stp._c.has("on"), "marca sozinha não liga o overlay");
+});
+
+t("setup: o cartão de decisão traz ícone, direção, entrada, stop, alvo, risco/retorno e a saída do método", () => {
+  const h = carregar(); const e = evSetup({ decorrido_ms: 4500, restante_ms: 4500 }); e.evento.setup.id = "setup_classico"; e.evento.setup.resumo = "Rompimento de pivô."; e.evento.setup.saida = "Na perda do stop ou no alvo.";
+  h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: e }));
+  eq(h.els["stp-nome"].textContent, "Larry Williams"); eq(h.els["stp-bd"].textContent, "COMPRA"); yes(h.els["stp-ic"].innerHTML.includes("<svg"), "ícone do setup");
+  const tl = h.els["stp-dt"].innerHTML; yes(tl.includes("Entrada") && tl.includes("Stop") && tl.includes("Alvo"), "entrada, stop e alvo");
+  yes(h.els["stp-rr"].innerHTML.includes("1:2") && h.els["stp-rr"].innerHTML.includes("Na perda do stop ou no alvo."), "risco/retorno calculado dos números reais e saída do setup");
+  h.els["stp-x"].onclick(); eq(h.acoes().filter(x => x.evento === "setup").map(x => x.dados), [{ acao: "recusar" }]);   // o X do cartão é RECUSAR
+});
+t("setup: sem alvo fixo o cartão diz isso; o adversário não vê risco/retorno nem o X", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  yes(h.els["stp-rr"].innerHTML.includes("sem alvo fixo"), "método sem alvo");
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h2.els["stp-rr"].style.display, "none"); eq(h2.els["stp-x"].style.display, "none");
+});
+t("setup: o gráfico dá zoom em volta do alvo durante a aquisição e o travamento e volta ao normal na janela de decisão", () => {
+  const z = (dec) => { const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: dec, restante_ms: 9000 - dec }) })); h.sb.draw(); return h.els.cv.style.transform || ""; };
+  eq(z(300), "", "detecção: ainda sem zoom");
+  yes(/scale\(1\.[0-9]+\)/.test(z(1500)), "aquisição: aproximando");
+  yes(/scale\(2\.[0-9]+\)/.test(z(3000)), "travamento: bem próximo");
+  eq(z(4600), "", "janela de decisão: gráfico normal para ler");
+});
+t("setup: quando o evento acaba o zoom é desfeito", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 3000, restante_ms: 6000 }) })); h.sb.draw();
+  yes(h.els.cv.style.transform, "com zoom");
+  h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, setup: { evento: null, marcas: [] } })); eq(h.els.cv.style.transform || "", "");
 });
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);

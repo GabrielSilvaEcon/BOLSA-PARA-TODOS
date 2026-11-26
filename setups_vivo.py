@@ -242,7 +242,7 @@ def visao(p: dict, email: str, agora: float) -> dict | None:
         info = SU.info(x["setup"]) or {}
         dono = x["jogador"] == email
         out = {"sinal": x["id"], "setup": {"id": x["setup"], "nome": info.get("nome"), "raridade": info.get("raridade"), "cores": info.get("cores"),
-                                           "assets": info.get("assets"), "provisorio": info.get("provisorio")},
+                                           "assets": info.get("assets"), "provisorio": info.get("provisorio"), "resumo": info.get("resumo"), "saida": info.get("saida")},
                "dono": "Você" if dono else rot[x["jogador"]], "voce_e_dono": dono, "direcao": x["direcao"], "candle": x["candle"], "preco": x["preco"],
                "stop": x["stop"] if dono else None, "alvo": x["alvo"] if dono else None, "motivo": x["motivo"] if dono else "",
                "anim_ms": int(ANIM_S * 1000), "janela_ms": int(JANELA_S * 1000),

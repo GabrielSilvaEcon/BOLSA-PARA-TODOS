@@ -30,5 +30,6 @@
     "icone": null,
     "efeitos": []
   },
-  "fonte_regra": "Este setup não tem um criador: a regra de ativação é a descrita na carta."
+  "fonte_regra": "Este setup não tem um criador: a regra de ativação é a descrita na carta.",
+  "saida": "Na perda do stop ou no alvo."
 }
