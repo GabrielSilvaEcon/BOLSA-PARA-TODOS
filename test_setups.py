@@ -19,13 +19,13 @@ AG = "2026-11-25T10:00:00"
 
 
 # ====================================================================================== catálogo e artes modulares
-def test_catalogo_tem_os_quatro_setups_iniciais_com_todos_os_campos():
+def test_catalogo_tem_os_setups_com_todos_os_campos():
     cat = {s["id"]: s for s in SU.catalogo()}
-    assert set(cat) == {"larry_williams", "turtle_trading", "mark_minervini", "setup_classico"}
+    assert set(cat) == {"larry_williams", "turtle_trading", "mark_minervini", "setup_classico", "martelo", "engolfo_alta", "estrela_cadente"}
     for s in cat.values():
         assert s["nome"] and s["resumo"] and s["caracteristicas"] and s["indicadores"] and s["regra"]["compra"] and s["raridade"] in CAT.RARIDADES
         assert set(s["assets"]) == {"carta", "ativacao", "moldura", "icone", "efeitos"} and s["cores"]["principal"]
-        assert s["id"] in SU.DETECTORES
+        assert s["id"] in SU.DETECTORES or s["id"] in SU.PADROES
 
 
 def test_so_a_arte_que_existe_vale_e_o_setup_se_declara_provisorio_sozinho():
@@ -633,11 +633,11 @@ def test_x1_sem_resposta_o_servidor_recusa_na_consulta_de_qualquer_jogador(monke
 
 def test_api_meus_setups_lista_so_o_conquistado_e_equipar_confere_a_propriedade(cli):
     from test_api import EU
-    assert cli.get("/setups").json() == {"itens": [], "equipados": [], "limite": 2, "conquistados": 0, "total": 4}
+    assert cli.get("/setups").json() == {"itens": [], "equipados": [], "limite": 2, "conquistados": 0, "total": 7}
     assert cli.post("/setups/equipar", json={"id": "turtle_trading"}).status_code == 400            # ainda não desbloqueou
     _conquistar(EU, "turtle_trading")
     r = cli.get("/setups").json()
-    assert [i["id"] for i in r["itens"]] == ["turtle_trading"] and r["conquistados"] == 1 and r["total"] == 4 and r["equipados"] == []
+    assert [i["id"] for i in r["itens"]] == ["turtle_trading"] and r["conquistados"] == 1 and r["total"] == 7 and r["equipados"] == []
     assert "larry_williams" not in json.dumps(r) and "Minervini" not in json.dumps(r)               # o que não desbloqueou não aparece
     i = r["itens"][0]
     assert i["caracteristicas"] and i["indicadores"] and i["regra"]["compra"] and i["assets"]["carta"] == "assets/setups/turtle_trading/carta.jpg" and i["provisorio"]

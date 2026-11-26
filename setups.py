@@ -97,6 +97,14 @@ def _classico(v: list[dict]) -> dict | None:
             "motivo": "Rompimento do pivô de alta com volume acima da média."}
 
 
+def _atr(v: list[dict], n: int) -> float | None:
+    """Média do intervalo verdadeiro dos últimos `n` candles (o candle atual entra). None se não há candles suficientes."""
+    if len(v) < n + 1:
+        return None
+    tr = [max(v[i]["h"] - v[i]["l"], abs(v[i]["h"] - v[i - 1]["c"]), abs(v[i]["l"] - v[i - 1]["c"])) for i in range(len(v) - n, len(v))]
+    return sum(tr) / n
+
+
 def _n_turtle(v: list[dict]) -> list[float | None]:
     """N dos Turtles: média do intervalo verdadeiro de `TURTLE_N` candles, atualizada de forma exponencial (N = ((n-1)·N anterior + TR) / n)."""
     tr = [v[0]["h"] - v[0]["l"]] + [max(x["h"] - x["l"], abs(x["h"] - v[k]["c"]), abs(x["l"] - v[k]["c"])) for k, x in enumerate(v[1:])]
@@ -246,13 +254,116 @@ def _minervini(v: list[dict]) -> dict | None:
             "motivo": "Contrações sucessivas com volume secando e rompimento do pivô com volume."}
 
 
+# ------------------------------------------------------------------ padrões de candle (Martelo, Engolfo de Alta, Estrela Cadente)
+# Regra de ouro: o padrão NUNCA ativa só pela aparência do candle. Precisa, ao mesmo tempo, de (1) o padrão medido por regras matemáticas fixas,
+# (2) uma região de interesse que o jogador marcou ANTES da partida (suporte/zona de alta para comprar; resistência/zona de baixa para vender),
+# (3) o candle FECHADO (o motor só entrega candles fechados) e (4) todas as proporções da carta. Sem região marcada, nada ativa.
+PAD_CORPO_MAX = 0.35            # corpo relativamente pequeno: no máximo 35% da amplitude do candle
+PAD_SOMBRA_X = 2.0              # sombra principal pelo menos 2 vezes o corpo
+PAD_SOMBRA_OPOSTA_MAX = 0.15    # a sombra do outro lado é pequena: no máximo 15% da amplitude
+PAD_STOP_FOLGA = 0.05           # o stop fica além do extremo do padrão por 5% da amplitude do padrão
+PAD_ALVO_R = 2.0                # alvo inicial: risco/retorno de 2:1
+REGIAO_TOL_ATR = 0.5            # tolerância da região: meio ATR (da análise) para cada lado, para o candle não precisar tocar a linha exata
+REGIAO_TOL_PCT = 0.002          # ...e nunca menos que 0,2% do preço
+ROTULO_REGIAO = {"suporte": "suporte", "resistencia": "resistência", "zona_alta": "zona de alta", "zona_baixa": "zona de baixa"}
+
+
+def _partes(x: dict) -> tuple[float, float, float, float]:
+    """(corpo, amplitude, sombra inferior, sombra superior) de um candle."""
+    corpo, amp = abs(x["c"] - x["o"]), x["h"] - x["l"]
+    return corpo, amp, min(x["o"], x["c"]) - x["l"], x["h"] - max(x["o"], x["c"])
+
+
+def _martelo(v: list[dict]) -> dict | None:
+    x = v[-1]
+    corpo, amp, inf, sup = _partes(x)
+    if amp <= 0 or corpo > PAD_CORPO_MAX * amp or inf < PAD_SOMBRA_X * corpo or sup > PAD_SOMBRA_OPOSTA_MAX * amp:
+        return None
+    if x["c"] < x["l"] + 0.5 * amp:                                  # fechamento na metade superior do candle
+        return None
+    return {"extremo": x["l"], "stop": x["l"] - PAD_STOP_FOLGA * amp}
+
+
+def _engolfo_alta(v: list[dict]) -> dict | None:
+    if len(v) < 2:
+        return None
+    a, b = v[-2], v[-1]
+    if not (a["c"] < a["o"] and b["c"] > b["o"]):                    # anterior de baixa, atual de alta
+        return None
+    if not (b["o"] <= a["c"] and b["c"] >= a["o"]):                  # o corpo atual envolve por completo o corpo anterior
+        return None
+    extremo, topo = min(a["l"], b["l"]), max(a["h"], b["h"])
+    return {"extremo": extremo, "stop": extremo - PAD_STOP_FOLGA * (topo - extremo)}
+
+
+def _estrela_cadente(v: list[dict]) -> dict | None:
+    x = v[-1]
+    corpo, amp, inf, sup = _partes(x)
+    if amp <= 0 or corpo > PAD_CORPO_MAX * amp or sup < PAD_SOMBRA_X * corpo or inf > PAD_SOMBRA_OPOSTA_MAX * amp:
+        return None
+    if x["c"] > x["l"] + 0.5 * amp:                                  # fechamento na metade inferior do candle
+        return None
+    return {"extremo": x["h"], "stop": x["h"] + PAD_STOP_FOLGA * amp}
+
+
+# Um motor só: cada carta é só uma linha aqui (direção, onde pode ativar e o critério do candle).
+PADROES = {
+    "martelo": {"nome": "Martelo", "direcao": "alta", "regioes": ("suporte", "zona_alta"), "criterio": _martelo},
+    "engolfo_alta": {"nome": "Engolfo de Alta", "direcao": "alta", "regioes": ("suporte", "zona_alta"), "criterio": _engolfo_alta},
+    "estrela_cadente": {"nome": "Estrela Cadente", "direcao": "baixa", "regioes": ("resistencia", "zona_baixa"), "criterio": _estrela_cadente},
+}
+
+
+def regioes_das_marcas(marcas: dict | None, atr: float | None, ref: float, partida: str, jog_n: int, rodada: int, criada_em: float) -> list[dict]:
+    """As regiões de interesse que o jogador marcou na estratégia, já com a tolerância, prontas para serem CONGELADAS no começo do replay.
+    Suporte e resistência (linhas de preço) viram uma faixa em volta da linha; zonas ficam com os limites que o jogador desenhou, também com a tolerância."""
+    tol = max(REGIAO_TOL_ATR * atr if atr else 0.0, REGIAO_TOL_PCT * ref)
+    out = []
+    for k, n in enumerate((marcas or {}).get("niveis") or []):
+        papel, pr = n.get("papel"), n.get("preco")
+        if papel in ("suporte", "resistencia") and isinstance(pr, (int, float)):
+            out.append({"id": f"{partida}:{jog_n}:{rodada}:n{k}", "tipo": papel, "min": round(pr - tol, 4), "max": round(pr + tol, 4),
+                        "partida": partida, "criada_em": float(criada_em)})
+    for k, z in enumerate((marcas or {}).get("zonas") or []):
+        try:
+            lo, hi = sorted((float(z["p1"]), float(z["p2"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+        out.append({"id": f"{partida}:{jog_n}:{rodada}:z{k}", "tipo": "zona_alta" if z.get("reacao") == "alta" else "zona_baixa",
+                    "min": round(lo - tol, 4), "max": round(hi + tol, 4), "partida": partida, "criada_em": float(criada_em)})
+    return out
+
+
+def _detectar_padrao(setup_id: str, v: list[dict], regioes: list[dict] | None) -> dict | None:
+    spec = PADROES[setup_id]
+    pad = spec["criterio"](v)
+    if not pad:
+        return None
+    reg = next((r for r in regioes or [] if r["tipo"] in spec["regioes"] and r["min"] <= pad["extremo"] <= r["max"]), None)
+    if reg is None:                                                  # padrão perfeito, mas fora de uma região marcada (ou numa região do tipo errado): nunca ativa
+        return None
+    entrada, stop = v[-1]["c"], pad["stop"]
+    sinal = 1 if spec["direcao"] == "alta" else -1
+    risco = (entrada - stop) * sinal
+    if risco <= 0:
+        return None
+    return {"direcao": spec["direcao"], "stop": round(stop, 4), "alvo": round(entrada + sinal * PAD_ALVO_R * risco, 4),
+            "regiao": {k: reg[k] for k in ("id", "tipo", "min", "max")},
+            "motivo": f"{spec['nome']} fechado na {ROTULO_REGIAO[reg['tipo']]} que você marcou."}
+
+
 DETECTORES = {"setup_classico": _classico, "turtle_trading": _turtle, "larry_williams": _larry, "mark_minervini": _minervini}
 
 
-def detectar(setup_id: str, fechados: list[dict]) -> dict | None:
-    """Sinal do ÚLTIMO candle fechado da lista ({'direcao', 'motivo'}) ou None. Só olha para trás: não há como enxergar o futuro daqui."""
+def detectar(setup_id: str, fechados: list[dict], regioes: list[dict] | None = None) -> dict | None:
+    """Sinal do ÚLTIMO candle fechado da lista ({'direcao', 'motivo'}) ou None. Só olha para trás: não há como enxergar o futuro daqui.
+    `regioes`: as regiões de interesse congeladas do jogador (só os padrões de candle usam; sem elas, esses nunca ativam)."""
+    if not fechados:
+        return None
+    if setup_id in PADROES:
+        return _detectar_padrao(setup_id, fechados, regioes)
     fn = DETECTORES.get(setup_id)
-    return fn(fechados) if fn and fechados else None
+    return fn(fechados) if fn else None
 
 
 # ------------------------------------------------------------------ catálogo (uma pasta por setup)
@@ -262,7 +373,7 @@ def _ler_um(pasta: str) -> dict:
         d = json.load(f)
     if d.get("id") != id_:
         raise ErroSetup(f"{id_}/setup.json: o id precisa ser igual ao nome da pasta.")
-    if id_ not in DETECTORES:
+    if id_ not in DETECTORES and id_ not in PADROES:
         raise ErroSetup(f"{id_}: não há detector para este setup.")
     if d.get("raridade") not in CAT.RARIDADES:
         raise ErroSetup(f"{id_}: raridade inválida.")

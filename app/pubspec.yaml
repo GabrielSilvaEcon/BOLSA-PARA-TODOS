@@ -46,6 +46,9 @@ flutter:
     - assets/setups/setup_classico/
     - assets/setups/turtle_trading/
     - assets/setups/mark_minervini/
+    - assets/setups/martelo/
+    - assets/setups/engolfo_alta/
+    - assets/setups/estrela_cadente/
     - assets/logos/setores/
     - assets/logos/cripto/
     - assets/avatares/

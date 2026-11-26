@@ -877,7 +877,10 @@ function svIcone(id){   // ícone provisório de cada setup (hexágono + símbol
   const g={setup_classico:'<path d="M15 32 L33 14 M33 14 H21 M33 14 V26" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>',
     larry_williams:'<path d="M27 9 L15 27 h8 l-2 12 12-18 h-8z" fill="currentColor"/>',
     turtle_trading:'<path d="M12 28 a12 11 0 0 1 24 0z M18 28 l3-9 M24 28 v-10 M30 28 l-3-9 M10 32 h28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>',
-    mark_minervini:'<path d="M11 34 L19 25 L25 29 L35 15 M35 15 H26 M35 15 V24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>'}[id]||'<circle cx="24" cy="24" r="8" fill="currentColor"/>';
+    mark_minervini:'<path d="M11 34 L19 25 L25 29 L35 15 M35 15 H26 M35 15 V24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>',
+    martelo:'<rect x="19" y="13" width="10" height="9" rx="1" fill="currentColor"/><path d="M24 22 V38" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>',
+    engolfo_alta:'<rect x="13" y="18" width="8" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="2.5"/><rect x="25" y="12" width="11" height="22" rx="1" fill="currentColor"/>',
+    estrela_cadente:'<rect x="19" y="26" width="10" height="9" rx="1" fill="currentColor"/><path d="M24 26 V10" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>'}[id]||'<circle cx="24" cy="24" r="8" fill="currentColor"/>';
   return `<svg viewBox="0 0 48 48" style="color:var(--sc,#8FB4F0)"><path d="M24 3 L41 13 V35 L24 45 L7 35 V13 Z" fill="rgba(255,255,255,.05)" stroke="currentColor" stroke-width="2.2"/>${g}</svg>`}
 function svEnvia(acao){
   if(!S||!SVs.ev||SVs.env||!SVs.ev.pode_decidir)return;SVs.env=true;S.seq++;S.sentSeq=S.seq;
@@ -893,6 +896,8 @@ function svNiveis(){   // entrada, stop e alvo do setup no gráfico: na janela d
   if(ult&&m&&(m.fila||[]).length){   // a ordem entrou na fila e ainda não virou posição: as linhas já ficam à vista, sem piscar
     if(ult.stop!=null&&o.stop==null)out.push({t:"stop",p:ult.stop});if(ult.alvo!=null&&o.alvo==null)out.push({t:"alvo",p:ult.alvo})}
   return out}
+function svRegiao(){   // a região que você marcou e onde o padrão fechou (só o dono vê): aparece junto com os níveis na janela de decisão
+  const ev=SVs.ev;return ev&&ev.voce_e_dono&&ev.regiao&&svT()>=ev.anim_ms&&svRest()>0?ev.regiao:null}
 function svAvisaSemProtecao(){   // a entrada saiu, mas o preço já tinha passado do stop/alvo do setup e o servidor entrou sem eles: avisa uma vez
   const sv=A&&A.setup;if(!sv||!S)return;SVs.av=SVs.av||{};
   for(const x of sv.marcas||[]){if(x.meu&&x.estado==="aceito"&&(x.stop!=null||x.alvo!=null)&&x.protegido===false&&!SVs.av[x.id]){SVs.av[x.id]=1;S.dicaPuxa=true;   // o aviso já diz o que fazer: a dica genérica de arrastar não o cobre
@@ -907,6 +912,10 @@ function desenhaSetup(){   // marcas dos sinais ativados + mira. Só desenha o q
     if(up){ctx.moveTo(x,y-3);ctx.lineTo(x-7,y+9);ctx.lineTo(x+7,y+9)}else{ctx.moveTo(x,y+3);ctx.lineTo(x-7,y-9);ctx.lineTo(x+7,y-9)}
     ctx.closePath();ctx.fill();ctx.stroke();
     ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=cor;ctx.fillText(m.meu?"SETUP":"SETUP ADV.",x,up?y+20:y-20);ctx.restore()}
+  const rg=svRegiao();
+  if(rg&&L.y){const a=L.y(rg.max),b=L.y(rg.min);ctx.fillStyle="rgba(242,184,75,.16)";ctx.fillRect(0,Math.min(a,b),L.pw,Math.max(3,Math.abs(b-a)));   // faixa amarela da região, como nas cartas
+    ctx.strokeStyle="rgba(242,184,75,.75)";ctx.lineWidth=1;ctx.strokeRect(0.5,Math.min(a,b),L.pw-1,Math.max(3,Math.abs(b-a)));
+    ctx.fillStyle="rgba(242,184,75,.95)";ctx.font="bold 9px system-ui";ctx.textAlign="left";ctx.textBaseline="top";ctx.fillText("SUA REGIÃO ("+({suporte:"suporte",resistencia:"resistência",zona_alta:"zona de alta",zona_baixa:"zona de baixa"}[rg.tipo]||rg.tipo)+")",6,Math.min(a,b)+2)}
   const nv=svNiveis();
   if(nv.length){const ent=nv.find(n=>n.t==="entrada");   // faixas de risco e retorno, como as da posição, só que tracejadas: é uma prévia
     for(const n of nv){if(n.t==="entrada")continue;const ref=ent?ent.p:(S.cands.length?S.cands[S.cands.length-1].c:n.p);

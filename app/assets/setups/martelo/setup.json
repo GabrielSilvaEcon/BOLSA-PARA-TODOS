@@ -1,0 +1,35 @@
+{
+  "id": "martelo",
+  "nome": "Martelo",
+  "raridade": "comum",
+  "resumo": "Padrão de candle: possível reversão de alta quando o preço rejeita um suporte.",
+  "caracteristicas": [
+    "Padrão de candle · possível reversão de alta",
+    "Gatilho: martelo identificado em região de suporte marcada por você",
+    "Sombra inferior de pelo menos 2x o corpo, corpo pequeno e sombra superior curta",
+    "Fechamento na metade superior do candle",
+    "Stop abaixo da mínima do padrão e alvo de 2 para 1",
+    "Funciona melhor em suportes com histórico de reações de preço"
+  ],
+  "indicadores": [
+    "Corpo e sombras do candle",
+    "Região de suporte ou zona de alta marcada por você"
+  ],
+  "regra": {
+    "compra": "Candle fechado com sombra inferior >= 2x o corpo, corpo pequeno, sombra superior curta e fechamento na metade de cima, com a mínima dentro de um suporte ou zona de alta marcados por você. Stop abaixo da mínima; alvo de 2 vezes o risco.",
+    "venda": "Este setup só compra."
+  },
+  "saida": "Na perda do stop ou no alvo de 2 para 1.",
+  "cores": {
+    "principal": "#2EE59D",
+    "brilho": "#FFD76A"
+  },
+  "fonte_regra": "A ativação exige o padrão de candle FECHADO dentro de uma região de interesse que você marcou na estratégia, antes da partida (suporte ou zona de alta para comprar; resistência ou zona de baixa para vender). Sem região marcada, a carta não ativa.",
+  "assets": {
+    "carta": null,
+    "ativacao": null,
+    "moldura": null,
+    "icone": null,
+    "efeitos": []
+  }
+}

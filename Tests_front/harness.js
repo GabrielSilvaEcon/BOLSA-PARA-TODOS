@@ -367,4 +367,13 @@ t("setup: entrada sem proteção (o preço já passou) avisa uma vez; a dica de 
   h2.render(args({ motor: 2, mesa: m, corrida: true, lote: 100, setup: { evento: null, marcas: [{ ...marcas[0], protegido: true }] } }));
   yes(!h2.els.dica.textContent.includes("Arraste a linha da entrada"), "sem a dica de arrastar");
 });
+t("setup de padrão de candle: a região marcada aparece na janela de decisão só para o dono", () => {
+  const reg = { id: "r", tipo: "suporte", min: 11.0, max: 11.2 };
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ regiao: reg, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h.sb.svRegiao(), reg); h.sb.draw();
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ regiao: reg, decorrido_ms: 1500, restante_ms: 7500 }) }));
+  eq(h2.sb.svRegiao(), null, "durante a animação ainda não");
+  const h3 = carregar(); h3.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, regiao: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h3.sb.svRegiao(), null, "o adversário não vê a região");
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);
