@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api.dart';
 import 'cabecalho.dart';
+import 'diag/diag.dart';
 
 /// Tela de abertura (arte do Gabriel). A barra mostra o carregamento DE VERDADE, para o jogador já entrar com tudo pronto:
 ///   1. imagens das telas principais (Home, cabeçalho e barra de baixo) ficam na memória;
@@ -102,6 +103,7 @@ class _AberturaTelaState extends State<AberturaTela> with TickerProviderStateMix
     if (passou < const Duration(milliseconds: 1300)) await Future.delayed(const Duration(milliseconds: 1300) - passou);
     _avancar(1, 'Pronto!');
     await Future.delayed(const Duration(milliseconds: 650));
+    if (kDiag) Diag.marca('abertura_pronta');
     if (mounted) setState(() => _pronto = true);
   }
 

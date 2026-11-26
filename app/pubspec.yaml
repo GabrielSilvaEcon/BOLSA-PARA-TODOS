@@ -15,6 +15,9 @@ dependencies:
   webview_flutter: ^4.10.0
   supabase_flutter: ^2.5.6
   url_launcher: ^6.3.0
+  device_info_plus: ^10.1.2   # só o APK de diagnóstico usa (modelo do aparelho)
+  share_plus: ^10.1.4         # só o APK de diagnóstico usa (compartilhar o relatório)
+  wakelock_plus: ^1.2.8       # só o APK de diagnóstico usa (tela acesa durante o teste)
 
 dev_dependencies:
   flutter_test:
@@ -38,6 +41,7 @@ flutter:
     - assets/loja/
     - assets/aprender/
     - assets/cards/
+    - assets/diag/
     - assets/ranking/
     - assets/nav/
     - assets/cabecalho/
