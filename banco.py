@@ -16,11 +16,15 @@ from __future__ import annotations
 import json
 import re
 import os
+import contextlib
+import contextvars
 import sqlite3
+import threading
 from pathlib import Path
 from typing import NamedTuple
 from urllib.parse import urlparse
 
+import cache_servidor as CS
 import permissoes as perm
 import seguranca as seg
 
@@ -333,7 +337,7 @@ def backend() -> str:
 
 
 # ------------------------------------------------------------------ acesso genérico (privado)
-_OPS = {"eq": "=", "neq": "!=", "gt": ">", "gte": ">=", "lt": "<", "lte": "<=", "contem": "like", "comeca": "like"}
+_OPS = {"eq": "=", "neq": "!=", "gt": ">", "gte": ">=", "lt": "<", "lte": "<=", "contem": "like", "comeca": "like", "in": "in"}   # "in" (lista de valores) só vale em _selecionar
 
 
 def _conferir(tabela: str, cols=()):
@@ -355,6 +359,11 @@ def _filtros_norm(tabela: str, filtros: dict | None):
     return out
 
 
+def ident_bd() -> tuple:
+    """Identidade do banco em uso (backend e arquivo): entra na chave de todo cache, para um banco trocado (testes, outro ambiente) nunca ler o cache do anterior."""
+    return (backend(), str(_caminho_sqlite))
+
+
 def _con():
     _caminho_sqlite.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(_caminho_sqlite, timeout=10)
@@ -368,8 +377,61 @@ def _like(txt: str, inicio: bool = False) -> str:
     return esc + "%" if inicio else "%" + esc + "%"
 
 
-def _rest(metodo: str, tabela: str, params=None, corpo=None, prefer: str | None = None, contar: bool = False):
+# ---- Conexões HTTP reaproveitadas (keep-alive). Uma Session por THREAD: a Session do requests não é garantidamente segura entre threads, e o FastAPI
+# atende as rotas síncronas num pool de threads. Cada thread mantém o seu pool de conexões TLS abertas para o Supabase (antes: handshake novo a cada consulta).
+_SESSOES = threading.local()
+TIMEOUT_REST = (5, 10)          # (conectar, ler) em segundos
+_RETENTATIVAS_CONEXAO = 2       # só falhas ANTES de a requisição sair (conexão recusada/derrubada ao conectar): nunca repete algo que o servidor pode ter executado
+
+
+def _nova_sessao():
     import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    s = requests.Session()
+    ad = HTTPAdapter(pool_connections=4, pool_maxsize=8, max_retries=Retry(total=None, connect=_RETENTATIVAS_CONEXAO, read=0, status=0, other=0, backoff_factor=0.15, allowed_methods=None))
+    s.mount("https://", ad)
+    s.mount("http://", ad)
+    return s
+
+
+def _sessao():
+    s = getattr(_SESSOES, "s", None)
+    if s is None:
+        s = _SESSOES.s = _nova_sessao()
+    return s
+
+
+def _descartar_sessao():
+    s = getattr(_SESSOES, "s", None)
+    _SESSOES.s = None
+    try:
+        if s is not None:
+            s.close()
+    except Exception:
+        pass
+
+
+def _enviar(metodo: str, url: str, **kw):
+    """Envia pela sessão da thread. Leitura (GET/HEAD) cuja conexão reaproveitada tenha sido derrubada pelo servidor: refaz UMA vez com sessão nova.
+    Escrita nunca é repetida aqui (poderia duplicar efeito); o erro sobe e quem chamou decide."""
+    import requests
+    try:
+        return _sessao().request(metodo, url, timeout=TIMEOUT_REST, **kw)
+    except (requests.exceptions.ConnectionError, requests.exceptions.ChunkedEncodingError) as e:
+        _descartar_sessao()
+        if metodo.upper() in ("GET", "HEAD"):
+            try:
+                return _sessao().request(metodo, url, timeout=TIMEOUT_REST, **kw)
+            except requests.exceptions.RequestException as e2:
+                _descartar_sessao()
+                raise ErroBanco("falha de conexão com o banco") from e2
+        raise ErroBanco("falha de conexão com o banco") from e
+    except requests.exceptions.Timeout as e:
+        raise ErroBanco("tempo esgotado no banco") from e
+
+
+def _rest(metodo: str, tabela: str, params=None, corpo=None, prefer: str | None = None, contar: bool = False):
     sb = _supabase()
     if not sb:
         raise ErroBanco("Supabase não configurado")
@@ -380,7 +442,7 @@ def _rest(metodo: str, tabela: str, params=None, corpo=None, prefer: str | None 
     if contar:
         h["Prefer"] = "count=exact"
         h["Range"] = "0-0"
-    r = requests.request(metodo, f"{url}/rest/v1/{tabela}", params=params, json=corpo, headers=h, timeout=10)
+    r = _enviar(metodo, f"{url}/rest/v1/{tabela}", params=params, json=corpo, headers=h)
     if r.status_code == 409 or (r.status_code == 400 and "23505" in (r.text or "")):
         raise Duplicado("registro já existe")
     if r.status_code >= 400:
@@ -396,6 +458,8 @@ def _params(tabela, filtros):
             p.append((col, "ilike." + v))
         elif op == "comeca":
             p.append((col, "like." + str(val).replace("*", "") + "*"))
+        elif op == "in":
+            p.append((col, "in.(" + ",".join('"' + str(x).replace("\\", "\\\\").replace('"', '\\"') + '"' for x in val) + ")"))
         else:
             p.append((col, f"{op}.{val}"))
     return p
@@ -419,9 +483,21 @@ def _selecionar(tabela: str, filtros=None, colunas=None, ordem: str | None = Non
     sql = f"select {', '.join(cols)} from {tabela}"
     args = []
     if f:
-        sql += " where " + " and ".join(
-            f"{c} like ? escape '\\'" if op in ("contem", "comeca") else f"{c} {_OPS[op]} ?" for c, op, _ in f)
-        args = [_like(v, op == "comeca") if op in ("contem", "comeca") else v for _, op, v in f]
+        def _cl(c, op, v):
+            if op in ("contem", "comeca"):
+                return f"{c} like ? escape '\\'"
+            if op == "in":
+                return f"{c} in ({','.join('?' * max(1, len(v)))})"
+            return f"{c} {_OPS[op]} ?"
+        sql += " where " + " and ".join(_cl(c, op, v) for c, op, v in f)
+        args = []
+        for _, op, v in f:
+            if op in ("contem", "comeca"):
+                args.append(_like(v, op == "comeca"))
+            elif op == "in":
+                args.extend(list(v) or [None])
+            else:
+                args.append(v)
     if ordem:
         sql += f" order by {ordem} {'desc' if desc else 'asc'}"
     if limite:
@@ -792,13 +868,45 @@ def sis_notif_atualizar_dados(notif_id: str, dados: dict) -> None:
     _atualizar("notificacoes", {"id": str(notif_id)}, {"dados": _js(dados)})
 
 
+_PRE = contextvars.ContextVar("pre_estados", default=None)
+
+
+@contextlib.contextmanager
+def pre_carregar_estados(email: str, chaves):
+    """Dentro do bloco, as leituras de `sis_estado_ler` dessas chaves saem de UMA consulta feita agora (em vez de uma por chave). Vale só para esta requisição
+    (ContextVar) e só para esta pessoa; qualquer gravação de estado dentro do bloco descarta o valor pré-carregado. Falha na pré-carga = leitura normal."""
+    ids = [f"{seg.normalizar_email(email)}|{c}" for c in chaves]
+    mapa = None
+    try:
+        linhas = _selecionar("monitor_estado", {"id": ("in", ids)}, ["id", "dados"])
+        mapa = {i: {} for i in ids}
+        for r in linhas:
+            if r["id"] in mapa:
+                mapa[r["id"]] = r["dados"]
+    except Exception:
+        mapa = None
+    tok = _PRE.set(mapa)
+    try:
+        yield
+    finally:
+        _PRE.reset(tok)
+
+
 def sis_estado_ler(email: str, chave: str) -> dict:
-    r = _selecionar("monitor_estado", {"id": f"{seg.normalizar_email(email)}|{chave}"}, ["dados"], limite=1)
+    pre = _PRE.get()
+    chave_id = f"{seg.normalizar_email(email)}|{chave}"
+    if pre is not None and chave_id in pre:
+        return _de_js(pre[chave_id]) if pre[chave_id] else {}               # cópia nova a cada leitura: quem chama pode alterar sem afetar as outras leituras
+    r = _selecionar("monitor_estado", {"id": chave_id}, ["dados"], limite=1)
     return _de_js(r[0]["dados"]) if r else {}
 
 
 def sis_estado_gravar(email: str, chave: str, dados: dict) -> None:
     email = seg.normalizar_email(email)
+    pre = _PRE.get()
+    if pre is not None:
+        pre.pop(f"{email}|{chave}", None)                                       # o que estava pré-carregado ficou velho
+    CS.PUBLICO.invalidar(("comp_todos", ident_bd(), chave, 5000))               # e o cache público desta chave (ranking) também
     linha = {"id": f"{email}|{chave}", "email": email, "chave": str(chave)[:60], "dados": _js(dados), "atualizado": seg.iso()}
     if backend() == "supabase":
         _rest("POST", "monitor_estado", params=[("on_conflict", "id")], corpo=linha, prefer="resolution=merge-duplicates,return=minimal")
@@ -824,6 +932,8 @@ def cfg_ler(chave: str) -> dict:
 
 
 def cfg_gravar(chave: str, dados: dict) -> None:
+    CS.PUBLICO.invalidar(("cfg", ident_bd(), str(chave)[:80]))
+    CS.PUBLICO.invalidar(("idx_corrida", ident_bd(), str(chave)[:80]))
     linha = {"id": str(chave)[:80], "dados": _js(dados), "atualizado": seg.iso()}
     if backend() == "supabase":
         _rest("POST", "config_sistema", params=[("on_conflict", "id")], corpo=linha, prefer="resolution=merge-duplicates,return=minimal")
@@ -1211,7 +1321,7 @@ def comp_publico_ler(chave: str) -> dict:
     if chave not in ("comp_ranking", "comp_precos"):
         raise ValueError("documento público desconhecido")
     try:
-        return cfg_ler(chave)
+        return CS.PUBLICO.obter(("cfg", ident_bd(), chave), lambda: cfg_ler(chave), ttl_s=30)
     except Exception:
         return {}
 
@@ -1223,11 +1333,18 @@ def comp_apelido_livre(ator: Ator | None, apelido_k: str) -> bool:
     return all(r["email"] == ator.email or (r["dados"] or {}).get("apelido_k") != apelido_k for r in sis_comp_todos("comp_ordens"))
 
 
-def sis_comp_todos(chave: str, limite: int = 5000) -> list[dict]:
-    """[{email, dados}] de todas as contas para uma chave da competição. Só o fechamento diário e o próprio banco usam (sem Ator)."""
+def sis_comp_todos(chave: str, limite: int = 5000, cache_s: float = 0) -> list[dict]:
+    """[{email, dados}] de todas as contas para uma chave da competição. Só o fechamento diário e o próprio banco usam (sem Ator).
+    `cache_s` > 0: leitura PÚBLICA de ranking pode reaproveitar o resultado por esse tempo (somente leitura: quem chama não altera a lista).
+    Quem grava essa chave (`sis_estado_gravar`) descarta o cache deste processo na hora."""
     if chave not in ("comp_ordens", "comp_cart", "comp_ligas", "edu_liga", "jogos_placar", "perfil_jogador", "trofeus"):
         raise ValueError("chave desconhecida")
-    return [{"email": r["email"], "dados": _de_js(r["dados"])} for r in _selecionar("monitor_estado", {"chave": chave}, ["email", "dados"], limite=limite)]
+
+    def ler():
+        return [{"email": r["email"], "dados": _de_js(r["dados"])} for r in _selecionar("monitor_estado", {"chave": chave}, ["email", "dados"], limite=limite)]
+    if cache_s and cache_s > 0:
+        return CS.PUBLICO.obter(("comp_todos", ident_bd(), chave, limite), ler, ttl_s=cache_s, somente_leitura=True)
+    return ler()
 
 
 _ID_TEMP = r"\d{4}-(?:0[1-9]|1[0-2]|T[1-4])"

@@ -12,6 +12,7 @@ import math
 import random
 from datetime import datetime, timedelta
 
+import cache_servidor as CS
 import trader_battle as TB
 
 CHAVE = "tb_cenarios_{tf}"
@@ -236,7 +237,12 @@ def _spec(formato: str) -> dict:
 
 def _indice(formato: str, banco=None) -> list[dict]:
     try:
-        dados = _banco(banco).cfg_ler(CHAVE_CORRIDA.format(formato=formato))
+        b = _banco(banco)
+        chave = CHAVE_CORRIDA.format(formato=formato)
+        if banco is None and hasattr(b, "ident_bd"):                          # índice dos gráficos: igual para todos, muda raramente (cache curto; salvar_corrida o invalida)
+            dados = CS.PUBLICO.obter(("idx_corrida", b.ident_bd(), chave), lambda: b.cfg_ler(chave), ttl_s=30)
+        else:
+            dados = b.cfg_ler(chave)
     except Exception:
         return []
     if (dados or {}).get("v") != 2:                                  # índice antigo (cenários sem passos): não serve mais
