@@ -43,8 +43,8 @@ def test_aumentar_posicao_faz_preco_medio_e_vender_parte_realiza():
 
 def test_teto_do_capital_na_validacao():
     st = sim(PLANO[:1], [])
-    with pytest.raises(Q.ErroQtd, match="cabem no máximo 1000"):
-        Q.validar({"tipo": "mercado", "direcao": "alta", "q": 1001}, st, 10.0, 1, 10, lambda d, c="preco": float(d[c]))
+    maior = Q.validar({"tipo": "mercado", "direcao": "alta", "q": 1001}, st, 10.0, 1, 10, lambda d, c="preco": float(d[c]))
+    assert maior["q"] == 1000 and maior["ajustada"]                         # pediu demais: entra com o máximo que cabe (nunca recusa por saldo)
     ok = Q.validar({"tipo": "mercado", "direcao": "alta", "q": 1000}, st, 10.0, 1, 10, lambda d, c="preco": float(d[c]))
     assert ok["q"] == 1000
 

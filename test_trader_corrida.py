@@ -29,10 +29,9 @@ def test_partida_inteira_com_quantidade_e_resultado_em_dinheiro():
     TB.iniciar_replay(p, "eu@x.com", 1002.0)
     t = 1002.0 + 2 * TB.SEG_POR_CANDLE + 0.1                                    # 2 candles revelados
     TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a1", "tipo": "mercado", "direcao": "alta", "q": 100}, t)
-    with pytest.raises(TB.ErroTrader, match="cabem no máximo"):
-        TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a2", "tipo": "mercado", "direcao": "alta", "q": 10_000}, t)
+    TB.registrar_acao(p, cen, "eu@x.com", {"aid": "a2", "tipo": "mercado", "direcao": "alta", "q": 10_000}, t)      # pediu demais: entra com o que cabe
     v = TB.visao(p, cen, t + 3 * TB.SEG_POR_CANDLE, "eu@x.com")
-    assert v["mesa"]["qtd"] and v["mesa"]["posicao"]["q"] == 100 and v["oculto"] and v["ticker"] == "Ativo oculto"
+    assert v["mesa"]["qtd"] and 100 < v["mesa"]["posicao"]["q"] < 10_100 and v["oculto"] and v["ticker"] == "Ativo oculto"
     fim = 1002.0 + TB.cfg_de(p)["t_replay_s"] + 1
     TB.avancar(p, fim, TD.por_id([cen]))
     assert p["fase"] == "resultado"

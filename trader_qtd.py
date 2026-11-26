@@ -351,7 +351,10 @@ def validar(d: dict, st: dict, px: float, n: int, nr: int, preco_obrig) -> dict 
     livre = poder(st) - comprometido(st, px)
     if q * ref * (1 + st["taxa"]) > livre + EPS:
         mx = max(0, int(math.floor(livre / (ref * (1 + st["taxa"])) + EPS)))
-        raise ErroQtd(f"passa do capital da partida: cabem no máximo {mx} ações agora" if mx else "o capital da partida já está todo aplicado: encerre ou reduza a posição para entrar de novo")
+        if mx < 1:
+            raise ErroQtd("o capital da partida já está todo aplicado: encerre ou reduza a posição para entrar de novo")
+        out["q"] = mx                                              # pediu mais do que cabe: entra com o máximo que o capital permite (nunca recusa por isso)
+        out["ajustada"] = True
     for campo in ("stop", "alvo"):
         if d.get(campo) in (None, ""):
             continue
