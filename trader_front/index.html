@@ -826,6 +826,7 @@ function livreEnvio(){return !(S&&S.pend&&S.pend.seq>(A?A.seq0||0:0)&&performanc
 function sendAcao(d){
   if(!S||S.modo!=="replay"||!A||A.pausada||!livreEnvio())return false;
   S.seq++;S.sentSeq=S.seq;S.erroLocal="";S.pend={seq:S.seq,ate:performance.now()+5000};
+  try{if(typeof navigator!=="undefined"&&navigator.vibrate&&!svMudo())navigator.vibrate(8)}catch(e){}   // vibração curta: o toque foi registrado
   post({type:"streamlit:setComponentValue",value:{seq:S.seq,evento:"acao",dados:Object.assign({aid:aidNovo()},d)},dataType:"json"});
   setTimeout(()=>{if(S)ui()},5100);ui();return true}
 
@@ -836,14 +837,19 @@ function svRecebe(){   // a cada leitura do servidor o relógio da animação é
   svAvisaSemProtecao();svAvisaIgnorados();const ev=svEv();
   if(!ev){SVs.ev=null;SVs.id=null;SVs.env=false;svUI();desenhaMira();return}
   if(SVs.id!==ev.sinal){SVs.id=ev.sinal;SVs.env=false}
-  SVs.ev=ev;SVs.recv=performance.now();
+  const agora0=performance.now();
+  if(SVs.t0Id!==ev.sinal){SVs.t0Id=ev.sinal;SVs.t0=agora0;   // 1ª vez que este aparelho vê o sinal: a animação começa daqui, mesmo que a resposta tenha demorado
+    const A0=ev.anim_ms+(ev.destaque_ms||0),sobra=ev.restante_ms-ev.janela_ms;   // só pula o necessário se faltar tempo para decidir (mínimo de 8 s)
+    SVs.off=Math.min(ev.decorrido_ms,Math.max(0,A0-Math.max(0,ev.restante_ms-8000)));void sobra}
+  SVs.ev=ev;SVs.recv=agora0;
   const f=ev.setup&&ev.setup.assets&&ev.setup.assets.ativacao;
   const src=f?"../"+String(f).replace(/^assets\//,""):null;
   if(src!==SVs.imgSrc){SVs.imgSrc=src;SVs.img=null;if(src){const im=new Image();im.onload=()=>{SVs.img=im;svUI()};im.onerror=()=>{SVs.img=null};im.src=src}}
   svUI();kick()}
-const svT=()=>SVs.ev?SVs.ev.decorrido_ms+(performance.now()-SVs.recv):0;     // ms desde o disparo, no relógio do servidor
+const svT=()=>SVs.ev?(SVs.off||0)+(performance.now()-(SVs.t0||SVs.recv)):0;     // ms de animação: relógio local desde que o sinal chegou (o prazo de decidir segue o do servidor)
 const svRest=()=>SVs.ev?Math.max(0,SVs.ev.restante_ms-(performance.now()-SVs.recv)):0;
 const svAtivo=()=>!!SVs.ev&&svRest()>0;
+function svHtml(id,html){const e=$(id);if(!e)return;SVs.hc=SVs.hc||{};if(SVs.hc[id]!==html){SVs.hc[id]=html;e.innerHTML=html}}   // só mexe no DOM quando o conteúdo mudou (reconstruir a cada quadro travava e perdia toques)
 function svUI(){
   const box=$("stp");if(!box)return;const ev=SVs.ev;
   box.classList.toggle("on",!!ev);if(!ev)return;
@@ -858,7 +864,7 @@ function svUI(){
   else if(t<anim*0.82){tx=pdr?"Padrão confirmado":"Alvo travado";sub=nome}
   else if(t<anim){tx=nome;sub="Oportunidade identificada"}
   else if(t<anim+dest){tx="Memorize o padrão";sub=nome+" · "+Math.ceil((anim+dest-t)/1000)+"s"}
-  fx.style.display=tx?"block":"none";fx.classList.toggle("al",al);fx.innerHTML=tx?`${esc(tx)}<small>${esc(sub)}</small>`:"";
+  fx.style.display=tx?"block":"none";fx.classList.toggle("al",al);svHtml("stp-fx",tx?`${esc(tx)}<small>${esc(sub)}</small>`:"");
   const mostra=t>=anim+dest&&svRest()>0;dec.classList.toggle("on",mostra);
   if(mostra&&L&&L.y){   // o cartão vai para o lado (em cima ou embaixo) que menos cobre entrada, stop e alvo: as linhas do setup continuam à vista
     const ys=[ev.preco,ev.stop,ev.alvo].filter(v=>v!=null).map(v=>L.y(v)),lo=Math.min(...ys)-14,hi=Math.max(...ys)+14,h=dec.offsetHeight||300,Hc=L.mTop+L.mH;
@@ -871,17 +877,17 @@ function svUI(){
   $("stp-p").textContent=dono?"Uma oportunidade foi identificada. Deseja entrar nesta operação?":"Aguardando a decisão do jogador. A partida está pausada para todos.";$("stp-p").style.display=ev.padrao?"none":"";
   $("stp-nome").textContent=nome;$("stp-resumo").textContent=st.resumo||"";$("stp-bd").textContent=dir;$("stp-ic").innerHTML=svIcone(st.id);
   const tl=[`<span><small>Direção</small>${ev.direcao==="alta"?"▲ ":"▼ "}${dir}</span>`,`<span><small>Entrada</small>${esc(fmt(ev.preco))}</span>`];
-  if(dono){if(ev.stop!=null)tl.push(`<span class="sl"><small>Stop</small>${esc(fmt(ev.stop))}</span>`);if(ev.alvo!=null)tl.push(`<span class="al"><small>Alvo</small>${esc(fmt(ev.alvo))}</span>`)}
-  $("stp-dt").innerHTML=tl.join("");
+  if(dono){if(ev.stop!=null)tl.push(`<span class="sl"><small>Stop</small>${esc(fmt(ev.stop))}</span>`);if(ev.alvo!=null)tl.push(`<span class="al"><small>Alvo</small>${esc(fmt(ev.alvo))}</span>`);else if(ev.saida_ref!=null)tl.push(`<span class="al" style="color:#FFD76A"><small style="color:#FFD76A">Saída ref.</small>${esc(fmt(ev.saida_ref))}</span>`)}
+  svHtml("stp-dt",tl.join(""));
   let rr="";if(dono){
     const risco=ev.stop!=null?Math.abs(ev.preco-ev.stop):0,ganho=ev.alvo!=null?Math.abs(ev.alvo-ev.preco):0;
     const razao=risco>0&&ganho>0?"1:"+(Math.round(ganho/risco*10)/10).toString().replace(".",","):"sem alvo fixo";
     rr=`<div><small>Risco / retorno</small><b>${esc(razao)}</b></div><div><small>Saída</small><b style="font-size:10.5px;font-weight:700">${esc(st.saida||"Na perda do stop ou no alvo.")}</b></div>`}
-  $("stp-rr").innerHTML=rr;$("stp-rr").style.display=rr&&!ev.padrao?"flex":"none";   // com a lição, o risco/retorno vai na linha do tamanho (cabe tudo sem rolar)
+  svHtml("stp-rr",rr);$("stp-rr").style.display=rr&&!ev.padrao?"flex":"none";   // com a lição, o risco/retorno vai na linha do tamanho (cabe tudo sem rolar)
   svLicao(ev,dono);
   const qb=$("stp-q");if(dono){const mx=(mz()&&mz().max_q)||0,q=svQ();SVs.pct=SVs.pct||50;
     const rt=ev.stop!=null&&q>0?`Risco: <b>T$ ${fmt(Math.abs(ev.preco-ev.stop)*q)}</b>`:"",gn=ev.alvo!=null&&q>0?` · Alvo: <b>T$ ${fmt(Math.abs(ev.alvo-ev.preco)*q)}</b>`:"";
-    qb.innerHTML=`<small>Quanto entrar</small><div class="ch">${[25,50,100].map(p=>`<button data-p="${p}"${SVs.pct===p?' class="on"':""}>${p}%</button>`).join("")}</div><div class="rk">${q>0?q+" ações · ":""}${rt}${gn}</div>`;qb.style.display=mx>0?"block":"none"}else qb.style.display="none";
+    svHtml("stp-q",`<small>Quanto entrar</small><div class="ch">${[25,50,100].map(p=>`<button data-p="${p}"${SVs.pct===p?' class="on"':""}>${p}%</button>`).join("")}</div><div class="rk">${q>0?q+" ações · ":""}${rt}${gn}</div>`);qb.style.display=mx>0?"block":"none"}else qb.style.display="none";
   $("stp-c").textContent=seg+"s";$("stp-b").style.width=Math.max(0,Math.min(100,rest/ev.janela_ms*100))+"%";
   const bt=$("stp-bt");bt.style.display=dono?"flex":"none";const pode=!!(dono&&ev.pode_decidir&&!SVs.env&&rest>0);$("stp-sim").disabled=!pode;$("stp-nao").disabled=!pode;
   $("stp-x").style.display=dono?"block":"none";$("stp-x").disabled=!pode;
@@ -934,7 +940,7 @@ const svEase=t=>t<0?0:t>1?1:t*t*(3-2*t);
 function svNiveis(){   // entrada, stop e alvo do setup no gráfico: na janela de decisão e, depois de aceitar, até a posição aparecer com eles
   const ev=SVs.ev,m=mz(),out=[];
   if(ev&&ev.voce_e_dono&&svT()>=ev.anim_ms+(ev.destaque_ms||0)&&svRest()>0){
-    out.push({t:"entrada",p:ev.preco});if(ev.stop!=null)out.push({t:"stop",p:ev.stop});if(ev.alvo!=null)out.push({t:"alvo",p:ev.alvo});return out}
+    out.push({t:"entrada",p:ev.preco});if(ev.stop!=null)out.push({t:"stop",p:ev.stop});if(ev.alvo!=null)out.push({t:"alvo",p:ev.alvo});if(ev.alvo==null&&ev.saida_ref!=null)out.push({t:"saida",p:ev.saida_ref});return out}
   const sv=A&&A.setup,ult=sv&&(sv.marcas||[]).filter(x=>x.meu&&x.estado==="aceito").slice(-1)[0],o=m?linhasMesa():{};
   if(ult&&m&&(m.fila||[]).length){   // a ordem entrou na fila e ainda não virou posição: as linhas já ficam à vista, sem piscar
     if(ult.stop!=null&&o.stop==null)out.push({t:"stop",p:ult.stop});if(ult.alvo!=null&&o.alvo==null)out.push({t:"alvo",p:ult.alvo})}
@@ -965,9 +971,9 @@ function desenhaSetup(){   // marcas dos sinais ativados + mira. Só desenha o q
     ctx.fillStyle="rgba(242,184,75,.95)";ctx.font="bold 9px system-ui";ctx.textAlign="left";ctx.textBaseline="top";ctx.fillText("SUA REGIÃO ("+({suporte:"suporte",resistencia:"resistência",zona_alta:"zona de alta",zona_baixa:"zona de baixa"}[rg.tipo]||rg.tipo)+")",6,Math.min(a,b)+2)}
   const nv=svNiveis();
   if(nv.length){const ent=nv.find(n=>n.t==="entrada");   // faixas de risco e retorno, como as da posição, só que tracejadas: é uma prévia
-    for(const n of nv){if(n.t==="entrada")continue;const ref=ent?ent.p:(S.cands.length?S.cands[S.cands.length-1].c:n.p);
+    for(const n of nv){if(n.t==="entrada"||n.t==="saida")continue;const ref=ent?ent.p:(S.cands.length?S.cands[S.cands.length-1].c:n.p);
       ctx.fillStyle=n.t==="stop"?"rgba(255,77,109,.10)":"rgba(38,208,124,.10)";const a=L.y(ref),b=L.y(n.p);ctx.fillRect(0,Math.min(a,b),L.pw,Math.abs(b-a))}
-    for(const n of nv)hline(n.p,n.t==="stop"?COR.s:(n.t==="alvo"?COR.a:COR.e),[6,4],n.t==="stop"?"STOP DO SETUP":(n.t==="alvo"?"ALVO DO SETUP":"ENTRADA DO SETUP"),n.t!=="entrada")}
+    for(const n of nv)hline(n.p,n.t==="stop"?COR.s:(n.t==="alvo"?COR.a:(n.t==="saida"?COR.gold:COR.e)),[6,4],n.t==="stop"?"STOP DO SETUP":(n.t==="alvo"?"ALVO DO SETUP":(n.t==="saida"?"SAÍDA (REF.)":"ENTRADA DO SETUP")),n.t!=="entrada")}
   desenhaMira()}
 function svRgba(hex,a){const m=/^#([0-9a-f]{6})$/i.exec(hex||"");const n=m?parseInt(m[1],16):0x8FB4F0;return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`}
 function svZoom(z,ox,oy){   // zoom de verdade no gráfico: a camada do gráfico cresce em volta do alvo (o alvo não sai do lugar) e a mira, que fica numa camada à parte, não é esticada
@@ -1240,6 +1246,7 @@ function uiMesa(){   // atualiza só textos e estados dos botões (a tela não �
     if(S.erroLocal)l2+=` · <span class="er">${esc(S.erroLocal)}</span>`;
   }
   $("app").classList.toggle("qtd",!!(m&&m.qtd));
+  if(corrida()&&!liv)l1=`<span class="e">⏳ Enviando ordem…</span><span class="pz">aguardando o servidor</span>`;   // resposta imediata ao toque, mesmo com o servidor lento
   $("sm").innerHTML=`<div class="l1">${l1}</div><div class="l2">${l2}</div>`;
   $("pg").style.width=(100*(A.revelados||0)/(A.total_replay||1))+"%";
   const abre=!!(at&&m.pode_abrir&&liv),ger=!!(at&&m.pode_gerir);

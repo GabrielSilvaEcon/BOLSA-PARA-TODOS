@@ -79,7 +79,7 @@ def _sinal(p: dict, s: dict, jog: str, sid: str, candle: int, sig: dict, preco: 
     n_pad = (SU.PADROES.get(sid) or {}).get("n")                      # padrão de candle: quais candles o formam (a lição destaca e amplia estes)
     pad = {"candles": list(range(candle - n_pad + 1, candle + 1))} if n_pad else None
     return {"id": id_, "jogador": jog, "setup": sid, "direcao": sig["direcao"], "candle": candle, "preco": round(float(preco), 4), "padrao": pad,
-            "stop": sig.get("stop"), "alvo": sig.get("alvo"), "motivo": sig.get("motivo", ""), "regiao": sig.get("regiao"),
+            "stop": sig.get("stop"), "alvo": sig.get("alvo"), "saida_ref": sig.get("saida_ref"), "motivo": sig.get("motivo", ""), "regiao": sig.get("regiao"),
             "t": float(agora), "estado": "aberto"}
 
 
@@ -301,7 +301,7 @@ def visao(p: dict, email: str, agora: float) -> dict | None:
         out = {"sinal": x["id"], "setup": {"id": x["setup"], "nome": info.get("nome"), "raridade": info.get("raridade"), "cores": info.get("cores"),
                                            "assets": info.get("assets"), "provisorio": info.get("provisorio"), "resumo": info.get("resumo"), "saida": info.get("saida")},
                "dono": "Você" if dono else rot[x["jogador"]], "voce_e_dono": dono, "direcao": x["direcao"], "candle": x["candle"], "preco": x["preco"],
-               "stop": x["stop"] if dono else None, "alvo": x["alvo"] if dono else None, "motivo": x["motivo"] if dono else "",
+               "stop": x["stop"] if dono else None, "alvo": x["alvo"] if dono else None, "saida_ref": x.get("saida_ref") if dono else None, "motivo": x["motivo"] if dono else "",
                "padrao": ({"candles": x["padrao"]["candles"], "licao": (SU.PADROES.get(x["setup"]) or {}).get("licao")} if x.get("padrao") else None),   # a lição é para os dois: o que o adversário não vê é a região, o stop e o alvo
                "regiao": x.get("regiao") if dono else None,                  # a região que o jogador marcou: o adversário não vê onde estão as marcas dele
                "anim_ms": int(ANIM_S * 1000), "destaque_ms": int(_destaque(x) * 1000), "janela_ms": int(JANELA_S * 1000),

@@ -242,3 +242,28 @@ def test_so_no_fim_o_jogador_ve_o_retorno_das_operacoes_do_adversario(dois, monk
     assert v["fase"] == "fim" and tela["fim"] is True
     ops = [o for a in tela["adversarios"] for o in a["ops"]]
     assert ops and all("pct" in o for o in ops if not o["aberta"])                  # no fim, cada operação fechada traz o retorno
+
+
+def test_idas_ao_banco_por_jogada_e_por_consulta_ficam_no_minimo(mundo, monkeypatch):
+    """Desempenho: cada ida ao banco custa caro no servidor gratuito. Consulta sem novidade = 1 leitura; jogada = 1 leitura + 1 gravação, e a resposta sai da memória."""
+    import banco
+    a = mundo[0]
+    r = OL.buscar(a, "rapida", TS)
+    OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S + 1)
+    pid, t = r["id"], TS + BOTS.BOT_ESPERA_S + 2
+    OL.salvar(pid, a, {"direcao": "alta", "tipo": "continuacao"}, None, t)
+    for k in range(1, 8):
+        OL.ler(pid, a, t + k * 5)
+    cnt = {"n": 0}
+    orig = banco._con
+    monkeypatch.setattr(banco, "_con", lambda *x, **k: (cnt.__setitem__("n", cnt["n"] + 1), orig(*x, **k))[1])
+    tt = t + 45
+    OL.ler(pid, a, tt)
+    OL.ler(pid, a, tt)                                                                          # sem novidade no relógio: só a leitura
+    assert cnt["n"] <= 3                                                                        # 2 consultas: no máximo 1 leitura cada (+1 gravação se o relógio andou)
+    cnt["n"] = 0
+    d = OL.agir(pid, a, {"aid": "p1", "tipo": "mercado", "direcao": "alta", "q": 1}, tt + 1)
+    assert cnt["n"] == 2                                                                        # 1 leitura + 1 gravação
+    cnt["n"] = 0
+    v = OL.ler(pid, a, tt + 1, d)
+    assert cnt["n"] == 0 and v["estado"] == "jogo"                                              # a resposta da jogada sai do estado recém-gravado
