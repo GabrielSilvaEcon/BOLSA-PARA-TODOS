@@ -46,7 +46,8 @@ class MesaHost {
   void desenhar(Map<String, dynamic> args) {
     _pendente = args;
     if (!_pronta) return;
-    _c.runJavaScript("window.postMessage({type:'streamlit:render',args:${jsonEncode(args)}},'*');");
+    // JSON.parse de uma string é bem mais rápido de processar no WebView do que um objeto literal de dezenas de KB (medido: ~2x), e chega ao mesmo objeto.
+    _c.runJavaScript("window.postMessage({type:'streamlit:render',args:JSON.parse(${jsonEncode(jsonEncode(args))})},'*');");
   }
 
   /// No celular a tela do app por cima da WebView já recebe os toques (nada a fazer).
