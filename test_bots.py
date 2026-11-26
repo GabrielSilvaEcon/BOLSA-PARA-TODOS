@@ -197,3 +197,22 @@ def test_health_check_nao_depende_do_banco(monkeypatch):
         raise AssertionError("o health check não pode consultar o banco")
     monkeypatch.setattr(API.banco, "pronto", lento)
     assert TestClient(API.app).get("/saude").json() == {"ok": True}
+
+
+def test_lote_e_capital_da_tela_online_seguem_o_capital_real_do_jogador(dois, monkeypatch):
+    """Bug do vídeo: com caixa pequeno a tela mostrava '1 lote = 16 ações' (capital simbólico de T$ 10.000) e a compra de 1 lote era barrada."""
+    import trader_carteira as TCA
+    ana, _ = dois
+    monkeypatch.setattr(TD, "escolher_corrida", lambda f, s, banco=None, permitir_demo=False: TD.demo_corrida(f, s))
+    t = {"agora": 6_500_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    monkeypatch.setattr(TCA, "situacao", lambda email: {"pat": 20000.0, "caixa": 9446.8})            # capital da partida = 5% = T$ 472,34
+    r = ana.post("/trade/fila", json={"corrida": "rapida"}).json()
+    t["agora"] += BOTS.BOT_ESPERA_S + 1
+    ana.get("/trade/fila")
+    ana.post(f"/trade/salas/{r['id']}/estrategia", json={"direcao": "alta"})
+    t["agora"] += 40
+    tela = ana.get(f"/trade/salas/{r['id']}").json()["tela"]
+    assert tela["plano_cfg"]["capital"] == 472.34
+    assert tela["lote"] * tela["ref"] <= 472.34 * 0.1 + tela["ref"]                                      # 1 lote cabe (10% do capital)
+    assert tela["lote"] * tela["ref"] < 472.34
