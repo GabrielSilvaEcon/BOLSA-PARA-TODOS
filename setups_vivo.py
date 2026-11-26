@@ -28,7 +28,7 @@ import setups as SU
 import trader_battle as TB
 
 ANIM_S = 4.0         # a animação da mira (detecção, aquisição, travamento, ativação)
-JANELA_S = 5.0       # a janela de decisão que se abre depois da animação
+JANELA_S = 19.0      # a janela de decisão que se abre depois da animação (a partida fica pausada para os dois nesse tempo)
 FRESCOR_S = 3.0      # um candle (ou um passo) só gera sinal se acabou de acontecer: segundos de partida, sem contar pausas
 RECARGA = 8          # candles entre duas ativações do mesmo jogador
 TETO = 2             # ativações por jogador, por partida

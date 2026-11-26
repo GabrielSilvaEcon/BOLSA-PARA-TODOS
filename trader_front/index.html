@@ -47,6 +47,7 @@ html,body{margin:0;height:100%;overflow:hidden;color-scheme:dark;background:#0F0
 #stp .dec .sim{flex:1.5;background:linear-gradient(180deg,#43F0A6,#17b878);color:#04281a;box-shadow:0 0 14px rgba(61,255,176,.35)}
 #stp .dec .nao{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)!important}
 #stp .dec button:disabled{opacity:.45;cursor:default}
+#stp-q{margin:6px 0 2px}#stp-q small{display:block;font-size:10px;color:#BFD0F5;margin-bottom:3px}#stp-q .ch{display:flex;gap:6px}#stp-q .ch button{flex:1;padding:6px 0;border-radius:10px;border:1.5px solid #4F6FC0;background:rgba(10,26,64,.7);color:#fff;font-weight:800;font-size:12px}#stp-q .ch button.on{background:#1FA85A;border-color:#7DFFB8}#stp-q .rk{font-size:11px;color:#E9F1FF;margin-top:4px}#stp-q .rk b{color:#FFD76A}
 #stp .dec .prov{margin-top:5px;text-align:center;font:700 9px system-ui;color:#8F87C4}
 #stp .dec img.art{display:none}
 
@@ -412,7 +413,7 @@ html{background:#0A0630}body{background:transparent !important}
   <div class="row tbr" id="t2"><button id="b-buy" class="buy" style="flex:1.3"><span class="ar">▲ </span>Compra</button><button id="b-sell" class="sell" style="flex:1.25"><span class="ar">▼ </span>Venda</button>
     <button id="b-entrada" style="flex:1.2">Entrada</button><button id="b-stop">Stop</button><button id="b-alvo">Alvo</button>
     <button id="b-apagar" title="Apagar marcação" style="flex:.7">⌫<span class="rot-c"> Apagar</span></button><button id="b-limpar" title="Limpar operação" style="flex:.7">✕</button><button id="b-mais" style="flex:.7"><span class="dots">⋯</span><span class="rot-c">Indicadores</span></button></div>
-  <div id="cvw"><canvas id="cv"></canvas><canvas id="cvfx"></canvas><button id="g-ind" title="Indicadores">ƒx Indicadores</button><button id="aovivo" title="Voltar aos candles novos">▶ Ao vivo</button><div id="dica"></div><div id="stp"><div class="fx" id="stp-fx"></div><div class="dec" id="stp-dec"><button id="stp-x" aria-label="Recusar" title="Recusar">✕</button><h3 id="stp-h"></h3><div class="hd"><span class="hx" id="stp-ic"></span><div class="tt"><b id="stp-nome"></b><small id="stp-resumo"></small></div><span class="bd" id="stp-bd"></span></div><p id="stp-p"></p><div class="dt" id="stp-dt"></div><div class="rr" id="stp-rr"></div><div class="cnt"><div id="stp-c"></div><div class="bar"><i id="stp-b"></i></div></div><div class="bt" id="stp-bt"><button class="sim" id="stp-sim">ENTRAR NA OPERAÇÃO</button><button class="nao" id="stp-nao">RECUSAR</button></div><div class="prov" id="stp-prov"></div><img class="art" id="stp-art" alt=""></div></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
+  <div id="cvw"><canvas id="cv"></canvas><canvas id="cvfx"></canvas><button id="g-ind" title="Indicadores">ƒx Indicadores</button><button id="aovivo" title="Voltar aos candles novos">▶ Ao vivo</button><div id="dica"></div><div id="stp"><div class="fx" id="stp-fx"></div><div class="dec" id="stp-dec"><button id="stp-x" aria-label="Recusar" title="Recusar">✕</button><h3 id="stp-h"></h3><div class="hd"><span class="hx" id="stp-ic"></span><div class="tt"><b id="stp-nome"></b><small id="stp-resumo"></small></div><span class="bd" id="stp-bd"></span></div><p id="stp-p"></p><div class="dt" id="stp-dt"></div><div class="qs" id="stp-q"></div><div class="rr" id="stp-rr"></div><div class="cnt"><div id="stp-c"></div><div class="bar"><i id="stp-b"></i></div></div><div class="bt" id="stp-bt"><button class="sim" id="stp-sim">ENTRAR NA OPERAÇÃO</button><button class="nao" id="stp-nao">RECUSAR</button></div><div class="prov" id="stp-prov"></div><img class="art" id="stp-art" alt=""></div></div><div id="baixo">Tela muito baixa: use ⛶ (tela cheia) ou gire para vertical.</div>
     <div id="mais"><div class="g an">ESTRATÉGIA</div><button id="b-tipo" class="an"></button><button id="b-conf" class="an"></button><div class="g">INDICADORES</div><button data-i="vol">Volume</button><button data-i="sma">Média simples (20)</button><button data-i="ema">Média exponencial (9)</button><button data-i="rsi">RSI (14)</button><button data-i="sr">Suporte/Resistência</button>
       <div class="g an">MARCAÇÕES DE ANÁLISE</div><button data-t="nivel" class="an">Nível de preço</button><button data-t="tend" class="an">Linha de tendência</button><button data-t="nota" class="an">Anotação</button></div>
     <div id="res"></div><button id="res-ver">🏆 Ver resultado da rodada</button>
@@ -555,7 +556,7 @@ function onRender(a){
   if(S.modo!=='analise'){const n=S.cands.length;S.offAlvo=n+folga()-(W-axisW())/S.cw}
   $("tk").innerHTML=a.corrida?`${esc(a.ticker)}<small>${esc(a.tf_nome)}${a.demo?' · <span class="pill">SIMULADO</span>':""}</small>`
     :`${esc(a.ticker)}${a.demo?'<span class="pill">SIMULADO</span>':""}<small>${esc(a.tf_nome)} · ${mesaOn()?"mesa":"análise"}</small>`;
-  topoCorrida();const cd=$("cdl");if(cd)cd.textContent=a.corrida?(a.modo==="analise"?"estratégia":`candle ${a.revelados||0}/${a.total_replay||0}`):"";
+  topoCorrida();const cd=$("cdl");if(cd)cd.textContent=a.corrida?(a.modo==="analise"?"estratégia":""):"";
   pxUI();svRecebe();
   $("rod").textContent=`Rodada ${a.rodada}/${a.rodadas}${a.pausada?" ⏸":""}`;
   $("b-buy").innerHTML=`<span class="ar">▲ </span>${mesaOn()?"Alta":"Compra"}`;$("b-sell").innerHTML=`<span class="ar">▼ </span>${mesaOn()?"Baixa":"Venda"}`;
@@ -574,9 +575,9 @@ function pxUI(){   // preço do último candle revelado e a variação desde o p
   const c=(S&&S.cands&&S.cands.length?S.cands:(A&&A.candles)||[]);if(!c.length){$("px").textContent="—";$("vr").textContent="";return}
   const ult=c[c.length-1].c,pri=c[0].c,v=pri?(ult/pri-1)*100:0;
   if(corrida()){const m=mz(),p=m&&m.posicao,el=$("vr");                   // partida corrida: o tamanho da posição aberta (não o preço do ativo)
-    if(p){const val=p.q*(m.preco_atual||ult);$("px").textContent="T$ "+val.toLocaleString("pt-BR",{maximumFractionDigits:0});
+    if(p){const val=p.q*(m.preco_atual||ult);$("px").textContent="Posição T$ "+val.toLocaleString("pt-BR",{maximumFractionDigits:0});
       el.textContent=`${p.direcao==="alta"?"▲":"▼"} ${nLotes(p.q)} lote${p.q/LOTE()>1.05?"s":""}`;el.className=p.direcao==="alta"?"up":"down"}
-    else{$("px").textContent="T$ 0";el.textContent="sem posição";el.className="zero"}return}
+    else{$("px").textContent="Posição T$ 0";el.textContent="sem posição";el.className="zero"}return}
   $("px").textContent="R$ "+fmt(ult);const el=$("vr");el.textContent=(v>0?"▲ +":v<0?"▼ ":"")+fmt(v)+"%";el.className=Math.abs(v)<0.005?"zero":(v>0?"up":"down");
 }
 function fit(){
@@ -868,6 +869,9 @@ function svUI(){
     const razao=risco>0&&ganho>0?"1:"+(Math.round(ganho/risco*10)/10).toString().replace(".",","):"sem alvo fixo";
     rr=`<div><small>Risco / retorno</small><b>${esc(razao)}</b></div><div><small>Saída</small><b style="font-size:10.5px;font-weight:700">${esc(st.saida||"Na perda do stop ou no alvo.")}</b></div>`}
   $("stp-rr").innerHTML=rr;$("stp-rr").style.display=rr?"flex":"none";
+  const qb=$("stp-q");if(dono){const mx=(mz()&&mz().max_q)||0,q=svQ();SVs.pct=SVs.pct||50;
+    const rt=ev.stop!=null&&q>0?`Risco no stop: <b>T$ ${fmt(Math.abs(ev.preco-ev.stop)*q)}</b>`:"",gn=ev.alvo!=null&&q>0?` · Ganho no alvo: <b>T$ ${fmt(Math.abs(ev.alvo-ev.preco)*q)}</b>`:"";
+    qb.innerHTML=`<small>Quanto entrar</small><div class="ch">${[25,50,100].map(p=>`<button data-p="${p}"${SVs.pct===p?' class="on"':""}>${p}%</button>`).join("")}</div><div class="rk">${q>0?q+" ações · ":""}${rt}${gn}</div>`;qb.style.display=mx>0?"block":"none"}else qb.style.display="none";
   $("stp-c").textContent=seg+"s";$("stp-b").style.width=Math.max(0,Math.min(100,rest/ev.janela_ms*100))+"%";
   const bt=$("stp-bt");bt.style.display=dono?"flex":"none";const pode=!!(dono&&ev.pode_decidir&&!SVs.env&&rest>0);$("stp-sim").disabled=!pode;$("stp-nao").disabled=!pode;
   $("stp-x").style.display=dono?"block":"none";$("stp-x").disabled=!pode;
@@ -882,9 +886,11 @@ function svIcone(id){   // ícone provisório de cada setup (hexágono + símbol
     engolfo_alta:'<rect x="13" y="18" width="8" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="2.5"/><rect x="25" y="12" width="11" height="22" rx="1" fill="currentColor"/>',
     estrela_cadente:'<rect x="19" y="26" width="10" height="9" rx="1" fill="currentColor"/><path d="M24 26 V10" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>'}[id]||'<circle cx="24" cy="24" r="8" fill="currentColor"/>';
   return `<svg viewBox="0 0 48 48" style="color:var(--sc,#8FB4F0)"><path d="M24 3 L41 13 V35 L24 45 L7 35 V13 Z" fill="rgba(255,255,255,.05)" stroke="currentColor" stroke-width="2.2"/>${g}</svg>`}
+function svQ(){const mx=(mz()&&mz().max_q)||0;return mx>0?Math.max(1,Math.floor(mx*(SVs.pct||50)/100)):0}   // ações da entrada do setup: % do que o capital livre permite
+document.addEventListener("click",e=>{const b=e.target&&e.target.closest?e.target.closest("#stp-q button"):null;if(b){SVs.pct=+b.dataset.p;svUI()}});
 function svEnvia(acao){
   if(!S||!SVs.ev||SVs.env||!SVs.ev.pode_decidir)return;SVs.env=true;S.seq++;S.sentSeq=S.seq;
-  const d={acao};if(acao==="aceitar"){const q=qtdAcoes();if(q>0)d.q=q}
+  const d={acao};if(acao==="aceitar"){const q=svQ()||qtdAcoes();if(q>0)d.q=q}
   post({type:"streamlit:setComponentValue",value:{seq:S.seq,evento:"setup",dados:d},dataType:"json"});svUI()}
 $("stp-sim").onclick=()=>svEnvia("aceitar");$("stp-nao").onclick=()=>svEnvia("recusar");$("stp-x").onclick=()=>svEnvia("recusar");
 const svEase=t=>t<0?0:t>1?1:t*t*(3-2*t);
@@ -907,14 +913,15 @@ function svAvisaSemProtecao(){   // a entrada saiu, mas o preço já tinha passa
     flash("Você entrou, mas o preço já passou do stop ou do alvo do setup: a posição ficou sem eles. Arraste a linha da entrada para colocar.",7000)}}}
 function desenhaSetup(){   // marcas dos sinais ativados + mira. Só desenha o que o servidor mandou: nunca calcula sinal aqui.
   const sv=A&&A.setup;if(!sv||!S||!L)return;
-  for(const m of sv.marcas||[]){
+  const mc=sv.marcas||[];
+  for(const m of mc){
     if(m.candle==null||m.candle<0||m.candle>S.cands.length-1)continue;
     const x=L.x(m.candle),y=L.y(m.preco);if(x<-10||x>L.pw+10||y<L.mTop-10||y>L.mTop+L.mH+10)continue;
     const up=m.direcao==="alta",cor=m.meu?COR.gold:"#B8A8FF";
     ctx.save();ctx.fillStyle=cor;ctx.strokeStyle="#fff";ctx.lineWidth=1.4;ctx.beginPath();
     if(up){ctx.moveTo(x,y-3);ctx.lineTo(x-7,y+9);ctx.lineTo(x+7,y+9)}else{ctx.moveTo(x,y+3);ctx.lineTo(x-7,y-9);ctx.lineTo(x+7,y-9)}
     ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=cor;ctx.fillText(m.meu?"SETUP":"SETUP ADV.",x,up?y+20:y-20);ctx.restore()}
+    ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=cor;if(mc.indexOf(m)>=mc.length-2)ctx.fillText(m.meu?"SETUP":"SETUP ADV.",x,up?y+20:y-20);ctx.restore()}   // só os 2 últimos levam texto: o resto fica só o triângulo
   const rg=svRegiao();
   if(rg&&L.y){const a=L.y(rg.max),b=L.y(rg.min);ctx.fillStyle="rgba(242,184,75,.16)";ctx.fillRect(0,Math.min(a,b),L.pw,Math.max(3,Math.abs(b-a)));   // faixa amarela da região, como nas cartas
     ctx.strokeStyle="rgba(242,184,75,.75)";ctx.lineWidth=1;ctx.strokeRect(0.5,Math.min(a,b),L.pw-1,Math.max(3,Math.abs(b-a)));
@@ -1020,7 +1027,7 @@ function desenhaMesa(i0,i1){
     if(q.aberta){if(corrida()){hline(q.preco_entrada,COR.gold,[6,3],"",false);fotoLinha(adv.rotulo,q.preco_entrada,sd)}else hline(q.preco_entrada,COR.gold,[6,3],adv.rotulo+" "+sd,false);
       marca(q.indice_entrada,q.preco_entrada,forma,COR.gold,"")}
     else{ligacao(q.indice_entrada,q.preco_entrada,q.indice_saida,q.preco_entrada,"rgba(242,184,75,.65)",[6,3]);
-      marca(q.indice_entrada,q.preco_entrada,forma,COR.gold,"");marca(q.indice_saida,q.preco_saida,"o",COR.gold,adv.rotulo.replace("Jogador ","J")+" saiu")}}
+      marca(q.indice_entrada,q.preco_entrada,forma,COR.gold,"");marca(q.indice_saida,q.preco_saida,"o",COR.gold,q.indice_saida>=S.cands.length-12?adv.rotulo.replace("Jogador ","J")+" saiu":"")}}
   (m.operacoes||[]).forEach((q,k)=>{ligacao(q.indice_entrada,q.preco_entrada,q.indice_saida,q.preco_saida,"rgba(255,255,255,.4)",[2,3]);
     marca(q.indice_entrada,q.preco_entrada,q.direcao==="alta"?"up":"dn",COR.e,"");
     marca(q.indice_saida,q.preco_saida,"o",q.pct>0?COR.up:(q.pct<0?COR.dn:COR.gold),k===m.operacoes.length-1&&!m.posicao?"SAÍDA":"")});
@@ -1055,7 +1062,7 @@ function uiLotes(m){   // partida corrida: quantidade em lotes (1 lote = 10% do 
   else if(p&&p.direcao==="baixa"){rot("m-sell",`⚡ VENDER +${n}`,"aumenta a posição");rot("m-buy",zera?"⚡ ZERAR":`⚡ COMPRAR ${n}`,zera?"fecha tudo":resta(fica))}
   else{rot("m-buy",`⚡ COMPRAR ${n}`);rot("m-sell",`⚡ VENDER ${n}`)}
   const e=$("m-enc");if(e&&e.lastChild&&e.lastChild.nodeType===3)e.lastChild.textContent="Zerar"}
-function rankAviso(){const t=$("rkb-t");if(!t||!A)return;const multi=!!(A.multi||(A.placar&&A.placar.jogadores.length>1));
+function rankAviso(){const t=$("rkb-t");if(!t||!A)return;const mm=mz(),jaOperou=!!(corrida()&&mm&&(mm.posicao||(mm.n_encerradas||0)>0));t.style.display=jaOperou?"none":"";const multi=!!(A.multi||(A.placar&&A.placar.jogadores.length>1));
   t.textContent=multi?"ⓘ Partida online: conta para o ranking!":"ⓘ Partida solo: treino, não conta para o ranking (só partidas online contam)."}
 function topoCorrida(){rankAviso();const pc=$("placar"),hd0=$("hd");
   if(corrida()&&pc&&hd0&&hd0.parentNode&&typeof hd0.parentNode.insertBefore==="function"&&hd0.nextSibling!==pc)hd0.parentNode.insertBefore(pc,hd0.nextSibling);   // sala: cards dos jogadores logo abaixo da faixa do topo

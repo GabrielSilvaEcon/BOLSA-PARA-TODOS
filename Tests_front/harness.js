@@ -277,12 +277,18 @@ t("setup: durante a animação não há botões; a janela só abre depois dos 4 
   yes(h.els["stp-p"].textContent.includes("Deseja entrar nesta operação?")); eq(h.els["stp-c"].textContent, "5s"); eq(h.els["stp-bt"].style.display, "flex");
   yes(!h.els["stp-sim"].disabled, "dono pode decidir");
 });
-t("setup: ENTRAR e RECUSAR mandam a decisão uma única vez (com a quantidade da boleta)", () => {
+t("setup: ENTRAR e RECUSAR mandam a decisão uma única vez (com a quantidade escolhida: 50% do que cabe no capital)", () => {
   const h = carregar(); const a = args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) });
-  h.render(a); h.els["q-val"].value = "2"; h.els["stp-sim"].onclick(); h.els["stp-sim"].onclick(); h.els["stp-nao"].onclick();
-  const v = h.acoes().filter(x => x.evento === "setup"); eq(v.length, 1, "só um envio"); eq([v[0].dados.acao, v[0].dados.q], ["aceitar", 200]);
+  h.render(a); h.els["stp-sim"].onclick(); h.els["stp-sim"].onclick(); h.els["stp-nao"].onclick();
+  const v = h.acoes().filter(x => x.evento === "setup"); eq(v.length, 1, "só um envio"); eq(v[0].dados.acao, "aceitar"); yes(v[0].dados.q > 0, "quantidade enviada");
   const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) }));
   h2.els["stp-nao"].onclick(); eq(h2.acoes().filter(x => x.evento === "setup").map(x => x.dados), [{ acao: "recusar" }]);
+});
+t("setup: a janela de decisão mostra 25/50/100% do capital e o risco em T$ do stop (só para o dono)", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) }));
+  const q = h.els["stp-q"].innerHTML; yes(q.includes('data-p="25"') && q.includes('data-p="50"') && q.includes('data-p="100"'), "três opções"); yes(q.includes("Risco no stop"), "risco em T$");
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h2.els["stp-q"].style.display, "none", "o adversário não vê o tamanho do outro");
 });
 t("setup: o adversário vê o evento mas não tem botões e não consegue decidir", () => {
   const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
