@@ -5,12 +5,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'abertura.dart';
 import 'api.dart';
 import 'config.dart';
+import 'diag/diag.dart';
+import 'diag/diag_tela.dart';
 import 'login.dart';
 import 'navegacao.dart';
 import 'tour.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kDiag) await Diag.iniciar(); // APK de diagnóstico: mede abertura, quadros e memória (no app normal não roda)
   final configurado = supabaseUrl.isNotEmpty && supabaseKey.isNotEmpty;
   if (configurado) {
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
@@ -28,6 +31,7 @@ class TickerHuntersApp extends StatelessWidget {
     const fundo = Color(0xFF0A1638);
     return MaterialApp(
       title: 'TickerHunters',
+      navigatorKey: kDiag ? diagNavKey : null,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -39,7 +43,7 @@ class TickerHuntersApp extends StatelessWidget {
       ),
       home: configurado ? const AberturaTela(depois: PortaDeEntrada()) : const _SemConfiguracao(),
       // tour guiado do primeiro acesso: fica por cima de tudo (inclusive das telas cheias, como a lição)
-      builder: (context, child) => Stack(children: [child ?? const SizedBox.shrink(), const TourCamada()]),
+      builder: (context, child) => Stack(children: [child ?? const SizedBox.shrink(), const TourCamada(), if (kDiag) const DiagAlca()]),
     );
   }
 }
