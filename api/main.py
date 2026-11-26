@@ -503,6 +503,9 @@ def trade_central(q: Quem = Depends(quem)) -> dict:
                          "minutos": round((TB.T_ANALISE_S + sp["n_replay"] * TB.SEG_POR_CANDLE) / 60), "reais": reais})
     try:
         ativa = OL.partida_ativa(q.email)
+        if ativa and (((OL._row(ativa) or {}).get("dados") or {}).get("sala") or {}).get("publica") and not ((OL._row(ativa) or {}).get("dados") or {}).get("p"):
+            OL.sair_da_busca(q.email)                      # uma busca de adversário que ficou para trás (app fechado) não é uma sala para voltar: cancela
+            ativa = None
     except Exception:
         ativa = None
     ranking = None
@@ -1163,6 +1166,28 @@ def _sala(fn, *args):
 
 class NovaSala(BaseModel):
     corrida: str = "intermediaria"
+
+
+class Busca(BaseModel):
+    corrida: str = "intermediaria"
+
+
+@app.post("/trade/fila")
+def trade_fila_entrar(b: Busca, q: Quem = Depends(quem)) -> dict:
+    """Procurar adversário online (1 contra 1). Quem estiver procurando a mesma duração ao mesmo tempo se encontra e a partida começa na hora."""
+    return _sala(OL.buscar, q.email, b.corrida, _agora())
+
+
+@app.get("/trade/fila")
+def trade_fila(q: Quem = Depends(quem)) -> dict:
+    """Chamado a cada 2 s enquanto procura. {'estado': 'partida'|'fila'|'fora'|'expirou', 'id'?}"""
+    return _sala(OL.consultar_busca, q.email, _agora())
+
+
+@app.post("/trade/fila/sair")
+def trade_fila_sair(q: Quem = Depends(quem)) -> dict:
+    _sala(OL.sair_da_busca, q.email, _agora())
+    return {"ok": True}
 
 
 @app.post("/trade/salas")
