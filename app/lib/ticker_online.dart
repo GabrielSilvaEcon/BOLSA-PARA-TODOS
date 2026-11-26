@@ -122,6 +122,7 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
   Timer? _t;
   int _seg = 0;
   bool _saiu = false;
+  int _falhas = 0;
   String _msg = 'Procurando um adversário…';
   Map<String, dynamic>? _eu;
 
@@ -153,16 +154,22 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
           _t?.cancel();
           HapticFeedback.heavyImpact();
           Navigator.of(context).pushReplacement(widget.abrir?.call('${r['id']}') ?? MaterialPageRoute<void>(builder: (_) => PartidaOnlineTela(api: widget.api, pid: '${r['id']}')));
+        case 'sem_graficos':
+          _t?.cancel();
+          setState(() => _msg = '${r['mensagem'] ?? 'Os gráficos desta partida ainda estão sendo preparados. Tente de novo mais tarde.'}');
         case 'expirou':
         case 'fora':
           _t?.cancel();
-          setState(() => _msg = 'Ninguém apareceu agora. Tente de novo em instantes ou desafie um amigo em Meus Amigos.');
+          setState(() => _msg = 'Ninguém apareceu agora. Tente de novo em instantes.');
         default:
           setState(() => _msg = r['reservado'] == true
               ? 'Adversário encontrado! Montando a partida…'
               : (_seg >= 6 ? 'Ainda procurando… quase lá.' : 'Procurando um adversário…'));
       }
-    } catch (_) {}
+      _falhas = 0;
+    } catch (e) {
+      if (++_falhas >= 3 && mounted) setState(() => _msg = 'Não consegui falar com o servidor: $e');   // antes falhava calado e a busca só expirava
+    }
   }
 
   @override

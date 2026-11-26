@@ -386,7 +386,11 @@ def _partida_com_bot(email: str, pid: str, agora: float) -> dict:
     d = _mutar(pid, f, agora)
     b = next((j for j in d["sala"]["jogadores"] if BOTS.eh_bot(j["email"])), None)
     if b:
-        iniciar(pid, email, agora)                                    # (o bot não tem conta: não entra em tb_jogadores, só na sala e na partida)
+        try:
+            iniciar(pid, email, agora)                                # (o bot não tem conta: não entra em tb_jogadores, só na sala e na partida)
+        except (TB.ErroTrader, ErroSala) as e:                        # sem gráfico real guardado (ou cenário inválido): encerra a busca e avisa, em vez de ficar tentando até expirar
+            sair(pid, email, agora)
+            return {"estado": "sem_graficos", "mensagem": str(e)}
         return {"estado": "partida", "id": pid}
     return {"estado": "fila", "id": pid}
 

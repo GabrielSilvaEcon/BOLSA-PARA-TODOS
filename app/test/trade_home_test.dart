@@ -22,7 +22,7 @@ class _ApiFalsa extends Api {
 
 void main() {
   for (final tela in [const Size(390, 844), const Size(360, 640)]) {
-    testWidgets('home do Trade Battle (${tela.width.toInt()}x${tela.height.toInt()}) tem BATALHAR, Meus Setups e atalhos, sem estourar', (t) async {
+    testWidgets('home do Trade Battle (${tela.width.toInt()}x${tela.height.toInt()}) tem BATALHAR e Meus Setups, sem solo nem amigo, sem estourar', (t) async {
       t.view.physicalSize = tela;
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.resetPhysicalSize);
@@ -32,9 +32,8 @@ void main() {
       expect(find.text('BATALHAR'), findsOneWidget);
       expect(find.text('MEUS SETUPS'), findsOneWidget);
       expect(find.text('ATIVO'), findsNWidgets(2));
-      expect(find.text('Solo'), findsOneWidget);
-      expect(find.text('Amigo'), findsOneWidget);
-      expect(find.text('Ranking'), findsOneWidget);
+      expect(find.text('Solo'), findsNothing);                 // sem treino solo nem convite de amigo nesta tela
+      expect(find.text('Amigo'), findsNothing);
       await t.pumpWidget(const SizedBox());
     });
   }

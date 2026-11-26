@@ -178,3 +178,14 @@ def test_ranking_de_troféus_tem_jogadores_da_casa_com_pontuacao_baixa(dois, mon
         assert ana.get(f"/ranking/{jogo}/tela", params={"filtro": "amigos"}).json()["total"] <= 2     # só amigos de verdade
     monkeypatch.setattr(BOTS, "BOTS_ATIVOS", False)
     assert ana.get("/ranking/trade/tela").json()["total"] <= 2
+
+
+def test_sem_grafico_real_a_busca_avisa_e_encerra_em_vez_de_expirar(mundo, monkeypatch):
+    def sem(f, s, banco=None, permitir_demo=False):
+        raise TD.SemCenarios("Os gráficos reais desta duração ainda estão sendo preparados.")
+    monkeypatch.setattr(TD, "escolher_corrida", sem)
+    a = mundo[0]
+    OL.buscar(a, "rapida", TS)
+    r = OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S + 1)
+    assert r["estado"] == "sem_graficos" and "preparados" in r["mensagem"]
+    assert OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S + 3)["estado"] == "fora"                       # a busca foi encerrada, sem ficar presa
