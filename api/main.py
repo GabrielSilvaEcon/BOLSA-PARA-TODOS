@@ -1956,6 +1956,58 @@ def _pf_loja(q: Quem, tipo: str, ativos: list | None = None, eq: dict | None = N
         return {"itens": [], "equipado": None}
 
 
+# ------------------------------------------------------------------ Minha conta (app): dados da conta, nome, atividades e cópia dos dados
+_ROTULO_ACAO = {   # mesmos textos da tela Minha conta do Streamlit (conta_app._ROTULO_ACAO): (rótulo, tom)
+    "conta.criada": ("Conta criada", "ok"), "conta.verificada": ("E-mail confirmado", "ok"),
+    "login": ("Entrou com e-mail e senha", "info"), "login.google": ("Entrou com o Google", "info"),
+    "logout": ("Saiu da conta", "na"), "senha.alterada": ("Senha alterada", "aviso"),
+    "senha.redefinida": ("Senha redefinida por e-mail", "aviso"), "perfil.nome": ("Nome atualizado", "info"),
+    "sessoes.encerradas": ("Outros aparelhos desconectados", "aviso"), "dados.exportados": ("Dados baixados", "info"),
+    "conta.suspensa": ("Conta suspensa pela administração", "erro"), "conta.reativada": ("Conta reativada", "ok"),
+    "preferencias.salvas": ("Preferências salvas", "info"),
+}
+
+
+@app.get("/conta")
+def conta_resumo(q: Quem = Depends(quem)) -> dict:
+    """Dados da própria conta (nunca hash de senha): nome, e-mail, cadastro, como entra, tipo e se o e-mail está confirmado."""
+    import permissoes as perm
+    c = banco.sis_conta_por_id(q.conta["id"]) or q.conta
+    return {"nome": c.get("nome") or "", "email": c.get("email") or q.email, "cadastro": str(c.get("criado_em") or "")[:10],
+            "provedor": c.get("provedor") or "", "tipo": perm.ROTULOS.get(c.get("papel"), "Usuário"),
+            "email_verificado": bool(c.get("email_verificado"))}
+
+
+class ContaNome(BaseModel):
+    nome: str
+
+
+@app.post("/conta/nome")
+def conta_nome(d: ContaNome, q: Quem = Depends(quem)) -> dict:
+    r = contas.atualizar_nome(q.ator, d.nome)
+    if not r.ok:
+        raise HTTPException(400, r.msg)
+    return {"ok": True, "msg": r.msg, "nome": r.dado}
+
+
+@app.get("/conta/atividades")
+def conta_atividades(q: Quem = Depends(quem)) -> dict:
+    """Atividades relevantes da própria conta (entradas, mudanças de senha, preferências e downloads de dados)."""
+    itens = []
+    for i in banco.atividades_do_ator(q.ator, 40):
+        rot, tom = _ROTULO_ACAO.get(i["acao"], (i["acao"], "info"))
+        itens.append({"rotulo": rot, "tom": tom, "quando": str(i["quando"] or "")[:16]})
+    return {"itens": itens}
+
+
+@app.get("/conta/dados")
+def conta_dados(q: Quem = Depends(quem)) -> dict:
+    """Cópia de tudo o que o app guarda sobre a pessoa (direito de acesso e portabilidade). Fica registrado nas atividades."""
+    import json as _json
+    dados = contas.exportar_meus_dados(q.ator)
+    return {"json": _json.dumps(dados, ensure_ascii=False, indent=2, default=str)}
+
+
 @app.get("/perfil")
 def perfil_meu(q: Quem = Depends(quem)) -> dict:
     """Tela Meu Perfil: nome, usuário, avatar (com raridade e moldura), nível e XP, sequência, ranking, moedas, patrimônio,

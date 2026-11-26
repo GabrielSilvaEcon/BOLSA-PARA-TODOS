@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade, GraficoEnfeite;
+import 'conta.dart';
 import 'arte_cartao.dart';
 import 'navegacao.dart';
 
@@ -712,6 +713,7 @@ class _PerfilTelaState extends State<PerfilTela> {
         ),
         op(Icons.edit_rounded, 'Editar perfil', () => _editar(), const Color(0xFF4F9BFF)),
         op(Icons.lock_rounded, 'Privacidade', () => _editar(privacidade: true), const Color(0xFF26D07C)),
+        op(Icons.manage_accounts_rounded, 'Minha conta (senha, atividades e dados)', () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ContaTela(api: widget.api))), const Color(0xFF8B6CFF)),
         op(Icons.storefront_rounded, 'Loja Ticker (molduras e temas)', () {
           Navigator.of(context).maybePop();
           abrirAba(4);
