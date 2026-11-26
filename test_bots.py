@@ -240,6 +240,8 @@ def test_so_no_fim_o_jogador_ve_o_retorno_das_operacoes_do_adversario(dois, monk
         else:
             break
     assert v["fase"] == "fim" and tela["fim"] is True
+    fim = v["fim"]                                                                  # a tela de resultado do app lê isto: sem estes campos aparecia sempre "EMPATE TÉCNICO"
+    assert fim["resultado"] and "pontos" in fim["resultado"] and fim["revelado"]["ticker"] and fim["final"]["placar"]
     ops = [o for a in tela["adversarios"] for o in a["ops"]]
     assert ops and all("pct" in o for o in ops if not o["aberta"])                  # no fim, cada operação fechada traz o retorno
 
