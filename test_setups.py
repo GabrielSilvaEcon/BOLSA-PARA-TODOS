@@ -933,3 +933,17 @@ def test_setup_livre_continua_abrindo_a_janela(jogo, monkeypatch):
     sempre(monkeypatch)
     tick(p, cen, T0 + 4.2)
     assert p["setups"]["evento"] is not None and TB.pausada(p)
+
+
+def test_padrao_de_candle_manda_os_candles_e_a_licao_para_os_dois_mas_regiao_so_para_o_dono(jogo, monkeypatch):
+    p, cen = jogo
+    p["setups"]["equip"][A] = ["engolfo_alta"]
+    monkeypatch.setattr(SU, "detectar", lambda sid, v, regioes=None: {"direcao": "alta", "stop": 1.0, "alvo": 99.0, "motivo": "t", "regiao": {"tipo": "suporte", "min": 1.0, "max": 2.0}})
+    tick(p, cen, T0 + 4.2)
+    s = p["setups"]
+    assert s["evento"] is not None
+    sinal = s["sinais"][0]
+    assert len(sinal["padrao"]["candles"]) == 2 and sinal["padrao"]["candles"][-1] == sinal["candle"]       # o engolfo é formado por 2 candles
+    dono, outro = SV.visao(p, A, T0 + 5)["evento"], SV.visao(p, B, T0 + 5)["evento"]
+    assert dono["padrao"]["candles"] == outro["padrao"]["candles"] and dono["padrao"]["licao"]["ideia"] == outro["padrao"]["licao"]["ideia"]
+    assert dono["regiao"] is not None and outro["regiao"] is None and outro["stop"] is None and not outro["pode_decidir"]

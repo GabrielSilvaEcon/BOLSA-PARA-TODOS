@@ -204,7 +204,7 @@ def test_10_reinicializacao_ou_reconexao_nao_duplica_sinais():
 
 def test_os_tres_padroes_usam_um_motor_so():
     assert set(SU.PADROES) == {"martelo", "engolfo_alta", "estrela_cadente"}
-    assert all(set(v) == {"nome", "direcao", "regioes", "criterio"} for v in SU.PADROES.values())
+    assert all(set(v) == {"nome", "direcao", "regioes", "criterio", "n", "licao"} for v in SU.PADROES.values())
     assert {s["id"]: s["raridade"] for s in SU.catalogo() if s["id"] in SU.PADROES} == {"martelo": "comum", "engolfo_alta": "rara", "estrela_cadente": "comum"}
 
 
