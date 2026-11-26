@@ -189,3 +189,11 @@ def test_sem_grafico_real_a_busca_avisa_e_encerra_em_vez_de_expirar(mundo, monke
     r = OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S + 1)
     assert r["estado"] == "sem_graficos" and "preparados" in r["mensagem"]
     assert OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S + 3)["estado"] == "fora"                       # a busca foi encerrada, sem ficar presa
+
+
+def test_health_check_nao_depende_do_banco(monkeypatch):
+    from fastapi.testclient import TestClient
+    def lento(*a, **k):
+        raise AssertionError("o health check não pode consultar o banco")
+    monkeypatch.setattr(API.banco, "pronto", lento)
+    assert TestClient(API.app).get("/saude").json() == {"ok": True}
