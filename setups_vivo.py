@@ -28,6 +28,7 @@ import setups as SU
 import trader_battle as TB
 
 ANIM_S = 4.0         # a animação da mira (detecção, aquisição, travamento, ativação)
+DESTAQUE_S = 5.0     # só nos padrões de candle: depois da mira, o gráfico apaga e destaca os candles do padrão para o jogador memorizar (4 a 6 s)
 JANELA_S = 19.0      # a janela de decisão que se abre depois da animação (a partida fica pausada para os dois nesse tempo)
 FRESCOR_S = 3.0      # um candle (ou um passo) só gera sinal se acabou de acontecer: segundos de partida, sem contar pausas
 RECARGA = 8          # candles entre duas ativações do mesmo jogador
@@ -82,6 +83,10 @@ def _sinal(p: dict, s: dict, jog: str, sid: str, candle: int, sig: dict, preco: 
             "t": float(agora), "estado": "aberto"}
 
 
+def _destaque(sinal: dict) -> float:
+    return DESTAQUE_S if sinal.get("padrao") else 0.0
+
+
 def _disparar(p: dict, cen: dict, s: dict, sinal: dict, agora: float) -> bool:
     """Registra o sinal, pausa a partida para os dois e abre a janela. False se não deu para pausar (nada é registrado)."""
     if not TB.pausar(p, agora, {cen["id"]: cen}):
@@ -91,7 +96,7 @@ def _disparar(p: dict, cen: dict, s: dict, sinal: dict, agora: float) -> bool:
     s["n"][jog] = s["n"].get(jog, 0) + 1
     s["ultimo"][jog] = sinal["candle"]
     s["armado"].pop(jog, None)
-    s["evento"] = {"sinal": sinal["id"], "t_ini": float(agora), "prazo": float(agora) + ANIM_S + JANELA_S}
+    s["evento"] = {"sinal": sinal["id"], "t_ini": float(agora), "prazo": float(agora) + ANIM_S + _destaque(sinal) + JANELA_S}
     p["versao"] += 1
     return True
 
@@ -299,7 +304,7 @@ def visao(p: dict, email: str, agora: float) -> dict | None:
                "stop": x["stop"] if dono else None, "alvo": x["alvo"] if dono else None, "motivo": x["motivo"] if dono else "",
                "padrao": ({"candles": x["padrao"]["candles"], "licao": (SU.PADROES.get(x["setup"]) or {}).get("licao")} if x.get("padrao") else None),   # a lição é para os dois: o que o adversário não vê é a região, o stop e o alvo
                "regiao": x.get("regiao") if dono else None,                  # a região que o jogador marcou: o adversário não vê onde estão as marcas dele
-               "anim_ms": int(ANIM_S * 1000), "janela_ms": int(JANELA_S * 1000),
+               "anim_ms": int(ANIM_S * 1000), "destaque_ms": int(_destaque(x) * 1000), "janela_ms": int(JANELA_S * 1000),
                "decorrido_ms": max(0, int((agora - ev["t_ini"]) * 1000)), "restante_ms": max(0, int((ev["prazo"] - agora) * 1000)),
                "pode_decidir": bool(dono and agora < ev["prazo"])}
     return {"evento": out, "marcas": marcas, "avisos": avisos}

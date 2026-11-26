@@ -311,15 +311,18 @@ PADROES = {
     "martelo": {"nome": "Martelo", "direcao": "alta", "regioes": ("suporte", "zona_alta"), "criterio": _martelo, "n": 1,
                 "licao": {"ideia": "Os vendedores empurraram o preço para baixo, mas os compradores o devolveram até perto da abertura.",
                           "porque": "Num suporte, mostra que a queda perdeu força e os compradores assumiram o controle.",
-                          "partes": ["Corpo pequeno no topo", "Sombra inferior de pelo menos 2× o corpo", "Quase sem sombra superior"]}},
+                          "partes": ["Corpo pequeno no topo", "Sombra inferior de pelo menos 2× o corpo", "Quase sem sombra superior"],
+                          "rotulos": [{"k": 0, "onde": "corpo", "txt": "Corpo pequeno"}, {"k": 0, "onde": "sombra_inf", "txt": "Sombra longa (≥ 2× o corpo)"}]}},
     "engolfo_alta": {"nome": "Engolfo de Alta", "direcao": "alta", "regioes": ("suporte", "zona_alta"), "criterio": _engolfo_alta, "n": 2,
                      "licao": {"ideia": "Um candle de alta cobre por inteiro o corpo do candle de baixa anterior: a força compradora engoliu a vendedora.",
                                "porque": "Num suporte, a virada em um único candle sinaliza possível reversão para cima.",
-                               "partes": ["1º candle: baixa, corpo pequeno", "2º candle: alta, corpo envolve o anterior"]}},
+                               "partes": ["1º candle: baixa, corpo pequeno", "2º candle: alta, corpo envolve o anterior"],
+                               "rotulos": [{"k": 0, "onde": "corpo", "txt": "1º: baixa"}, {"k": 1, "onde": "corpo", "txt": "2º: alta engole"}]}},
     "estrela_cadente": {"nome": "Estrela Cadente", "direcao": "baixa", "regioes": ("resistencia", "zona_baixa"), "criterio": _estrela_cadente, "n": 1,
                         "licao": {"ideia": "Os compradores empurraram o preço para cima, mas os vendedores o devolveram até perto da abertura.",
                                   "porque": "Numa resistência, mostra que a alta perdeu força e os vendedores assumiram o controle.",
-                                  "partes": ["Corpo pequeno embaixo", "Sombra superior de pelo menos 2× o corpo", "Quase sem sombra inferior"]}},
+                                  "partes": ["Corpo pequeno embaixo", "Sombra superior de pelo menos 2× o corpo", "Quase sem sombra inferior"],
+                                  "rotulos": [{"k": 0, "onde": "corpo", "txt": "Corpo pequeno"}, {"k": 0, "onde": "sombra_sup", "txt": "Sombra longa (≥ 2× o corpo)"}]}},
 }
 
 

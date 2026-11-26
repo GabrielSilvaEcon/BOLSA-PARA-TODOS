@@ -300,6 +300,18 @@ t("setup de padrão: a lição (candles ampliados + ideia) aparece para o dono E
   const h3 = carregar(); h3.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) }));
   eq(h3.els["stp-lic"].style.display, "none", "setup que não é padrão de candle não mostra lição");
 });
+t("setup de padrão: depois da mira vem o destaque (cartão escondido, chip 'Memorize o padrão') e só então a janela de decisão", () => {
+  const pad = { candles: [0, 1], licao: { ideia: "i", porque: "p", partes: ["a"], rotulos: [{ k: 0, onde: "corpo", txt: "1º: baixa" }, { k: 1, onde: "corpo", txt: "2º: alta engole" }] } };
+  const ev = (d, r) => args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, pausada: true, setup: evSetup({ padrao: pad, destaque_ms: 5000, decorrido_ms: d, restante_ms: r }) });
+  const h = carregar(); h.render(ev(5500, 22500)); yes(!h.els["stp-dec"]._c.has("on"), "cartão escondido durante o destaque"); yes(h.els["stp-fx"].innerHTML.includes("Memorize o padrão"), "chip de memorizar");
+  const h2 = carregar(); h2.render(ev(9500, 18500)); yes(h2.els["stp-dec"]._c.has("on"), "cartão volta quando o destaque termina"); yes(!h2.els["stp-fx"].innerHTML.includes("Memorize"), "chip sai");
+});
+t("setup: efeitos de jogo (travamento, aceitar, mudo) rodam sem quebrar e o botão de som alterna", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, pausada: true, setup: evSetup({ decorrido_ms: 3500, restante_ms: 5500 }) }));
+  h.tempo(200); h.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, pausada: true, setup: evSetup({ decorrido_ms: 4700, restante_ms: 4300 }) }));
+  h.els["stp-som"].onclick(); eq(h.els["stp-som"].textContent, "🔇", "mudo"); h.els["stp-som"].onclick(); eq(h.els["stp-som"].textContent, "🔊", "som");
+  h.els["stp-sim"].onclick(); eq(h.acoes().filter(x => x.evento === "setup").length, 1, "aceitar com efeitos continua enviando uma vez");
+});
 t("setup: o adversário vê o evento mas não tem botões e não consegue decidir", () => {
   const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
   yes(h.els["stp-dec"]._c.has("on")); yes(h.els["stp-h"].textContent.includes("Jogador 2")); eq(h.els["stp-bt"].style.display, "none", "sem botões");
