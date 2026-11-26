@@ -31,5 +31,11 @@
     "moldura": null,
     "icone": null,
     "efeitos": []
-  }
+  },
+  "tipo": "candle",
+  "direcao": "venda",
+  "regiao": "Resistência / Zona de baixa",
+  "subtitulo": "Possível reversão de baixa",
+  "stop_texto": "Acima da máxima do padrão",
+  "alvo_texto": "2:1 em relação ao risco"
 }

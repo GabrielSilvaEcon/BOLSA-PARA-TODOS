@@ -31,5 +31,11 @@
     "moldura": null,
     "icone": null,
     "efeitos": []
-  }
+  },
+  "tipo": "candle",
+  "direcao": "compra",
+  "regiao": "Suporte / Zona de alta",
+  "subtitulo": "Possível reversão de alta",
+  "stop_texto": "Abaixo da mínima do padrão",
+  "alvo_texto": "2:1 em relação ao risco"
 }

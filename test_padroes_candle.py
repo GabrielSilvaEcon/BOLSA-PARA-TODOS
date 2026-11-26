@@ -206,3 +206,14 @@ def test_os_tres_padroes_usam_um_motor_so():
     assert set(SU.PADROES) == {"martelo", "engolfo_alta", "estrela_cadente"}
     assert all(set(v) == {"nome", "direcao", "regioes", "criterio"} for v in SU.PADROES.values())
     assert {s["id"]: s["raridade"] for s in SU.catalogo() if s["id"] in SU.PADROES} == {"martelo": "comum", "engolfo_alta": "rara", "estrela_cadente": "comum"}
+
+
+def test_cadastro_de_cada_setup_tem_o_que_o_pop_up_de_escolha_mostra():
+    cat = {s["id"]: s for s in SU.catalogo()}
+    for s in cat.values():
+        assert s["tipo"] in ("candle", "estrategia") and s["direcao"] in ("compra", "venda", "ambos")
+        assert s["regiao"] and s["subtitulo"] and s["stop_texto"] and s["alvo_texto"]
+    for sid, spec in SU.PADROES.items():                                                    # as cartas de candle dizem a mesma coisa que as regras do motor
+        assert cat[sid]["tipo"] == "candle" and cat[sid]["direcao"] == ("compra" if spec["direcao"] == "alta" else "venda")
+        assert ("Suporte" in cat[sid]["regiao"]) == ("suporte" in spec["regioes"]) and ("Resistência" in cat[sid]["regiao"]) == ("resistencia" in spec["regioes"])
+    assert all(s["tipo"] == "estrategia" and s["regiao"] == "Qualquer região" for sid, s in cat.items() if sid not in SU.PADROES)

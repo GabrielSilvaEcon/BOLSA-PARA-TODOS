@@ -31,5 +31,11 @@
     "efeitos": []
   },
   "fonte_regra": "Este setup não tem um criador: a regra de ativação é a descrita na carta.",
-  "saida": "Na perda do stop ou no alvo."
+  "saida": "Na perda do stop ou no alvo.",
+  "tipo": "estrategia",
+  "direcao": "compra",
+  "regiao": "Qualquer região",
+  "subtitulo": "Rompimento de pivô com volume",
+  "stop_texto": "No fundo do pivô",
+  "alvo_texto": "2:1 em relação ao risco"
 }

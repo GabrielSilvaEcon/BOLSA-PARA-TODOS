@@ -100,11 +100,15 @@ class _OnlineTelaState extends State<OnlineTela> {
 /// Procurando adversário: radar girando enquanto o servidor tenta emparelhar (a cada 2 s). Cancelar tira da fila.
 class BuscaTela extends StatefulWidget {
   /// Por padrão procura duelo do Ticker Battle; o Trade Battle usa a mesma tela com a sua rota e a sua partida (`abrir`).
-  const BuscaTela({super.key, required this.api, this.rota = '/ticker/online/fila', this.titulo = 'Duelo Online', this.abrir});
+  const BuscaTela({super.key, required this.api, this.rota = '/ticker/online/fila', this.titulo = 'Duelo Online', this.abrir, this.alternativa, this.rotuloAlternativa});
   final Api api;
   final String rota;
   final String titulo;
   final Route<void> Function(String id)? abrir;
+
+  /// Depois de um tempo sem ninguém, oferece outra saída (no Trade Battle: treinar solo). Cancela a busca e abre a rota devolvida.
+  final Route<void> Function()? alternativa;
+  final String? rotuloAlternativa;
 
   @override
   State<BuscaTela> createState() => _BuscaTelaState();
@@ -171,6 +175,14 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
           const SizedBox(height: 6),
           Text('${_seg ~/ 60}:${(_seg % 60).toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 14, color: lilas)),
           const SizedBox(height: 20),
+          if (widget.alternativa != null && (_seg >= 15 || _t == null || !(_t?.isActive ?? false))) ...[
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pushReplacement(widget.alternativa!()),
+              icon: const Icon(Icons.person_rounded),
+              label: Text(widget.rotuloAlternativa ?? 'Jogar sozinho'),
+            ),
+            const SizedBox(height: 10),
+          ],
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF6CA3FF))),
             onPressed: () => Navigator.of(context).maybePop(),
