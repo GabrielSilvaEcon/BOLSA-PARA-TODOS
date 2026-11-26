@@ -8,7 +8,7 @@ de ordens (bot_jogo.py); no Ticker Battle jogam cartas e atributos (bot_ticker.p
 from __future__ import annotations
 
 PREFIXO = "bot:"
-BOT_ESPERA_S = 12            # quanto a busca espera por gente de verdade antes de oferecer o bot
+BOT_ESPERA_S = 7             # quanto a busca espera por gente de verdade antes de oferecer o bot
 BOTS_ATIVOS = True           # desligue quando houver jogadores suficientes online
 NOMES = ("rafa_trader", "lu.invest", "CarolBull", "pedroh78", "thi_ago", "juliana.fx", "MarcosAlves", "bia_candle", "gustavo_ti", "nanda.bolsa",
          "dudu_swing", "FeLima", "paulo.r", "camila_trend", "vini_ações", "leo.fiis", "TaisM", "ricardo_opt", "mari.day", "joaoPedro22",

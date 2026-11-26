@@ -59,25 +59,16 @@ class _TradeTelaState extends State<TradeTela> {
   /// "Encontrar adversário": entra na busca da duração escolhida. Quem estiver procurando a mesma duração ao mesmo tempo se encontra e a partida começa
   /// na hora. Não há criar sala nem código: amigos se desafiam em Meus Amigos.
   Future<void> _procurar() async {
-    try {
-      final r = await widget.api.post('/trade/fila', {'corrida': _corrida});
-      if (!mounted) return;
-      Route<void> partida(String id) => MaterialPageRoute<void>(builder: (_) => PartidaTela(api: widget.api, salaId: id));
-      if (r['estado'] == 'partida') {
-        await Navigator.of(context).push(partida('${r['id']}'));
-      } else {
-        await Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => BuscaTela(
-                api: widget.api,
-                rota: '/trade/fila',
-                titulo: 'Trade Battle · Online',
-                abrir: partida,
-                )));
-      }
-      _carregar();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    }
+    Route<void> partida(String id) => MaterialPageRoute<void>(builder: (_) => PartidaTela(api: widget.api, salaId: id));
+    // a tela de busca abre NA HORA; a entrada na fila acontece dentro dela (antes o toque esperava o servidor e parecia travado)
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => BuscaTela(
+            api: widget.api,
+            rota: '/trade/fila',
+            titulo: 'Trade Battle · Online',
+            abrir: partida,
+            entrar: () => widget.api.post('/trade/fila', {'corrida': _corrida}))));
+    if (mounted) _carregar();
   }
 
   @override

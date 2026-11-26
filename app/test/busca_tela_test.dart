@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tickerhunters/api.dart';
@@ -42,6 +43,20 @@ void main() {
     await _abre(t, const Size(390, 800), _ApiFalsa([{'estado': 'partida', 'id': 'p1'}]));
     await t.pump(const Duration(seconds: 3));
     expect(find.textContaining('bot'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('com entrar: a tela abre na hora, mostra "Entrando na fila" e só depois procura', (t) async {
+    final c = Completer<Map<String, dynamic>>();
+    t.view.physicalSize = const Size(390, 800);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.resetPhysicalSize);
+    await t.pumpWidget(MaterialApp(home: BuscaTela(api: _ApiFalsa([]), rota: '/trade/fila', entrar: () => c.future)));
+    await t.pump(const Duration(milliseconds: 100));
+    expect(find.text('Entrando na fila…'), findsOneWidget);
+    c.complete({'estado': 'fila', 'id': 'x'});
+    await t.pump(const Duration(milliseconds: 100));
+    expect(find.text('Procurando um adversário…'), findsOneWidget);
     await t.pumpWidget(const SizedBox());
   });
 }
