@@ -197,6 +197,9 @@ def payload_resultado(v: dict, p: dict) -> dict | None:
     op = r.get("operacao")
     mesa = r.get("motor") == TB.MOTOR_MESA
     faixa = {True: "faixa_vitoria", False: "faixa_derrota"}.get(r.get("acertou_direcao"), "faixa_empate")
+    if mesa:                                              # na mesa quem decide é o RESULTADO das operações (antes a faixa seguia só o palpite de direção: sem palpite, sempre "empate")
+        pct = TB.retorno_pct(r)
+        faixa = "faixa_empate" if not pct else ("faixa_vitoria" if pct > 0 else "faixa_derrota")
     return {"pontos": r["pontos"], "total": p["pontos"].get(v.get("jogador"), v["pontos"]), "faixa": faixa, "acertou": r.get("acertou_direcao"),
             "executada": bool(r.get("operacoes")) if mesa else (None if op is None else bool(op["executada"])), "r": None if mesa or not op or not op.get("executada") else round(op["r"], 2),
             "n_ops": len(r.get("operacoes") or []) if mesa else None, "limite_atingido": bool(r.get("limite_atingido")) if mesa else None,
