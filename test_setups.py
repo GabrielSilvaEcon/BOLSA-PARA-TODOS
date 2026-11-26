@@ -491,6 +491,20 @@ def test_recarga_e_teto_de_ativacoes_por_jogador(jogo, monkeypatch):
     assert all(b - a >= SV.RECARGA for a, b in zip(disparos, disparos[1:]))                  # espaço mínimo entre duas ativações
 
 
+def test_marcas_levam_stop_alvo_e_protecao_so_para_o_dono(jogo, monkeypatch):
+    p, cen = jogo
+    monkeypatch.setattr(SU, "detectar", lambda sid, v: {"direcao": "alta", "stop": round(v[-1]["c"] * 0.99, 2), "alvo": round(v[-1]["c"] * 1.02, 2), "motivo": "t"})
+    tick(p, cen, T0 + SV.TB.SEG_POR_CANDLE + 0.2)
+    ev = p["setups"]["evento"]
+    assert ev
+    dono = SV.visao(p, A, T0 + 5)["marcas"][0]
+    assert dono["meu"] and dono["stop"] is not None and dono["alvo"] is not None and dono["protegido"] is None        # ainda sem decisão
+    outro = SV.visao(p, B, T0 + 5)["marcas"][0]
+    assert not outro["meu"] and "stop" not in outro and "alvo" not in outro and "protegido" not in outro               # o adversário nunca vê os níveis
+    SV.decidir(p, cen, A, True, 2, T0 + 5)
+    assert SV.visao(p, A, T0 + 6)["marcas"][0]["protegido"] is True                                                    # entrou com stop e alvo
+
+
 def test_dois_setups_equipados_sao_avaliados_cada_um_e_so_um_evento_por_vez(jogo, monkeypatch):
     p, cen = jogo
     ini = ini_de(p, cen)

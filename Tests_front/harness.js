@@ -341,4 +341,30 @@ t("estrutura da página: as divs fecham certo (uma a mais fecha o gráfico/aplic
   while ((m = re.exec(corpo))) { if (m.index < i) continue; prof += m[0] === "</div>" ? -1 : 1; if (m.index === iMesa) dentro = prof > 1; if (prof === 0) { yes(m.index > iMesa, "o app fechou antes da boleta"); break } }
   yes(dentro, "a boleta precisa estar dentro do #app");
 });
+t("setup: na janela de decisão o gráfico já marca entrada, stop e alvo do setup (só para o dono)", () => {
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h.sb.svNiveis().map(n => n.t + ":" + n.p), ["entrada:11.3", "stop:11", "alvo:11.9"]);
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 1500, restante_ms: 7500 }) }));
+  eq(h2.sb.svNiveis().length, 0, "durante a animação ainda não");
+  const h3 = carregar(); h3.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h3.sb.svNiveis().length, 0, "o adversário não vê níveis");
+});
+t("setup: depois de aceitar, enquanto a ordem está na fila, stop e alvo continuam à vista até a posição aparecer", () => {
+  const marcas = [{ id: "a", candle: 120, preco: 11.3, direcao: "alta", setup: "x", estado: "aceito", meu: true, stop: 11.0, alvo: 11.9, protegido: true }];
+  const m = mesaQtd(false); m.fila = [{ direcao: "alta", q: 100, reduz: false }];
+  const h = carregar(); h.render(args({ motor: 2, mesa: m, corrida: true, lote: 100, setup: { evento: null, marcas } }));
+  eq(h.sb.svNiveis().map(n => n.t), ["stop", "alvo"]);
+  const m2 = mesaQtd(true); m2.posicao.stop = 11.0; m2.posicao.alvo = 11.9; m2.ordens = [{ id: "stop", preco: 11.0 }, { id: "alvo", preco: 11.9 }];
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: m2, corrida: true, lote: 100, setup: { evento: null, marcas } }));
+  eq(h2.sb.svNiveis().length, 0, "com a posição já com stop e alvo, as linhas são as dela");
+});
+t("setup: entrada sem proteção (o preço já passou) avisa uma vez; a dica de arrastar não aparece quando o setup já pôs stop e alvo", () => {
+  const marcas = [{ id: "a", candle: 120, preco: 11.3, direcao: "alta", setup: "x", estado: "aceito", meu: true, stop: 11.0, alvo: 11.9, protegido: false }];
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, setup: { evento: null, marcas } }));
+  yes(h.els.dica.textContent.includes("passou do stop ou do alvo do setup"), "aviso na tela");
+  h.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, setup: { evento: null, marcas } })); yes(h.els.dica.textContent.includes("passou do stop"), "e não é trocado pela dica genérica");
+  const h2 = carregar(); const m = mesaQtd(true); m.posicao.stop = 11.0; m.posicao.alvo = 11.9;
+  h2.render(args({ motor: 2, mesa: m, corrida: true, lote: 100, setup: { evento: null, marcas: [{ ...marcas[0], protegido: true }] } }));
+  yes(!h2.els.dica.textContent.includes("Arraste a linha da entrada"), "sem a dica de arrastar");
+});
 console.log(`\n${ok} passaram, ${falhas} falharam`); process.exit(falhas ? 1 : 0);
