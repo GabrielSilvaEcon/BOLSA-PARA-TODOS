@@ -34,3 +34,8 @@ Brilho em baixa resolução pode diferir sutilmente; camada extra `#cvfxb` (mais
 
 ## Reversão
 `git revert` do commit desta etapa (reverte index.html e mesa_app.dart). Nenhum deploy realizado; aguardando autorização.
+
+## Validação final (Android)
+- `flutter test` (Flutter em /opt/flutter): **38 testes passaram**, 0 falhas.
+- **Aparelho Android real: indisponível** neste ambiente (sem adb, sem aparelho, sem SDK Android). Não foram medidos FPS/p95/travamentos, memória (inicial, destaque, após ativações, reentrada, crescimento), abertura do jogo nem teste de 10 minutos. Nenhum número do Chromium substitui isso.
+- Pendente: executar `medicao/ROTEIRO_ANDROID.md` em aparelho real com APK da branch `etapa3-grafico` e da `main`.
