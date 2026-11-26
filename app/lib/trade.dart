@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'animacoes.dart';
 import 'api.dart';
 import 'tour.dart';
-import 'navegacao.dart';
 import 'partida.dart';
 import 'sala.dart';
 import 'ticker_online.dart' show BuscaTela;
 import 'setups.dart';
-import 'social.dart' show SocialTela;
 
 /// Tela inicial do Trade Battle, montada com a arte do Gabriel: título e touro com as três durações (Rápida, Intermediária, Longa),
 /// Jogar Solo / Encontrar adversário (busca online; amigos se desafiam em Meus Amigos), ranking do jogo, "Sobre o Trade Battle" e "Como funciona".
@@ -74,9 +72,7 @@ class _TradeTelaState extends State<TradeTela> {
                 rota: '/trade/fila',
                 titulo: 'Trade Battle · Online',
                 abrir: partida,
-                avisoBot: true,
-                rotuloAlternativa: 'Treinar solo enquanto isso',
-                alternativa: () => MaterialPageRoute<void>(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida)))));
+                )));
       }
       _carregar();
     } catch (e) {
@@ -107,8 +103,6 @@ class _TradeTelaState extends State<TradeTela> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Column(children: [
                     Entrada(ordem: 2, child: _painelSetups()),
-                    const SizedBox(height: 10),
-                    Entrada(ordem: 3, child: _secundarios(ativa)),
                     const SizedBox(height: 6),
                     Entrada(ordem: 4, child: _comoFunciona()),
                     const SizedBox(height: 18),
@@ -172,50 +166,6 @@ class _TradeTelaState extends State<TradeTela> {
           ),
         ),
       );
-
-  /// Treinar sozinho e chamar um amigo (o desafio sai de Meus Amigos: cria a batalha e começa quando o amigo aceita).
-  Widget _secundarios(bool ativa) {
-    Widget botao(IconData ic, String t, VoidCallback f) => Expanded(
-          child: Pressionavel(
-            aoTocar: f,
-            child: Container(
-              height: 46,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF2F6FD0), width: 1.4),
-                color: const Color(0xCC0A1E4A),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(ic, size: 20, color: const Color(0xFFDEEBFF)),
-                const SizedBox(width: 8),
-                Flexible(child: Text(t, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white))),
-              ]),
-            ),
-          ),
-        );
-    return Row(children: [
-      Expanded(
-        child: TourAlvo(
-          id: 'trade_solo',
-          child: Row(children: [
-            botao(
-                Icons.person_rounded,
-                'Solo',
-                () => widget.jogarSolo != null
-                    ? widget.jogarSolo!(_corrida)
-                    : Navigator.of(context).push(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida)))),
-          ]),
-        ),
-      ),
-      const SizedBox(width: 8),
-      botao(Icons.group_add_rounded, 'Amigo', () async {
-        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocialTela(api: widget.api)));
-        _carregar();
-      }),
-      const SizedBox(width: 8),
-      botao(Icons.leaderboard_rounded, 'Ranking', () => abrirAba(3)),
-    ]);
-  }
 
   // ---- Meus Setups: os espaços de setup da partida. Tocar em um espaço (ou no +) abre a escolha das cartas de setup.
   Widget _painelSetups() {
