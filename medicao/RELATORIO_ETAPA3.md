@@ -34,3 +34,10 @@ Brilho em baixa resolução pode diferir sutilmente; camada extra `#cvfxb` (mais
 
 ## Reversão
 `git revert` do commit desta etapa (reverte index.html e mesa_app.dart). Nenhum deploy realizado; aguardando autorização.
+
+## Validação final (Android)
+- `flutter test`: **38 testes passaram**, 0 falhas.
+- **Aparelho Android real: não medido.** Sem FPS/p95/travamentos, memória (inicial, destaque, após ativações, reentrada, crescimento), abertura do jogo nem teste de 10 minutos. Nenhum número do Chromium substitui isso.
+- **Decisão do responsável:** o PR #162 foi mesclado sem a medição em aparelho real.
+- Para medir depois, sem computador: APKs de diagnóstico `diag-antes` e `diag-depois` (releases do GitHub, branches de mesmo nome), com teste automático da mesa e exportação do relatório. Roteiro com computador em `medicao/ROTEIRO_ANDROID.md`.
+- Reversão, se algo piorar no celular: `git revert` do merge do PR #162.
