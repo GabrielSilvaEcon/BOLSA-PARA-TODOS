@@ -1116,10 +1116,11 @@ def test_resultado_da_mesa_mostra_varias_operacoes_e_avisa_que_a_perda_pode_pass
     v = TB.visao(p, c, p["t_fase"] + 1, "ana")
     pr = G.payload_resultado(v, p)
     assert pr["executada"] and pr["n_ops"] == 3 and pr["pontos"] < 0 and pr["r"] is None and pr["faixa"]
+    assert pr["faixa"] == "faixa_derrota"                                               # três perdas: faixa de derrota (e não "empate técnico")
     assert pr["fin"]["cor"] == "down" and "3 operações" in pr["fin"]["t1"] and "pode passar de 1%" in pr["fin"]["nota"]
     assert any(t == "Operação 3" for t, _ in pr["linhas"]) and any(t == "Pontos" for t, _ in pr["linhas"])
     vb = G.payload_resultado(TB.visao(p, c, p["t_fase"] + 1, "bia"), p)
-    assert vb["executada"] is False and vb["pontos"] == 0.0
+    assert vb["executada"] is False and vb["pontos"] == 0.0 and vb["faixa"] == "faixa_empate"   # quem não operou: empate de verdade
 
 
 # ====================================================================================================================================
