@@ -91,111 +91,84 @@ class _TradeTelaState extends State<TradeTela> {
     final semGraficos = atual != null && ((atual['reais'] as num?) ?? 0) < 1;
     final ativa = _d?['ativa'] != null;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A2755),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF0A0A5A), Color(0xFF082F70), Color(0xFF05204E), Color(0xFF001738)],
-                stops: [0, 0.35, 0.7, 1],
-              ),
-            ),
-          ),
-          RefreshIndicator(
-            onRefresh: _carregar,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-                  children: [
-                    Entrada(ordem: 0, child: _hero()),
-                    if (semGraficos) _aviso(),
-                    const SizedBox(height: 4),
-                    Entrada(ordem: 1, child: _botaoBatalhar(ativa)),
+      backgroundColor: _fundo,
+      body: RefreshIndicator(
+        onRefresh: _carregar,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                Entrada(ordem: 0, child: _capa(ativa)),
+                if (semGraficos) Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: _aviso()),
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Column(children: [
+                    Entrada(ordem: 2, child: _painelSetups()),
                     const SizedBox(height: 10),
-                    Entrada(ordem: 2, child: _secundarios(ativa)),
-                    const SizedBox(height: 14),
-                    Entrada(ordem: 3, child: _painelSetups()),
-                    const SizedBox(height: 12),
-                    Entrada(ordem: 4, child: _secaoRanking()),
+                    Entrada(ordem: 3, child: _secundarios(ativa)),
                     const SizedBox(height: 6),
-                    Entrada(ordem: 5, child: _comoFunciona()),
-                    const SizedBox(height: 6),
-                    Image.asset('assets/jogos/tb_chao.webp'),
-                  ],
+                    Entrada(ordem: 4, child: _comoFunciona()),
+                    const SizedBox(height: 18),
+                  ]),
                 ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // ---- topo: o título, o lema e o touro da arte (flutuando)
-  Widget _hero() {
-    return SizedBox(
-      height: 190,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            right: -10,
-            top: 0,
-            bottom: 0,
-            child: ShaderMask(
-              shaderCallback: (r) => const LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [Color(0x00000000), Color(0xFF000000)], stops: [0, 0.3]).createShader(r),
-              blendMode: BlendMode.dstIn,
+  static const _fundo = Color(0xFF050E2C);
+
+  // ---- capa: a arte do Trade Battle (logo, touro e arena) com o botão BATALHAR hexagonal dourado sobre a base da arena
+  Widget _capa(bool ativa) {
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth;
+      final h = w * 788 / 1024;
+      final bw = (w * 0.86).clamp(0.0, 440.0);
+      return SizedBox(
+        height: h + 34,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: h,
               child: ShaderMask(
-                shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF000000), Color(0x00000000)], stops: [0.78, 1]).createShader(r),
+                shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF000000), Color(0xFF000000), Color(0x00000000)], stops: [0, 0.78, 1]).createShader(r),
                 blendMode: BlendMode.dstIn,
-                child: Flutua(altura: 3, child: Image.asset('assets/jogos/tb_touro.webp', height: 190, fit: BoxFit.fitHeight)),
+                child: Image.asset('assets/jogos/tb_capa.webp', width: w, height: h, fit: BoxFit.cover, alignment: Alignment.topCenter),
               ),
             ),
-          ),
-          Positioned(
-            left: 6,
-            top: 26,
-            right: 150,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('TRADE\nBATTLE', style: TextStyle(fontSize: 34, height: .95, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Color(0xFF4FC3FF), letterSpacing: .5)),
-                const SizedBox(height: 8),
-                Text('Estratégia, análise e grandes desafios!', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, fontStyle: FontStyle.italic, color: Colors.white.withValues(alpha: .85))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+            Positioned(left: (w - bw) / 2, width: bw, bottom: 0, height: 104, child: _botaoBatalhar(ativa)),
+          ],
+        ),
+      );
+    });
   }
 
   /// BATALHAR: procura um adversário online (1 contra 1). Se já há uma partida em andamento, volta para ela.
   Widget _botaoBatalhar(bool ativa) => Pressionavel(
         aoTocar: ativa ? () => _abrirSala('${_d!['ativa']}') : _procurar,
-        child: Container(
-          height: 92,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFFFD76A), width: 2.5),
-            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF8A5A0A), Color(0xFF3A2504), Color(0xFF6B4508)]),
-            boxShadow: const [BoxShadow(color: Color(0x99FFB300), blurRadius: 22), BoxShadow(color: Color(0x663DA0FF), blurRadius: 30, spreadRadius: 1)],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.bolt_rounded, size: 26, color: Color(0xFFFFD76A)),
-              Text(ativa ? 'VOLTAR PARA A PARTIDA' : 'BATALHAR',
-                  style: const TextStyle(fontSize: 30, height: 1.05, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Color(0xFFFFD76A), letterSpacing: .6)),
-              Text(ativa ? 'Sua batalha está em andamento' : 'PRONTO PARA O DESAFIO?', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .8)),
-            ],
+        child: CustomPaint(
+          painter: _HexDourado(),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.flash_on_rounded, size: 24, color: Color(0xFFFFE08A)),
+                Text(ativa ? 'VOLTAR PARA A PARTIDA' : 'BATALHAR',
+                    style: TextStyle(fontSize: ativa ? 19 : 32, height: 1.0, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: const Color(0xFFFFD04A), letterSpacing: .6, shadows: const [Shadow(color: Color(0xFF7A4A00), blurRadius: 6, offset: Offset(0, 2))])),
+                const SizedBox(height: 2),
+                Text(ativa ? 'SUA BATALHA ESTÁ EM ANDAMENTO' : 'PRONTO PARA O DESAFIO?', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .8)),
+              ],
+            ),
           ),
         ),
       );
@@ -206,11 +179,11 @@ class _TradeTelaState extends State<TradeTela> {
           child: Pressionavel(
             aoTocar: f,
             child: Container(
-              height: 48,
+              height: 46,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF4F88E6), width: 1.6),
-                color: const Color(0xCC0E2A58),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF2F6FD0), width: 1.4),
+                color: const Color(0xCC0A1E4A),
               ),
               child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(ic, size: 20, color: const Color(0xFFDEEBFF)),
@@ -227,7 +200,7 @@ class _TradeTelaState extends State<TradeTela> {
           child: Row(children: [
             botao(
                 Icons.person_rounded,
-                'Treinar solo',
+                'Solo',
                 () => widget.jogarSolo != null
                     ? widget.jogarSolo!(_corrida)
                     : Navigator.of(context).push(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida)))),
@@ -235,10 +208,12 @@ class _TradeTelaState extends State<TradeTela> {
         ),
       ),
       const SizedBox(width: 8),
-      botao(Icons.group_add_rounded, 'Desafiar amigo', () async {
+      botao(Icons.group_add_rounded, 'Amigo', () async {
         await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocialTela(api: widget.api)));
         _carregar();
       }),
+      const SizedBox(width: 8),
+      botao(Icons.leaderboard_rounded, 'Ranking', () => abrirAba(3)),
     ]);
   }
 
@@ -250,7 +225,8 @@ class _TradeTelaState extends State<TradeTela> {
     Widget espaco(int k) {
       final s = k < itens.length ? itens[k] : null;
       return Expanded(
-        child: Pressionavel(
+        child: SizedBox(height: 78, child: Stack(clipBehavior: Clip.none, children: [
+          Positioned.fill(child: Pressionavel(
           aoTocar: _escolher,
           child: Container(
             height: 78,
@@ -273,17 +249,22 @@ class _TradeTelaState extends State<TradeTela> {
                     Expanded(
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('${s['nome']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
-                        Container(
-                          margin: const EdgeInsets.only(top: 3),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(color: const Color(0xFF3DFFB0), borderRadius: BorderRadius.circular(6)),
-                          child: const Text('ATIVO', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Color(0xFF04281A))),
-                        ),
                       ]),
                     ),
                   ]),
           ),
-        ),
+        )),
+          if (s != null)
+            Positioned(
+              right: k < limite - 1 ? 14 : 6,
+              top: -8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+                decoration: BoxDecoration(color: const Color(0xFF1FA85A), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFF7DFFB8))),
+                child: const Text('ATIVO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white)),
+              ),
+            ),
+        ])),
       );
     }
 
@@ -292,7 +273,7 @@ class _TradeTelaState extends State<TradeTela> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0x886CA3FF)),
-        color: const Color(0xCC0B1F46),
+        color: const Color(0xE60A1A40),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -303,12 +284,12 @@ class _TradeTelaState extends State<TradeTela> {
             const Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('MEUS SETUPS', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: .4)),
-                Text('Os setups que vão atuar na sua batalha.', style: TextStyle(fontSize: 11.5, color: Color(0xFFB9D0F5))),
+                Text('Seus setups ativos e evolução.', style: TextStyle(fontSize: 11.5, color: Color(0xFFB9D0F5))),
               ]),
             ),
             Text(st == null ? '' : '${itens.length}/$limite', style: const TextStyle(color: Color(0xFFB9D0F5), fontWeight: FontWeight.w900)),
           ]),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Row(children: [for (var k = 0; k < limite; k++) espaco(k)]),
         ],
       ),
@@ -349,72 +330,6 @@ class _TradeTelaState extends State<TradeTela> {
         ],
       ),
     );
-  }
-
-  // ---- Ranking do Trade Battle: título, "Ver ranking completo", a faixa da arte e a sua posição
-  Widget _secaoRanking() {
-    final rk = _d?['ranking'] as Map?;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 16, 0, 8),
-          child: Row(
-            children: [
-              const Icon(Icons.bar_chart_rounded, size: 30, color: Color(0xFF9BBFFF)),
-              const SizedBox(width: 6),
-              const Expanded(
-                child: Text('Ranking do Trade Battle', maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-              ),
-              Pressionavel(
-                aoTocar: () => abrirAba(3),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFF6399F0), width: 1.5),
-                    color: const Color(0x660F3878),
-                  ),
-                  child: const Text('Ver ranking completo ›', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Pressionavel(
-          aoTocar: () => abrirAba(3),
-          child: Reflexo(raio: 14, atraso: const Duration(milliseconds: 900), intervalo: const Duration(milliseconds: 4600), child: Image.asset('assets/jogos/tb_ranking.webp')),
-        ),
-        if (rk != null)
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF4F88E6), width: 1.5),
-              gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1A4586), Color(0xFF0F2B55)]),
-            ),
-            child: Row(
-              children: [
-                Text('#${rk['pos']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFC93C))),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text('${rk['nome'] ?? 'Você'} · de ${rk['total']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13.8, fontWeight: FontWeight.w700, color: Color(0xFFE9F1FF))),
-                ),
-                Text(_pts(rk['valor']), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6BFF8A))),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  String _pts(Object? v) {
-    if (v is! num) return '';
-    final s = v.abs().toStringAsFixed(1).replaceAll('.', ',');
-    return '${v > 0 ? '+' : v < 0 ? '−' : ''}$s pts';
   }
 
   // ---- Como funciona (o mesmo texto do app antigo)
@@ -468,4 +383,30 @@ class _TradeTelaState extends State<TradeTela> {
       ),
     );
   }
+}
+
+
+/// Moldura hexagonal dourada do botão BATALHAR (como na arte de referência): corpo escuro com brilho, borda dourada dupla e luz azul em volta.
+class _HexDourado extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height, o = h * 0.42;
+    Path hex(double d) => Path()
+      ..moveTo(o + d, d)
+      ..lineTo(w - o - d, d)
+      ..lineTo(w - d, h / 2)
+      ..lineTo(w - o - d, h - d)
+      ..lineTo(o + d, h - d)
+      ..lineTo(d, h / 2)
+      ..close();
+    final ext = hex(2);
+    canvas.drawPath(ext, Paint()..color = const Color(0x883DA0FF)..maskFilter = const MaskFilter.blur(BlurStyle.outer, 14));
+    canvas.drawPath(ext, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFE08A), Color(0xFFB8741A), Color(0xFFFFC94A)]).createShader(Offset.zero & size));
+    final int = hex(7);
+    canvas.drawPath(int, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF7A4B08), Color(0xFF2F1B02), Color(0xFF5B3806)]).createShader(Offset.zero & size));
+    canvas.drawPath(hex(11), Paint()..style = PaintingStyle.stroke..strokeWidth = 1.6..color = const Color(0xFFFFD76A));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }
