@@ -106,11 +106,13 @@ class _AjudaTelaState extends State<AjudaTela> {
   List<Map>? _termos;
   String _q = '';
   String? _aberto;
+  String _nivel = 'iniciante';
+  int _mostrar = 40;
 
   @override
   void initState() {
     super.initState();
-    widget.api.get('/ajuda/glossario').then((r) {
+    widget.api.get('/ajuda/glossario/completo').catchError((_) => widget.api.get('/ajuda/glossario')).then((r) {
       if (mounted) setState(() => _termos = ((r['termos'] as List?) ?? const []).cast<Map>());
     }).catchError((_) {
       if (mounted) setState(() => _termos = const []);
@@ -137,7 +139,8 @@ class _AjudaTelaState extends State<AjudaTela> {
 
   @override
   Widget build(BuildContext context) {
-    final termos = (_termos ?? const <Map>[]).where((t) => _bate('${t['termo']} ${t['oque']}')).toList();
+    final todos = (_termos ?? const <Map>[]).where((t) => _bate(_textoBusca(t))).toList();
+    final termos = _q.isEmpty ? todos.take(_mostrar).toList() : todos;
     var ordem = 0;
     return Scaffold(
       backgroundColor: const Color(0xFF0A2755),
@@ -204,7 +207,7 @@ class _AjudaTelaState extends State<AjudaTela> {
                     child: Row(children: [
                       Icon(ic, color: cor, size: 20),
                       const SizedBox(width: 6),
-                      Text(secao, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
+                      Flexible(child: Text(secao, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white))),
                     ]),
                   ),
                   Entrada(
@@ -232,12 +235,17 @@ class _AjudaTelaState extends State<AjudaTela> {
                   const Icon(Icons.translate_rounded, color: Color(0xFFFFD27A), size: 20),
                   const SizedBox(width: 6),
                   const Expanded(child: Text('Glossário do investidor', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white))),
-                  if (_termos != null) Text('${termos.length} termos', style: const TextStyle(fontSize: 12, color: _lilas)),
+                  if (_termos != null) Text('${todos.length} termos', style: const TextStyle(fontSize: 12, color: _lilas)),
                 ]),
               ),
               if (_termos == null) const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
               if (_termos != null && termos.isEmpty) const Text('Nenhum termo encontrado.', style: TextStyle(color: _lilas)),
               for (final t in termos) _termo(t),
+              if (_q.isEmpty && todos.length > termos.length)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: OutlinedButton(onPressed: () => setState(() => _mostrar += 40), child: Text('Mostrar mais (${todos.length - termos.length} restantes)')),
+                ),
             ]),
           ),
         ),
@@ -266,6 +274,61 @@ class _AjudaTelaState extends State<AjudaTela> {
     );
   }
 
+  /// Texto usado na busca: nome, definição e (no glossário central) nome em português e inglês e apelidos (P/E, P/B…).
+  String _textoBusca(Map t) {
+    final c = t['central'] as Map?;
+    return '${t['termo']} ${t['definicao'] ?? t['oque'] ?? ''} ${c == null ? '' : '${c['pt']} ${c['en']} ${(c['alias'] as List?)?.join(' ') ?? ''}'}';
+  }
+
+  Widget _linha(String rotulo, String texto, {Color? cor}) => Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(rotulo, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFFFFD27A))),
+          Text(texto, style: TextStyle(fontSize: 12.5, height: 1.3, color: cor ?? Colors.white)),
+        ]),
+      );
+
+  /// Corpo do termo aberto. No glossário central, três níveis (Iniciante, Intermediário, Avançado) como no Streamlit;
+  /// nos demais, O que é, Para que serve e Fórmula.
+  List<Widget> _detalhe(Map t) {
+    final c = t['central'] as Map?;
+    if (c == null) {
+      final uso = '${t['uso'] ?? t['pra_que'] ?? ''}';
+      final formula = '${t['formula'] ?? ''}';
+      final rel = (t['relacionados'] as List?)?.join(', ') ?? '';
+      return [
+        if (uso.isNotEmpty) _linha('Para que serve', uso, cor: const Color(0xFFB8F5D6)),
+        if (formula.isNotEmpty) _linha('Fórmula', formula),
+        if (rel.isNotEmpty) _linha('Relacionados', rel),
+      ];
+    }
+    final niveis = (c['niveis'] as Map?) ?? const {};
+    final linhas = ((niveis[_nivel] as List?) ?? const []).whereType<Map>().toList();
+    return [
+      const SizedBox(height: 8),
+      Row(children: [
+        for (final n in const [('iniciante', 'Iniciante'), ('intermediario', 'Intermediário'), ('avancado', 'Avançado')])
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: ChoiceChip(
+                label: FittedBox(child: Text(n.$2, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
+                selected: _nivel == n.$1,
+                showCheckmark: false,
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                onSelected: (_) => setState(() => _nivel = n.$1),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+      ]),
+      for (final l in linhas) _linha('${l['r']}', '${l['t']}'),
+      if (((c['classes'] as List?) ?? const []).isNotEmpty) _linha('Vale para', (c['classes'] as List).join(' · '), cor: _lilas),
+      if (((c['alias'] as List?) ?? const []).isNotEmpty) _linha('Também chamado de', (c['alias'] as List).join(', '), cor: _lilas),
+    ];
+  }
+
   Widget _termo(Map t) {
     final id = 'g_${t['termo']}';
     final aberto = _aberto == id;
@@ -286,8 +349,8 @@ class _AjudaTelaState extends State<AjudaTela> {
               Expanded(child: Text('${t['termo']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFFFFE08A)))),
               Icon(aberto ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: Colors.white, size: 20),
             ]),
-            Text('${t['oque']}', style: const TextStyle(fontSize: 12.5, color: Colors.white)),
-            if (aberto) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Para que serve: ${t['pra_que']}', style: const TextStyle(fontSize: 12.5, color: Color(0xFFB8F5D6)))),
+            Text('${t['definicao'] ?? t['oque'] ?? ''}', maxLines: aberto ? null : 2, overflow: aberto ? null : TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: Colors.white)),
+            if (aberto) ..._detalhe(t),
           ]),
         ),
       ),

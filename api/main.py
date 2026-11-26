@@ -2587,6 +2587,27 @@ def ajuda_glossario(q: Quem = Depends(quem)) -> dict:
     return {"termos": [{"termo": k, "oque": v[0], "pra_que": v[1]} for k, v in sorted(GL.GLOSSARIO.items(), key=lambda x: x[0].lower())]}
 
 
+@app.get("/ajuda/glossario/completo")
+def ajuda_glossario_completo(q: Quem = Depends(quem)) -> dict:
+    """O mesmo glossário da tela Glossário do Streamlit: glossário do app + indicadores + termos extras + glossário central (nome completo,
+    níveis Iniciante/Intermediário/Avançado, fórmula, exemplo, interpretação e limitações). A rota antiga (/ajuda/glossario) continua para os apps antigos."""
+    import educacao as ED
+    import glossario as GL
+    import glossario_central as GC
+    out = []
+    for it in ED.buscar_glossario("", GL.GLOSSARIO):
+        d = {"termo": it["termo"], "definicao": it.get("definicao") or "", "uso": it.get("uso") or "", "formula": it.get("formula") or ""}
+        if it.get("relacionados"):
+            d["relacionados"] = list(it["relacionados"])
+        e = GC.achar(it["central"]) if it.get("central") else None
+        if e:
+            niveis = {m: [{"r": r, "t": t} for r, t in (GC.explicacao(e["sigla"], m) or {}).get("linhas", [])] for m in ("iniciante", "intermediario", "avancado")}
+            d["central"] = {"pt": e["pt"], "en": e["en"], "alias": list(e["alias"]),
+                            "classes": ([GC.CLASSE_ROTULO[c] for c in e["classes"]] if len(e["classes"]) < len(GC.CLASSES) else ["Todas as classes de ativos"]), "niveis": niveis}
+        out.append(d)
+    return {"termos": out}
+
+
 # ------------------------------------------------------------------ Social (atalho Amigos da aba Jogos): amigos, pedidos, classificação e desafios
 # As regras são as do app antigo (amigos.py + banco.py, seção "Amigos"): tudo parte da conta logada, a outra ponta é um hash de conta
 # (nunca o e-mail) que só o servidor resolve, e bloqueio esconde os perfis nos dois sentidos.
