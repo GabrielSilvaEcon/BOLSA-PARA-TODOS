@@ -366,7 +366,7 @@ def test_ativacao_pausa_a_partida_para_os_dois_e_o_relogio_do_replay_congela(jog
     t = T0 + 4.2
     assert tick(p, cen, t) and TB.pausada(p)
     ev = p["setups"]["evento"]
-    assert ev["prazo"] == pytest.approx(t + SV.ANIM_S + SV.JANELA_S)                       # 4 s de animação + 5 s de decisão
+    assert ev["prazo"] == pytest.approx(t + SV.ANIM_S + SV.JANELA_S)                       # 4 s de animação + a janela de decisão (19 s)
     n0 = TB.n_revelados(p, t)
     assert TB.n_revelados(p, t + 6.0) == n0                                                # o replay não anda enquanto o evento está aberto
     for jog in (A, B):                                                                       # nenhum dos dois opera durante a pausa
@@ -390,7 +390,7 @@ def test_os_dois_veem_o_evento_mas_so_o_dono_decide_e_o_adversario_nao_ve_o_stop
     assert dono["stop"] == 1.5 and dono["alvo"] == 99.0                                    # o dono vê as proteções
     assert outro["stop"] is None and outro["alvo"] is None and outro["motivo"] == ""       # o adversário não
     assert dono["restante_ms"] == outro["restante_ms"] == int((SV.ANIM_S + SV.JANELA_S - 1) * 1000)         # mesmo prazo nas duas telas (vem do servidor)
-    assert dono["anim_ms"] == 4000 and dono["janela_ms"] == 5000
+    assert dono["anim_ms"] == 4000 and dono["janela_ms"] == int(SV.JANELA_S * 1000)
     assert "equip" not in json.dumps(SV.visao(p, B, t))                                    # quem equipou o quê nunca vai para o adversário
     with pytest.raises(TB.ErroTrader, match="só quem ativou"):
         SV.decidir(p, cen, B, True, None, t + 1)
@@ -465,7 +465,7 @@ def test_decidir_depois_do_prazo_nao_executa_nada(jogo, monkeypatch):
     sempre(monkeypatch)
     t = T0 + 4.2
     tick(p, cen, t)
-    assert SV.decidir(p, cen, A, True, None, t + 20)["resultado"] == "expirado"             # o relógio é do servidor: cliente atrasado perde
+    assert SV.decidir(p, cen, A, True, None, t + SV.ANIM_S + SV.JANELA_S + 1)["resultado"] == "expirado"             # o relógio é do servidor: cliente atrasado perde
     assert not p.get("acoes") and p["setups"]["sinais"][0]["estado"] == "expirado" and not TB.pausada(p)
 
 
@@ -772,7 +772,7 @@ def test_api_solo_ativa_o_setup_equipado_pausa_e_aceitar_manda_a_ordem(cli, monk
     t["agora"] += 4.2
     v = cli.get(f"/trade/solo/{pid}").json()
     ev = v["tela"]["setup"]["evento"]
-    assert ev and ev["voce_e_dono"] and ev["pode_decidir"] and ev["janela_ms"] == 5000 and v["tela"]["pausada"]       # a partida para para quem joga
+    assert ev and ev["voce_e_dono"] and ev["pode_decidir"] and ev["janela_ms"] == int(SV.JANELA_S * 1000) and v["tela"]["pausada"]       # a partida para para quem joga
     assert cli.post(f"/trade/solo/{pid}/setup", json={"acao": "talvez"}).status_code == 400
     t["agora"] += 2
     r = cli.post(f"/trade/solo/{pid}/setup", json={"acao": "aceitar", "q": 3})
@@ -793,7 +793,7 @@ def test_api_solo_recusar_e_prazo_vencido_retomam_sem_operar(cli, monkeypatch):
     pid2, t2 = _solo_ate_ativar(cli, monkeypatch)
     t2["agora"] += 4.2
     assert cli.get(f"/trade/solo/{pid2}").json()["tela"]["setup"]["evento"]
-    t2["agora"] += 9.5                                                                                                 # ninguém respondeu: 4 s de animação + 5 s de janela
+    t2["agora"] += SV.ANIM_S + SV.JANELA_S + 0.5                                                                       # ninguém respondeu: animação + janela
     r2 = cli.get(f"/trade/solo/{pid2}").json()
     assert r2["tela"]["setup"]["evento"] is None and not r2["tela"]["pausada"] and r2["tela"]["setup"]["marcas"][0]["estado"] == "expirado"
 
@@ -911,3 +911,25 @@ def test_liberado_a_partida_usa_o_que_o_jogador_escolheu(cli, liberado, monkeypa
     pid = cli.post("/trade/solo", json={"corrida": "rapida"}).json()["id"]
     v = cli.get(f"/trade/solo/{pid}").json()
     assert v["tela"]["setup"] is not None and v["tela"]["setup"]["evento"] is None                                      # a partida nasceu com setups ligados
+
+
+def test_setup_que_ativa_com_posicao_aberta_e_ignorado_sem_pausar_e_avisa(jogo, monkeypatch):
+    """Regra do vídeo: com posição aberta (ou entrada pendente) o setup não pausa o jogo nem mexe na posição; o sinal vira aviso e não gasta o teto."""
+    p, cen = jogo
+    sempre(monkeypatch)
+    TB.registrar_acao(p, cen, A, {"aid": "m1", "tipo": "mercado", "direcao": "alta", "q": 1}, T0 + 2.1)       # já está comprado
+    tick(p, cen, T0 + 4.2)
+    s = p["setups"]
+    assert s["evento"] is None and not TB.pausada(p)                                                       # nada de pausa nem janela
+    assert [x["estado"] for x in s["sinais"] if x["jogador"] == A] == ["ignorado"]
+    assert s["n"].get(A, 0) == 0                                                                           # não gastou uma das 2 ativações
+    v = SV.visao(p, A, T0 + 5)
+    assert v["marcas"] == [] and "posição aberta" in v["avisos"][0]["texto"] and "COMPRA" in v["avisos"][0]["texto"]
+    assert SV.visao(p, B, T0 + 5)["avisos"] == []                                                          # o adversário não vê o aviso do outro
+
+
+def test_setup_livre_continua_abrindo_a_janela(jogo, monkeypatch):
+    p, cen = jogo
+    sempre(monkeypatch)
+    tick(p, cen, T0 + 4.2)
+    assert p["setups"]["evento"] is not None and TB.pausada(p)

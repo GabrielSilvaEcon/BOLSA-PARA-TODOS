@@ -492,6 +492,8 @@ def _publico(p: dict, email: str, agora: float | None = None) -> dict:
     """Só o que a camada de tela precisa do estado; nada de estratégias, desenhos ou pontos dos outros."""
     return {"id": p["id"], "tf": p["tf"], "fase": p["fase"], "t_fase": p["t_fase"], "rodada": p["rodada"], "multi": True,
             "pontos": {email: p["pontos"].get(email, 0.0)},
+            "apostas": {email: (p.get("apostas") or {}).get(email)},   # só o capital de quem pergunta: sem isso o lote caía no capital simbólico de T$ 10.000
+            "stakes": {k: v for k, v in (p.get("stakes") or {}).items() if k.endswith(f":{email}")},
             "cfg": p.get("cfg"), "pausas": p.get("pausas"),          # só tempo/configuração (nada privado): o gráfico precisa do ritmo e da pausa
             "setup": SV.visao(p, email, time.time() if agora is None else agora)}   # só o evento e as marcas dos sinais ATIVADOS, do ponto de vista de quem pergunta
 
