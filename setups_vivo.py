@@ -75,7 +75,9 @@ def _sinal(p: dict, s: dict, jog: str, sid: str, candle: int, sig: dict, preco: 
     id_ = f"{p['id']}:{n_jog}:{candle}"
     if any(x["id"] == id_ for x in s["sinais"]):
         return None
-    return {"id": id_, "jogador": jog, "setup": sid, "direcao": sig["direcao"], "candle": candle, "preco": round(float(preco), 4),
+    n_pad = (SU.PADROES.get(sid) or {}).get("n")                      # padrão de candle: quais candles o formam (a lição destaca e amplia estes)
+    pad = {"candles": list(range(candle - n_pad + 1, candle + 1))} if n_pad else None
+    return {"id": id_, "jogador": jog, "setup": sid, "direcao": sig["direcao"], "candle": candle, "preco": round(float(preco), 4), "padrao": pad,
             "stop": sig.get("stop"), "alvo": sig.get("alvo"), "motivo": sig.get("motivo", ""), "regiao": sig.get("regiao"),
             "t": float(agora), "estado": "aberto"}
 
@@ -295,6 +297,7 @@ def visao(p: dict, email: str, agora: float) -> dict | None:
                                            "assets": info.get("assets"), "provisorio": info.get("provisorio"), "resumo": info.get("resumo"), "saida": info.get("saida")},
                "dono": "Você" if dono else rot[x["jogador"]], "voce_e_dono": dono, "direcao": x["direcao"], "candle": x["candle"], "preco": x["preco"],
                "stop": x["stop"] if dono else None, "alvo": x["alvo"] if dono else None, "motivo": x["motivo"] if dono else "",
+               "padrao": ({"candles": x["padrao"]["candles"], "licao": (SU.PADROES.get(x["setup"]) or {}).get("licao")} if x.get("padrao") else None),   # a lição é para os dois: o que o adversário não vê é a região, o stop e o alvo
                "regiao": x.get("regiao") if dono else None,                  # a região que o jogador marcou: o adversário não vê onde estão as marcas dele
                "anim_ms": int(ANIM_S * 1000), "janela_ms": int(JANELA_S * 1000),
                "decorrido_ms": max(0, int((agora - ev["t_ini"]) * 1000)), "restante_ms": max(0, int((ev["prazo"] - agora) * 1000)),

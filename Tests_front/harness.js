@@ -286,9 +286,19 @@ t("setup: ENTRAR e RECUSAR mandam a decisão uma única vez (com a quantidade es
 });
 t("setup: a janela de decisão mostra 25/50/100% do capital e o risco em T$ do stop (só para o dono)", () => {
   const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) }));
-  const q = h.els["stp-q"].innerHTML; yes(q.includes('data-p="25"') && q.includes('data-p="50"') && q.includes('data-p="100"'), "três opções"); yes(q.includes("Risco no stop"), "risco em T$");
+  const q = h.els["stp-q"].innerHTML; yes(q.includes('data-p="25"') && q.includes('data-p="50"') && q.includes('data-p="100"'), "três opções"); yes(q.includes("Risco:"), "risco em T$");
   const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
   eq(h2.els["stp-q"].style.display, "none", "o adversário não vê o tamanho do outro");
+});
+t("setup de padrão: a lição (candles ampliados + ideia) aparece para o dono E para o adversário, sem região, stop ou alvo para o adversário", () => {
+  const pad = { candles: [0, 1], licao: { ideia: "Um candle de alta cobre o corpo do de baixa.", porque: "Num suporte, sinaliza reversão.", partes: ["1º candle: baixa", "2º candle: alta engole"] } };
+  const h = carregar(); h.render(args({ motor: 2, mesa: mesaQtd(true), corrida: true, lote: 100, pausada: true, setup: evSetup({ padrao: pad, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h.els["stp-lic"].style.display, "block", "lição visível para o dono"); yes(h.els["stp-lt"].innerHTML.includes("cobre o corpo"), "ideia na tela");
+  const h2 = carregar(); h2.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ padrao: pad, voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, regiao: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h2.els["stp-lic"].style.display, "block", "o adversário também aprende com o padrão"); eq(h2.els["stp-bt"].style.display, "none", "mas não opera");
+  yes(!h2.els["stp-dt"].innerHTML.includes("Stop"), "sem stop do outro");
+  const h3 = carregar(); h3.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ decorrido_ms: 4500, restante_ms: 4500 }) }));
+  eq(h3.els["stp-lic"].style.display, "none", "setup que não é padrão de candle não mostra lição");
 });
 t("setup: o adversário vê o evento mas não tem botões e não consegue decidir", () => {
   const h = carregar(); h.render(args({ motor: 2, mesa: mesaSem(), corrida: true, pausada: true, setup: evSetup({ voce_e_dono: false, dono: "Jogador 2", pode_decidir: false, stop: null, alvo: null, decorrido_ms: 4500, restante_ms: 4500 }) }));
