@@ -22,7 +22,9 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import json
 import banco
+from paralelo import paralelo
 import contas
 import educacao as ED
 import jogos as J
@@ -175,13 +177,25 @@ def _ranking_da_casa(a, email: str) -> dict:
 @app.get("/eu")
 def eu(q: Quem = Depends(quem)) -> dict:
     """O que o cabeçalho e a Home mostram: conta, perfil de jogador, carteira (caixa e patrimônio) e o placar dos jogos."""
+    with banco.pre_carregar_estados(q.email, _CHAVES_ESTADO_TELAS):       # as leituras de estado desta pessoa saem de UMA consulta
+        return _eu(q)
+
+
+# estados da pessoa que as telas iniciais leem (tudo na tabela monitor_estado): carteira (WG), perfil de jogador, placar, ordens/carteira da competição, troféus, equipados da Loja
+_CHAVES_ESTADO_TELAS = ("comp_cart", "comp_ordens", "perfil_jogador", "jogos_placar", "trofeus", "tc_equipado")
+
+
+def _eu(q: "Quem") -> dict:
     a = q.ator
+    # leituras independentes entre si: saem juntas (o tempo é o da mais lenta, não a soma). O que depende de outra coisa continua em sequência.
+    par = paralelo({"dados": lambda: banco.ler_dados(a, q.email), "moedas": lambda: TC.saldo(q.conta.get("id")),
+                    "alertas": lambda: _alertas_nao_lidos(a), "cart": lambda: TCA.situacao(q.email)})
     try:
         perfil = banco.perfil_jogador_ler(a) or {}
     except Exception:
         perfil = {}
     try:
-        cart = TCA.situacao(q.email)
+        cart = par["cart"].get()
     except Exception:
         cart = None
     try:
@@ -190,14 +204,14 @@ def eu(q: Quem = Depends(quem)) -> dict:
         placar = None
     # progresso de estudo (XP, nível, passe) e Ticker Coins: as mesmas regras do app atual, lidas do banco
     try:
-        dados = banco.ler_dados(a, q.email) or {}
+        dados = par["dados"].get() or {}
         prog = ED.normalizar(dados.get("edu_progresso"))
         xp = int(JO.resumo(prog)["xp"])
         nivel = NV.estado(xp)
     except Exception:
         prog, xp, nivel = None, None, None
     try:
-        moedas = TC.saldo(q.conta.get("id"))
+        moedas = par["moedas"].get()
     except Exception:
         moedas = None
     try:
@@ -217,7 +231,7 @@ def eu(q: Quem = Depends(quem)) -> dict:
     return {"trofeus": trofeus, "conta": {"id": q.conta.get("id"), "email": q.email, "nome": q.conta.get("nome")},
             "perfil": {k: perfil.get(k) for k in ("nome", "usuario", "avatar", "bio") if k in perfil}, "carteira": cart, "placar": placar,
             "xp": xp, "nivel": nivel, "moedas": moedas, "passe": passe, "ranking": ranking,
-            "avatar_img": _avatar_img(perfil.get("avatar")), "alertas": _alertas_nao_lidos(a)}
+            "avatar_img": _avatar_img(perfil.get("avatar")), "alertas": par["alertas"].get()}
 
 
 def _presente_setup(q: Quem) -> None:
@@ -473,7 +487,7 @@ def jogos_central(q: Quem = Depends(quem)) -> dict:
         es = {}
     pos = []
     try:
-        linhas = banco.sis_comp_todos(J.CH_PLACAR)
+        linhas = banco.sis_comp_todos(J.CH_PLACAR, cache_s=15)
         for jogo in (J.TRADE, J.TICKER):
             rk = J.montar_ranking(jogo, linhas, q.email)
             if rk and rk.get("eu"):
@@ -517,7 +531,7 @@ def trade_central(q: Quem = Depends(quem)) -> dict:
         ativa = None
     ranking = None
     try:
-        rk = J.montar_ranking(J.TRADE, banco.sis_comp_todos(J.CH_PLACAR), q.email)
+        rk = J.montar_ranking(J.TRADE, banco.sis_comp_todos(J.CH_PLACAR, cache_s=15), q.email)
         if rk and rk.get("eu"):
             ranking = {"pos": int(rk["eu"]["pos"]), "total": int(rk.get("total") or 0), "valor": float(rk["eu"].get("valor") or 0),
                        "nome": rk["eu"].get("apelido") or ""}
@@ -568,17 +582,23 @@ def loja(q: Quem = Depends(quem)) -> dict:
     from datetime import datetime, timedelta, timezone
     cid = q.conta.get("id")
     hoje = datetime.now(timezone(timedelta(hours=-3))).date()
+    # leituras independentes entre si saem juntas; o que depende de outra (status dos baús) vem depois
+    par = paralelo({"hist": lambda: TC.historico(cid, 60), "compras": lambda: TC.compras(cid), "eq": lambda: TC.equipado(q.email), "plano": lambda: _plano_de(q),
+                    "bau": lambda: TC.bau_diario(cid), "elegiveis": lambda: _baus_elegiveis(q), "totais": lambda: TC.totais(cid)})
     try:
-        s = TC.saldo(cid)
+        hist_bruto = par["hist"].get()                            # a 1ª linha (a mais nova) já traz o saldo atual: uma consulta em vez de duas
+        s = int(hist_bruto[0]["saldo_apos"]) if hist_bruto else 0
     except Exception as e:
         _erro(e, 503)
-    possui = {b["produto_id"] for b in TC.beneficios_ativos(cid)}
-    eq = TC.equipado(q.email)
-    plano = _plano_de(q)
+    todas = par["compras"].get()                                   # os pedidos são lidos UMA vez e reaproveitados (benefícios em vigor, lista de compras, "tem" de cada item)
+    ativos = TC.vigentes(todas)
+    possui = {b["produto_id"] for b in ativos}
+    eq = par["eq"].get()
+    plano = par["plano"].get()
     itens = []
     for p in TC.produtos():
         stt = VT.status(p, possui, eq, s, hoje)
-        ok = TC.pode_comprar(cid, p["id"], plano)[0]
+        ok = TC.pode_comprar(cid, p["id"], plano, ativos_ja_lidos=ativos)[0]
         if not (stt["tem"] or ok):
             continue
         kind = (p.get("efeito") or {}).get("kind")
@@ -587,17 +607,17 @@ def loja(q: Quem = Depends(quem)) -> dict:
         itens.append({"id": p["id"], "nome": p["nome"], "desc": p.get("desc") or "", "preco": int(p["preco"]), "raridade": VT.raridade(p),
                       "status": stt, "kind": kind, "equipavel": VT.equipavel(p), "em_uso": eq.get(kind) == p["id"], "previa": VT.previa(p)})
     itens.sort(key=lambda x: (x["status"]["tem"], x["preco"]))
-    bau = TC.bau_diario(cid)
+    bau = par["bau"].get()
     pend = [{"indice": i, "rotulo": el.get("rotulo", "Baú"), "raridade": el.get("raridade")}
-            for i, el in enumerate(TC.baus_status(cid, _baus_elegiveis(q))) if not el["aberto"]]
+            for i, el in enumerate(TC.baus_status(cid, par["elegiveis"].get())) if not el["aberto"]]
     compras = [{"nome": (TC.produto(x["produto_id"]) or {}).get("nome", x["produto_id"]), "preco": int(x["preco"]),
-                "quando": _fmt_quando(x["criado_em"]), "estado": TC.ROTULO_ESTADO.get(x["estado"], x["estado"])} for x in TC.compras(cid, 20)]
+                "quando": _fmt_quando(x["criado_em"]), "estado": TC.ROTULO_ESTADO.get(x["estado"], x["estado"])} for x in todas[:20]]
     hist = [{"descricao": x["descricao"] or x["origem"], "delta": int(x["delta"]), "pendente": x["estado"] == "pendente",
              "quando": _fmt_quando(x["criado_em"]), "estado": TC.ROTULO_ESTADO.get(x["estado"], x["estado"]), "saldo_apos": int(x["saldo_apos"])}
-            for x in TC.historico(cid, 60)]
+            for x in hist_bruto]
     benef = [{"nome": (TC.produto(x["produto_id"]) or {}).get("nome", x["produto_id"]),
-              "validade": "Permanente" if not x.get("expira_em") else f"até {_fmt_quando(x['expira_em'])}"} for x in TC.beneficios_ativos(cid)]
-    return {"saldo": s, "bau": bau, "baus": pend, "itens": itens, "compras": compras, "totais": TC.totais(cid), "historico": hist, "beneficios": benef}
+              "validade": "Permanente" if not x.get("expira_em") else f"até {_fmt_quando(x['expira_em'])}"} for x in ativos]
+    return {"saldo": s, "bau": bau, "baus": pend, "itens": itens, "compras": compras, "totais": par["totais"].get(), "historico": hist, "beneficios": benef}
 
 
 @app.post("/loja/bau")
@@ -667,7 +687,7 @@ def ranking(jogo: str, metrica: str = "pts", q: Quem = Depends(quem)) -> dict:
     if jogo not in J.JOGOS:
         raise HTTPException(404, "jogo desconhecido")
     try:
-        return J.montar_ranking(jogo, banco.sis_comp_todos(J.CH_PLACAR), q.email, metrica=metrica)
+        return J.montar_ranking(jogo, banco.sis_comp_todos(J.CH_PLACAR, cache_s=15), q.email, metrica=metrica)
     except ValueError as e:
         _erro(e)
 
@@ -679,7 +699,7 @@ def _rk_perfis() -> dict:
     """{email: perfil saneado} de todas as contas (uma consulta)."""
     import perfis as PF
     try:
-        return {r["email"]: PF.sanear(r["dados"]) for r in banco.sis_comp_todos("perfil_jogador")}
+        return {r["email"]: PF.sanear(r["dados"]) for r in banco.sis_comp_todos("perfil_jogador", cache_s=30)}
     except Exception:
         return {}
 
@@ -742,7 +762,7 @@ def ranking_tela(jogo: str, filtro: str = "geral", periodo: str = "geral", q: Qu
     temp = _temporada()
     linhas = []
     try:
-        for r in banco.sis_comp_todos(CHAVE_TROFEUS):
+        for r in banco.sis_comp_todos(CHAVE_TROFEUS, cache_s=15):
             d = TF.sanear(r["dados"], temp)[0]
             if (d[jogo]["t"] > 0 or any(str(x).startswith(jogo + ":") for x in d["ids"])) and ok(r["email"]):
                 linhas.append((d[jogo]["t"], r["email"]))
@@ -1043,7 +1063,7 @@ def _estado_solo(q: Quem, pid: str, d: dict, p: dict, cen: dict, marca: tuple | 
     if fim:
         res = (p.get("resultados") or {}).get(TB._chave(1, q.email))
         out["fim"] = {"resultado": res, "revelado": TB.revelacao(p, cen), "final": TB.resumo_final(p, q.email), "xp": d.get("xp_pago")}
-    return out
+    return _com_etag(out)
 
 
 class NovaPartida(BaseModel):
@@ -1074,9 +1094,51 @@ def trade_solo_nova(d: NovaPartida, q: Quem = Depends(quem)) -> dict:
     return _estado_solo(q, pid, reg, p, cen)
 
 
+# ---- Consulta INCREMENTAL da partida (Etapa 2). O servidor sempre monta o estado completo (a verdade é dele) e decide o que ENVIAR:
+#   · cliente sem parâmetros (app antigo) ........ resposta completa, igual a antes (mais o campo `e`);
+#   · `e` igual ao estado atual .................. resposta mínima {sem_mudanca, e, vol:{seg, prox_ms}} (nada de candles);
+#   · mudou, e o cliente declara `n`, `u`, `fk` ... estado completo, mas só com a CAUDA dos candles (a partir do último que o cliente tem);
+#   · qualquer divergência (candles a menos, soma diferente, outra fase/rodada, fim da partida) ... resposta completa: o cliente nunca fica com dado incompleto.
+# `e` é um hash do estado SEM os campos que mudam a cada segundo (seg, prox_ms), que vão sempre em `vol`.
+_VOLATEIS_TELA = ("seg", "prox_ms")
+
+
+def _etag_tela(tela: dict) -> str:
+    import hashlib
+    base = {k: v for k, v in tela.items() if k not in _VOLATEIS_TELA}
+    return hashlib.md5(json.dumps(base, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()[:16]
+
+
+def _soma_candle(c: dict) -> float:
+    return round(float(c.get("o", 0)) + float(c.get("h", 0)) + float(c.get("l", 0)) + float(c.get("c", 0)), 6)
+
+
+def _com_etag(out: dict) -> dict:
+    """Marca a resposta completa com a versão do estado (`e`). Respostas de jogadas também levam, para o cliente já consultar de forma incremental depois."""
+    tela = out.get("tela")
+    if isinstance(tela, dict) and out.get("fase") != "fim" and "fim" not in out and "candles" in tela:
+        out["e"] = _etag_tela(tela)
+    return out
+
+
+def _enxuga(out: dict, e: str | None, n: int | None, u: float | None, fk: str | None) -> dict:
+    tela = out.get("tela")
+    if "e" not in out or not isinstance(tela, dict):
+        return out                                                 # fim da partida e telas sem candles: sempre completo
+    et = out["e"]
+    if e and e == et:
+        return {k: out[k] for k in ("estado", "id", "fase", "e") if k in out} | {"sem_mudanca": True, "vol": {k: tela.get(k) for k in _VOLATEIS_TELA}}
+    cs = tela["candles"]
+    if n and u is not None and fk and fk == tela.get("fase_key") and 2 <= n <= len(cs) and abs(_soma_candle(cs[n - 2]) - u) < 1e-4:
+        t2 = {k: v for k, v in tela.items() if k != "candles"}
+        t2.update(candles_desde=n - 1, candles_cauda=cs[n - 1:], candles_total=len(cs))
+        return {**out, "tela": t2}
+    return out
+
+
 @app.get("/trade/solo/{pid}")
-def trade_solo_ver(pid: str, q: Quem = Depends(quem)) -> dict:
-    return _com_solo(q, pid, lambda d, p, cen, m: _estado_solo(q, pid, d, p, cen, m))
+def trade_solo_ver(pid: str, q: Quem = Depends(quem), e: str | None = None, n: int | None = None, u: float | None = None, fk: str | None = None) -> dict:
+    return _enxuga(_com_solo(q, pid, lambda d, p, cen, m: _estado_solo(q, pid, d, p, cen, m)), e, n, u, fk)
 
 
 class Estrategia(BaseModel):
@@ -1237,10 +1299,10 @@ def sala_iniciar(pid: str, q: Quem = Depends(quem)) -> dict:
 
 
 @app.get("/trade/salas/{pid}")
-def sala_ver(pid: str, q: Quem = Depends(quem)) -> dict:
+def sala_ver(pid: str, q: Quem = Depends(quem), e: str | None = None, n: int | None = None, u: float | None = None, fk: str | None = None) -> dict:
     """Sala de espera ("sala": código e jogadores), partida ("jogo": o que a mesa desenha, como na partida solo) ou "cancelada".
-    No fim: placar dos jogos e XP (uma vez por partida, como no app antigo)."""
-    return _sala_resposta(pid, q)
+    No fim: placar dos jogos e XP (uma vez por partida, como no app antigo). Parâmetros e/n/u/fk: consulta incremental (ver _enxuga)."""
+    return _enxuga(_sala_resposta(pid, q), e, n, u, fk)
 
 
 def _sala_resposta(pid: str, q: Quem, dados: dict | None = None) -> dict:
@@ -1257,7 +1319,7 @@ def _sala_resposta(pid: str, q: Quem, dados: dict | None = None) -> dict:
                       "trofeus": _trof_ultimo(q, pid),
                       # o que a tela de resultado do app lê (o mesmo da partida solo). Sem isto ela mostrava "ativo —", lucro "—", 0,0 pts e sempre "EMPATE TÉCNICO"
                       "resultado": v.get("resultado"), "revelado": v.get("revelado"), "final": v.get("final")}
-    return out
+    return _com_etag(out)
 
 
 @app.get("/trade/salas/{pid}/relatorio")
@@ -1873,21 +1935,23 @@ def _pf_colecao(q: Quem, prog: dict) -> set:
         return AV.liberados({"nivel": 1})
 
 
-def _pf_prog(q: Quem) -> dict:
+def _pf_prog(q: Quem, dados: dict | None = None) -> dict:
+    """`dados`: documento de progresso que o chamador já leu (evita ler a mesma linha duas vezes na mesma requisição)."""
     import perfis as PF
     try:
-        return PF.progresso((banco.ler_dados(q.ator, q.email) or {}).get("edu_progresso"))
+        return PF.progresso(((dados if dados is not None else banco.ler_dados(q.ator, q.email)) or {}).get("edu_progresso"))
     except Exception:
         return PF.progresso({})
 
 
-def _pf_loja(q: Quem, tipo: str) -> dict:
-    """Itens de `tipo` (moldura ou tema) que a conta possui na Loja e o equipado agora (com a prévia para desenhar)."""
+def _pf_loja(q: Quem, tipo: str, ativos: list | None = None, eq: dict | None = None) -> dict:
+    """Itens de `tipo` (moldura ou tema) que a conta possui na Loja e o equipado agora (com a prévia para desenhar).
+    `ativos`/`eq`: benefícios em vigor e equipados que o chamador já leu (o Perfil monta moldura e tema e antes lia tudo duas vezes)."""
     import loja_vitrine as VT
     try:
-        donos = {c["produto_id"] for c in TC.beneficios_ativos(q.conta.get("id"))}
+        donos = {c["produto_id"] for c in (ativos if ativos is not None else TC.beneficios_ativos(q.conta.get("id")))}
         itens = [{"id": p["id"], "nome": p["nome"], "previa": VT.previa(p)} for p in TC.produtos() if (p.get("efeito") or {}).get("kind") == tipo and p["id"] in donos]
-        return {"itens": itens, "equipado": TC.equipado(q.email).get(tipo)}
+        return {"itens": itens, "equipado": (eq if eq is not None else TC.equipado(q.email)).get(tipo)}
     except Exception:
         return {"itens": [], "equipado": None}
 
@@ -1896,6 +1960,11 @@ def _pf_loja(q: Quem, tipo: str) -> dict:
 def perfil_meu(q: Quem = Depends(quem)) -> dict:
     """Tela Meu Perfil: nome, usuário, avatar (com raridade e moldura), nível e XP, sequência, ranking, moedas, patrimônio,
     desempenho nos jogos, conquistas, bio, privacidade e o que dá para usar da Loja. Só leitura das fontes reais."""
+    with banco.pre_carregar_estados(q.email, _CHAVES_ESTADO_TELAS):       # os estados da pessoa saem de UMA consulta
+        return _perfil_meu(q)
+
+
+def _perfil_meu(q: Quem) -> dict:
     import avatares as AV
     import perfis as PF
     a = q.ator
@@ -1903,19 +1972,23 @@ def perfil_meu(q: Quem = Depends(quem)) -> dict:
         doc = PF.sanear(banco.perfil_jogador_ler(a))
     except Exception:
         doc = PF.vazio()
-    prog = _pf_prog(q)
+    try:
+        dados_edu = banco.ler_dados(a, q.email) or {}                     # lido UMA vez: serve ao progresso e à ofensiva/lições
+    except Exception:
+        dados_edu = {}
+    prog = _pf_prog(q, dados_edu)
     ne = NV.estado(prog["xp"])
     try:
         placar = J.sanear(banco.jogos_placar_ler(a))
     except Exception:
         placar = J.sanear({})
     try:
-        linhas = banco.sis_comp_todos(J.CH_PLACAR)
+        linhas = banco.sis_comp_todos(J.CH_PLACAR, cache_s=15)
         rt, rk = J.montar_ranking(J.TRADE, linhas, q.email), J.montar_ranking(J.TICKER, linhas, q.email)
     except Exception:
         rt, rk = None, None
     try:
-        res = JO.resumo(ED.normalizar((banco.ler_dados(a, q.email) or {}).get("edu_progresso")))
+        res = JO.resumo(ED.normalizar(dados_edu.get("edu_progresso")))
         ofensiva, licoes = int(res.get("ofensiva") or 0), int(res.get("licoes_feitas") or 0)
     except Exception:
         ofensiva, licoes = 0, 0
@@ -1927,6 +2000,10 @@ def perfil_meu(q: Quem = Depends(quem)) -> dict:
         pat = (TCA.situacao(q.email) or {}).get("patrimonio")
     except Exception:
         pat = None
+    try:
+        ativos_loja, eq_loja = TC.beneficios_ativos(q.conta.get("id")), TC.equipado(q.email)      # uma leitura para moldura E tema
+    except Exception:
+        ativos_loja, eq_loja = [], {}
     av = doc["avatar"] if AV.existe(doc["avatar"]) else PF.AVATAR_PADRAO
     rar = AV.RARIDADES[AV.raridade_de(av)]
     desde = str(q.conta.get("criado_em") or "")[:10]
@@ -1935,7 +2012,7 @@ def perfil_meu(q: Quem = Depends(quem)) -> dict:
             "nivel": ne, "titulo": prog["titulo"], "xp": prog["xp"], "ofensiva": ofensiva, "licoes": licoes, "moedas": moedas, "patrimonio": pat,
             "ranking": _ranking_da_casa(a, q.email), "jogos": PF.jogos(placar, rt, rk), "estat": J.estatisticas(placar),
             "conquistas": {"ok": prog["conquistas"], "total": prog["conquistas_total"], "medalhas": prog["medalhas"]},
-            "privacidade": doc["privacidade"], "moldura": _pf_loja(q, "moldura"), "tema": _pf_loja(q, "tema"),
+            "privacidade": doc["privacidade"], "moldura": _pf_loja(q, "moldura", ativos_loja, eq_loja), "tema": _pf_loja(q, "tema", ativos_loja, eq_loja),
             "opcoes": {"visivel": PF.VISIVEL, "pedidos": PF.PEDIDOS}}
 
 
@@ -2528,7 +2605,7 @@ def social(q: Quem = Depends(quem)) -> dict:
     a = q.ator
     rel = _social_erro(banco.social_relacoes, a)
     mapa = banco.sis_perfis_por_hash()
-    placares = {r["email"]: r["dados"] for r in banco.sis_comp_todos(J.CH_PLACAR)}
+    placares = {r["email"]: r["dados"] for r in banco.sis_comp_todos(J.CH_PLACAR, cache_s=15)}
     try:
         ativos = banco.sis_ativos_desde((datetime.now(timezone.utc) - timedelta(days=7)).isoformat(timespec="seconds"))
     except Exception:
@@ -2642,7 +2719,7 @@ def social_perfil(h: str, q: Quem = Depends(quem)) -> dict:
         return {**PF.restrito(doc), "h": h, "rel": alvo["rel"], "avatar_img": _avatar_img(PF.restrito(doc)["avatar"]), "restrito": True}
     prog = PF.progresso((banco.sis_dados_de(email) or {}).get("edu_progresso"))
     try:
-        placar = J.sanear(banco.sis_comp_todos(J.CH_PLACAR) and next((r["dados"] for r in banco.sis_comp_todos(J.CH_PLACAR) if r["email"] == email), None))
+        placar = J.sanear(next((r["dados"] for r in banco.sis_comp_todos(J.CH_PLACAR, cache_s=15) if r["email"] == email), None))
     except Exception:
         placar = J.sanear(None)
     pub = PF.publico(doc, "", prog, PF.jogos(placar, None, None), amigo=amigo, estat=J.estatisticas(placar)) or PF.restrito(doc)
@@ -2906,7 +2983,7 @@ def _trof_todos() -> list[tuple[str, dict]]:
     temp = _temporada()
     out = []
     try:
-        for r in banco.sis_comp_todos(CHAVE_TROFEUS):
+        for r in banco.sis_comp_todos(CHAVE_TROFEUS, cache_s=15):
             out.append((r["email"], TF.sanear(r["dados"], temp)[0]))
     except Exception:
         pass

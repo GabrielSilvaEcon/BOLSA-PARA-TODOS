@@ -596,21 +596,28 @@ def _vigente(c: dict, agora: datetime) -> bool:
     return exp is None or agora < exp
 
 
-def beneficios_ativos(conta_id: str, agora: datetime | None = None) -> list[dict]:
+def vigentes(lista: list[dict], agora: datetime | None = None) -> list[dict]:
+    """Dos pedidos já lidos (`compras`), os que estão em vigor agora. Permite ler a lista UMA vez e reaproveitá-la."""
     agora = _agora(agora)
-    return [c for c in compras(conta_id) if _vigente(c, agora)]
+    return [c for c in lista if _vigente(c, agora)]
 
 
-def pode_comprar(conta_id: str, pid: str, plano: str = "gratuito", agora: datetime | None = None) -> tuple[bool, str]:
-    """(ok, motivo). Confere disponibilidade, plano (sem cobrar por algo que o plano já cobre) e duplicidade."""
+def beneficios_ativos(conta_id: str, agora: datetime | None = None) -> list[dict]:
+    return vigentes(compras(conta_id), agora)
+
+
+def pode_comprar(conta_id: str, pid: str, plano: str = "gratuito", agora: datetime | None = None, ativos_ja_lidos: list[dict] | None = None) -> tuple[bool, str]:
+    """(ok, motivo). Confere disponibilidade, plano (sem cobrar por algo que o plano já cobre) e duplicidade.
+    `ativos_ja_lidos`: benefícios em vigor que o chamador acabou de ler (a Loja confere vários produtos de uma vez, e antes relia o banco duas vezes por produto)."""
     p = produto(pid)
     if not p or not p["ativo"]:
         return False, "Produto indisponível."
-    if not LC.na_janela(p, _agora(agora).date()) and not any(c["produto_id"] == pid for c in beneficios_ativos(conta_id, agora)):
+    todos = ativos_ja_lidos if ativos_ja_lidos is not None else beneficios_ativos(conta_id, agora)
+    if not LC.na_janela(p, _agora(agora).date()) and not any(c["produto_id"] == pid for c in todos):
         return False, f"Item de temporada: só pode ser comprado em {LC.texto_janela(p)}."
     if plano in (p.get("planos_excluidos") or []):
         return False, "Seu plano já inclui este recurso em volume maior: não precisa gastar moedas."
-    ativos = [c for c in beneficios_ativos(conta_id, agora) if c["produto_id"] == pid]
+    ativos = [c for c in todos if c["produto_id"] == pid]
     if ativos:
         return False, "Você já tem este benefício ativo." if p["validade_h"] is not None else "Você já tem este item."
     return True, ""

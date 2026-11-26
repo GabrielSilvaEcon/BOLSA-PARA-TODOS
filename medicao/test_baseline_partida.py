@@ -107,3 +107,40 @@ def test_dois_jogadores_operando_ao_mesmo_tempo(dois, monkeypatch):
     res = {"jogadas_simultaneas": len(lat), "jogada_p50_ms": round(statistics.median(lat), 1), "jogada_p95_ms": round(sorted(lat)[int(len(lat) * .95)], 1), "jogada_max_ms": round(max(lat), 1),
            "status": {str(s): status.count(s) for s in set(status)}, "conflitos_de_gravacao": c["cas_falhas"] - falhas0, "duracao_total_s": round(time.perf_counter() - t0, 2)}
     print("\nBASELINE_PARTIDA_2J " + json.dumps(res, ensure_ascii=False))
+
+
+def test_partida_completa_incremental_e_completa_lado_a_lado(dois, monkeypatch):
+    """Etapa 2: o MESMO instante consultado de duas formas (protocolo incremental × estado completo), para comparar bytes (decodificados e na rede)."""
+    from test_etapa2_desempenho import aplicar_cliente, consulta
+    ana, _ = dois
+    monkeypatch.setattr(TD, "escolher_corrida", lambda f, s, banco=None, permitir_demo=False: TD.demo_corrida(f, s))
+    t = {"agora": 6_500_000.0}
+    monkeypatch.setattr(API, "_agora", lambda: t["agora"])
+    c = _contador(monkeypatch)
+    r = ana.post("/trade/fila", json={"corrida": "rapida"}).json(); pid = r["id"]
+    t["agora"] += BOTS.BOT_ESPERA_S + 1; ana.get("/trade/fila")
+    ana.post(f"/trade/salas/{pid}/estrategia", json={"direcao": "alta"})
+    est = {"base": None, "e": None}
+    aplicar_cliente(est, ana.get(f"/trade/salas/{pid}").json())
+    inc_dec, inc_rede, cheio_dec, cheio_rede, tipos, dbs_inc, tempos = [], [], [], [], {"minima": 0, "cauda": 0, "completa": 0}, [], []
+    for k in range(1000):
+        t["agora"] += 1.0
+        c["con"] = 0; t0 = time.perf_counter()
+        x = ana.get(f"/trade/salas/{pid}", params=consulta(est)); tempos.append((time.perf_counter() - t0) * 1000); dbs_inc.append(c["con"])
+        j = x.json()
+        tipos["minima" if j.get("sem_mudanca") else ("cauda" if "candles_cauda" in (j.get("tela") or {}) else "completa")] += 1
+        inc_dec.append(len(x.content)); inc_rede.append(int(x.headers.get("content-length", len(x.content))))
+        aplicar_cliente(est, j)
+        y = ana.get(f"/trade/salas/{pid}")
+        cheio_dec.append(len(y.content)); cheio_rede.append(int(y.headers.get("content-length", len(y.content))))
+        if j.get("fase") == "fim":
+            break
+    mins = [b for b, j in zip(inc_dec, range(len(inc_dec)))]
+    res = {"consultas": len(inc_dec), "tipos_de_resposta": tipos,
+           "incremental": {"decodificado_KB_total": round(sum(inc_dec) / 1024), "rede_KB_total": round(sum(inc_rede) / 1024), "decodificado_p50_B": int(statistics.median(inc_dec)), "rede_p50_B": int(statistics.median(inc_rede)),
+                           "banco_por_consulta_p50": int(statistics.median(dbs_inc)), "processamento_p50_ms": round(statistics.median(tempos), 1)},
+           "completa": {"decodificado_KB_total": round(sum(cheio_dec) / 1024), "rede_KB_total": round(sum(cheio_rede) / 1024), "decodificado_p50_B": int(statistics.median(cheio_dec)), "rede_p50_B": int(statistics.median(cheio_rede))},
+           "reducao_decodificado_pct": round(100 * (1 - sum(inc_dec) / sum(cheio_dec)), 1), "reducao_rede_pct": round(100 * (1 - sum(inc_rede) / sum(cheio_rede)), 1), "minimas_p50_B": None}
+    minimas = [b for b in inc_dec if b < 2000]
+    res["minimas_p50_B"] = int(statistics.median(minimas)) if minimas else None
+    print("\nBASELINE_PARTIDA_INCREMENTAL " + json.dumps(res, ensure_ascii=False))

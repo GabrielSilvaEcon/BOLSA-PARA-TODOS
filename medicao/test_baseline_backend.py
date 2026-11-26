@@ -77,7 +77,7 @@ def test_rotas(cli, monkeypatch):
     instala(monkeypatch, m)
     res = {}
     for r in ROTAS:
-        tempos, internos, dbs, tdb, tam, erros, seq, par = [], [], [], [], [], 0, [], []
+        tempos, internos, dbs, tdb, tam, erros, seq, par, rede = [], [], [], [], [], 0, [], [], []
         for i in range(N + 1):
             m.zera()
             t0 = time.perf_counter()
@@ -85,16 +85,17 @@ def test_rotas(cli, monkeypatch):
                 x = cli.get(r)
                 ok = x.status_code < 400
                 n = len(x.content)
+                nr = int(x.headers.get('content-length', n))
             except Exception:
-                ok, n = False, 0
+                ok, n, nr = False, 0, 0
             t = time.perf_counter() - t0
             erros += 0 if ok else 1
             if i == 0:
                 primeira = round(t * 1000, 1)
                 continue
-            tempos.append(t * 1000); tdb.append(m.t_banco * 1000); internos.append((t - m.t_banco) * 1000); dbs.append(m.con); tam.append(n); par.append(m.max_ativos)
+            tempos.append(t * 1000); tdb.append(m.t_banco * 1000); internos.append((t - m.t_banco) * 1000); dbs.append(m.con); tam.append(n); rede.append(nr); par.append(m.max_ativos)
         res[r] = {"1a_ms": primeira, "total_p50_ms": round(statistics.median(tempos), 1), "total_p95_ms": round(pct(tempos, 95), 1), "interno_p50_ms": round(statistics.median(internos), 1),
-                  "banco_local_p50_ms": round(statistics.median(tdb), 1), "chamadas_ao_banco": int(statistics.median(dbs)), "bytes": int(statistics.median(tam)),
+                  "banco_local_p50_ms": round(statistics.median(tdb), 1), "chamadas_ao_banco": int(statistics.median(dbs)), "bytes": int(statistics.median(tam)), "bytes_na_rede": int(statistics.median(rede)),
                   "consultas_sequenciais": int(statistics.median(dbs)), "consultas_paralelas_max": max(par), "erros": erros}
     print("\nBASELINE_ROTAS " + json.dumps(res, ensure_ascii=False))
     assert all(v["erros"] == 0 for v in res.values())
