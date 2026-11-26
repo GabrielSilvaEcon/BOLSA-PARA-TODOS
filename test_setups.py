@@ -673,7 +673,9 @@ def test_api_bau_iniciante_traz_o_presente_com_aviso_no_sino_uma_vez_so(cli):
 def test_api_conta_antiga_recebe_o_presente_ao_abrir_o_app_e_conta_nova_espera_o_bau(cli):
     import battle_dados as BD
     import banco
+    import seguranca as seg
     from test_api import EU
+    banco.sis_atualizar_conta("id-" + EU, {"criado_em": seg.iso()})                                      # conta criada agora (o ajudante de teste data as contas de janeiro)
     cli.get("/eu")
     assert cli.get("/setups").json()["conquistados"] == 0                                               # ainda no tutorial: o presente vem no Baú Iniciante
     pes = BD.ler_pessoa(banco, EU)
@@ -686,6 +688,20 @@ def test_api_conta_antiga_recebe_o_presente_ao_abrir_o_app_e_conta_nova_espera_o
     cli.get("/eu")
     cli.get("/eu")
     assert cli.get("/setups").json()["conquistados"] == 1 and len([a for a in cli.get("/alertas").json()["itens"] if "Presente" in a["titulo"]]) == 1
+
+
+def test_api_conta_com_mais_de_um_dia_recebe_o_presente_mesmo_sem_ter_feito_o_tutorial(cli):
+    import banco
+    import seguranca as seg
+    from test_api import EU
+    banco.sis_atualizar_conta("id-" + EU, {"criado_em": seg.iso()})                                     # conta criada agora
+    cli.get("/eu")
+    assert cli.get("/setups").json()["conquistados"] == 0                                              # conta nova, tutorial pendente: espera o Baú Iniciante
+    banco.sis_atualizar_conta("id-" + EU, {"criado_em": "2026-01-01T00:00:00.000Z"})                   # a conta existe há meses (veio do app antigo)
+    cli.get("/eu")
+    r = cli.get("/setups").json()
+    assert [i["id"] for i in r["itens"]] == ["setup_classico"] and r["equipados"] == ["setup_classico"]
+    assert len([a for a in cli.get("/alertas").json()["itens"] if "Presente" in a["titulo"]]) == 1
 
 
 def test_presente_nao_toma_o_lugar_de_quem_ja_tem_os_dois_espacos_cheios(cli):

@@ -214,12 +214,16 @@ def eu(q: Quem = Depends(quem)) -> dict:
 
 
 def _presente_setup(q: Quem) -> None:
-    """Contas que já passaram do tutorial (as antigas) recebem o brinde do setup básico ao abrir o app, uma vez só. Quem ainda não fez o tutorial
-    recebe pelo Baú Iniciante. Qualquer falha aqui é só registrada: nunca atrapalha a abertura do app."""
+    """Contas antigas recebem o brinde do setup básico ao abrir o app, uma vez só: as que já passaram do tutorial e as que existem há mais de 1 dia
+    (inclui quem veio do app antigo e nunca fez o tutorial novo). Conta recém-criada espera o Baú Iniciante, para a revelação não se perder.
+    Qualquer falha aqui é só registrada: nunca atrapalha a abertura do app."""
     try:
         import battle_dados as BD
+        import seguranca as seg
         import setups_dados as SD
-        if BD.ler_pessoa(banco, q.email).get("tutorial_concluido"):
+        criada = seg.de_iso(q.conta.get("criado_em"))
+        antiga = bool(criada) and (seg.agora() - criada).total_seconds() > 86400
+        if antiga or BD.ler_pessoa(banco, q.email).get("tutorial_concluido"):
             SD.presente_inicial(q.email)
     except Exception as e:
         banco.registrar_erro("api.setups_presente_eu", e)
