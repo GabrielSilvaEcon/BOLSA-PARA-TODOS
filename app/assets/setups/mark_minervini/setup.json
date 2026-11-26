@@ -30,5 +30,6 @@
     "icone": null,
     "efeitos": []
   },
-  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto."
+  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto.",
+  "saida": "No alvo de 3 para 1 ou na perda do stop."
 }

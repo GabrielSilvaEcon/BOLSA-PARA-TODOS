@@ -29,5 +29,6 @@
     "icone": null,
     "efeitos": []
   },
-  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto."
+  "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto.",
+  "saida": "Na mínima (máxima) de 10 candles, ou na perda do stop de 2N."
 }
