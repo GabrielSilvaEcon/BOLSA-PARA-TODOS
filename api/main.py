@@ -1254,7 +1254,9 @@ def _sala_resposta(pid: str, q: Quem, dados: dict | None = None) -> dict:
     if p["fase"] == "fim" and v.get("final"):
         _registrar_ranking(q, pid, p, v["final"], v.get("resultado"))
         out["fim"] = {"xp": _pagar_xp(q, pid, (v["final"] or {}).get("xp") or {}), "placar": (v["final"] or {}).get("placar"),
-                      "trofeus": _trof_ultimo(q, pid)}
+                      "trofeus": _trof_ultimo(q, pid),
+                      # o que a tela de resultado do app lê (o mesmo da partida solo). Sem isto ela mostrava "ativo —", lucro "—", 0,0 pts e sempre "EMPATE TÉCNICO"
+                      "resultado": v.get("resultado"), "revelado": v.get("revelado"), "final": v.get("final")}
     return out
 
 
