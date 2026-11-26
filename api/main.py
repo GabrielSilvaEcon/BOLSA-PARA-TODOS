@@ -741,6 +741,10 @@ def ranking_tela(jogo: str, filtro: str = "geral", periodo: str = "geral", q: Qu
                 linhas.append((d[jogo]["t"], r["email"]))
     except Exception as e:
         _erro(e, 503)
+    import bots as BOTS
+    if BOTS.BOTS_ATIVOS and filtro != "amigos":              # jogadores da casa, com pontuação baixa, para o ranking não ficar vazio
+        perfis = {**perfis, **{f["chave"]: {"nome": f["nome"], "usuario": f["nome"]} for f in BOTS.fantasmas_do_ranking(jogo, temp, _agora_brt().day)}}
+        linhas += [(f["trofeus"], f["chave"]) for f in BOTS.fantasmas_do_ranking(jogo, temp, _agora_brt().day)]
     linhas.sort(key=lambda x: (-x[0], x[1]))
     saida = [_rk_linha(i, e, perfis, q.email, t, {"divisao": TF.divisao(t)}) for i, (t, e) in enumerate(linhas, 1)]
     meu = next((x for x in saida if x["eu"]), None)
@@ -1557,10 +1561,13 @@ def _tk_on_registrar(q: Quem, v: dict) -> None:
         banco.registrar_erro("api.ticker_online_placar", e)
     try:
         import battle_online_dados as BOD
-        jog = ((BOD._partida_row(v["id"]) or {}).get("dados") or {}).get("jog") or {}
+        dados = (BOD._partida_row(v["id"]) or {}).get("dados") or {}
+        jog = dados.get("jog") or {}
         outros = [(jog.get(k) or {}).get("email") for k in ("a", "b")]
+        bot = dados.get("bot")                                  # jogador da casa: vale os troféus do nível dele (sem conta, sem confronto direto)
         _trof_registrar(q, "ticker", v["id"], [e for e in outros if e and e != q.email],
-                        {"vitoria": 1.0, "empate": 0.5, "derrota": 0.0}[f["resultado"]])
+                        {"vitoria": 1.0, "empate": 0.5, "derrota": 0.0}[f["resultado"]],
+                        {bot["email"]: {"trofeus": bot["trofeus"], "nome": bot.get("nome")}} if bot else None)
     except Exception as e:
         banco.registrar_erro("api.trofeus_ticker", e)
 

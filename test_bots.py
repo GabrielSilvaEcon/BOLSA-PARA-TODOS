@@ -30,7 +30,7 @@ def test_sozinho_ate_o_tempo_a_busca_continua_e_depois_entra_um_bot_identificado
     assert r["estado"] == "fila"
     assert OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S - 1)["estado"] == "fila"          # ainda dá tempo de aparecer gente de verdade
     r2 = OL.consultar_busca(a, TS + BOTS.BOT_ESPERA_S + 0.5)
-    assert r2["estado"] == "partida" and r2["id"] == r["id"] and r2["bot"].split(" (")[0] in BOTS.NOMES and "(Normal)" in r2["bot"]
+    assert r2["estado"] == "partida" and r2["id"] == r["id"] and "bot" not in r2
     p = OL._row(r["id"])["dados"]["p"]
     bot = next(j for j in p["jogadores"] if BOTS.eh_bot(j))
     assert sorted(p["jogadores"]) == sorted([a, bot])
@@ -38,7 +38,7 @@ def test_sozinho_ate_o_tempo_a_busca_continua_e_depois_entra_um_bot_identificado
     assert TB._chave(1, bot) in p["estrategias"]                                          # o bot já confirmou a estratégia (a partida só espera o jogador)
     assert p["bots"][bot]["plano"] and p["bots"][bot]["nivel"] == "normal"                # tem plano de operações e nível de dificuldade
     assert p["bots"][bot]["trofeus"] == BOTS.trofeus_do_bot(0, BOTS.NIVEL["normal"])
-    assert TB._rotulos(p, a)[bot].startswith("Bot ")                                      # sempre identificado como bot
+    assert TB._rotulos(p, a)[bot].startswith("Jogador ")                                      # na mesa é um jogador comum
 
 
 def test_chamar_de_novo_nao_cria_outro_bot(mundo):
@@ -154,11 +154,27 @@ def test_api_busca_sem_ninguem_vira_treino_contra_bot_e_a_partida_abre(dois, mon
     assert r["estado"] == "fila"
     t["agora"] += BOTS.BOT_ESPERA_S + 1
     r2 = ana.get("/trade/fila").json()
-    assert r2["estado"] == "partida" and r2["bot"]
+    assert r2["estado"] == "partida" and "bot" not in r2
     assert ana.get(f"/trade/salas/{r['id']}").status_code == 200
     assert ana.post(f"/trade/salas/{r['id']}/estrategia", json={"direcao": "alta"}).status_code == 200      # o jogador confirma; o bot já tinha confirmado
     t["agora"] += 6
     v = ana.get(f"/trade/salas/{r['id']}")
     assert v.status_code == 200 and v.json()["tela"]["modo"] == "replay"                                   # o replay começa sem esperar mais ninguém
     rotulos = json.dumps(v.json())
-    assert "Bot 2" in rotulos and "Jogador 2" not in rotulos                                # o adversário aparece como bot
+    assert "Jogador 2" in rotulos and "Bot 2" not in rotulos                                # o adversário aparece como jogador comum
+
+
+def test_nome_do_bot_e_de_jogador_comum_e_estrategia_varia():
+    nomes = {BOTS.novo(f"p{i}", i)["nome"] for i in range(30)}
+    assert len(nomes) > 10 and not any("bot" in n.lower() for n in nomes)
+    assert BOTS.rotulo(BOTS.PREFIXO + "x") == "Jogador"
+
+
+def test_ranking_de_troféus_tem_jogadores_da_casa_com_pontuacao_baixa(dois, monkeypatch):
+    ana, _ = dois
+    for jogo in ("trade", "ticker"):
+        r = ana.get(f"/ranking/{jogo}/tela").json()
+        assert r["total"] >= 8 and max(l["valor"] for l in r["linhas"]) <= 260 and all(l["nome"] for l in r["linhas"])
+        assert ana.get(f"/ranking/{jogo}/tela", params={"filtro": "amigos"}).json()["total"] <= 2     # só amigos de verdade
+    monkeypatch.setattr(BOTS, "BOTS_ATIVOS", False)
+    assert ana.get("/ranking/trade/tela").json()["total"] <= 2

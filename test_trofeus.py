@@ -44,7 +44,7 @@ def test_partida_online_da_trofeus_e_ranking(dois):
     t = ana.get("/trofeus").json()
     assert t["jogos"]["ticker"]["t"] > 0 and t["jogos"]["ticker"]["divisao"]["nome"] == "Bronze" and len(t["divisoes"]) == 6
     rk = ana.get("/ranking/ticker/tela").json()
-    assert rk["linhas"][0]["eu"] and rk["linhas"][0]["valor"] > 0 and rk["unidade"] == "troféus"
+    assert any(l["eu"] and l["valor"] > 0 for l in rk["linhas"]) and rk["unidade"] == "troféus"
     assert [x["nome"] for x in ana.get("/ranking/ticker/tela", params={"filtro": "amigos"}).json()["linhas"]] == ["ANA_H", "BIA_H"]
     assert bia.get("/trofeus").json()["jogos"]["ticker"]["t"] == 0
     c = ana.get("/ranking/carteira/tela", params={"periodo": "mes"})

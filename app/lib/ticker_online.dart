@@ -110,7 +110,7 @@ class BuscaTela extends StatefulWidget {
   final Route<void> Function()? alternativa;
   final String? rotuloAlternativa;
 
-  /// Trade Battle: se ninguém aparecer, o servidor oferece um bot de treino. A tela avisa isso (nunca esconde que é bot).
+  /// Mantido por compatibilidade: o servidor completa a partida sozinho quando ninguém aparece (o adversário é um jogador da casa).
   final bool avisoBot;
 
   @override
@@ -152,9 +152,6 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
           _saiu = true;
           _t?.cancel();
           HapticFeedback.heavyImpact();
-          if (r['bot'] != null) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 6), content: Text('Ninguém online agora: você vai enfrentar o ${r['bot']}. A partida vale ranking e troféus.')));
-          }
           Navigator.of(context).pushReplacement(widget.abrir?.call('${r['id']}') ?? MaterialPageRoute<void>(builder: (_) => PartidaOnlineTela(api: widget.api, pid: '${r['id']}')));
         case 'expirou':
         case 'fora':
@@ -163,7 +160,7 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
         default:
           setState(() => _msg = r['reservado'] == true
               ? 'Adversário encontrado! Montando a partida…'
-              : (widget.avisoBot && _seg >= 6 ? 'Poucos jogadores online agora. Se ninguém aparecer, você enfrenta um bot (vale ranking e troféus).' : 'Procurando um adversário…'));
+              : (_seg >= 6 ? 'Ainda procurando… quase lá.' : 'Procurando um adversário…'));
       }
     } catch (_) {}
   }

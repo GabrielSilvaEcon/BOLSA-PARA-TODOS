@@ -1,17 +1,18 @@
-"""Bots de treino: adversários da casa para quando ninguém mais está procurando partida. Módulo puro (sem banco, sem rede).
+"""Jogadores da casa: adversários para quando ninguém mais está procurando partida. Módulo puro (sem banco, sem rede).
 
-Regras, para o jogador nunca ser enganado e para o ranking ficar honesto:
- · O bot é SEMPRE identificado como bot (nos rótulos da partida: "Bot 2").
- · Partida com bot CONTA para o ranking e os troféus, então o bot precisa ser um adversário de verdade: tem níveis de dificuldade (Normal, Difícil e Mestre)
-   escolhidos pelos troféus do jogador, e no ranking ele vale os troféus do jogador mais um bônus do nível (nunca é um adversário "barato").
- · Capital igual ao do jogador: a comparação é justa. O bot opera pelo mesmo sistema de ordens, com stop e alvo, sem pausar a partida (bot_jogo.py).
+Decisão do produto: eles se passam por jogadores comuns (nome de usuário normal, "Jogador N" na mesa); só o servidor sabe quem é quem (e-mail com o
+prefixo `bot:`). Partida com eles conta para ranking e troféus, então têm níveis de dificuldade (Normal, Difícil e Mestre) escolhidos pelos troféus
+do jogador, e no cálculo de troféus valem os do jogador mais um bônus do nível. Capital igual ao do jogador. No Trade Battle jogam pelo mesmo sistema
+de ordens (bot_jogo.py); no Ticker Battle jogam cartas e atributos (bot_ticker.py). Nas telas de ranking aparecem alguns com pontuação baixa.
 """
 from __future__ import annotations
 
 PREFIXO = "bot:"
 BOT_ESPERA_S = 12            # quanto a busca espera por gente de verdade antes de oferecer o bot
 BOTS_ATIVOS = True           # desligue quando houver jogadores suficientes online
-NOMES = ("Bot Touro", "Bot Urso", "Bot Candle", "Bot Tendência", "Bot Pivô")
+NOMES = ("rafa_trader", "lu.invest", "CarolBull", "pedroh78", "thi_ago", "juliana.fx", "MarcosAlves", "bia_candle", "gustavo_ti", "nanda.bolsa",
+         "dudu_swing", "FeLima", "paulo.r", "camila_trend", "vini_ações", "leo.fiis", "TaisM", "ricardo_opt", "mari.day", "joaoPedro22",
+         "Kaique_B3", "analu.trade", "betoinvest", "sofia_rm", "diegoSilva", "yasmin.t", "caio_scalp", "fer.nunes", "otavio_h", "lari.dividendos")
 
 # Níveis de dificuldade. `acerto`: chance de o bot escolher o lado certo de cada operação (ele enxerga o que o gráfico fez; o jogador não);
 # `stop_atr`/`alvo_r`: distância do stop (em ATR) e alvo (múltiplo do risco); `capital`: fração do capital usada; `trofeus`: quanto acima dos troféus do jogador
@@ -51,4 +52,27 @@ def novo(pid: str, semente: int, trofeus_jogador=0) -> dict:
 
 
 def rotulo(j: str) -> str:
-    return "Bot" if eh_bot(j) else "Jogador"
+    return "Jogador"                     # o bot não se anuncia: na mesa todo adversário é "Jogador N"
+
+
+def semente_de(txt: str) -> int:
+    import hashlib
+    return int(hashlib.sha256(str(txt).encode()).hexdigest()[:8], 16)
+
+
+def fantasmas_do_ranking(jogo: str, temporada: str, dia: int, n: int = 14, teto: int = 260) -> list[dict]:
+    """Jogadores da casa que aparecem nos rankings de troféus (Trade e Ticker) com pontuação baixa: nunca passam de `teto` (meio da Prata) e
+    sobem devagar ao longo do mês. Determinístico (mesma temporada = mesmos nomes), sem gravar nada."""
+    saida = []
+    for i in range(n):
+        h = semente_de(f"{jogo}|{temporada}|{i}")
+        nome = NOMES[h % len(NOMES)]
+        final = 15 + (h >> 8) % (teto - 15)                      # onde ele termina o mês
+        andamento = 0.35 + 0.65 * min(1.0, max(1, dia) / 28)      # começa o mês com ~35% disso
+        saida.append({"nome": nome, "trofeus": int(final * andamento), "chave": f"{PREFIXO}rk{i}"})
+    vistos, unicos = set(), []
+    for x in saida:                                              # sem nomes repetidos na mesma lista
+        if x["nome"] not in vistos:
+            vistos.add(x["nome"])
+            unicos.append(x)
+    return unicos

@@ -19,6 +19,8 @@ import secrets
 import time
 
 import banco
+import random
+
 import bot_jogo as BJ
 import bots as BOTS
 import setups_dados as SD
@@ -385,7 +387,7 @@ def _partida_com_bot(email: str, pid: str, agora: float) -> dict:
     b = next((j for j in d["sala"]["jogadores"] if BOTS.eh_bot(j["email"])), None)
     if b:
         iniciar(pid, email, agora)                                    # (o bot não tem conta: não entra em tb_jogadores, só na sala e na partida)
-        return {"estado": "partida", "id": pid, "bot": f"{b['nick']} ({BOTS.NIVEL[b['nivel']]['nome']})"}
+        return {"estado": "partida", "id": pid}
     return {"estado": "fila", "id": pid}
 
 
@@ -460,7 +462,10 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
                 nivel = BOTS.NIVEL[j["nivel"]]                            # o bot tem plano de operações e nível de dificuldade; confirma a estratégia na hora
                 plano = BJ.plano_do_bot(cen, ini_r, TB._nrp(n["p"]), nivel, int(j.get("semente") or semente))
                 n["p"].setdefault("bots", {})[j["email"]] = {"nivel": nivel["id"], "nome": j["nick"], "trofeus": int(j["trofeus"]), "plano": plano["plano"]}
-                TB.salvar_estrategia(n["p"], j["email"], {"direcao": plano["direcao"], "tipo": "continuacao"}, None, ref, agora)
+                rnd = random.Random(int(j.get("semente") or semente) + 7)
+                certo = plano["direcao"]                                  # estratégia como a de uma pessoa: tipo variado e, às vezes, o lado errado
+                lado = certo if rnd.random() < nivel["acerto"] else ("baixa" if certo == "alta" else "alta")
+                TB.salvar_estrategia(n["p"], j["email"], {"direcao": lado, "tipo": rnd.choice(("continuacao", "continuacao", "reversao", "rompimento")), "confianca": rnd.randint(2, 4)}, None, ref, agora)
             return n
         cen = TD.escolher(tf, semente, rodadas=TB.FORMATOS[formato]) if formato in TB.FORMATOS else TD.escolher(tf, semente)
         n = copy.deepcopy(d)
