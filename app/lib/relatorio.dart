@@ -19,6 +19,9 @@ class RelatorioTela extends StatefulWidget {
   final VoidCallback acao;
   final String rotuloAcao;
 
+  /// Veredito de uma partida contra outro jogador (null no treino solo): compara você com o adversário pelos pontos.
+  static (String, String, Color)? versus(List? placar) => _RelatorioTelaState.versus(placar);
+
   @override
   State<RelatorioTela> createState() => _RelatorioTelaState();
 }
@@ -46,6 +49,23 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     if (pts == 0) return ('EMPATE TÉCNICO', 'Ficou no zero a zero. A próxima desempata.', const Color(0xFFB9C4FF));
     if ((nota ?? 0) >= 70) return ('LEITURA CERTA', 'Você leu o gráfico bem; faltou a operação acompanhar.', const Color(0xFFB9C4FF));
     return ('ESSA ESCAPOU', 'Faz parte. Veja no gráfico onde o preço virou.', const Color(0xFFFF8FA3));
+  }
+
+  /// Partida contra outro jogador: o veredito compara VOCÊ com o adversário (pelos pontos, que é o que decide a classificação).
+  /// Sem adversário no placar (treino solo) devolve null e vale o veredito pela própria pontuação.
+  static (String, String, Color)? versus(List? placar) {
+    final lista = [for (final x in placar ?? const []) if (x is Map) x.cast<String, dynamic>()];
+    final eu = lista.where((x) => x['voce'] == true).firstOrNull;
+    final outros = lista.where((x) => x['voce'] != true).toList();
+    if (eu == null || outros.isEmpty) return null;
+    double pt(Map x) => (x['pontos'] as num?)?.toDouble() ?? 0;
+    String f(double v) => v.toStringAsFixed(1).replaceAll('.', ',');
+    final meu = pt(eu);
+    final melhor = outros.reduce((a, b) => pt(a) >= pt(b) ? a : b);
+    final rival = pt(melhor), nome = '${melhor['rotulo'] ?? 'o adversário'}';
+    if ((meu - rival).abs() < 0.05) return ('EMPATE', 'Vocês fizeram ${f(meu)} pontos cada. A próxima desempata.', const Color(0xFFB9C4FF));
+    if (meu > rival) return ('VOCÊ VENCEU!', 'Você fez ${f(meu)} pts contra ${f(rival)} de $nome.', const Color(0xFFFFC93C));
+    return ('$nome VENCEU'.toUpperCase(), 'Você fez ${f(meu)} pts contra ${f(rival)}. Faltaram ${f(rival - meu)} pts: a próxima é sua.', const Color(0xFFFF8FA3));
   }
 
   /// Fim da contagem dos pontos: é o auge da tela, e é onde a vibração marca o resultado.
@@ -304,7 +324,7 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
 
   /// Veredito: entra crescendo, logo acima dos pontos, no mesmo estilo da tela de troféus.
   Widget _vereditoFaixa(double pts, double? pnl, double? nota) {
-    final (titulo, sub, cor) = _veredito(pts, pnl, nota);
+    final (titulo, sub, cor) = versus(widget.fim['placar'] as List?) ?? _veredito(pts, pnl, nota);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.7, end: 1),
       duration: const Duration(milliseconds: 700),
