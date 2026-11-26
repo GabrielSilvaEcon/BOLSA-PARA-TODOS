@@ -19,6 +19,7 @@ import secrets
 import time
 
 import banco
+import bots as BOTS
 import setups_dados as SD
 import setups_vivo as SV
 import trader_battle as TB
@@ -354,12 +355,32 @@ def consultar_busca(email: str, agora: float | None = None) -> dict:
         outra = _entrar_na_mais_antiga_trocando(email, sala.get("corrida"), pid, agora, minha)
         if outra:
             return outra
+        if BOTS.BOTS_ATIVOS and agora - float(sala.get("criada") or agora) >= BOTS.BOT_ESPERA_S:
+            return _partida_com_bot(email, pid, agora)                    # ninguém apareceu: treino contra um bot (sempre identificado como bot)
         if agora - float(sala.get("visto") or 0) > 3:                  # renova a presença sem gravar a cada consulta
             def f(dd):
                 n = copy.deepcopy(dd)
                 n["sala"]["visto"] = agora
                 return n
             _mutar(pid, f, agora)
+    return {"estado": "fila", "id": pid}
+
+
+def _partida_com_bot(email: str, pid: str, agora: float) -> dict:
+    """Coloca um bot na busca do jogador e começa a partida na hora. Idempotente: se o bot já está lá, só devolve a partida."""
+    bot = BOTS.novo(pid, int(agora) % 997)
+
+    def f(d):
+        if d.get("p") or d.get("cancelada") or any(BOTS.eh_bot(j["email"]) for j in d["sala"]["jogadores"]) or len(d["sala"]["jogadores"]) != 1:
+            return d
+        n = copy.deepcopy(d)
+        n["sala"]["jogadores"].append({"email": bot["email"], "nick": bot["nome"], "em": agora, "bot": True, "setup": bot["setup"]})
+        return n
+    d = _mutar(pid, f, agora)
+    b = next((j for j in d["sala"]["jogadores"] if BOTS.eh_bot(j["email"])), None)
+    if b:
+        iniciar(pid, email, agora)                                    # (o bot não tem conta: não entra em tb_jogadores, só na sala e na partida)
+        return {"estado": "partida", "id": pid, "bot": b["nick"]}
     return {"estado": "fila", "id": pid}
 
 
@@ -419,9 +440,17 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
             cen = TD.escolher_corrida(corrida, semente)
             n = copy.deepcopy(d)
             n["cen"] = TD.referencia_corrida(cen, semente)
-            apostas = {j["email"]: _capital(j["email"], j["nick"]) for j in d["sala"]["jogadores"]}
+            apostas = {j["email"]: _capital(j["email"], j["nick"]) for j in d["sala"]["jogadores"] if not BOTS.eh_bot(j["email"])}
+            for j in d["sala"]["jogadores"]:                              # o bot joga com o MESMO capital do jogador: a comparação é justa
+                if BOTS.eh_bot(j["email"]):
+                    apostas[j["email"]] = {**next(iter(apostas.values())), "conta": ""}
             n["p"] = TB.nova_partida(cen, cen["tf"], jogs, agora, pid=pid, multi=True, apostas=apostas, corrida=corrida)
-            n["p"]["setups"] = SV.iniciar(jogs, {j: SD.equipados(j) for j in jogs})       # o setup de cada um fica congelado: trocar na central não muda esta partida
+            equip = {j["email"]: ([j["setup"]] if BOTS.eh_bot(j["email"]) else SD.equipados(j["email"])) for j in d["sala"]["jogadores"]}
+            n["p"]["setups"] = SV.iniciar(jogs, equip)                    # o setup de cada um fica congelado: trocar na central não muda esta partida
+            ref = cen["candles"][cen["n_analise"] - 1]["c"]
+            for j in jogs:
+                if BOTS.eh_bot(j):                                        # o bot "confirma" a estratégia na hora (Aguardar) e opera pelo setup dele
+                    TB.salvar_estrategia(n["p"], j, {"direcao": None, "tipo": "aguardar"}, None, ref, agora)
             return n
         cen = TD.escolher(tf, semente, rodadas=TB.FORMATOS[formato]) if formato in TB.FORMATOS else TD.escolher(tf, semente)
         n = copy.deepcopy(d)

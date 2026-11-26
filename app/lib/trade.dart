@@ -8,6 +8,7 @@ import 'partida.dart';
 import 'sala.dart';
 import 'ticker_online.dart' show BuscaTela;
 import 'setups.dart';
+import 'social.dart' show SocialTela;
 
 /// Tela inicial do Trade Battle, montada com a arte do Gabriel: título e touro com as três durações (Rápida, Intermediária, Longa),
 /// Jogar Solo / Encontrar adversário (busca online; amigos se desafiam em Meus Amigos), ranking do jogo, "Sobre o Trade Battle" e "Como funciona".
@@ -28,14 +29,14 @@ class TradeTela extends StatefulWidget {
 class _TradeTelaState extends State<TradeTela> {
   Map<String, dynamic>? _d;
   Map<String, dynamic>? _setups;
-  String _corrida = 'intermediaria';
+  /// Uma duração só: gráfico de 15 minutos (a mais curta). Todo mundo joga a mesma partida, então a busca por adversário junta mais gente.
+  static const _corrida = 'rapida';
   bool _comoAberto = false;
 
   @override
   void initState() {
     super.initState();
     Tour.evento('tela_trade');
-    if (Tour.passo.value != null) _corrida = 'rapida'; // tour guiado: a partida de treino é a mais curta
     _carregar();
   }
 
@@ -68,7 +69,14 @@ class _TradeTelaState extends State<TradeTela> {
         await Navigator.of(context).push(partida('${r['id']}'));
       } else {
         await Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => BuscaTela(api: widget.api, rota: '/trade/fila', titulo: 'Trade Battle · Online', abrir: partida)));
+            builder: (_) => BuscaTela(
+                api: widget.api,
+                rota: '/trade/fila',
+                titulo: 'Trade Battle · Online',
+                abrir: partida,
+                avisoBot: true,
+                rotuloAlternativa: 'Treinar solo enquanto isso',
+                alternativa: () => MaterialPageRoute<void>(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida)))));
       }
       _carregar();
     } catch (e) {
@@ -105,35 +113,16 @@ class _TradeTelaState extends State<TradeTela> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
                   children: [
-                    Entrada(ordem: 0, child: _cabecalho()),
-                    Entrada(ordem: 0, child: _duracoes(corridas)),
+                    Entrada(ordem: 0, child: _hero()),
                     if (semGraficos) _aviso(),
-                    const SizedBox(height: 8),
-                    Entrada(
-                      ordem: 1,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TourAlvo(id: 'trade_solo', child: _cartaoModo(
-                              'tb_solo',
-                              Duration.zero,
-                              () => widget.jogarSolo != null
-                                  ? widget.jogarSolo!(_corrida)
-                                  : Navigator.of(context).push(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida))),
-                            )),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(child: _cartaoAdversario(ativa)),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 4),
+                    Entrada(ordem: 1, child: _botaoBatalhar(ativa)),
                     const SizedBox(height: 10),
-                    Entrada(ordem: 2, child: _linhaSala(ativa)),
-                    Entrada(ordem: 3, child: _secaoRanking()),
-                    const SizedBox(height: 10),
-                    Entrada(ordem: 3, child: _secaoSetups()),
-                    const SizedBox(height: 10),
-                    Entrada(ordem: 4, child: _sobre()),
+                    Entrada(ordem: 2, child: _secundarios(ativa)),
+                    const SizedBox(height: 14),
+                    Entrada(ordem: 3, child: _painelSetups()),
+                    const SizedBox(height: 12),
+                    Entrada(ordem: 4, child: _secaoRanking()),
                     const SizedBox(height: 6),
                     Entrada(ordem: 5, child: _comoFunciona()),
                     const SizedBox(height: 6),
@@ -148,57 +137,37 @@ class _TradeTelaState extends State<TradeTela> {
     );
   }
 
-  // ---- topo: relógio, "Escolha a duração da partida" e o touro da arte (flutuando)
-  Widget _cabecalho() {
+  // ---- topo: o título, o lema e o touro da arte (flutuando)
+  Widget _hero() {
     return SizedBox(
-      height: 112,
+      height: 190,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            right: -8,
+            right: -10,
             top: 0,
             bottom: 0,
             child: ShaderMask(
-              shaderCallback: (r) => const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Color(0x00000000), Color(0xFF000000)],
-                stops: [0, 0.35],
-              ).createShader(r),
+              shaderCallback: (r) => const LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [Color(0x00000000), Color(0xFF000000)], stops: [0, 0.3]).createShader(r),
               blendMode: BlendMode.dstIn,
               child: ShaderMask(
-                shaderCallback: (r) => const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF000000), Color(0x00000000)],
-                  stops: [0.8, 1],
-                ).createShader(r),
+                shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF000000), Color(0x00000000)], stops: [0.78, 1]).createShader(r),
                 blendMode: BlendMode.dstIn,
-                child: Flutua(altura: 3, child: Image.asset('assets/jogos/tb_touro.webp', height: 112, fit: BoxFit.fitHeight)),
+                child: Flutua(altura: 3, child: Image.asset('assets/jogos/tb_touro.webp', height: 190, fit: BoxFit.fitHeight)),
               ),
             ),
           ),
           Positioned(
-            left: 2,
-            top: 20,
-            right: 120,
-            child: Row(
+            left: 6,
+            top: 26,
+            right: 150,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipOval(child: Image.asset('assets/jogos/tb_ic_relogio.webp', width: 46, height: 46, fit: BoxFit.cover)),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Escolha a duração da partida',
-                          style: TextStyle(fontSize: 17, height: 1.1, fontWeight: FontWeight.w900, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
-                      SizedBox(height: 3),
-                      Text('Defina o tempo da sua batalha!',
-                          style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Color(0xFFD4E2F7), shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)])),
-                    ],
-                  ),
-                ),
+                const Text('TRADE\nBATTLE', style: TextStyle(fontSize: 34, height: .95, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Color(0xFF4FC3FF), letterSpacing: .5)),
+                const SizedBox(height: 8),
+                Text('Estratégia, análise e grandes desafios!', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, fontStyle: FontStyle.italic, color: Colors.white.withValues(alpha: .85))),
               ],
             ),
           ),
@@ -207,180 +176,152 @@ class _TradeTelaState extends State<TradeTela> {
     );
   }
 
-  // ---- as três durações, no visual da arte (azul, dourado e roxo). A escolhida cresce, pulsa e ganha o ✓; as outras ficam mais apagadas.
-  static const _estilos = {
-    'rapida': ('tb_ic_rapida', Color(0xFF3FA2FF), [Color(0xFF2050D8), Color(0xFF141C78)]),
-    'intermediaria': ('tb_ic_inter', Color(0xFFFFC93C), [Color(0xFF5B3A16), Color(0xFF162340)]),
-    'longa': ('tb_ic_longa', Color(0xFF83ACFF), [Color(0xFF2B5FB8), Color(0xFF12356E)]),
-  };
-
-  Widget _duracoes(List<Map<String, dynamic>> corridas) {
-    if (corridas.isEmpty) return const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()));
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (final (i, c) in corridas.indexed) ...[
-            if (i > 0) const SizedBox(width: 7),
-            Expanded(child: _duracao(c)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _duracao(Map<String, dynamic> c) {
-    final id = '${c['id']}';
-    final on = id == _corrida;
-    final (arte, cor, fundo) = _estilos[id] ?? _estilos['intermediaria']!;
-    return Pressionavel(
-      aoTocar: () => setState(() => _corrida = id),
-      child: AnimatedScale(
-        scale: on ? 1.04 : 0.97,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutBack,
-        child: AnimatedOpacity(
-          opacity: on ? 1 : 0.72,
-          duration: const Duration(milliseconds: 250),
-          child: Stack(
-            clipBehavior: Clip.none,
+  /// BATALHAR: procura um adversário online (1 contra 1). Se já há uma partida em andamento, volta para ela.
+  Widget _botaoBatalhar(bool ativa) => Pressionavel(
+        aoTocar: ativa ? () => _abrirSala('${_d!['ativa']}') : _procurar,
+        child: Container(
+          height: 92,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFFFD76A), width: 2.5),
+            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF8A5A0A), Color(0xFF3A2504), Color(0xFF6B4508)]),
+            boxShadow: const [BoxShadow(color: Color(0x99FFB300), blurRadius: 22), BoxShadow(color: Color(0x663DA0FF), blurRadius: 30, spreadRadius: 1)],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                height: 128,
-                padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: cor.withValues(alpha: on ? 1 : 0.6), width: 2),
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: fundo),
-                  boxShadow: [BoxShadow(color: cor.withValues(alpha: on ? 0.55 : 0.25), blurRadius: on ? 16 : 8)],
-                ),
-                child: Column(
-                  children: [
-                    ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.asset('assets/jogos/$arte.webp', height: 46)),
-                    const SizedBox(height: 5),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('${c['rotulo']}', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w900, color: Colors.white)),
-                    ),
-                    const SizedBox(height: 1),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('Gráfico de ${c['grafico']}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFDEEBFF))),
-                    ),
-                    Text('~${c['minutos']} min', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFDEEBFF))),
-                  ],
-                ),
-              ),
-              if (on) Positioned.fill(child: IgnorePointer(child: Pulso(cor: cor, raio: 18, largura: 2.5))),
-              if (id == 'intermediaria')
-                Positioned(
-                  top: -11,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        gradient: const LinearGradient(colors: [Color(0xFFFFE08A), Color(0xFFF2B84B)]),
-                        border: Border.all(color: const Color(0xFFFFF1B8), width: 1.2),
-                        boxShadow: const [BoxShadow(color: Color(0x99F2B84B), blurRadius: 8)],
-                      ),
-                      child: const Text('Recomendado ★', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF3B2600))),
-                    ),
-                  ),
-                ),
-              if (on)
-                Positioned(
-                  right: -5,
-                  top: -7,
-                  child: TweenAnimationBuilder<double>(
-                    key: ValueKey(id),
-                    tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 500),
-                    curve: Curves.elasticOut,
-                    builder: (ctx, v, f) => Transform.scale(scale: v, child: f),
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF26D07C),
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: const [BoxShadow(color: Color(0x9926D07C), blurRadius: 8)],
-                      ),
-                      child: const Icon(Icons.check, size: 13, color: Colors.white),
-                    ),
-                  ),
-                ),
+              const Icon(Icons.bolt_rounded, size: 26, color: Color(0xFFFFD76A)),
+              Text(ativa ? 'VOLTAR PARA A PARTIDA' : 'BATALHAR',
+                  style: const TextStyle(fontSize: 30, height: 1.05, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Color(0xFFFFD76A), letterSpacing: .6)),
+              Text(ativa ? 'Sua batalha está em andamento' : 'PRONTO PARA O DESAFIO?', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .8)),
             ],
           ),
         ),
-      ),
-    );
-  }
+      );
 
-  // ---- Sobre o Trade Battle (ícones da arte)
-  Widget _sobre() {
-    const itens = [('tb_ic_jog', '2-4', 'jogadores'), ('tb_ic_graf', '15m · 1h · 1D', 'gráficos reais'), ('tb_ic_saldo', '5%', 'do saldo disponível'), ('tb_ic_xp', 'XP', 'por colocação')];
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF4F88E6), width: 2),
-        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF134188), Color(0xFF0B2C5E)]),
-        boxShadow: const [BoxShadow(color: Color(0x664F88E6), blurRadius: 14)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 8),
-            child: Row(children: [
-              Icon(Icons.star_rounded, color: Color(0xFFFFC93C), size: 24),
-              SizedBox(width: 6),
-              Text('Sobre o Trade Battle', style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
-            ]),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF082552), border: Border.all(color: const Color(0x404F88E6))),
-            child: IntrinsicHeight(
-              child: Row(
-                children: [
-                  for (final (i, (ic, b, t)) in itens.indexed) ...[
-                    if (i > 0) const VerticalDivider(width: 1, thickness: 1, color: Color(0x594F88E6)),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.asset('assets/jogos/$ic.webp', height: 34)),
-                          const SizedBox(height: 4),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(b, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Colors.white)),
-                          ),
-                          Text(t, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10.5, height: 1.2, color: Color(0xFFB5C8E6))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+  /// Treinar sozinho e chamar um amigo (o desafio sai de Meus Amigos: cria a batalha e começa quando o amigo aceita).
+  Widget _secundarios(bool ativa) {
+    Widget botao(IconData ic, String t, VoidCallback f) => Expanded(
+          child: Pressionavel(
+            aoTocar: f,
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF4F88E6), width: 1.6),
+                color: const Color(0xCC0E2A58),
               ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(ic, size: 20, color: const Color(0xFFDEEBFF)),
+                const SizedBox(width: 8),
+                Flexible(child: Text(t, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white))),
+              ]),
             ),
           ),
+        );
+    return Row(children: [
+      Expanded(
+        child: TourAlvo(
+          id: 'trade_solo',
+          child: Row(children: [
+            botao(
+                Icons.person_rounded,
+                'Treinar solo',
+                () => widget.jogarSolo != null
+                    ? widget.jogarSolo!(_corrida)
+                    : Navigator.of(context).push(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: _corrida)))),
+          ]),
+        ),
+      ),
+      const SizedBox(width: 8),
+      botao(Icons.group_add_rounded, 'Desafiar amigo', () async {
+        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocialTela(api: widget.api)));
+        _carregar();
+      }),
+    ]);
+  }
+
+  // ---- Meus Setups: os espaços de setup da partida. Tocar em um espaço (ou no +) abre a escolha das cartas de setup.
+  Widget _painelSetups() {
+    final st = _setups;
+    final itens = ((st?['itens'] as List?) ?? const []).cast<Map>().where((x) => x['equipado'] == true).map((x) => x.cast<String, dynamic>()).toList();
+    final limite = ((st?['limite'] as num?) ?? 2).toInt();
+    Widget espaco(int k) {
+      final s = k < itens.length ? itens[k] : null;
+      return Expanded(
+        child: Pressionavel(
+          aoTocar: _escolher,
+          child: Container(
+            height: 78,
+            margin: EdgeInsets.only(right: k < limite - 1 ? 8 : 0),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: s != null ? const Color(0xFF3DFFB0) : const Color(0xFF2F5FA8), width: s != null ? 2 : 1.4),
+              color: s != null ? const Color(0x331FA06C) : const Color(0x990A2250),
+            ),
+            child: s == null
+                ? const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.add_circle_outline_rounded, size: 26, color: Color(0xFF8FB4F0)),
+                    SizedBox(height: 4),
+                    Text('Escolher setup', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFB9D0F5))),
+                  ])
+                : Row(children: [
+                    Icon(iconeDoSetup('${s['id']}'), size: 28, color: const Color(0xFF3DFFB0)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${s['nome']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
+                        Container(
+                          margin: const EdgeInsets.only(top: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(color: const Color(0xFF3DFFB0), borderRadius: BorderRadius.circular(6)),
+                          child: const Text('ATIVO', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Color(0xFF04281A))),
+                        ),
+                      ]),
+                    ),
+                  ]),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0x886CA3FF)),
+        color: const Color(0xCC0B1F46),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            const Icon(Icons.gps_fixed, size: 22, color: Color(0xFFFFB300)),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('MEUS SETUPS', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: .4)),
+                Text('Os setups que vão atuar na sua batalha.', style: TextStyle(fontSize: 11.5, color: Color(0xFFB9D0F5))),
+              ]),
+            ),
+            Text(st == null ? '' : '${itens.length}/$limite', style: const TextStyle(color: Color(0xFFB9D0F5), fontWeight: FontWeight.w900)),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [for (var k = 0; k < limite; k++) espaco(k)]),
         ],
       ),
     );
   }
 
-  // ---- Jogar Solo / Jogar com Amigos: a arte inteira é o botão (afunda ao tocar) e um reflexo de luz passa de tempos em tempos
-  Widget _cartaoModo(String arte, Duration atraso, VoidCallback acao) => Pressionavel(
-        aoTocar: acao,
-        child: Reflexo(raio: 14, atraso: atraso, child: Image.asset('assets/jogos/$arte.webp')),
-      );
+  Future<void> _escolher() async {
+    await escolherSetups(context, widget.api, inicial: _setups, aoMudar: (novo) => setState(() => _setups = novo));
+    _carregar();
+  }
 
   // ---- aviso quando a duração escolhida ainda não tem gráfico real
+  // ---- aviso quando ainda não há gráfico real de 15 minutos
   Widget _aviso() {
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -398,7 +339,7 @@ class _TradeTelaState extends State<TradeTela> {
               children: [
                 Text('ⓘ Gráficos em preparação', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFFFC93C))),
                 SizedBox(height: 4),
-                Text('Os gráficos reais desta duração ainda estão sendo preparados. Tente outra duração ou volte mais tarde.',
+                Text('Os gráficos reais de 15 minutos ainda estão sendo preparados. Volte mais tarde.',
                     style: TextStyle(fontSize: 12.5, height: 1.35, color: Color(0xFFE9F1FF))),
               ],
             ),
@@ -406,105 +347,6 @@ class _TradeTelaState extends State<TradeTela> {
           const SizedBox(width: 8),
           ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.asset('assets/nav/mascote.webp', width: 70)),
         ],
-      ),
-    );
-  }
-
-  // ---- Entrar em uma Sala / Voltar para a sala (no visual da arte)
-  Widget _linhaSala(bool ativa) {
-    return Pressionavel(
-      aoTocar: ativa ? () => _abrirSala('${_d!['ativa']}') : null,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 58),
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFF4F88E6), width: 2),
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1C50A0), Color(0xFF0F3878)]),
-          boxShadow: const [BoxShadow(color: Color(0x804F88E6), blurRadius: 14)],
-        ),
-        child: Row(
-          children: [
-            Icon(ativa ? Icons.login_rounded : Icons.group_rounded, size: 30, color: const Color(0xFFDEEBFF)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(ativa ? 'Voltar para sua partida' : 'Jogar com um amigo',
-                      style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: Colors.white)),
-                  if (!ativa)
-                    const Text('Em Meus Amigos, toque em "Desafiar no Trade Battle"', style: TextStyle(fontSize: 12.2, fontWeight: FontWeight.w500, color: Color(0xFFC2DAFF))),
-                ],
-              ),
-            ),
-            if (ativa) const Icon(Icons.chevron_right_rounded, size: 30, color: Colors.white),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Encontrar adversário (no lugar do antigo "Jogar com Amigos"): desenhado em código, do mesmo tamanho das artes dos outros modos.
-  Widget _cartaoAdversario(bool ativa) => Pressionavel(
-        aoTocar: ativa ? () => _abrirSala('${_d!['ativa']}') : _procurar,
-        child: AspectRatio(
-          aspectRatio: 676 / 430,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFF26D07C), width: 2),
-              gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF14563E), Color(0xFF0B2A44)]),
-              boxShadow: const [BoxShadow(color: Color(0x6626D07C), blurRadius: 14)],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.travel_explore_rounded, size: 40, color: Color(0xFF5BF5A0)),
-                const SizedBox(height: 6),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(ativa ? 'VOLTAR PARA A PARTIDA' : 'ENCONTRAR ADVERSÁRIO',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: .4)),
-                ),
-                const SizedBox(height: 2),
-                const Text('Online · 1 contra 1', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFFBFE9D3))),
-              ],
-            ),
-          ),
-        ),
-      );
-
-  // ---- Meus Setups: atalho com o setup equipado e quantos já foram conquistados
-  Widget _secaoSetups() {
-    final st = _setups;
-    final itens = (st?['itens'] as List? ?? []).cast<Map>();
-    final eq = itens.where((x) => x['equipado'] == true).map((x) => '${x['nome']}').join(' · ');
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: () async {
-        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SetupsTela(api: widget.api)));
-        _carregar();
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 14),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: const Color(0xCC10274A), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x55FFD76A))),
-        child: Row(children: [
-          const Icon(Icons.gps_fixed, color: Color(0xFFFFD76A)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Meus Setups', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-              Text(eq.isNotEmpty ? 'Equipados: $eq' : (itens.isEmpty ? 'Ganhe cartas de setup nos baús' : 'Nenhum equipado'), style: const TextStyle(fontSize: 12.5, color: Colors.white70)),
-            ]),
-          ),
-          Text(st == null ? '' : '${itens.length}/${st['total']}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
-          const SizedBox(width: 6),
-          const Icon(Icons.chevron_right, color: Colors.white70),
-        ]),
       ),
     );
   }
@@ -607,12 +449,11 @@ class _TradeTelaState extends State<TradeTela> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Text(
                 'Você recebe o gráfico de uma ação real da B3, parado num ponto do passado, sem o nome do ativo nem a data '
-                '(eles aparecem só no fim, para ninguém pesquisar o que aconteceu depois). Escolha a duração: Rápida usa candles de 15 minutos, '
-                'Intermediária de 1 hora e Longa de 1 dia. Cada candle se forma na sua frente com os candles menores reais daquele dia '
+                '(eles aparecem só no fim, para ninguém pesquisar o que aconteceu depois). O gráfico é de candles de 15 minutos. Cada candle se forma na sua frente com os candles menores reais daquele dia '
                 '(5 minutos, ou 1 hora no gráfico diário): dá para entrar no meio do candle, no preço que estava valendo. Você tem 120 s para '
                 'analisar e montar a sua estratégia na boleta (comprar ou vender, tipo de ordem, stop, alvo e quantidade, com o risco/retorno '
-                'calculado): ao confirmar, a ordem entra sozinha no 1º preço. Sozinho, a partida começa assim que você confirma; em sala, quando '
-                'todos confirmarem. Depois o gráfico anda numa partida corrida, sem rodadas, e você opera ao vivo como num home broker: compra e '
+                'calculado): ao confirmar, a ordem entra sozinha no 1º preço. Sozinho (treino), a partida começa assim que você confirma; contra um adversário (BATALHAR procura quem estiver online, ou você desafia um amigo '
+                'em Meus Amigos), quando os dois confirmarem. Os setups que você deixar ativos em Meus Setups observam o gráfico por você. Depois o gráfico anda numa partida corrida, sem rodadas, e você opera ao vivo como num home broker: compra e '
                 'vende a quantidade de ações que quiser, aumenta ou reduz a posição, usa ordem a mercado, limite ou stop de entrada, e coloca stop '
                 'e alvo.\n\nCapital: a partida usa 5% do saldo disponível (caixa livre) da sua Carteira. O valor aplicado ao mesmo tempo nunca passa '
                 'disso: chegou ao teto, encerre ou reduza a posição para entrar de novo. A perda máxima é esse capital.\n\nExecução honesta: a ordem '

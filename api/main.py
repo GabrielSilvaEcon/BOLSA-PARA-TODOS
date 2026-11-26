@@ -866,7 +866,11 @@ def _trof_ultimo(q: "Quem", pid: str) -> dict | None:
 
 
 def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -> None:
-    """Partida terminada no placar dos jogos (a regra de só contar partida online fica em jogos.registrar_trade)."""
+    """Partida terminada no placar dos jogos (a regra de só contar partida online fica em jogos.registrar_trade).
+    Partida com BOT é treino: não conta para o ranking nem para os troféus."""
+    import bots as BOTS
+    if BOTS.tem_bot(p):
+        return
     try:
         meu = next(x for x in fz["placar"] if x["voce"])
         n = len(fz["placar"])

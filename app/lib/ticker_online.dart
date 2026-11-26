@@ -100,11 +100,18 @@ class _OnlineTelaState extends State<OnlineTela> {
 /// Procurando adversário: radar girando enquanto o servidor tenta emparelhar (a cada 2 s). Cancelar tira da fila.
 class BuscaTela extends StatefulWidget {
   /// Por padrão procura duelo do Ticker Battle; o Trade Battle usa a mesma tela com a sua rota e a sua partida (`abrir`).
-  const BuscaTela({super.key, required this.api, this.rota = '/ticker/online/fila', this.titulo = 'Duelo Online', this.abrir});
+  const BuscaTela({super.key, required this.api, this.rota = '/ticker/online/fila', this.titulo = 'Duelo Online', this.abrir, this.alternativa, this.rotuloAlternativa, this.avisoBot = false});
   final Api api;
   final String rota;
   final String titulo;
   final Route<void> Function(String id)? abrir;
+
+  /// Depois de um tempo sem ninguém, oferece outra saída (no Trade Battle: treinar solo). Cancela a busca e abre a rota devolvida.
+  final Route<void> Function()? alternativa;
+  final String? rotuloAlternativa;
+
+  /// Trade Battle: se ninguém aparecer, o servidor oferece um bot de treino. A tela avisa isso (nunca esconde que é bot).
+  final bool avisoBot;
 
   @override
   State<BuscaTela> createState() => _BuscaTelaState();
@@ -116,11 +123,15 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
   int _seg = 0;
   bool _saiu = false;
   String _msg = 'Procurando um adversário…';
+  Map<String, dynamic>? _eu;
 
   @override
   void initState() {
     super.initState();
     _t = Timer.periodic(const Duration(seconds: 2), (_) => _consultar());
+    widget.api.get('/eu').then((r) {
+      if (mounted) setState(() => _eu = r);
+    }).catchError((_) {});
   }
 
   @override
@@ -141,46 +152,95 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
           _saiu = true;
           _t?.cancel();
           HapticFeedback.heavyImpact();
+          if (r['bot'] != null) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 6), content: Text('Ninguém online agora: você vai treinar contra o ${r['bot']}. Partida de treino não vale troféus.')));
+          }
           Navigator.of(context).pushReplacement(widget.abrir?.call('${r['id']}') ?? MaterialPageRoute<void>(builder: (_) => PartidaOnlineTela(api: widget.api, pid: '${r['id']}')));
         case 'expirou':
         case 'fora':
           _t?.cancel();
           setState(() => _msg = 'Ninguém apareceu agora. Tente de novo em instantes ou desafie um amigo em Meus Amigos.');
         default:
-          setState(() => _msg = r['reservado'] == true ? 'Adversário encontrado! Montando a partida…' : 'Procurando um adversário…');
+          setState(() => _msg = r['reservado'] == true
+              ? 'Adversário encontrado! Montando a partida…'
+              : (widget.avisoBot && _seg >= 6 ? 'Poucos jogadores online agora. Se ninguém aparecer, você treina contra um bot.' : 'Procurando um adversário…'));
       }
     } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
+    final perfil = (_eu?['perfil'] as Map?) ?? const {};
+    final nome = '${perfil['usuario'] ?? perfil['nome'] ?? 'Você'}';
+    final nivel = (_eu?['nivel'] as Map?)?['nivel'];
+    final trofeus = _eu?['trofeus'];
     return _Fundo(
       titulo: widget.titulo,
-      child: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(
-            width: 220,
-            height: 220,
+      child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+        const Text('PROCURANDO\nJOGADOR', textAlign: TextAlign.center, style: TextStyle(fontSize: 30, height: 1.0, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Color(0xFF4FC3FF), letterSpacing: .5)),
+        const SizedBox(height: 10),
+        Text(_msg, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Colors.white)),
+        const SizedBox(height: 14),
+        Center(
+          child: SizedBox(
+            width: 200,
+            height: 200,
             child: AnimatedBuilder(animation: _giro, builder: (ctx, _) => CustomPaint(painter: _Radar(_giro.value))),
           ),
-          const SizedBox(height: 18),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Text(_msg, textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-          ),
-          const SizedBox(height: 6),
-          Text('${_seg ~/ 60}:${(_seg % 60).toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 14, color: lilas)),
-          const SizedBox(height: 20),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF6CA3FF))),
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.close_rounded),
-            label: const Text('Cancelar busca'),
-          ),
+        ),
+        const SizedBox(height: 6),
+        Center(child: Text('${_seg ~/ 60}:${(_seg % 60).toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 14, color: lilas))),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _jogador('VOCÊ', nome, nivel == null ? 'Nível —' : 'Nível $nivel', trofeus is num ? '$trofeus troféus' : '— troféus', const Color(0xFF4FC3FF), Icons.person_rounded)),
+          const SizedBox(width: 10),
+          Expanded(child: _jogador('JOGADOR', 'Buscando…', 'Nível ?', '??? troféus', const Color(0xFFB45CFF), Icons.help_outline_rounded)),
         ]),
-      ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x554FC3FF)), color: const Color(0x66102A5A)),
+          child: const Row(children: [
+            Icon(Icons.lightbulb_outline_rounded, size: 24, color: Color(0xFFFFD76A)),
+            SizedBox(width: 10),
+            Expanded(child: Text('Dica: quanto melhor sua análise e estratégia, maiores são suas chances de vencer o oponente!', style: TextStyle(fontSize: 12.5, height: 1.3, color: Color(0xFFCFE3FF)))),
+          ]),
+        ),
+        const SizedBox(height: 18),
+        if (widget.alternativa != null && (_seg >= 15 || !(_t?.isActive ?? false))) ...[
+          FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            onPressed: () => Navigator.of(context).pushReplacement(widget.alternativa!()),
+            icon: const Icon(Icons.person_rounded),
+            label: Text(widget.rotuloAlternativa ?? 'Jogar sozinho'),
+          ),
+          const SizedBox(height: 10),
+        ],
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48), foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFF4FC3FF), width: 1.6)),
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.close_rounded),
+          label: const Text('CANCELAR', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .6)),
+        ),
+      ]),
     );
   }
+
+  Widget _jogador(String rotulo, String nome, String nivel, String pts, Color cor, IconData ic) => Container(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: cor, width: 2), color: const Color(0xCC081A3C), boxShadow: [BoxShadow(color: cor.withValues(alpha: .4), blurRadius: 12)]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(ic, size: 22, color: cor),
+            const SizedBox(width: 6),
+            Text(rotulo, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, letterSpacing: .8, color: cor)),
+          ]),
+          const SizedBox(height: 4),
+          Text(nome, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+          Text(nivel, style: const TextStyle(fontSize: 12, color: Color(0xFFB9D0F5))),
+          Text(pts, style: const TextStyle(fontSize: 12, color: Color(0xFFFFD76A))),
+        ]),
+      );
 }
 
 class _Radar extends CustomPainter {
@@ -803,7 +863,7 @@ class _Fundo extends StatelessWidget {
           child: Column(children: [
             Row(children: [
               IconButton(onPressed: aoVoltar ?? () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
-              Text(titulo, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white)),
+              Expanded(child: Text(titulo, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white))),
             ]),
             if (acima != null) acima!,
             Expanded(child: child),

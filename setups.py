@@ -389,7 +389,9 @@ def _ler_um(pasta: str) -> dict:
     return {"id": id_, "nome": str(d["nome"]).strip(), "raridade": d["raridade"], "resumo": str(d.get("resumo") or ""),
             "caracteristicas": [str(x) for x in d.get("caracteristicas") or []], "indicadores": [str(x) for x in d.get("indicadores") or []],
             "regra": {"compra": str((d.get("regra") or {}).get("compra") or ""), "venda": str((d.get("regra") or {}).get("venda") or "")},
-            "fonte_regra": str(d.get("fonte_regra") or ""), "saida": str(d.get("saida") or ""), "cores": cores, "assets": assets, "provisorio": not (assets["carta"] and assets["ativacao"])}
+            "fonte_regra": str(d.get("fonte_regra") or ""), "saida": str(d.get("saida") or ""),
+            "tipo": str(d.get("tipo") or "estrategia"), "direcao": str(d.get("direcao") or "compra"), "regiao": str(d.get("regiao") or "Qualquer região"),
+            "subtitulo": str(d.get("subtitulo") or ""), "stop_texto": str(d.get("stop_texto") or ""), "alvo_texto": str(d.get("alvo_texto") or ""), "cores": cores, "assets": assets, "provisorio": not (assets["carta"] and assets["ativacao"])}
 
 
 @functools.lru_cache(maxsize=1)

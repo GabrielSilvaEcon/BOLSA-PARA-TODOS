@@ -31,5 +31,11 @@
     "efeitos": []
   },
   "fonte_regra": "A ativação segue o método do criador. O texto e os números da carta são só ilustrativos por enquanto.",
-  "saida": "No alvo de 3 para 1 ou na perda do stop."
+  "saida": "No alvo de 3 para 1 ou na perda do stop.",
+  "tipo": "estrategia",
+  "direcao": "compra",
+  "regiao": "Qualquer região",
+  "subtitulo": "Tendência e contração de volatilidade (VCP)",
+  "stop_texto": "No fundo da última contração (no máximo 8%)",
+  "alvo_texto": "3:1 em relação ao risco"
 }
