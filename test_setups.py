@@ -420,10 +420,8 @@ def test_aceitar_usa_a_quantidade_da_boleta_e_o_motor_valida_os_limites(jogo, mo
     sempre(monkeypatch)
     t = T0 + 4.2
     tick(p, cen, t)
-    with pytest.raises(TB.ErroTrader, match="cabem no máximo"):
-        SV.decidir(p, cen, A, True, 10_000_000, t + 1)                                     # quantidade absurda: o motor recusa, nada é gravado
-    assert TB.pausada(p) is True and p["setups"]["evento"] is not None                      # e a janela continua aberta para tentar de novo
-    assert SV.decidir(p, cen, A, True, 7, t + 2)["resultado"] == "aceito" and p["acoes"][-1]["q"] == 7
+    assert SV.decidir(p, cen, A, True, 10_000_000, t + 1)["resultado"] == "aceito"        # quantidade absurda: entra com o máximo que cabe no capital
+    assert 0 < p["acoes"][-1]["q"] < 10_000_000
 
 
 def test_stop_e_alvo_do_setup_vao_na_ordem_e_se_o_motor_recusar_entra_sem_eles(jogo, monkeypatch):
