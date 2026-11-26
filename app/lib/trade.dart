@@ -90,27 +90,27 @@ class _TradeTelaState extends State<TradeTela> {
       backgroundColor: _fundo,
       body: RefreshIndicator(
         onRefresh: _carregar,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                Entrada(ordem: 0, child: _capa(ativa)),
-                if (semGraficos) Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: _aviso()),
-                const SizedBox(height: 6),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Entrada(ordem: 0, child: _capa(ativa)),
+            if (semGraficos) Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: _aviso()))),
+            const SizedBox(height: 10),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Column(children: [
                     Entrada(ordem: 2, child: _painelSetups()),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 10),
                     Entrada(ordem: 4, child: _comoFunciona()),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 24),
                   ]),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -122,10 +122,12 @@ class _TradeTelaState extends State<TradeTela> {
   Widget _capa(bool ativa) {
     return LayoutBuilder(builder: (context, c) {
       final w = c.maxWidth;
-      final h = w * 788 / 1024;
-      final bw = (w * 0.86).clamp(0.0, 440.0);
+      final tela = MediaQuery.of(context).size.height;
+      final h = (w * 788 / 1024).clamp(0.0, tela * 0.62);          // em telas largas a arte é cortada nas laterais em vez de ficar pequena
+      final bw = (w * 0.86).clamp(0.0, 560.0);
+      final bh = (bw * 0.24).clamp(96.0, 132.0);
       return SizedBox(
-        height: h + 34,
+        height: h + bh * 0.4,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -140,7 +142,7 @@ class _TradeTelaState extends State<TradeTela> {
                 child: Image.asset('assets/jogos/tb_capa.webp', width: w, height: h, fit: BoxFit.cover, alignment: Alignment.topCenter),
               ),
             ),
-            Positioned(left: (w - bw) / 2, width: bw, bottom: 0, height: 104, child: _botaoBatalhar(ativa)),
+            Positioned(left: (w - bw) / 2, width: bw, bottom: 0, height: bh, child: _botaoBatalhar(ativa)),
           ],
         ),
       );
@@ -158,7 +160,7 @@ class _TradeTelaState extends State<TradeTela> {
               children: [
                 const Icon(Icons.flash_on_rounded, size: 24, color: Color(0xFFFFE08A)),
                 Text(ativa ? 'VOLTAR PARA A PARTIDA' : 'BATALHAR',
-                    style: TextStyle(fontSize: ativa ? 19 : 32, height: 1.0, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: const Color(0xFFFFD04A), letterSpacing: .6, shadows: const [Shadow(color: Color(0xFF7A4A00), blurRadius: 6, offset: Offset(0, 2))])),
+                    style: TextStyle(fontSize: ativa ? 20 : 34, height: 1.0, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: const Color(0xFFFFD04A), letterSpacing: .6, shadows: const [Shadow(color: Color(0xFF7A4A00), blurRadius: 6, offset: Offset(0, 2))])),
                 const SizedBox(height: 2),
                 Text(ativa ? 'SUA BATALHA ESTÁ EM ANDAMENTO' : 'PRONTO PARA O DESAFIO?', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: .8)),
               ],
