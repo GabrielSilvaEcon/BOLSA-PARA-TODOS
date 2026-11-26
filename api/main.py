@@ -2718,13 +2718,25 @@ def social_perfil(h: str, q: Quem = Depends(quem)) -> dict:
     if not alvo["completo"]:
         return {**PF.restrito(doc), "h": h, "rel": alvo["rel"], "avatar_img": _avatar_img(PF.restrito(doc)["avatar"]), "restrito": True}
     prog = PF.progresso((banco.sis_dados_de(email) or {}).get("edu_progresso"))
+    rt = rk = None
     try:
-        placar = J.sanear(next((r["dados"] for r in banco.sis_comp_todos(J.CH_PLACAR, cache_s=15) if r["email"] == email), None))
+        linhas = banco.sis_comp_todos(J.CH_PLACAR, cache_s=15)
+        placar = J.sanear(next((r["dados"] for r in linhas if r["email"] == email), None))
+        rt, rk = J.montar_ranking(J.TRADE, linhas, email), J.montar_ranking(J.TICKER, linhas, email)   # posição de quem está sendo visto (igual ao Streamlit)
     except Exception:
         placar = J.sanear(None)
-    pub = PF.publico(doc, "", prog, PF.jogos(placar, None, None), amigo=amigo, estat=J.estatisticas(placar)) or PF.restrito(doc)
+    try:
+        desde = (banco.sis_conta_por_email(email) or {}).get("criado_em")
+    except Exception:
+        desde = ""
+    pub = PF.publico(doc, desde, prog, PF.jogos(placar, rt, rk), amigo=amigo, estat=J.estatisticas(placar), historico=PF.historico_publico(placar)) or PF.restrito(doc)
     av = p["avatar"] if p["avatar"] != PF.FOTO else PF.AVATAR_PADRAO
-    return {**{k: v for k, v in pub.items() if k != "foto"}, "h": h, "rel": alvo["rel"], "avatar_img": _avatar_img(av), "restrito": False}
+    extra: dict = {}
+    if pub.get("xp") is not None:
+        import nivel as NV
+        ne = NV.estado(pub["xp"])
+        extra = {"xp_pct": ne["pct"], "xp_max": bool(ne["maximo"])}        # barra de XP do perfil (o app não recalcula nível)
+    return {**{k: v for k, v in pub.items() if k != "foto"}, **extra, "h": h, "rel": alvo["rel"], "avatar_img": _avatar_img(av), "restrito": False}
 
 
 CHAVE_DESAFIO = "dsf|{de}|{para}"       # o desafio PvP pendente de `de` para `para`: {jogo, id} da partida escondida
