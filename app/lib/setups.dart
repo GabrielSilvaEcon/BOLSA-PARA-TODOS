@@ -11,6 +11,9 @@ IconData _iconeDe(String id) => switch (id) {
       'larry_williams' => Icons.bolt,
       'turtle_trading' => Icons.waves,
       'mark_minervini' => Icons.rocket_launch,
+      'martelo' => Icons.vertical_align_bottom,
+      'engolfo_alta' => Icons.stacked_bar_chart,
+      'estrela_cadente' => Icons.star_border,
       _ => Icons.ssid_chart,
     };
 

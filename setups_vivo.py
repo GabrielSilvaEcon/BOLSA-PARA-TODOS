@@ -15,7 +15,8 @@ GARANTIAS
 ESTADO (`p["setups"]`, JSON puro)
     equip    {jogador: [até 2 ids de setups equipados], congelados quando a partida começa}      varrido  {jogador: candles fechados já avaliados}
     armado   {jogador: {setup: gatilho esperando o preço}}                                    n, ultimo  {jogador: ativações, candle da última}
-    sinais   [{id, jogador, setup, direcao, candle, preco, stop, alvo, motivo, t, estado, ...}]       evento  {sinal, t_ini, prazo} | None
+    regioes  {'rodada|jogador': [regiões de interesse marcadas na estratégia, CONGELADAS no começo do replay]}
+    sinais   [{id, jogador, setup, direcao, candle, preco, stop, alvo, motivo, regiao, t, estado, ...}]       evento  {sinal, t_ini, prazo} | None
 """
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ ESTADOS_FINAIS = ("aceito", "recusado", "expirado")
 # ------------------------------------------------------------------ começo da partida
 def iniciar(jogadores: list[str], equipados: dict) -> dict:
     """Congela os setups equipados (até 2) de cada jogador no começo da partida. `equipados` já vem validado (só as cartas que a pessoa tem)."""
-    return {"v": 1, "equip": {j: list(equipados.get(j) or []) for j in jogadores}, "varrido": {}, "armado": {}, "n": {}, "ultimo": {}, "sinais": [], "evento": None}
+    return {"v": 1, "equip": {j: list(equipados.get(j) or []) for j in jogadores}, "varrido": {}, "armado": {}, "n": {}, "ultimo": {}, "sinais": [], "evento": None, "regioes": {}}
 
 
 # ------------------------------------------------------------------ relógio e candles do replay
@@ -75,7 +76,8 @@ def _sinal(p: dict, s: dict, jog: str, sid: str, candle: int, sig: dict, preco: 
     if any(x["id"] == id_ for x in s["sinais"]):
         return None
     return {"id": id_, "jogador": jog, "setup": sid, "direcao": sig["direcao"], "candle": candle, "preco": round(float(preco), 4),
-            "stop": sig.get("stop"), "alvo": sig.get("alvo"), "motivo": sig.get("motivo", ""), "t": float(agora), "estado": "aberto"}
+            "stop": sig.get("stop"), "alvo": sig.get("alvo"), "motivo": sig.get("motivo", ""), "regiao": sig.get("regiao"),
+            "t": float(agora), "estado": "aberto"}
 
 
 def _disparar(p: dict, cen: dict, s: dict, sinal: dict, agora: float) -> bool:
@@ -126,6 +128,8 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
         ids = _equipados(s, jog)
         if not ids or s["n"].get(jog, 0) >= TETO:
             continue
+        if any(sid in SU.PADROES for sid in ids):             # cartas de padrão: congela já as regiões marcadas (não espera o 1º candle fechar)
+            _regioes(p, s, cen, jog, ini)
         armados = s["armado"].get(jog) or {}
         if "gatilho" in armados:                                     # estado de antes dos 2 espaços: descarta
             armados = {}
@@ -156,7 +160,7 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
             fechados = cen["candles"][:ini] + TB.velas_replay(cen, ini, _passos_ate(cen, m))
             candle = ini + m - 1
             for sid in ids:
-                sig = SU.detectar(sid, fechados)
+                sig = SU.detectar(sid, fechados, _regioes(p, s, cen, jog, ini)) if sid in SU.PADROES else SU.detectar(sid, fechados)
                 if not sig:
                     continue
                 if "gatilho" in sig:                                 # setup armado: só prepara; quem dispara é o preço, nos candles seguintes
@@ -169,6 +173,21 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
     if mudou:
         p["versao"] += 1
     return mudou
+
+
+def _regioes(p: dict, s: dict, cen: dict, jog: str, ini: int) -> list[dict]:
+    """As regiões de interesse do jogador nesta rodada, congeladas na primeira vez que o replay precisa delas. Vêm da estratégia (travada: o servidor
+    recusa desenho depois que a análise acaba), então nada que o jogador marque depois do início da partida entra aqui."""
+    chave = f"{p['rodada']}|{jog}"
+    cong = s.setdefault("regioes", {})
+    if chave not in cong:
+        est = p["estrategias"].get(TB._chave(p["rodada"], jog)) or {}
+        analise = cen["candles"][:ini]
+        ref = analise[-1]["c"] if analise else 0.0
+        cong[chave] = SU.regioes_das_marcas(est.get("marcas"), SU._atr(analise, 14), ref, p["id"], p["jogadores"].index(jog) + 1, p["rodada"],
+                                            est.get("salva_em") or p.get("t_fase") or 0.0)
+        p["versao"] += 1
+    return cong[chave]
 
 
 def _equipados(s: dict, jog: str) -> list:
@@ -246,6 +265,7 @@ def visao(p: dict, email: str, agora: float) -> dict | None:
                                            "assets": info.get("assets"), "provisorio": info.get("provisorio"), "resumo": info.get("resumo"), "saida": info.get("saida")},
                "dono": "Você" if dono else rot[x["jogador"]], "voce_e_dono": dono, "direcao": x["direcao"], "candle": x["candle"], "preco": x["preco"],
                "stop": x["stop"] if dono else None, "alvo": x["alvo"] if dono else None, "motivo": x["motivo"] if dono else "",
+               "regiao": x.get("regiao") if dono else None,                  # a região que o jogador marcou: o adversário não vê onde estão as marcas dele
                "anim_ms": int(ANIM_S * 1000), "janela_ms": int(JANELA_S * 1000),
                "decorrido_ms": max(0, int((agora - ev["t_ini"]) * 1000)), "restante_ms": max(0, int((ev["prazo"] - agora) * 1000)),
                "pode_decidir": bool(dono and agora < ev["prazo"])}

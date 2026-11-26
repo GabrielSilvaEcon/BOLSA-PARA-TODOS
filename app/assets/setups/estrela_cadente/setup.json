@@ -1,0 +1,35 @@
+{
+  "id": "estrela_cadente",
+  "nome": "Estrela Cadente",
+  "raridade": "comum",
+  "resumo": "Padrão de candle: possível reversão de baixa quando o preço rejeita uma resistência.",
+  "caracteristicas": [
+    "Padrão de candle · possível reversão de baixa",
+    "Gatilho: estrela cadente identificada em região de resistência marcada por você",
+    "Sombra superior de pelo menos 2x o corpo, corpo pequeno e sombra inferior curta",
+    "Fechamento na metade inferior do candle",
+    "Stop acima da máxima do padrão e alvo de 2 para 1",
+    "Funciona melhor em resistências com confirmação de volume ou tendência"
+  ],
+  "indicadores": [
+    "Corpo e sombras do candle",
+    "Região de resistência ou zona de baixa marcada por você"
+  ],
+  "regra": {
+    "compra": "Este setup só vende.",
+    "venda": "Candle fechado com sombra superior >= 2x o corpo, corpo pequeno, sombra inferior curta e fechamento na metade de baixo, com a máxima dentro de uma resistência ou zona de baixa marcadas por você. Stop acima da máxima; alvo de 2 vezes o risco."
+  },
+  "saida": "Na perda do stop ou no alvo de 2 para 1.",
+  "cores": {
+    "principal": "#38B6FF",
+    "brilho": "#BFE6FF"
+  },
+  "fonte_regra": "A ativação exige o padrão de candle FECHADO dentro de uma região de interesse que você marcou na estratégia, antes da partida (suporte ou zona de alta para comprar; resistência ou zona de baixa para vender). Sem região marcada, a carta não ativa.",
+  "assets": {
+    "carta": null,
+    "ativacao": null,
+    "moldura": null,
+    "icone": null,
+    "efeitos": []
+  }
+}

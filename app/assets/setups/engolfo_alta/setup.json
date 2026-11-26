@@ -1,0 +1,35 @@
+{
+  "id": "engolfo_alta",
+  "nome": "Engolfo de Alta",
+  "raridade": "rara",
+  "resumo": "Padrão de candle: possível reversão de alta quando um candle de alta engole o anterior em um suporte.",
+  "caracteristicas": [
+    "Padrão de candle · possível reversão de alta",
+    "Gatilho: engolfo de alta identificado em região de suporte marcada por você",
+    "Candle anterior de baixa e atual de alta, com o corpo atual envolvendo todo o corpo anterior",
+    "Só confirma depois do fechamento do segundo candle",
+    "Stop abaixo da menor mínima dos dois candles e alvo de 2 para 1",
+    "Funciona melhor em suportes com confirmação de volume ou tendência"
+  ],
+  "indicadores": [
+    "Corpos dos dois últimos candles",
+    "Região de suporte ou zona de alta marcada por você"
+  ],
+  "regra": {
+    "compra": "Dois candles fechados: um de baixa e depois um de alta cujo corpo envolve por completo o anterior, com a menor mínima dentro de um suporte ou zona de alta marcados por você. Stop abaixo da menor mínima; alvo de 2 vezes o risco.",
+    "venda": "Este setup só compra."
+  },
+  "saida": "Na perda do stop ou no alvo de 2 para 1.",
+  "cores": {
+    "principal": "#FF4D6D",
+    "brilho": "#FFC2CC"
+  },
+  "fonte_regra": "A ativação exige o padrão de candle FECHADO dentro de uma região de interesse que você marcou na estratégia, antes da partida (suporte ou zona de alta para comprar; resistência ou zona de baixa para vender). Sem região marcada, a carta não ativa.",
+  "assets": {
+    "carta": null,
+    "ativacao": null,
+    "moldura": null,
+    "icone": null,
+    "efeitos": []
+  }
+}
