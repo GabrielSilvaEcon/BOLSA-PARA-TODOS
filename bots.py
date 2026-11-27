@@ -12,7 +12,10 @@ BOT_ESPERA_S = 7             # quanto a busca espera por gente de verdade antes 
 BOTS_ATIVOS = True           # desligue quando houver jogadores suficientes online
 NOMES = ("rafa_trader", "lu.invest", "CarolBull", "pedroh78", "thi_ago", "juliana.fx", "MarcosAlves", "bia_candle", "gustavo_ti", "nanda.bolsa",
          "dudu_swing", "FeLima", "paulo.r", "camila_trend", "vini_ações", "leo.fiis", "TaisM", "ricardo_opt", "mari.day", "joaoPedro22",
-         "Kaique_B3", "analu.trade", "betoinvest", "sofia_rm", "diegoSilva", "yasmin.t", "caio_scalp", "fer.nunes", "otavio_h", "lari.dividendos")
+         "Kaique_B3", "analu.trade", "betoinvest", "sofia_rm", "diegoSilva", "yasmin.t", "caio_scalp", "fer.nunes", "otavio_h", "lari.dividendos",
+         "Gabi_Moura", "henrique.b3", "ale_mendes", "tati.cripto", "RobertoCC", "nathy_fx", "lucasR_", "isa.bolsa", "mateus_day", "bruna.opcoes",
+         "thiagoLopes", "jessi_trend", "andre.fiis", "paty.invest", "guilherme_t", "luana.swing", "rodrigoK", "carla.acoes", "felipe_etf", "monica.trade",
+         "samuelB", "dani.candle", "igor_mercado", "helo.invest", "victor.scalp", "aline_bull", "renanS87", "pri.dividendos", "cesar_trader", "manu.b3")
 
 # Níveis de dificuldade. `acerto`: chance de o bot escolher o lado certo de cada operação (ele enxerga o que o gráfico fez; o jogador não);
 # `stop_atr`/`alvo_r`: distância do stop (em ATR) e alvo (múltiplo do risco); `capital`: fração do capital usada; `trofeus`: quanto acima dos troféus do jogador
@@ -51,8 +54,18 @@ def novo(pid: str, semente: int, trofeus_jogador=0) -> dict:
             "trofeus": trofeus_do_bot(trofeus_jogador, nivel), "semente": semente}
 
 
-def rotulo(j: str) -> str:
-    return "Jogador"                     # o bot não se anuncia: na mesa todo adversário é "Jogador N"
+def rotulo(j: str, p: dict | None = None) -> str:
+    """Como o adversário aparece na mesa. Bot: um nome de jogador comum (o mesmo da tela de confronto); gente de verdade: "Jogador"."""
+    if eh_bot(j):
+        nome = str((((p or {}).get("bots") or {}).get(j) or {}).get("nome") or "").strip()
+        if nome:
+            return nome[:20]
+    return "Jogador"
+
+
+def avatar_de(nome: str, ids: list) -> str:
+    """Avatar do bot, sorteado pelo nome (sempre o mesmo para o mesmo nome) entre os avatares disponíveis: o ranking e a partida não ficam com a mesma foto."""
+    return ids[semente_de("avatar|" + str(nome)) % len(ids)] if ids else ""
 
 
 def semente_de(txt: str) -> int:

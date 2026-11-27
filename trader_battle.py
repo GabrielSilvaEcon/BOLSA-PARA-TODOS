@@ -777,7 +777,7 @@ def entradas_adversarios(p: dict, cenario: dict, agora: float, jog: str) -> list
             continue
         e = entrada_executada(p, cenario, agora, p["rodada"], j)
         if e:
-            out.append({"rotulo": f"{BOTS.rotulo(j)} {n}", "preco": e["preco"], "indice": e["indice"]})
+            out.append({"rotulo": _rot(p, j, n), "preco": e["preco"], "indice": e["indice"]})
     return out
 
 
@@ -869,7 +869,7 @@ def _adversarios_mesa(p: dict, cenario: dict, agora: float, jog: str) -> list[di
                 import trader_qtd as TQ
                 aberto = TQ.aberto(st, st["preco_atual"]) / st["cap"] if st["cap"] else 0.0
             # resultado da rodada (realizado + aberto, em % da aposta), calculado só com o que já é público: entradas e saídas executadas
-            out.append({"rotulo": f"{BOTS.rotulo(j)} {n}", "ops": _ops_publicas(st, r[1], p.get("fase") == "fim"), "total_pct": round((sum(t["ret"] for t in st["trades"]) + aberto) * 100, 3)})
+            out.append({"rotulo": _rot(p, j, n), "ops": _ops_publicas(st, r[1], p.get("fase") == "fim"), "total_pct": round((sum(t["ret"] for t in st["trades"]) + aberto) * 100, 3)})
     return out
 
 
@@ -1009,9 +1009,15 @@ def xp_da_partida(p: dict, jog: str) -> dict:
     return {"xp": base + bonus, "pos": pos, "n": len(ativos), "xp_pos": base, "xp_pts": bonus}
 
 
+def _rot(p: dict, j: str, n: int) -> str:
+    """Nome do adversário na mesa: o bot usa o nome de jogador dele; gente de verdade continua 'Jogador N'."""
+    r = BOTS.rotulo(j, p)
+    return r if BOTS.eh_bot(j) and r != "Jogador" else f"{r} {n}"
+
+
 def _rotulos(p: dict, jog: str) -> dict:
     """Como cada jogador aparece para `jog`: ele mesmo é 'Você', os outros 'Jogador N' (nunca o e-mail)."""
-    return {j: ("Você" if j == jog else f"{BOTS.rotulo(j)} {n}") for n, j in enumerate(p["jogadores"], 1)}
+    return {j: ("Você" if j == jog else _rot(p, j, n)) for n, j in enumerate(p["jogadores"], 1)}
 
 
 def placar_rodada(p: dict, jog: str) -> list[dict]:
