@@ -33,7 +33,8 @@ def equipados(email: str) -> list[str]:
 
 def _visao(s: dict, doc: dict) -> dict:
     meu = doc["itens"].get(s["id"]) or {}
-    return {**s, "desde": meu.get("desde"), "origem": meu.get("origem") or "liberado", "equipado": s["id"] in doc["equipados"]}
+    return {**s, "desde": meu.get("desde"), "origem": meu.get("origem") or "liberado", "equipado": s["id"] in doc["equipados"],
+            "estatisticas": SU.estatisticas(doc, s["id"])}
 
 
 def listar(email: str) -> dict:
@@ -42,6 +43,15 @@ def listar(email: str) -> dict:
     itens = [_visao(s, doc) for s in SU.catalogo() if SU.tem(doc, s["id"])]
     return {"itens": itens, "equipados": doc["equipados"], "limite": SU.MAX_EQUIPADOS, "conquistados": len(itens), "total": len(SU.catalogo()),
             "todos_liberados": SU.LIBERAR_TODOS}
+
+
+def registrar_estatistica(email: str, pid: str, linhas: list[dict]) -> bool:
+    """Soma as ativações de uma partida terminada nas estatísticas da pessoa (1 leitura e 1 gravação, e só se houve ativação)."""
+    doc = ler(email)
+    if not SU.registrar_estatistica(doc, pid, linhas):
+        return False
+    gravar(email, doc)
+    return True
 
 
 def equipar(email: str, setup_id: str) -> dict:

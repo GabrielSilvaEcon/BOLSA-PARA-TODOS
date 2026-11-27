@@ -133,11 +133,15 @@ class CartaSetup extends StatelessWidget {
     TextSpan rot(String t) => TextSpan(text: '$t  ', style: TextStyle(color: clara, fontWeight: FontWeight.w900));
     TextSpan txt(String t) => TextSpan(text: t);
     final ind = ((setup['indicadores'] as List?) ?? const []).map((e) => '$e').take(1).join(' · ');
-    final equipado = setup['equipado'] == true;
+    final est = (setup['estatisticas'] as Map?) ?? const {};
+    int n(String k) => (est[k] as num?)?.toInt() ?? 0;
+    String pct(num v) => '${v > 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', ',')}%';
+    final taxa = est['taxa'] as num?, ret = est['retorno_medio'] as num?;
+    final acerto = taxa == null ? '—' : '${taxa.toInt()}%${ret == null ? '' : ' · ${pct(ret)}'}';
     Widget par(double x0, double y0, double x1, double y1, String titulo, String valor, Color cor) => caixa(
         x0, y0, x1, y1, Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(titulo, style: TextStyle(fontSize: 15 * k, color: clara, fontWeight: FontWeight.w900, letterSpacing: .5)),
-          Expanded(child: TextoAjustado([txt(valor)], max: 26 * k, min: 10 * k, maxLines: 2, cor: cor, peso: FontWeight.w900)),
+          Expanded(child: TextoAjustado([txt(valor)], max: 26 * k, min: 10 * k, maxLines: 1, cor: cor, peso: FontWeight.w900)),
         ]));
     return [
       caixa(192, 266, 650, 347, TextoAjustado([rot('GATILHO'), txt(_gatilho)], max: 27 * k, min: 10 * k, maxLines: 3, align: TextAlign.left)),
@@ -146,12 +150,13 @@ class CartaSetup extends StatelessWidget {
       caixa(85, 650, 690, 800, TextoAjustado([
         TextSpan(text: 'QUANDO FUNCIONA MELHOR\n', style: TextStyle(color: clara, fontWeight: FontWeight.w900)),
         txt('${_t('melhor')}\n'),
+        TextSpan(text: 'Região: ${_t('regiao')} · Saída: ${_t('saida')}\n', style: TextStyle(color: clara.withValues(alpha: .95), fontWeight: FontWeight.w700)),
         TextSpan(text: _t('autor'), style: TextStyle(color: clara.withValues(alpha: .85), fontStyle: FontStyle.italic, fontWeight: FontWeight.w600)),
       ], max: 29 * k, min: 10 * k, maxLines: 6, align: TextAlign.left)),
       caixa(170, 850, 690, 905, TextoAjustado([rot('INDICADORES'), txt(ind)], max: 24 * k, min: 9 * k, maxLines: 2, align: TextAlign.left)),
-      par(72, 953, 245, 1022, 'REGIÃO', _t('regiao'), Colors.white),
-      par(298, 953, 478, 1022, 'SAÍDA', _t('saida'), Colors.white),
-      par(522, 953, 703, 1022, 'STATUS', equipado ? 'EM USO' : 'DISPONÍVEL', equipado ? _verde : const Color(0xFFD6E6FF)),
+      par(72, 953, 245, 1022, 'ATIVAÇÕES', '${n('ativacoes')}', Colors.white),
+      par(298, 953, 478, 1022, 'ENTRADAS', '${n('entradas')}', Colors.white),
+      par(522, 953, 703, 1022, 'ACERTO · MÉDIA', acerto, (ret ?? 0) < 0 ? _vermelho : (taxa == null ? Colors.white : _verde)),
     ];
   }
 }

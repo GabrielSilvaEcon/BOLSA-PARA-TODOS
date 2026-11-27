@@ -990,3 +990,61 @@ def test_cartas_tem_textos_curtos_que_cabem_na_arte():
         bruto = __import__("json").load(open(f"app/assets/setups/{s['id']}/setup.json", encoding="utf-8"))["carta"]
         for k, n in SU.LIMITES_CARTA.items():
             assert len(bruto[k]) <= n, f"{s['id']}: carta.{k} passa de {n} caracteres (o servidor cortaria)"
+
+
+# ------------------------------------------------------------------ estatísticas pessoais de cada setup
+def test_estatistica_soma_uma_vez_por_partida_e_sobrevive_a_normalizar():
+    import setups as SU
+    doc = SU.colecao_vazia()
+    linhas = [{"setup": "martelo", "estado": "aceito", "pct": 1.5}, {"setup": "martelo", "estado": "aceito", "pct": -0.5},
+              {"setup": "martelo", "estado": "recusado", "pct": None}, {"setup": "engolfo_alta", "estado": "expirado", "pct": None},
+              {"setup": "nao_existe", "estado": "aceito", "pct": 9.0}]
+    assert SU.registrar_estatistica(doc, "p1", linhas) is True
+    assert SU.registrar_estatistica(doc, "p1", linhas) is False                       # a mesma partida não soma de novo
+    assert SU.registrar_estatistica(doc, "p2", []) is False                           # sem ativação não muda nada
+    m = SU.estatisticas(doc, "martelo")
+    assert (m["ativacoes"], m["entradas"], m["recusadas"], m["com_resultado"], m["vitorias"]) == (3, 2, 1, 2, 1)
+    assert m["taxa"] == 50 and m["retorno_medio"] == 0.5
+    e = SU.estatisticas(doc, "engolfo_alta")
+    assert e["ativacoes"] == 1 and e["expiradas"] == 1 and e["taxa"] is None and e["retorno_medio"] is None      # sem resultado não inventa taxa
+    assert SU.estatisticas(doc, "turtle_trading")["ativacoes"] == 0 and "nao_existe" not in doc["est"]
+    de_novo = SU.normalizar(json.loads(json.dumps(doc)))                               # gravar e ler do banco não perde nada
+    assert de_novo["est"] == doc["est"] and de_novo["est_pids"] == ["p1"]
+    assert SU.normalizar({"v": 1, "est": {"martelo": "lixo", 3: {}}})["est"] == {}     # dado estragado é descartado
+
+
+def test_estatistica_do_jogador_liga_a_entrada_ao_resultado_e_ignora_o_que_nao_decidiu(jogo, monkeypatch):
+    p, cen = jogo
+    sempre(monkeypatch)
+    t = T0 + 4.2
+    tick(p, cen, t)
+    sinal = p["setups"]["sinais"][0]
+    assert SV.decidir(p, cen, A, True, None, t + 2)["resultado"] == "aceito"
+    a = p["acoes"][-1]
+    ops = [{"i_entrada": a["n_rev"] + 7, "direcao": sinal["direcao"], "ret": 0.5}, {"i_entrada": a["n_rev"], "direcao": sinal["direcao"], "ret": 0.0123}]
+    linhas = SV.estatistica_do_jogador(p, A, ops)
+    assert linhas == [{"setup": sinal["setup"], "estado": "aceito", "pct": 1.23}]       # pega a operação do mesmo candle, não a primeira da lista
+    assert SV.estatistica_do_jogador(p, B, ops) == []                                   # o adversário não tem nada deste sinal
+    assert SV.estatistica_do_jogador(p, A, None)[0]["pct"] is None                      # sem operações (ainda aberta?) fica sem resultado
+    sinal["estado"] = "ignorado"
+    assert SV.estatistica_do_jogador(p, A, ops) == []                                   # ignorado (posição aberta na hora) não é ativação
+
+
+def test_hook_do_fim_da_partida_so_grava_com_ativacao_e_uma_vez(jogo, monkeypatch):
+    """O custo no fim da partida: sem ativação nenhuma leitura/gravação; com ativação, uma única vez por partida (as consultas seguintes não repetem)."""
+    import api.main as API
+    import setups_dados as SD
+    chamadas = []
+    monkeypatch.setattr(SD, "registrar_estatistica", lambda email, pid, linhas: chamadas.append((email, pid, linhas)) or True)
+    API._EST_FEITAS.clear()
+    p, cen = jogo
+    q = API.Quem(conta={"id": "x"}, email=A, token="t")
+    API._registrar_estatistica_setups(q, "semsinal", p, {"operacoes": []})
+    assert chamadas == []                                                              # nenhuma ativação: não toca no banco
+    sempre(monkeypatch)
+    t = T0 + 4.2
+    tick(p, cen, t)
+    assert SV.decidir(p, cen, A, True, None, t + 2)["resultado"] == "aceito"
+    for _ in range(5):                                                                 # a tela de fim consulta várias vezes
+        API._registrar_estatistica_setups(q, "p1", p, {"operacoes": []})
+    assert len(chamadas) == 1 and chamadas[0][1] == "p1" and chamadas[0][2][0]["estado"] == "aceito"

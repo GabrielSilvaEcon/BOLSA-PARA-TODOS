@@ -432,7 +432,7 @@ def info(setup_id: str) -> dict | None:
 
 # ------------------------------------------------------------------ coleção de uma pessoa
 def colecao_vazia() -> dict:
-    return {"v": 1, "itens": {}, "equipados": [], "ids": [], "log": []}
+    return {"v": 1, "itens": {}, "equipados": [], "ids": [], "log": [], "est": {}, "est_pids": []}
 
 
 IDS_MAX, LOG_MAX = 500, 100
@@ -462,7 +462,65 @@ def normalizar(doc) -> dict:
         d["equipados"] = eqs[:MAX_EQUIPADOS]
         d["ids"] = list(doc.get("ids") or [])[-IDS_MAX:]
         d["log"] = list(doc.get("log") or [])[:LOG_MAX]
+        d["est"] = _est_limpa(doc.get("est"))
+        d["est_pids"] = [str(x) for x in (doc.get("est_pids") or [])][-EST_PIDS_MAX:]
     return d
+
+
+# ------------------------------------------------------------------ estatísticas pessoais de cada setup
+# Contadores por setup (só da pessoa), atualizados UMA vez por partida terminada: nada é gravado durante a partida.
+EST_CAMPOS = ("ativacoes", "entradas", "recusadas", "expiradas", "com_resultado", "vitorias")
+EST_PIDS_MAX = 200
+
+
+def _est_limpa(bruto) -> dict:
+    out = {}
+    for sid, e in (bruto.items() if isinstance(bruto, dict) else ()):
+        if not isinstance(e, dict) or not isinstance(sid, str):
+            continue
+        linha = {k: max(0, int(e.get(k) or 0)) for k in EST_CAMPOS}
+        try:
+            linha["soma_pct"] = round(float(e.get("soma_pct") or 0.0), 3)
+        except (TypeError, ValueError):
+            linha["soma_pct"] = 0.0
+        out[sid] = linha
+    return out
+
+
+def registrar_estatistica(doc: dict, pid: str, linhas: list[dict]) -> bool:
+    """Soma as ativações de UMA partida (uma linha por sinal: {setup, estado, pct}). Repetir a mesma partida não soma de novo. True se mudou."""
+    pid = str(pid)
+    if not linhas or pid in doc["est_pids"]:
+        return False
+    for ln in linhas:
+        sid = str(ln.get("setup") or "")
+        if not sid or not info(sid):
+            continue
+        e = doc["est"].setdefault(sid, {**{k: 0 for k in EST_CAMPOS}, "soma_pct": 0.0})
+        e["ativacoes"] += 1
+        estado = ln.get("estado")
+        if estado == "aceito":
+            e["entradas"] += 1
+            pct = ln.get("pct")
+            if isinstance(pct, (int, float)) and not isinstance(pct, bool):
+                e["com_resultado"] += 1
+                e["soma_pct"] = round(e["soma_pct"] + float(pct), 3)
+                e["vitorias"] += 1 if pct > 0 else 0
+        elif estado == "recusado":
+            e["recusadas"] += 1
+        elif estado == "expirado":
+            e["expiradas"] += 1
+    doc["est_pids"] = (doc["est_pids"] + [pid])[-EST_PIDS_MAX:]
+    return True
+
+
+def estatisticas(doc: dict, setup_id: str) -> dict:
+    """O que a carta mostra: contadores e, com pelo menos uma entrada com resultado, a taxa de acerto e o retorno médio (% do capital) por entrada."""
+    e = (doc.get("est") or {}).get(setup_id) or {}
+    n = int(e.get("com_resultado") or 0)
+    return {**{k: int(e.get(k) or 0) for k in EST_CAMPOS},
+            "taxa": round(100 * int(e.get("vitorias") or 0) / n) if n else None,
+            "retorno_medio": round(float(e.get("soma_pct") or 0.0) / n, 2) if n else None}
 
 
 def _registrar(doc: dict, tipo: str, agora_iso: str, **kw) -> None:

@@ -900,6 +900,27 @@ def _trof_ultimo(q: "Quem", pid: str) -> dict | None:
         return None
 
 
+_EST_FEITAS: dict[tuple[str, str], bool] = {}          # partidas cujas estatísticas de setup já foram tratadas por este processo (não repete leitura a cada consulta)
+
+
+def _registrar_estatistica_setups(q: Quem, pid: str, p: dict, res: dict | None) -> None:
+    """Estatísticas pessoais dos setups (ativações, entradas, resultado). Sem nenhuma ativação na partida: não toca no banco."""
+    chave = (q.email, str(pid))
+    if chave in _EST_FEITAS:
+        return
+    try:
+        import setups_dados as SD
+        import setups_vivo as SV
+        linhas = SV.estatistica_do_jogador(p, q.email, (res or {}).get("operacoes"))
+        if linhas:
+            SD.registrar_estatistica(q.email, str(pid), linhas)
+        if len(_EST_FEITAS) > 4000:
+            _EST_FEITAS.clear()
+        _EST_FEITAS[chave] = True
+    except Exception as e:
+        banco.registrar_erro("api.setups_estatisticas", e)
+
+
 def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -> None:
     """Partida terminada no placar dos jogos (a regra de só contar partida online fica em jogos.registrar_trade).
     Partida contra BOT conta como qualquer outra: o bot vale, nos troféus, os do jogador mais o bônus do nível dele (p["bots"])."""
@@ -923,6 +944,7 @@ def _registrar_ranking(q: Quem, pid: str, p: dict, fz: dict, res: dict | None) -
             _trof_registrar(q, "trade", pid, [j for j in p.get("jogadores") or [] if j != q.email], TF.placar_por_posicao(meu["pos"], n), p.get("bots"))
     except Exception as e:
         banco.registrar_erro("api.trofeus_trade", e)
+    _registrar_estatistica_setups(q, pid, p, res)
     try:                                                   # histórico pessoal (solo e online), só para o jogador ver suas partidas
         import historico_jogos as HJ
         meu = next(x for x in fz["placar"] if x["voce"])
