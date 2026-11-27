@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'carta_setup.dart';
 import 'cartas.dart' show coresRaridade, rotulosRaridade;
 
 /// Setups colecionáveis. Tudo vem do servidor (`GET /setups`): a tela só mostra o que a pessoa conquistou e deixa equipar um.
@@ -28,69 +31,9 @@ class SetupCarta extends StatelessWidget {
   final Map<String, dynamic> setup;
   final double largura;
 
+  /// A carta (frente) com a arte da raridade, o desenho do padrão e os textos do cadastro. Para virar ao toque, use [CartaGirando].
   @override
-  Widget build(BuildContext context) {
-    final cor = _corDe(setup);
-    final arte = (setup['assets'] as Map?)?['carta'] as String?;
-    final borda = BorderRadius.circular(largura * 0.08);
-    // Carta feita em código enquanto a arte final não chega: moldura da raridade, ícone do setup e as características do próprio cadastro.
-    Widget provisoria() {
-      final (_, clara, escura) = coresRaridade[setup['raridade']] ?? coresRaridade['comum']!;
-      final linhas = ((setup['caracteristicas'] as List?) ?? const []).take(3).map((e) => '$e').toList();
-      final u = largura / 150; // tudo escala com a largura da carta
-      return Container(
-        decoration: BoxDecoration(borderRadius: borda, gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [escura, const Color(0xFF0C1330)])),
-        padding: EdgeInsets.fromLTRB(9 * u, 8 * u, 9 * u, 8 * u),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(children: [
-              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 6 * u, vertical: 2 * u),
-                decoration: BoxDecoration(color: cor, borderRadius: BorderRadius.circular(6 * u)),
-                child: Text(rotulosRaridade[setup['raridade']] ?? '', style: TextStyle(color: const Color(0xFF0C1330), fontWeight: FontWeight.w900, fontSize: 8 * u)),
-              ))),
-              const Spacer(),
-              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text('SETUP', style: TextStyle(color: clara, fontWeight: FontWeight.w900, fontSize: 9 * u, letterSpacing: 1)))),
-            ]),
-            SizedBox(height: 8 * u),
-            Expanded(
-              flex: 5,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10 * u),
-                  border: Border.all(color: cor.withValues(alpha: .6)),
-                  gradient: RadialGradient(colors: [cor.withValues(alpha: .45), Colors.transparent]),
-                ),
-                child: Center(child: Icon(_iconeDe('${setup['id']}'), size: 46 * u, color: Colors.white)),
-              ),
-            ),
-            SizedBox(height: 7 * u),
-            FittedBox(fit: BoxFit.scaleDown, child: Text('${setup['nome']}'.toUpperCase(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13 * u))),
-            SizedBox(height: 4 * u),
-            Expanded(
-              flex: 4,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Text(linhas.map((l) => '• $l').join('\n'), maxLines: 6, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white70, fontSize: 8 * u, height: 1.25)),
-              ),
-            ),
-            Text('ARTE PROVISÓRIA', textAlign: TextAlign.center, style: TextStyle(color: Colors.white38, fontWeight: FontWeight.w700, fontSize: 6.5 * u, letterSpacing: .8)),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      width: largura,
-      height: largura * 1.4,
-      decoration: BoxDecoration(borderRadius: borda, border: Border.all(color: cor, width: 2), boxShadow: [BoxShadow(color: cor.withValues(alpha: .45), blurRadius: 14)]),
-      child: ClipRRect(
-        borderRadius: borda,
-        child: arte == null ? provisoria() : Image.asset(arte, fit: BoxFit.cover, errorBuilder: (_, __, ___) => provisoria()),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => CartaSetup(setup: setup, largura: largura);
 }
 
 /// Aviso de setup novo vindo de um baú.
@@ -109,7 +52,7 @@ Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {Voi
           children: [
             Text(titulo, style: TextStyle(color: Color(0xFFFFD76A), fontWeight: FontWeight.w900, fontSize: 16)),
             const SizedBox(height: 12),
-            SetupCarta(setup: setup, largura: 170),
+            CartaGirando(setup: setup, largura: 230),
             const SizedBox(height: 10),
             Text('${setup['nome']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
             Text(rotulosRaridade[setup['raridade']] ?? '', style: TextStyle(color: cor, fontWeight: FontWeight.w800)),
@@ -203,7 +146,7 @@ class _SetupsTelaState extends State<SetupsTela> {
               controller: rolagem,
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
               children: [
-                Center(child: SetupCarta(setup: s, largura: 190)),
+                Center(child: CartaGirando(setup: {...s, 'equipado': equipado}, largura: min(340.0, MediaQuery.of(context).size.width - 56))),
                 const SizedBox(height: 12),
                 Text('${s['nome']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20)),
                 Text(rotulosRaridade[s['raridade']] ?? '', textAlign: TextAlign.center, style: TextStyle(color: _corDe(s), fontWeight: FontWeight.w800)),
@@ -288,7 +231,7 @@ class _SetupsTelaState extends State<SetupsTela> {
                               onTap: () => _detalhe(s),
                               child: Column(children: [
                                 Stack(children: [
-                                  SetupCarta(setup: s, largura: 150),
+                                  SetupCarta(setup: s, largura: 168),
                                   if (s['equipado'] == true)
                                     Positioned(
                                         top: 6,

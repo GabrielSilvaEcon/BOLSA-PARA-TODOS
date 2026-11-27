@@ -37,5 +37,15 @@
   "regiao": "Qualquer região",
   "subtitulo": "Tendência e contração de volatilidade (VCP)",
   "stop_texto": "No fundo da última contração (no máximo 8%)",
-  "alvo_texto": "3:1 em relação ao risco"
+  "alvo_texto": "3:1 em relação ao risco",
+  "carta": {
+    "gatilho": "Tendência forte e contrações de preço com volume secando; entra no rompimento.",
+    "stop": "No fundo da última contração (máx. 8%)",
+    "alvo": "3 vezes o risco (3:1)",
+    "alvo_curto": "Alvo 3:1",
+    "melhor": "Exige tendência de alta bem definida: preço acima das médias de 50, 150 e 200.",
+    "autor": "Método de Mark Minervini (VCP)",
+    "regiao": "Qualquer",
+    "saida": "Stop ou alvo"
+  }
 }

@@ -37,5 +37,15 @@
   "regiao": "Suporte / Zona de alta",
   "subtitulo": "Possível reversão de alta",
   "stop_texto": "Abaixo da mínima do padrão",
-  "alvo_texto": "2:1 em relação ao risco"
+  "alvo_texto": "2:1 em relação ao risco",
+  "carta": {
+    "gatilho": "Martelo (sombra inferior longa) em um suporte marcado por você.",
+    "stop": "Abaixo da mínima do padrão",
+    "alvo": "2 vezes o risco (2:1)",
+    "alvo_curto": "Alvo 2:1",
+    "melhor": "Funciona melhor em suportes com confirmação de volume ou tendência.",
+    "autor": "Padrão de candle clássico",
+    "regiao": "Suporte",
+    "saida": "Stop ou alvo"
+  }
 }

@@ -37,5 +37,15 @@
   "regiao": "Qualquer região",
   "subtitulo": "Rompimento de pivô com volume",
   "stop_texto": "No fundo do pivô",
-  "alvo_texto": "2:1 em relação ao risco"
+  "alvo_texto": "2:1 em relação ao risco",
+  "carta": {
+    "gatilho": "Rompimento do pivô de alta com volume acima da média dos últimos 20 candles.",
+    "stop": "No fundo do pivô",
+    "alvo": "2 vezes o risco (2:1)",
+    "alvo_curto": "Alvo 2:1",
+    "melhor": "Usa a média de 21 períodos como filtro de tendência.",
+    "autor": "Price action clássico",
+    "regiao": "Qualquer",
+    "saida": "Stop ou alvo"
+  }
 }

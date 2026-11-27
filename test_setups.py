@@ -977,3 +977,16 @@ def test_turtle_traz_a_saida_de_referencia_dos_10_candles():
     fechados = alta[:i + 1]
     assert s["direcao"] == "alta" and s["saida_ref"] == round(min(x["l"] for x in fechados[-SU.TURTLE_S1_SAIDA:]), 4)       # mínima dos últimos 10 candles
     assert "alvo" not in s                                                                                                  # continua sem alvo fixo (regra do criador)
+
+
+def test_cartas_tem_textos_curtos_que_cabem_na_arte():
+    """Frente e verso da carta usam os textos de setup.json > carta; sem eles a carta fica vazia, e acima do limite o texto estoura o painel."""
+    import setups as SU
+    for s in SU.catalogo():
+        c = s["carta"]
+        assert set(c) == set(SU.LIMITES_CARTA), s["id"]
+        for k in ("gatilho", "stop", "alvo", "alvo_curto", "melhor", "autor", "regiao", "saida"):
+            assert c[k].strip(), f"{s['id']}: falta carta.{k}"
+        bruto = __import__("json").load(open(f"app/assets/setups/{s['id']}/setup.json", encoding="utf-8"))["carta"]
+        for k, n in SU.LIMITES_CARTA.items():
+            assert len(bruto[k]) <= n, f"{s['id']}: carta.{k} passa de {n} caracteres (o servidor cortaria)"

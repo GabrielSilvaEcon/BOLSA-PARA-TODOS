@@ -36,5 +36,15 @@
   "regiao": "Qualquer região",
   "subtitulo": "Rompimento de canal (Turtles)",
   "stop_texto": "2N: 2 vezes o ATR de 20 candles",
-  "alvo_texto": "Sem alvo fixo: saída na mínima/máxima de 10 candles"
+  "alvo_texto": "Sem alvo fixo: saída na mínima/máxima de 10 candles",
+  "carta": {
+    "gatilho": "Rompimento do canal de 20 ou 55 candles, para comprar ou vender.",
+    "stop": "2N: 2 vezes o ATR de 20 candles",
+    "alvo": "Sem alvo fixo: sai na mínima (máxima) de 10 candles",
+    "alvo_curto": "Sem alvo",
+    "melhor": "O sistema de 20 candles pula o sinal se o rompimento anterior teria dado lucro.",
+    "autor": "Método dos Turtles (Richard Dennis)",
+    "regiao": "Qualquer",
+    "saida": "Canal de 10"
+  }
 }
