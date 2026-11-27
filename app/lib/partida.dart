@@ -263,7 +263,7 @@ class _PartidaTelaState extends State<PartidaTela> {
   /// Solo: outra partida de treino. Online: volta a procurar adversário (a busca abre na hora, como no BATALHAR).
   void _jogarNovamente(bool solo) {
     if (!mounted) return;
-    final corrida = solo ? widget.corrida : 'rapida'; // online: só existe a partida de 15 minutos
+    final corrida = solo ? widget.corrida : (_ultima?['vivo'] == true ? 'vivo' : 'rapida'); // online: Replay de 15 minutos ou Ao vivo, o mesmo modo que acabou
     if (solo) {
       Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => _novaSolo()));
       return;

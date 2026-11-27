@@ -471,7 +471,8 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
                     apostas[j["email"]] = {**next(iter(apostas.values())), "conta": ""}
             n["p"] = TB.nova_partida(cen, cen["tf"], jogs, agora, pid=pid, multi=True, apostas=apostas, corrida=corrida, t_analise_s=TB.T_ESTRATEGIA_VIVO_S, t_ancora=M)
             n["p"]["vivo_n"] = int(cen["_vivo_n"])
-            n["p"]["setups"] = SV.iniciar(jogs, {j["email"]: [] for j in d["sala"]["jogadores"]})
+            equip = {j["email"]: ([] if BOTS.eh_bot(j["email"]) else SD.equipados(j["email"])) for j in d["sala"]["jogadores"]}
+            n["p"]["setups"] = SV.iniciar(jogs, equip)                    # os setups também valem ao vivo (sem pausa: o mercado não para)
             ref = cen["candles"][cen["n_analise"] - 1]["c"]
             for j in d["sala"]["jogadores"]:
                 if not BOTS.eh_bot(j["email"]):

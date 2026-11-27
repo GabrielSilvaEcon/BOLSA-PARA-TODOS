@@ -1191,6 +1191,12 @@ def trade_vivo_nova(d: NovaVivo, q: Quem = Depends(quem)) -> dict:
     except TB.ErroTrader as e:
         _erro(e, 409)
     p["vivo_n"] = int(cen["_vivo_n"])
+    try:                                                   # os setups equipados valem também ao vivo (sem pausa: o mercado não para)
+        import setups_dados as SD
+        import setups_vivo as SV
+        p["setups"] = SV.iniciar([q.email], {q.email: SD.equipados(q.email)})
+    except Exception as e:
+        banco.registrar_erro("api.setups_vivo_inicio", e)
     reg = {"p": p, "cen": TV.referencia(cen, moeda, M), "estado": {}}
     return _estado_solo(q, pid, reg, p, cen)
 
@@ -3087,7 +3093,7 @@ def social_desafiar(d: SocialDesafio, q: Quem = Depends(quem)) -> dict:
     if rel != AM.AMIGOS:
         raise HTTPException(400, "Você só pode desafiar amigos.")
     if d.jogo == "trade":
-        corrida = "vivo"                                   # um modo só por enquanto: o desafio entre amigos também é ao vivo (2 min, 30 min)
+        corrida = d.corrida if TB.spec_corrida(d.corrida or "") else NovaSala().corrida      # replay (como sempre) ou "vivo"
         s = _sala(OL.criar_sala, q.email, TB.spec_corrida(corrida)["tf"], _agora(), TB.FORMATO_PADRAO, corrida)
     elif d.jogo == "ticker":
         import battle_online_dados as BOD

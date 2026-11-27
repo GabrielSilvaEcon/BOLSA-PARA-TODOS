@@ -87,9 +87,20 @@ def _destaque(sinal: dict) -> float:
     return DESTAQUE_S if sinal.get("padrao") else 0.0
 
 
+def _vivo(p: dict) -> bool:
+    return bool(TB.cfg_de(p).get("vivo"))
+
+
+def _tempo_do_replay(p: dict, agora: float) -> float:
+    """Segundos do replay até agora. Ao vivo o replay é o mercado (conta desde a âncora, sem pausa); no replay comum é o relógio da fase, sem as pausas."""
+    cfg = TB.cfg_de(p)
+    return max(0.0, agora - float(cfg["t_ancora"])) if cfg.get("vivo") else TB._decorrido(p, agora)
+
+
 def _disparar(p: dict, cen: dict, s: dict, sinal: dict, agora: float) -> bool:
-    """Registra o sinal, pausa a partida para os dois e abre a janela. False se não deu para pausar (nada é registrado)."""
-    if not TB.pausar(p, agora, {cen["id"]: cen}):
+    """Registra o sinal, pausa a partida para os dois e abre a janela. False se não deu para pausar (nada é registrado).
+    AO VIVO não há pausa: o mercado não para. A janela de decisão corre com o mercado andando e a ordem entra no preço do instante em que o jogador decide."""
+    if not _vivo(p) and not TB.pausar(p, agora, {cen["id"]: cen}):
         return False
     jog = sinal["jogador"]
     s["sinais"].append(sinal)
@@ -156,7 +167,7 @@ def processar(p: dict, cen: dict, agora: float) -> bool:
     n = TB.n_revelados(p, agora)
     m = _fechados(cen, n)                                            # candles do replay já fechados
     total = int(cfg.get("n_velas") or nr)
-    dec, dt, g = TB._decorrido(p, agora), _dt(p), cen.get("grupo")
+    dec, dt, g = _tempo_do_replay(p, agora), _dt(p), cen.get("grupo")
     mudou = False
     for jog in p["jogadores"]:
         ids = _equipados(s, jog)

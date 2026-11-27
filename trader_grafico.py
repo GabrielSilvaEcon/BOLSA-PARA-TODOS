@@ -64,7 +64,7 @@ def args_mesa(v: dict, p: dict, estado: dict, agora: float | None = None) -> dic
             "candles": TB.candles_sem_data(cand), "ticker": v["ticker"], "tf_nome": TB.TIMEFRAMES[v["tf"]]["nome"], "demo": v["demo"], "rodada": v["rodada"], "rodadas": v["rodadas"],
             "seg": v["segundos"], "ref": cand[-1]["c"], "token": p["id"], "sr": sr, "inicial": inicial, "limites": dict(TB.MAX_MARCAS),
             "erro": estado.get("erro", ""), "erro_seq": estado.get("erro_seq", 0), "ok_seq": estado.get("ok_seq", 0),
-            "fim": p.get("fase") == "fim", "corrida": TB.qtd_de(p), "confirmados": v.get("confirmados"),
+            "fim": p.get("fase") == "fim", "corrida": TB.qtd_de(p), "vivo": bool(TB.cfg_de(p).get("vivo")), "confirmados": v.get("confirmados"),
             "lote": TB.lote_de(p, v["jogador"], v["candles"][v["n_analise"] - 1]["c"]) if TB.qtd_de(p) and v.get("n_analise") else None,
             "plano_cfg": {"capital": TB.capital_de(p, v["jogador"]), "taxa": float(TB.cfg_de(p).get("taxa", 0.0))} if TB.qtd_de(p) else None,
             "setup": p.get("setup"), "motor": v.get("motor", TB.MOTOR_LEGADO), "pausada": bool(v.get("pausada")), "mesa": texto_mesa(v.get("mesa")) if mesa else None, "placar": placar(v) if mesa else None, "moldura": None}
