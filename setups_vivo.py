@@ -279,6 +279,30 @@ def decidir(p: dict, cen: dict, jog: str, aceitar: bool, q, agora: float) -> dic
     return {"resultado": "aceito", "aid": aid}
 
 
+# ------------------------------------------------------------------ estatísticas (no fim da partida)
+def estatistica_do_jogador(p: dict, jog: str, operacoes: list | None) -> list[dict]:
+    """Uma linha por ativação que chegou a uma decisão ({setup, estado, pct}). `pct` é o resultado (% do capital) da operação que a entrada abriu:
+    o motor executa a ordem a mercado no candle em que ela foi enviada, então a operação com o mesmo candle de entrada e o mesmo sentido é a dela.
+    'ignorado' (posição aberta na hora) não conta como ativação. Só lê o estado da partida: sem banco e sem rede."""
+    s = p.get("setups") or {}
+    acoes = {a.get("aid"): a for a in p.get("acoes") or [] if a.get("jogador") == jog and a.get("aid")}
+    usadas: set[int] = set()
+    out = []
+    for x in s.get("sinais") or []:
+        if x.get("jogador") != jog or x.get("estado") not in ESTADOS_FINAIS:
+            continue
+        linha = {"setup": x.get("setup"), "estado": x["estado"], "pct": None}
+        a = acoes.get(x.get("aid")) if x["estado"] == "aceito" else None
+        if a is not None:
+            for k, t in enumerate(operacoes or []):
+                if k not in usadas and t.get("i_entrada") == a.get("n_rev") and t.get("direcao") == x.get("direcao") and isinstance(t.get("ret"), (int, float)):
+                    linha["pct"] = round(float(t["ret"]) * 100, 3)
+                    usadas.add(k)
+                    break
+        out.append(linha)
+    return out
+
+
 # ------------------------------------------------------------------ o que cada jogador pode ver
 def visao(p: dict, email: str, agora: float) -> dict | None:
     """Evento em curso e marcas dos sinais ATIVADOS, do ponto de vista de `email`. Nunca expõe o setup equipado de ninguém antes de ele ativar,
