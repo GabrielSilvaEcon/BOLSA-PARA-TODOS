@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter/services.dart';
+
 import 'animacoes.dart';
+import 'confete.dart';
 import 'escudo.dart';
 import 'relatorio.dart' show AnaliseDesenhos;
 
@@ -141,14 +144,47 @@ class ResultadoPartidaTela extends StatefulWidget {
   State<ResultadoPartidaTela> createState() => _ResultadoPartidaTelaState();
 }
 
-class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> {
+class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> with SingleTickerProviderStateMixin {
   final _pc = PageController();
+  // Os números sobem até o valor final (lucro, pontos, troféus) e a barra da divisão anda de onde estava até onde chegou.
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1700));
   int _pag = 0;
+  bool _iniciou = false;
+  bool _animar = true;
   ResultadoPartida get r => widget.r;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_iniciou) return;
+    _iniciou = true;
+    _animar = !MediaQuery.of(context).disableAnimations;          // quem desligou as animações no aparelho vê tudo pronto, sem confete
+    if (!_animar) {
+      _c.value = 1;
+      return;
+    }
+    _c.forward();
+    _vibrar();
+  }
+
+  /// O toque do resultado: vitória é forte e em dois tempos; empate e derrota são leves (a derrota não é castigo).
+  Future<void> _vibrar() async {
+    if (r.estado == 'vitoria') {
+      HapticFeedback.heavyImpact();
+      await Future<void>.delayed(const Duration(milliseconds: 260));
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  /// 0 a 1, com saída suave, dentro da janela [a, b] da animação (cada número entra um pouco depois do anterior).
+  double _fase(double a, double b) => Curves.easeOutCubic.transform(((_c.value - a) / (b - a)).clamp(0.0, 1.0));
 
   @override
   void dispose() {
     _pc.dispose();
+    _c.dispose();
     super.dispose();
   }
 
@@ -315,9 +351,23 @@ class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(prox == null ? 'Divisão máxima' : 'Próxima: ${prox['nome']} (${prox['min']} troféus)', style: const TextStyle(fontSize: 11.5, color: Colors.white)),
             const SizedBox(height: 6),
-            ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(value: pct, minHeight: 9, backgroundColor: Colors.white12, color: const Color(0xFFF2B84B))),
-            const SizedBox(height: 3),
-            Text(prox == null ? '$total troféus' : '$total / ${prox['min']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+            AnimatedBuilder(
+              animation: _c,
+              builder: (ctx, _) {
+                final f = _fase(0.4, 1.0);
+                final delta = (t['delta'] as num?)?.toInt() ?? 0;
+                final minAtual = ((dv['min'] as num?) ?? 0).toDouble();
+                final minProx = ((prox?['min'] as num?) ?? 1).toDouble();
+                final antes = prox == null ? 1.0 : ((total - delta - minAtual) / (minProx - minAtual)).clamp(0.0, 1.0); // onde a barra estava antes da partida
+                final agora = (antes + (pct - antes) * f).clamp(0.0, 1.0);
+                final tro = (total - delta + delta * f).round();
+                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(value: agora, minHeight: 9, backgroundColor: Colors.white12, color: const Color(0xFFF2B84B))),
+                  const SizedBox(height: 3),
+                  Text(prox == null ? '$tro troféus' : '$tro / ${prox['min']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                ]);
+              },
+            ),
           ]),
         ),
       ]),
@@ -348,18 +398,24 @@ class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> {
       const SizedBox(height: 14),
       Entrada(
         ordem: ordem++,
-        child: IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            _numero(Icons.emoji_events_rounded, 'LUCRO DA PARTIDA', r.pnl == null ? '—' : ResultadoPartida.moeda(r.pnl!), (r.pnl ?? 0) < 0 ? _vermelho : _verde,
-                nota: r.pct == null ? null : '${ResultadoPartida.num1(r.pct!)}% do capital'),
-            const SizedBox(width: 8),
-            _numero(Icons.star_rounded, 'PONTUAÇÃO', r.pontos == null ? '—' : ResultadoPartida.num1(r.pontos!), const Color(0xFF4FC3FF)),
-            const SizedBox(width: 8),
-            if (delta != null)
-              _numero(Icons.shield_rounded, 'TROFÉUS', '${delta >= 0 ? '+' : ''}$delta', delta >= 0 ? const Color(0xFFF2B84B) : const Color(0xFFFF8FA3))
-            else
-              _numero(Icons.bolt_rounded, 'XP', r.xp == null ? '—' : '+${r.xp}', const Color(0xFFF2B84B), nota: r.xp == 0 ? 'limite do dia' : null),
-          ]),
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (ctx, _) => IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _numero(Icons.emoji_events_rounded, 'LUCRO DA PARTIDA', r.pnl == null ? '—' : ResultadoPartida.moeda(r.pnl! * _fase(0.0, 0.6)), (r.pnl ?? 0) < 0 ? _vermelho : _verde,
+                  nota: r.pct == null ? null : '${ResultadoPartida.num1(r.pct! * _fase(0.0, 0.6))}% do capital'),
+              const SizedBox(width: 8),
+              _numero(Icons.star_rounded, 'PONTUAÇÃO', r.pontos == null ? '—' : ResultadoPartida.num1(r.pontos! * _fase(0.15, 0.75)), const Color(0xFF4FC3FF)),
+              const SizedBox(width: 8),
+              if (delta != null)
+                _numero(Icons.shield_rounded, 'TROFÉUS', () {
+                  final v = (delta * _fase(0.3, 0.9)).round();
+                  return '${v >= 0 ? '+' : ''}$v';
+                }(), delta >= 0 ? const Color(0xFFF2B84B) : const Color(0xFFFF8FA3))
+              else
+                _numero(Icons.bolt_rounded, 'XP', r.xp == null ? '—' : '+${(r.xp! * _fase(0.3, 0.9)).round()}', const Color(0xFFF2B84B), nota: r.xp == 0 ? 'limite do dia' : null),
+            ]),
+          ),
         ),
       ),
       const SizedBox(height: 12),
@@ -384,7 +440,8 @@ class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> {
       canPop: false,
       child: Scaffold(
         backgroundColor: const Color(0xFF060B26),
-        body: SafeArea(
+        body: Stack(children: [
+          SafeArea(
           child: Column(children: [
             Expanded(
               child: PageView(
@@ -436,6 +493,8 @@ class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> {
             ),
           ]),
         ),
+          if (r.estado == 'vitoria' && _animar) const Positioned.fill(child: ConfeteLeve()),
+        ]),
       ),
     );
   }

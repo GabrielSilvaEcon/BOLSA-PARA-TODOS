@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tickerhunters/confete.dart';
 import 'package:tickerhunters/resultado_partida.dart';
 
 List<Map<String, dynamic>> _velas() => [
@@ -152,5 +153,51 @@ void main() {
     (f['revelado'] as Map)['nome'] = 'PETR4';
     final r = ResultadoPartida.de(f, _tela());
     expect(r.nome.toUpperCase(), r.ticker.toUpperCase());          // o modelo guarda; a tela esconde a segunda linha
+  });
+
+  group('momento do resultado (animação)', () {
+    Future<void> abre(WidgetTester t, String estado, {bool semAnimacao = false}) async {
+      t.view.physicalSize = const Size(390, 844);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      final meu = estado == 'vitoria' ? 50.0 : (estado == 'empate' ? 40.0 : 30.0), rival = estado == 'vitoria' ? 30.0 : (estado == 'empate' ? 40.0 : 50.0);
+      final r = ResultadoPartida.de(_fim(meu: meu, rival: rival, trofeus: {..._tr, 'resultado': estado}), _tela());
+      await t.pumpWidget(MaterialApp(
+        builder: (c, child) => MediaQuery(data: MediaQuery.of(c).copyWith(disableAnimations: semAnimacao), child: child!),
+        home: ResultadoPartidaTela(r: r, continuar: () {}, fim: _fim(meu: meu, rival: rival), tela: _tela()),
+      ));
+    }
+
+    testWidgets('os números sobem até o valor final e a barra da divisão anda', (t) async {
+      await abre(t, 'vitoria');
+      await t.pump(const Duration(milliseconds: 50));
+      await t.pump(const Duration(milliseconds: 300));
+      expect(find.text('+T\$ 1.250,00'), findsNothing, reason: 'ainda subindo');
+      expect(find.text('40 / 200'), findsNothing, reason: 'a barra parte de onde estava antes da partida (20 troféus)');
+      await t.pump(const Duration(seconds: 3));
+      expect(find.text('+T\$ 1.250,00'), findsOneWidget);
+      expect(find.text('+20'), findsOneWidget);
+      expect(find.text('40 / 200'), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('só a vitória tem confete', (t) async {
+      for (final e in ['vitoria', 'empate', 'derrota']) {
+        await abre(t, e);
+        await t.pump(const Duration(milliseconds: 200));
+        expect(find.byType(ConfeteLeve), e == 'vitoria' ? findsOneWidget : findsNothing, reason: e);
+        await t.pump(const Duration(seconds: 3));
+        await t.pumpWidget(const SizedBox());
+      }
+    });
+
+    testWidgets('com as animações desligadas no aparelho: tudo pronto na hora e sem confete', (t) async {
+      await abre(t, 'vitoria', semAnimacao: true);
+      await t.pump();
+      expect(find.text('+T\$ 1.250,00'), findsOneWidget);
+      expect(find.text('40 / 200'), findsOneWidget);
+      expect(find.byType(ConfeteLeve), findsNothing);
+      await t.pumpWidget(const SizedBox());
+    });
   });
 }
