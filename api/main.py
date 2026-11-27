@@ -43,6 +43,43 @@ ORIGENS = [o.strip() for o in os.environ.get("BPT_API_ORIGENS", "*").split(",") 
 app.add_middleware(CORSMiddleware, allow_origins=ORIGENS, allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1024)       # respostas comprimidas: a partida manda o gráfico a cada segundo (~5x menos dados no celular)
 
+# ------------------------------------------------------------------ limite de tentativas (em memória, por IP): freia força bruta no login e inundação nas buscas
+LIMITES = {"/auth/entrar": (10, 60.0), "/social/buscar": (40, 60.0), "/mercado/busca": (60, 60.0)}     # rota: (pedidos, janela em segundos)
+_TENTATIVAS: dict[tuple[str, str], list[float]] = {}
+
+
+def _ip(request) -> str:
+    """IP do cliente atrás do proxy do Render (primeiro endereço do X-Forwarded-For)."""
+    xff = request.headers.get("x-forwarded-for", "")
+    return xff.split(",")[0].strip() or (request.client.host if request.client else "?")
+
+
+def excedeu_limite(rota: str, ip: str, agora: float | None = None) -> bool:
+    lim = LIMITES.get(rota)
+    if not lim:
+        return False
+    n, janela = lim
+    t = agora if agora is not None else time.time()
+    fila = [x for x in _TENTATIVAS.get((rota, ip), []) if t - x < janela]
+    if len(fila) >= n:
+        _TENTATIVAS[(rota, ip)] = fila
+        return True
+    fila.append(t)
+    _TENTATIVAS[(rota, ip)] = fila
+    if len(_TENTATIVAS) > 5000:       # nunca cresce sem limite
+        for k in [k for k, v in _TENTATIVAS.items() if not v or t - v[-1] > 600]:
+            _TENTATIVAS.pop(k, None)
+    return False
+
+
+@app.middleware("http")
+async def _limitar(request, call_next):
+    if request.method != "OPTIONS" and request.url.path in LIMITES and excedeu_limite(request.url.path, _ip(request)):
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"detail": "Muitas tentativas. Espere um minuto e tente de novo."}, status_code=429, headers={"Retry-After": "60"})
+    return await call_next(request)
+
+
 CHAVE_SOLO = "tb_api|{h}|{pid}"          # partida solo guardada no banco (no Streamlit ela ficava só na sessão do navegador)
 
 
@@ -120,7 +157,7 @@ async def saude() -> dict:
 @app.get("/saude/banco")
 def saude_banco() -> dict:
     ok, msg = banco.pronto()
-    return {"ok": True, "banco": bool(ok), "detalhe": msg if not ok else ""}
+    return {"ok": True, "banco": bool(ok)}      # o motivo do erro fica só no log do servidor (não revela detalhes internos)
 
 
 class Entrar(BaseModel):
