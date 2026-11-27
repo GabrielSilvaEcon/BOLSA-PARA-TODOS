@@ -7,6 +7,7 @@ import 'api.dart';
 import 'config.dart';
 import 'login.dart';
 import 'navegacao.dart';
+import 'som.dart';
 import 'tour.dart';
 
 Future<void> main() async {
@@ -15,6 +16,7 @@ Future<void> main() async {
   if (configurado) {
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
   }
+  Som.iniciar();
   runApp(TickerHuntersApp(configurado: configurado));
 }
 

@@ -1,3 +1,4 @@
+import 'som.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -46,7 +47,10 @@ class _PressionavelState extends State<Pressionavel> {
 
   void _descer() {
     setState(() => _baixo = true);
-    if (widget.vibrar && widget.aoTocar != null) HapticFeedback.selectionClick();
+    if (widget.vibrar && widget.aoTocar != null) {
+      HapticFeedback.selectionClick();
+      Som.tocar('toque');
+    }
   }
 
   @override
