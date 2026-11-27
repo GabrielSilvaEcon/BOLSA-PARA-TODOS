@@ -351,7 +351,11 @@ class _PartidaTelaState extends State<PartidaTela> {
                 api: widget.api,
                 base: _base,
                 args: _ultima!,
-                aoResponder: _aplicar,
+                // a resposta da estratégia é a mais nova: qualquer consulta que estava no ar (e voltaria com a fase velha, "análise") é descartada
+                aoResponder: (r) {
+                  _ordem.novo();
+                  _aplicar(r);
+                },
                 aoVoltar: () => Navigator.of(context).maybePop(),
               ),
             ),
