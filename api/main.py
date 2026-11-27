@@ -2440,6 +2440,93 @@ def vivo_candles(moeda: str = "BTC", tf: str = "5m", n: int = 300, q: Quem = Dep
         raise HTTPException(503, f"{e}. Tente de novo em instantes.")
 
 
+class EstrategiaVivo(Estrategia):
+    n_candles: int = 0                  # quantos candles fechados o jogador estava vendo (o último é o preço de referência)
+
+
+CHAVE_VIVO = "vivo_previsoes"
+
+
+def _vivo_doc(q: "Quem") -> dict:
+    d = banco.sis_estado_ler(q.email, CHAVE_VIVO)
+    return d if isinstance(d, dict) and isinstance(d.get("itens"), list) else {"v": 1, "itens": []}
+
+
+def _vivo_publico(it: dict) -> dict:
+    return {k: it.get(k) for k in ("id", "moeda", "tf", "direcao", "estado", "criada", "horizonte", "faltam", "resultado", "marcas", "ref", "n")}
+
+
+def _vivo_velas(moeda: str, tf: str) -> list:
+    import cripto_vivo as CV
+    try:
+        return CV.candles(moeda, tf, CV.N_MAX)["candles"]
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except CV.SemDados as e:
+        raise HTTPException(503, f"{e}. Tente de novo em instantes.")
+
+
+@app.get("/vivo/moedas")
+def vivo_moedas(q: Quem = Depends(quem)) -> dict:
+    import cripto_vivo as CV
+    import vivo_partida as VP
+    return {"moedas": [{"id": m, "nome": CV.NOMES[m]} for m in CV.SIMBOLOS], "duracoes": [{"id": t, "candles": VP.HORIZONTE[t], "segundos": CV.INTERVALOS[t] * VP.HORIZONTE[t]} for t in CV.INTERVALOS]}
+
+
+@app.get("/vivo/{moeda}/{tf}/tela")
+def vivo_tela(moeda: str, tf: str, q: Quem = Depends(quem)) -> dict:
+    """O gráfico de agora (só candles fechados, sem o que está se formando) no formato da tela de estratégia do app."""
+    import cripto_vivo as CV
+    import vivo_partida as VP
+    if moeda.upper() not in CV.SIMBOLOS or tf not in CV.INTERVALOS:
+        raise HTTPException(400, "moeda ou duração inválida")
+    fe = VP.fechados(_vivo_velas(moeda.upper(), tf))[-300:]
+    return {"tela": {"candles": [{k: c[k] for k in ("t", "o", "h", "l", "c", "v")} for c in fe], "ticker": moeda.upper(), "tf_nome": f"{tf} · AO VIVO",
+                     "seg": 3600, "confirmados": {}, "vivo": True, "horizonte": VP.HORIZONTE[tf]}}
+
+
+@app.post("/vivo/{moeda}/{tf}/estrategia")
+def vivo_estrategia(moeda: str, tf: str, e: EstrategiaVivo, q: Quem = Depends(quem)) -> dict:
+    import uuid
+    import vivo_partida as VP
+    moeda = moeda.upper()
+    velas = _vivo_velas(moeda, tf)
+    d = _vivo_doc(q)
+    abertas = [x for x in d["itens"] if x.get("estado") == "aberta"]
+    if any(x["moeda"] == moeda and x["tf"] == tf for x in abertas):
+        raise HTTPException(409, "Você já tem uma leitura aberta para esta moeda e duração. Espere a conferência.")
+    if len(abertas) >= VP.MAX_PENDENTES:
+        raise HTTPException(409, f"Você já tem {VP.MAX_PENDENTES} leituras abertas. Espere alguma ser conferida.")
+    try:
+        prev = VP.criar(moeda, tf, e.direcao, e.marcas, int(e.n_candles), velas, _agora(), uuid.uuid4().hex[:12])
+    except VP.ErroVivo as err:
+        raise HTTPException(400, str(err))
+    d["itens"] = ([prev] + d["itens"])[:VP.MAX_GUARDADAS]
+    banco.sis_estado_gravar(q.email, CHAVE_VIVO, d)
+    return {"ok": True, "previsao": _vivo_publico(prev)}
+
+
+@app.get("/vivo/previsoes")
+def vivo_previsoes(q: Quem = Depends(quem)) -> dict:
+    """Minhas leituras ao vivo: as abertas são conferidas aqui, quando os candles do horizonte já fecharam."""
+    import vivo_partida as VP
+    d = _vivo_doc(q)
+    mudou, cache = False, {}
+    for i, it in enumerate(d["itens"]):
+        if it.get("estado") != "aberta":
+            continue
+        try:
+            velas = cache.setdefault((it["moeda"], it["tf"]), _vivo_velas(it["moeda"], it["tf"]))
+        except HTTPException:
+            continue                                         # Binance fora do ar: tenta na próxima consulta
+        novo = VP.conferir(it, velas, _agora())
+        if novo != it:
+            d["itens"][i], mudou = novo, True
+    if mudou:
+        banco.sis_estado_gravar(q.email, CHAVE_VIVO, d)
+    return {"itens": [_vivo_publico(x) for x in d["itens"]]}
+
+
 @app.get("/mercado")
 def mercado(q: Quem = Depends(quem)) -> dict:
     """Tela Mercado: Mercado hoje (Ibovespa, dólar, bitcoin e índice do medo), os tipos de ativo e as ações populares."""
