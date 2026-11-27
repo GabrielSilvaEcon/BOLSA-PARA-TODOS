@@ -2556,7 +2556,7 @@ def home(q: Quem = Depends(quem)) -> dict:
         doc = _trof_meu(q)
         jogo = max(TF.JOGOS, key=lambda j: doc[j]["t"])
         comp = {"jogo": jogo, "t": doc[jogo]["t"], "divisao": TF.divisao(doc[jogo]["t"]), "desafio_max": doc.get("dsd_max"),
-                "jogos": {j: {"t": doc[j]["t"], "divisao": TF.divisao(doc[j]["t"])} for j in TF.JOGOS}}
+                "jogos": {j: {"t": doc[j]["t"], "max": doc[j]["max"], "divisao": TF.divisao(doc[j]["t"])} for j in TF.JOGOS}}
         st = _torneio_status()
         t = doc.get("trn") or {}
         trn = {"aberto": st["aberto"], "segundos": st.get("segundos"), "inscrito": bool(t.get("id") == st["id"] and t.get("insc"))}
