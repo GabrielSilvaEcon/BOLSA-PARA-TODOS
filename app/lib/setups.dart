@@ -1,3 +1,4 @@
+import 'som.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -40,6 +41,7 @@ class SetupCarta extends StatelessWidget {
 /// Aviso de setup novo vindo de um baú.
 Future<void> revelarSetup(BuildContext context, Map<String, dynamic> setup, {VoidCallback? abrirMeusSetups, String titulo = 'NOVA CARTA DE SETUP!'}) {
   final cor = _corDe(setup);
+  Som.tocar('ativar');
   return showDialog<void>(
     context: context,
     barrierColor: const Color(0xE6030A1C),

@@ -1,3 +1,4 @@
+import 'som.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -92,9 +93,11 @@ class _LojaTelaState extends State<LojaTela> {
     try {
       final r = await chamada();
       depois(r);
+      Som.tocar('moeda');
       await _carregar();
       saldoMudou.value++;
     } catch (e) {
+      Som.tocar('erro');
       if (mounted) setState(() => _aviso = (false, e.toString()));
     } finally {
       if (mounted) setState(() => _ocupado = false);
