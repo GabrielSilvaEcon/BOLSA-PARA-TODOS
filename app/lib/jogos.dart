@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'ajuda.dart';
+import 'animacoes.dart';
 import 'api.dart';
 import 'aprender.dart' show FundoCidade;
 import 'eventos.dart';
@@ -110,7 +111,12 @@ class _JogosTelaState extends State<JogosTela> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Expanded(
-                            child: _jogo(
+                            child: Entrada(
+                              ordem: 0,
+                              child: Reflexo(
+                                raio: 22,
+                                atraso: const Duration(milliseconds: 1200),
+                                child: _jogo(
                               cor: _verde,
                               arte: 'assets/jogos/trade_hero.webp',
                               frase: 'Desafie outros jogadores em batalhas de trade!',
@@ -118,16 +124,25 @@ class _JogosTelaState extends State<JogosTela> {
                               texto: const Color(0xFF06240F),
                               acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TradeTela(api: widget.api))),
                             ),
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: _jogo(
+                            child: Entrada(
+                              ordem: 1,
+                              child: Reflexo(
+                                raio: 22,
+                                atraso: const Duration(milliseconds: 2600),
+                                child: _jogo(
                               cor: _roxo,
                               arte: 'assets/jogos/ticker_hero.webp',
                               frase: 'Mostre seu conhecimento e suba no ranking!',
                               botao: const [Color(0xFF5C92F6), Color(0xFF2862D9)],
                               texto: Colors.white,
                               acao: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TickerTela(api: widget.api))),
+                            ),
+                              ),
                             ),
                           ),
                         ],

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'animacoes.dart';
 import 'config.dart';
 
 /// Entrar, criar conta e recuperar a senha, pelo Supabase Auth (e-mail e senha).
@@ -120,7 +121,9 @@ class _LoginTelaState extends State<LoginTela> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 8),
-                    Text('TickerHunters', textAlign: TextAlign.center, style: tema.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: Colors.white)),
+                    Center(child: Flutua(altura: 6, child: Image.asset('assets/mascote.webp', height: 104))),
+                    const SizedBox(height: 6),
+                    Entrada(ordem: 0, child: Text('TickerHunters', textAlign: TextAlign.center, style: tema.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: Colors.white))),
                     const SizedBox(height: 4),
                     Text(_criando ? 'Crie sua conta de jogador' : 'Entre para jogar', textAlign: TextAlign.center, style: tema.textTheme.bodyMedium?.copyWith(color: const Color(0xFFC8D9F5))),
                     const SizedBox(height: 28),
