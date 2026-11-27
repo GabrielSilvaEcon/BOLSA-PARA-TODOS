@@ -807,7 +807,7 @@ def ranking_tela(jogo: str, filtro: str = "geral", periodo: str = "geral", q: Qu
         _erro(e, 503)
     import bots as BOTS
     if BOTS.BOTS_ATIVOS and filtro != "amigos":              # jogadores da casa, com pontuação baixa, para o ranking não ficar vazio
-        perfis = {**perfis, **{f["chave"]: {"nome": f["nome"], "usuario": f["nome"]} for f in BOTS.fantasmas_do_ranking(jogo, temp, _agora_brt().day)}}
+        perfis = {**perfis, **{f["chave"]: {"nome": f["nome"], "usuario": f["nome"], "avatar": BOTS.avatar_de(f["nome"], _avatares_iniciais())} for f in BOTS.fantasmas_do_ranking(jogo, temp, _agora_brt().day)}}
         linhas += [(f["trofeus"], f["chave"]) for f in BOTS.fantasmas_do_ranking(jogo, temp, _agora_brt().day)]
     linhas.sort(key=lambda x: (-x[0], x[1]))
     saida = [_rk_linha(i, e, perfis, q.email, t, {"divisao": TF.divisao(t)}) for i, (t, e) in enumerate(linhas, 1)]
@@ -1357,18 +1357,23 @@ def sala_iniciar(pid: str, q: Quem = Depends(quem)) -> dict:
     return sala_ver(pid, q)
 
 
+def _avatares_iniciais() -> list:
+    import avatares as AV
+    import perfis as PF
+    return [a["id"] for a in AV.CATALOGO if (a.get("desbloqueio") or {}).get("tipo") == "inicial"] or [PF.AVATAR_PADRAO]
+
+
 def _lado_confronto(email: str, bots: dict) -> dict:
     """Um lado da tela de confronto: nome, avatar e divisão. O bot aparece como jogador comum (nome de jogador e um avatar inicial sorteado pelo nome,
     sempre o mesmo para o mesmo bot): a tela não revela quem é bot."""
-    import avatares as AV
+    import bots as BOTS
     import perfis as PF
     import trofeus as TF
     if email in bots:
         b = bots[email]
         nome = str(b.get("nome") or "Jogador")
         t = int(b.get("trofeus") or 0)
-        iniciais = [a["id"] for a in AV.CATALOGO if (a.get("desbloqueio") or {}).get("tipo") == "inicial"] or [PF.AVATAR_PADRAO]
-        av = _avatar_img(iniciais[sum(ord(c) for c in nome) % len(iniciais)])
+        av = _avatar_img(BOTS.avatar_de(nome, _avatares_iniciais()))
     else:
         try:
             pf = PF.sanear(banco.sis_estado_ler(email, "perfil_jogador"))

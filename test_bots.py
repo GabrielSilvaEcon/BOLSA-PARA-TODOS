@@ -38,7 +38,7 @@ def test_sozinho_ate_o_tempo_a_busca_continua_e_depois_entra_um_bot_identificado
     assert TB._chave(1, bot) in p["estrategias"]                                          # o bot já confirmou a estratégia (a partida só espera o jogador)
     assert p["bots"][bot]["plano"] and p["bots"][bot]["nivel"] == "normal"                # tem plano de operações e nível de dificuldade
     assert p["bots"][bot]["trofeus"] == BOTS.trofeus_do_bot(0, BOTS.NIVEL["normal"])
-    assert TB._rotulos(p, a)[bot].startswith("Jogador ")                                      # na mesa é um jogador comum
+    assert TB._rotulos(p, a)[bot] == p["bots"][bot]["nome"][:20]                              # na mesa tem nome de jogador comum, não "Jogador 2"
 
 
 def test_chamar_de_novo_nao_cria_outro_bot(mundo):
@@ -161,7 +161,7 @@ def test_api_busca_sem_ninguem_vira_treino_contra_bot_e_a_partida_abre(dois, mon
     v = ana.get(f"/trade/salas/{r['id']}")
     assert v.status_code == 200 and v.json()["tela"]["modo"] == "replay"                                   # o replay começa sem esperar mais ninguém
     rotulos = json.dumps(v.json())
-    assert "Jogador 2" in rotulos and "Bot 2" not in rotulos                                # o adversário aparece como jogador comum
+    assert "Bot 2" not in rotulos and "Jogador 2" not in rotulos                            # o adversário tem nome de jogador comum
 
 
 def test_nome_do_bot_e_de_jogador_comum_e_estrategia_varia():
@@ -269,3 +269,18 @@ def test_idas_ao_banco_por_jogada_e_por_consulta_ficam_no_minimo(mundo, monkeypa
     cnt["n"] = 0
     v = OL.ler(pid, a, tt + 1, d)
     assert cnt["n"] == 0 and v["estado"] == "jogo"                                              # a resposta da jogada sai do estado recém-gravado
+
+
+def test_bot_tem_nome_proprio_na_mesa_e_gente_de_verdade_continua_jogador_n():
+    p = {"bots": {BOTS.PREFIXO + "x": {"nome": "lu.invest"}}}
+    assert BOTS.rotulo(BOTS.PREFIXO + "x", p) == "lu.invest"
+    assert BOTS.rotulo("ana@x.com", p) == "Jogador"
+    assert TB._rot(p, "ana@x.com", 2) == "Jogador 2" and TB._rot(p, BOTS.PREFIXO + "x", 2) == "lu.invest"
+
+
+def test_avatar_do_bot_varia_entre_nomes_e_e_sempre_o_mesmo_para_o_mesmo_nome():
+    ids = [f"av{i}" for i in range(21)]
+    escolhidos = {BOTS.avatar_de(n, ids) for n in BOTS.NOMES}
+    assert len(escolhidos) >= 12                                                           # o ranking não fica com a mesma foto
+    assert BOTS.avatar_de("lu.invest", ids) == BOTS.avatar_de("lu.invest", ids)
+    assert len(BOTS.NOMES) == len(set(BOTS.NOMES)) >= 60
