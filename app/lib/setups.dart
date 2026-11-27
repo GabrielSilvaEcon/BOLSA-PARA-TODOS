@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'animacoes.dart';
 import 'api.dart';
 import 'carta_setup.dart';
 import 'cartas.dart' show coresRaridade, rotulosRaridade;
@@ -226,9 +227,11 @@ class _SetupsTelaState extends State<SetupsTela> {
                         runSpacing: 18,
                         alignment: WrapAlignment.center,
                         children: [
-                          for (final s in itens)
-                            GestureDetector(
-                              onTap: () => _detalhe(s),
+                          for (final (i, s) in itens.indexed)
+                            Entrada(
+                              ordem: i,
+                              child: Pressionavel(
+                              aoTocar: () => _detalhe(s),
                               child: Column(children: [
                                 Stack(children: [
                                   SetupCarta(setup: s, largura: 168),
@@ -244,6 +247,7 @@ class _SetupsTelaState extends State<SetupsTela> {
                                 const SizedBox(height: 6),
                                 Text('${s['nome']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                               ]),
+                              ),
                             ),
                         ],
                       ),

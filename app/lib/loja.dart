@@ -660,7 +660,7 @@ class _LojaTelaState extends State<LojaTela> {
         ),
       );
 
-  Widget _cartao({required Widget child}) => Container(
+  Widget _cartao({required Widget child}) => Entrada(ordem: 0, child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -668,7 +668,7 @@ class _LojaTelaState extends State<LojaTela> {
           color: const Color(0xFF143362),
         ),
         child: child,
-      );
+      ));
 }
 
 /// Miniatura do item (o que o servidor manda em `previa`): emoji, anel de moldura, tema, fundo, efeito ou texto.
