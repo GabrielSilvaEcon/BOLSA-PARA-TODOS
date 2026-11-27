@@ -12,6 +12,7 @@ import 'mesa/mesa_host.dart';
 import 'navegacao.dart';
 import 'ordem_respostas.dart';
 import 'relatorio.dart';
+import 'resultado_partida.dart';
 import 'estado_partida.dart';
 import 'fim_partida.dart';
 import 'ticker_online.dart' show BuscaTela;
@@ -136,7 +137,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       _relogio?.cancel();
       if (mounted) setState(() {});
       final tr = _fimDados?['trofeus'];
-      if (tr is Map && mounted) {
+      if (tr is Map && mounted && !ResultadoPartida.temAdversario(_fimDados!)) {
         // partida online: primeiro a tela de troféus (vitória/derrota e a barra da divisão), depois o relatório
         ResultadoTrofeusTela.abrir(context, tr, api: widget.api).then((_) {
           if (mounted) _abrirResultado();
@@ -203,6 +204,21 @@ class _PartidaTelaState extends State<PartidaTela> {
     if (f == null || tela == null || _resultadoAberto || !mounted) return;
     _resultadoAberto = true;
     final solo = widget.salaId == null;
+    if (ResultadoPartida.temAdversario(f)) {
+      // duelo: VITÓRIA / EMPATE / DERROTA com lucro, pontos, troféus, adversário e operações; a análise completa fica a um toque
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (ctx) => ResultadoPartidaTela(
+          r: ResultadoPartida.de(f, tela),
+          continuar: () => Navigator.of(ctx).pop(),
+          analise: () => Navigator.of(ctx).push(MaterialPageRoute(
+            builder: (c2) => RelatorioTela(fim: f, tela: tela, aoCompleto: _abrirRelatorio, rotuloAcao: 'Voltar ao resultado', acao: () => Navigator.of(c2).pop()),
+          )),
+        ),
+      ));
+      _resultadoAberto = false;
+      if (mounted) _mostrarFimModal();
+      return;
+    }
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (ctx) => RelatorioTela(
         fim: f,
