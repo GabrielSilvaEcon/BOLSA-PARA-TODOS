@@ -1,3 +1,4 @@
+import 'som.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -124,6 +125,7 @@ class _PartidaTelaState extends State<PartidaTela> {
       args['ok_seq'] = _seqOk;
       args['erro'] = _erro;
       args['erro_seq'] = _seqErro;
+      args['som'] = Som.ligado.value; // o botão de som de Minha conta vale também dentro da mesa
       _ultima = args;
       _mesa.desenhar(args);
       final est = r['fase'] == 'analise' && args['corrida'] == true; // pela fase da partida: no fim a tela também vem como "analise"
