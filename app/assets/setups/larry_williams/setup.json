@@ -36,5 +36,15 @@
   "regiao": "Qualquer região",
   "subtitulo": "Virada da média de 9 (setup 9.1)",
   "stop_texto": "No extremo oposto do candle de virada",
-  "alvo_texto": "Sem alvo fixo: sai quando a média de 9 virar contra"
+  "alvo_texto": "Sem alvo fixo: sai quando a média de 9 virar contra",
+  "carta": {
+    "gatilho": "A MME9 vira: entra ao romper a máxima (ou mínima) do candle da virada.",
+    "stop": "No extremo oposto do candle de virada",
+    "alvo": "Sem alvo fixo: sai quando a média vira contra",
+    "alvo_curto": "Sem alvo",
+    "melhor": "Se o candle seguinte não acionar, o gatilho acompanha o novo candle enquanto a média seguir.",
+    "autor": "Método de Larry Williams (setup 9.1)",
+    "regiao": "Qualquer",
+    "saida": "Média vira"
+  }
 }

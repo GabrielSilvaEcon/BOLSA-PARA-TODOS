@@ -37,5 +37,15 @@
   "regiao": "Resistência / Zona de baixa",
   "subtitulo": "Possível reversão de baixa",
   "stop_texto": "Acima da máxima do padrão",
-  "alvo_texto": "2:1 em relação ao risco"
+  "alvo_texto": "2:1 em relação ao risco",
+  "carta": {
+    "gatilho": "Estrela cadente (sombra superior longa) em uma resistência marcada por você.",
+    "stop": "Acima da máxima do padrão",
+    "alvo": "2 vezes o risco (2:1)",
+    "alvo_curto": "Alvo 2:1",
+    "melhor": "Funciona melhor em resistências com confirmação de volume ou tendência.",
+    "autor": "Padrão de candle clássico",
+    "regiao": "Resistência",
+    "saida": "Stop ou alvo"
+  }
 }

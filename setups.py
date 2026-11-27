@@ -24,6 +24,8 @@ import cartas as C
 import cartas_catalogo as CAT
 
 PASTA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "assets", "setups")
+# Textos da carta (setup.json > "carta"): tamanho máximo de cada um, para caberem nos painéis da arte.
+LIMITES_CARTA = {"gatilho": 90, "stop": 60, "alvo": 60, "alvo_curto": 14, "melhor": 130, "autor": 48, "regiao": 18, "saida": 20}
 SLOTS = ("carta", "ativacao", "moldura", "icone")        # artes únicas por setup; `efeitos` é uma lista
 CAMPOS_TEXTO = ("resumo",)
 
@@ -400,12 +402,14 @@ def _ler_um(pasta: str) -> dict:
     assets = {s: (f"assets/setups/{id_}/{a[s]}" if existe(a.get(s)) else None) for s in SLOTS}
     assets["efeitos"] = [f"assets/setups/{id_}/{n}" for n in (a.get("efeitos") or []) if existe(n)]
     cores = {"principal": "#8FB4F0", "brilho": "#FFFFFF", **(d.get("cores") or {})}
+    c = d.get("carta") or {}
+    carta = {k: str(c.get(k) or "")[:n] for k, n in LIMITES_CARTA.items()}      # textos curtos que cabem nos painéis da carta (frente e verso)
     return {"id": id_, "nome": str(d["nome"]).strip(), "raridade": d["raridade"], "resumo": str(d.get("resumo") or ""),
             "caracteristicas": [str(x) for x in d.get("caracteristicas") or []], "indicadores": [str(x) for x in d.get("indicadores") or []],
             "regra": {"compra": str((d.get("regra") or {}).get("compra") or ""), "venda": str((d.get("regra") or {}).get("venda") or "")},
             "fonte_regra": str(d.get("fonte_regra") or ""), "saida": str(d.get("saida") or ""),
             "tipo": str(d.get("tipo") or "estrategia"), "direcao": str(d.get("direcao") or "compra"), "regiao": str(d.get("regiao") or "Qualquer região"),
-            "subtitulo": str(d.get("subtitulo") or ""), "stop_texto": str(d.get("stop_texto") or ""), "alvo_texto": str(d.get("alvo_texto") or ""), "cores": cores, "assets": assets, "provisorio": not (assets["carta"] and assets["ativacao"])}
+            "subtitulo": str(d.get("subtitulo") or ""), "stop_texto": str(d.get("stop_texto") or ""), "alvo_texto": str(d.get("alvo_texto") or ""), "cores": cores, "carta": carta, "assets": assets, "provisorio": not (assets["carta"] and assets["ativacao"])}
 
 
 @functools.lru_cache(maxsize=1)
