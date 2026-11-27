@@ -60,7 +60,11 @@ class _EstrategiaViewState extends State<EstrategiaView> {
 
   void _ler({bool primeira = false}) {
     final cs = (widget.args['candles'] as List?) ?? const [];
-    if (primeira || cs.length != _velas.length) _velas = [for (final c in cs) if (c is Map) Vela.de(c)];
+    // no modo Ao vivo o último candle se forma a cada segundo (mesmo tamanho da lista, preço novo): refaz sempre que o fechamento do último mudou
+    final ultimoFecha = cs.isNotEmpty && cs.last is Map ? (cs.last as Map)['c'] : null;
+    if (primeira || cs.length != _velas.length || (_velas.isNotEmpty && ultimoFecha != null && ultimoFecha != _velas.last.c)) {
+      _velas = [for (final c in cs) if (c is Map) Vela.de(c)];
+    }
     final seg = (widget.args['seg'] as num?)?.toDouble() ?? 0;
     final novo = DateTime.now().add(Duration(milliseconds: (seg * 1000).round()));
     if (primeira || (novo.difference(_fim).inMilliseconds).abs() > 1500) _fim = novo;

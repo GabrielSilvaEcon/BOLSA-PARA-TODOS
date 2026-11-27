@@ -192,8 +192,12 @@ def referencia(c: dict, semente: int) -> dict:
     return {"id": c["id"], "demo": bool(c.get("demo")), "semente": int(semente), "tf": c["tf"]}
 
 
-def resolver(ref: dict, banco=None) -> dict:
-    """Reconstrói o MESMO cenário para qualquer sessão: simulado pela semente; real pelo ID guardado (cenários são imutáveis)."""
+def resolver(ref: dict, banco=None, agora: float | None = None) -> dict:
+    """Reconstrói o MESMO cenário para qualquer sessão: simulado pela semente; real pelo ID guardado (cenários são imutáveis).
+    Partida ao vivo: refeito do mercado a cada chamada (cresce com o que já fechou), nunca guardado no cache."""
+    if ref.get("vivo"):
+        import trader_vivo as TV
+        return TV.resolver(ref, agora)
     chave = (ref.get("id"), ref.get("tf"))
     if chave in _CACHE_CEN:
         return _CACHE_CEN[chave]
@@ -229,7 +233,7 @@ MAX_DIAS_HIST = {"rapida": 40, "intermediaria": 150, "longa": 900}   # dias corr
 
 
 def _spec(formato: str) -> dict:
-    sp = TB.CORRIDAS.get(formato)
+    sp = TB.spec_corrida(formato)
     if not sp:
         raise TB.ErroTrader("formato de partida inválido")
     return sp

@@ -27,8 +27,12 @@ class TradeTela extends StatefulWidget {
 class _TradeTelaState extends State<TradeTela> {
   Map<String, dynamic>? _d;
   Map<String, dynamic>? _setups;
-  /// Uma duração só: gráfico de 15 minutos (a mais curta). Todo mundo joga a mesma partida, então a busca por adversário junta mais gente.
-  static const _corrida = 'rapida';
+  /// Um modo só, por enquanto: AO VIVO (cripto de verdade, candles de 2 minutos, 15 candles = 30 minutos, cada candle se formando junto com o mercado).
+  /// A moeda é sorteada pelo servidor; todo mundo joga o mesmo modo, então a busca por adversário junta mais gente (e, sem ninguém, entra um bot).
+  static const _corrida = 'vivo';
+
+  /// Os setups colecionáveis ainda não valem no modo Ao vivo: o painel fica escondido até eles voltarem.
+  static const _mostrarSetups = false;
   bool _comoAberto = false;
 
   @override
@@ -93,8 +97,10 @@ class _TradeTelaState extends State<TradeTela> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Column(children: [
-                    Entrada(ordem: 2, child: _painelSetups()),
-                    const SizedBox(height: 10),
+                    if (_mostrarSetups) ...[
+                      Entrada(ordem: 2, child: _painelSetups()),
+                      const SizedBox(height: 10),
+                    ],
                     Entrada(ordem: 4, child: _comoFunciona()),
                     const SizedBox(height: 24),
                   ]),

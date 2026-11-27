@@ -157,8 +157,11 @@ def _participante(d: dict, email: str) -> None:
         raise ErroSala("Você não participa desta partida.")
 
 
-def _cenario(d: dict) -> dict:
-    return TD.resolver(d["cen"])
+def _cenario(d: dict, agora: float | None = None) -> dict:
+    cen = TD.resolver(d["cen"], agora=agora)
+    if cen.get("_vivo_n") is not None and d.get("p"):                     # ao vivo: o motor só revela o que o mercado já fechou (sempre atualizado a cada leitura)
+        d["p"]["vivo_n"] = int(cen["_vivo_n"])
+    return cen
 
 
 # ------------------------------------------------------------------ salas
@@ -173,9 +176,9 @@ def criar_sala(email: str, tf: str, agora: float | None = None, formato: str = T
     `formato` = rapida (3 rodadas) / normal (5) / longa (10): salas da mesa por rodadas, mantidas para compatibilidade."""
     agora = time.time() if agora is None else agora
     if corrida is not None:
-        if corrida not in TB.CORRIDAS:
+        if not TB.spec_corrida(corrida):
             raise ErroSala("Duração de partida inválida.")
-        tf, formato = TB.CORRIDAS[corrida]["tf"], None
+        tf, formato = TB.spec_corrida(corrida)["tf"], None
     elif tf not in TB.TIMEFRAMES:
         raise ErroSala("Timeframe inválido.")
     elif formato not in TB.FORMATOS:
@@ -312,7 +315,7 @@ def _entrar_na_mais_antiga(email: str, corrida: str, agora: float, mais_nova_que
 def buscar(email: str, corrida: str, agora: float | None = None) -> dict:
     """Entra na busca: se há uma busca mais antiga esperando, a partida já começa; senão fica esperando. {'estado': 'partida'|'fila', 'id'}."""
     agora = time.time() if agora is None else agora
-    if corrida not in TB.CORRIDAS:
+    if not TB.spec_corrida(corrida):
         raise ErroSala("Duração de partida inválida.")
     limpar(agora)
     ja = partida_ativa(email)
@@ -451,6 +454,32 @@ def iniciar(pid: str, email: str, agora: float | None = None) -> dict:
         formato = d["sala"].get("formato")                              # sala criada antes da mesa não tem formato: começa com as regras antigas
         semente = int(agora) % 100000
         corrida = d["sala"].get("corrida")
+        if corrida in TB.CORRIDAS_VIVO:                                 # AO VIVO: mercado de agora, sem setups, bot sem ver o futuro
+            import bot_vivo as BV
+            import trader_vivo as TV
+            moeda = random.Random(semente).choice(TV.MOEDAS)               # a moeda da partida é sorteada: as duas pessoas jogam a mesma
+            M = TV.ancora(agora)
+            try:
+                cen = TV.cenario(moeda, M, agora)
+            except TV.CV.SemDados as e:
+                raise TB.ErroTrader(f"Sem dados do mercado agora ({e}). Tente de novo em instantes.")
+            n = copy.deepcopy(d)
+            n["cen"] = TV.referencia(cen, moeda, M)
+            apostas = {j["email"]: _capital(j["email"], j["nick"]) for j in d["sala"]["jogadores"] if not BOTS.eh_bot(j["email"])}
+            for j in d["sala"]["jogadores"]:
+                if BOTS.eh_bot(j["email"]):
+                    apostas[j["email"]] = {**next(iter(apostas.values())), "conta": ""}
+            n["p"] = TB.nova_partida(cen, cen["tf"], jogs, agora, pid=pid, multi=True, apostas=apostas, corrida=corrida, t_analise_s=TB.T_ESTRATEGIA_VIVO_S, t_ancora=M)
+            n["p"]["vivo_n"] = int(cen["_vivo_n"])
+            n["p"]["setups"] = SV.iniciar(jogs, {j["email"]: [] for j in d["sala"]["jogadores"]})
+            ref = cen["candles"][cen["n_analise"] - 1]["c"]
+            for j in d["sala"]["jogadores"]:
+                if not BOTS.eh_bot(j["email"]):
+                    continue
+                nivel = BOTS.NIVEL[j["nivel"]]
+                n["p"].setdefault("bots", {})[j["email"]] = {"nivel": nivel["id"], "nome": j["nick"], "trofeus": int(j["trofeus"]), "plano": []}
+                TB.salvar_estrategia(n["p"], j["email"], BV.estrategia_inicial(cen, nivel, int(j.get("semente") or semente)), None, ref, agora)
+            return n
         if corrida in TB.CORRIDAS:                                      # partida corrida: cenário da duração e capital de 5% do caixa de cada um
             cen = TD.escolher_corrida(corrida, semente)
             n = copy.deepcopy(d)
@@ -505,7 +534,7 @@ def _sincronizar(pid: str, agora: float, row: dict | None = None) -> dict:
         if not d.get("p") or d.get("cancelada"):
             return d
         n = copy.deepcopy(d)
-        cen = _cenario(n)
+        cen = _cenario(n, agora)
         TB.avancar(n["p"], agora, {cen["id"]: cen})
         SV.processar(n["p"], cen, agora)                              # setups: prazo do evento em curso e sinais do candle que acabou de fechar
         BJ.agir(n["p"], cen, agora)                                   # bots de treino: as operações do plano que já chegaram na hora
@@ -547,7 +576,7 @@ def ler(pid: str, email: str, agora: float | None = None, dados: dict | None = N
     d = d if dados is not None else _sincronizar(pid, agora, r)
     if d.get("cancelada"):
         return {"estado": "cancelada"}
-    cen = _cenario(d)
+    cen = _cenario(d, agora)
     v = TB.visao(d["p"], cen, agora, email)
     return {"estado": "jogo", "v": v, "p": _publico(d["p"], email, agora)}
 
@@ -559,7 +588,7 @@ def _acao(pid: str, email: str, agora: float, fn) -> dict:
         if not d.get("p") or d.get("cancelada"):
             raise TB.ErroTrader("a partida ainda não começou")
         n = copy.deepcopy(d)
-        cen = _cenario(n)
+        cen = _cenario(n, agora)
         TB.avancar(n["p"], agora, {cen["id"]: cen})
         fn(n["p"], cen)
         TB.avancar(n["p"], agora, {cen["id"]: cen})

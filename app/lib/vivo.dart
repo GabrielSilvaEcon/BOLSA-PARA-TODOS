@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'animacoes.dart';
 import 'api.dart';
 import 'estrategia.dart';
+import 'partida.dart';
 
 /// Modo AO VIVO (cripto, dados públicos da Binance): o jogador lê o gráfico de agora, desenha e escolhe Subir, Cair ou Aguardar. O futuro ainda não
 /// aconteceu, então ninguém sabe a resposta. Depois de alguns candles fechados o servidor confere (direção e desenhos) e a nota aparece aqui.
@@ -101,6 +102,12 @@ class _VivoTelaState extends State<VivoTela> {
     }
   }
 
+  /// Trade Battle ao vivo: a mesa de sempre (compra e venda com quantidade, stop e alvo) sobre o mercado de agora, por 1 hora, candles de 5 minutos.
+  Future<void> _trade(String duracao) async {
+    await Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, inicio: '/trade/vivo', corpoInicio: {'moeda': _moeda, 'duracao': duracao})));
+    _atualizarLeituras();
+  }
+
   String _nomeMoeda(String id) => [for (final m in _moedas) if (m['id'] == id) '${m['nome']}'].firstOrNull ?? id;
 
   Widget _chip(String rotulo, bool ativo, VoidCallback f) => Pressionavel(
@@ -182,6 +189,18 @@ class _VivoTelaState extends State<VivoTela> {
                   child: Text(_abrindo ? 'Abrindo…' : 'LER O GRÁFICO AO VIVO', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                 ),
                 if (_erro.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_erro, style: const TextStyle(color: Color(0xFFFF8A8A)))),
+                const SizedBox(height: 10),
+                for (final (dur, cand) in const [('30', '1 min'), ('60', '5 min')])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: OutlinedButton(
+                      onPressed: () => _trade(dur),
+                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), foregroundColor: Colors.white, side: const BorderSide(color: Color(0xFFFF5C7A), width: 1.4)),
+                      child: Text('🔴 TRADE AO VIVO · $dur min · candles de $cand', style: const TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                  ),
+                const Text('A mesa de sempre (comprar, vender, stop e alvo) sobre o mercado de agora, na moeda escolhida acima. O preço aparece dividido por uma potência de 10 (ex.: BTC ÷1.000) para caber no capital.',
+                    style: TextStyle(color: _lilas, fontSize: 12)),
                 const SizedBox(height: 22),
                 const Text('Minhas leituras', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),

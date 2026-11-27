@@ -62,6 +62,9 @@ def _tamanho(p: dict, jog: str, preco: float, nivel: dict) -> int:
 
 def agir(p: dict, cen: dict, agora: float) -> bool:
     """Executa o que o plano de cada bot manda neste instante (chamar a cada consulta). Idempotente: cada ordem tem `aid` próprio. True se algo mudou."""
+    if (p.get("cfg") or {}).get("vivo"):                                  # ao vivo não há futuro para planejar: o bot decide com o que já apareceu
+        import bot_vivo
+        return bot_vivo.agir(p, cen, agora)
     bots = p.get("bots") or {}
     if not bots or p["fase"] != "replay" or TB.pausada(p):
         return False

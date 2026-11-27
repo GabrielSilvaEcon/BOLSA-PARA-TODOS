@@ -44,7 +44,7 @@ app.add_middleware(CORSMiddleware, allow_origins=ORIGENS, allow_methods=["*"], a
 app.add_middleware(GZipMiddleware, minimum_size=1024)       # respostas comprimidas: a partida manda o gráfico a cada segundo (~5x menos dados no celular)
 
 # ------------------------------------------------------------------ limite de tentativas (em memória, por IP): freia força bruta no login e inundação nas buscas
-LIMITES = {"/auth/entrar": (10, 60.0), "/social/buscar": (40, 60.0), "/mercado/busca": (60, 60.0)}     # rota: (pedidos, janela em segundos)
+LIMITES = {"/auth/entrar": (10, 60.0), "/social/buscar": (40, 60.0), "/mercado/busca": (60, 60.0), "/trade/vivo": (12, 60.0)}     # rota: (pedidos, janela em segundos)
 _TENTATIVAS: dict[tuple[str, str], list[float]] = {}
 
 
@@ -1001,11 +1001,18 @@ def _chave_solo(q: Quem, pid: str) -> str:
     return CHAVE_SOLO.format(h=banco._h_conta(q.email), pid=pid)
 
 
+def _sincronizar_vivo(p: dict, cen: dict) -> None:
+    """Partida ao vivo: diz ao motor quantos passos o mercado já fechou (ele nunca revela além disso nem encerra antes de ter todos)."""
+    if (p.get("cfg") or {}).get("vivo"):
+        p["vivo_n"] = int(cen.get("_vivo_n") or 0)
+
+
 def _ler_solo(q: Quem, pid: str) -> tuple[dict, dict, dict]:
     d = banco.cfg_ler(_chave_solo(q, pid))
     if not d or not d.get("p"):
         raise HTTPException(404, "partida não encontrada")
-    cen = TD.resolver(d["cen"])
+    cen = TD.resolver(d["cen"], agora=_agora())
+    _sincronizar_vivo(d["p"], cen)
     return d, d["p"], cen
 
 
@@ -1024,7 +1031,10 @@ def _ler_solo_tok(q: Quem, pid: str) -> tuple[dict, dict, dict, tuple]:
     d = banco._de_js(r[0]["dados"]) if r else None
     if not d or not d.get("p"):
         raise HTTPException(404, "partida não encontrada")
-    return d, d["p"], TD.resolver(d["cen"]), (str(r[0]["atualizado"]), banco._js(d["p"]))
+    retrato = banco._js(d["p"])                            # tirado ANTES de sincronizar o ao vivo: se o mercado fechou um passo novo, isso conta como mudança
+    cen = TD.resolver(d["cen"], agora=_agora())
+    _sincronizar_vivo(d["p"], cen)
+    return d, d["p"], cen, (str(r[0]["atualizado"]), retrato)
 
 
 def _gravar_solo_se(q: Quem, pid: str, d: dict, marca: tuple) -> None:
@@ -1150,6 +1160,38 @@ def trade_solo_nova(d: NovaPartida, q: Quem = Depends(quem)) -> dict:
     except Exception as e:
         banco.registrar_erro("api.setups_solo_inicio", e)
     reg = {"p": p, "cen": TD.referencia_corrida(cen, semente), "estado": {}}
+    return _estado_solo(q, pid, reg, p, cen)
+
+
+class NovaVivo(BaseModel):
+    moeda: str = "BTC"
+
+
+@app.post("/trade/vivo")
+def trade_vivo_nova(d: NovaVivo, q: Quem = Depends(quem)) -> dict:
+    """Trade Battle AO VIVO (cripto): gráfico de 2 min, 15 candles = 30 min, cada candle se formando junto com o mercado (passos de 1 s). A estratégia tem 30 s
+    com o gráfico rolando. Depois de criada, usa as mesmas rotas da partida solo (/trade/solo/{pid}...)."""
+    import cripto_vivo as CV
+    import trader_vivo as TV
+    moeda = d.moeda.upper()
+    if moeda not in TV.MOEDAS:
+        raise HTTPException(400, "moeda inválida")
+    agora = _agora()
+    M = TV.ancora(agora)
+    try:
+        cen = TV.cenario(moeda, M, agora)
+    except CV.SemDados as e:
+        raise HTTPException(503, f"Sem dados do mercado agora ({e}). Tente de novo em instantes.")
+    try:
+        apostas = {q.email: TCA.capital_corrida(q.email, q.conta.get("id"))}
+        pid = uuid.uuid4().hex[:10]
+        p = TB.nova_partida(cen, cen["tf"], [q.email], agora, pid=pid, apostas=apostas, corrida=TV.FORMATO, t_analise_s=TB.T_ESTRATEGIA_VIVO_S, t_ancora=M)
+    except TCA.SemSaldo as e:
+        _erro(e, 409)
+    except TB.ErroTrader as e:
+        _erro(e, 409)
+    p["vivo_n"] = int(cen["_vivo_n"])
+    reg = {"p": p, "cen": TV.referencia(cen, moeda, M), "estado": {}}
     return _estado_solo(q, pid, reg, p, cen)
 
 
@@ -3045,8 +3087,8 @@ def social_desafiar(d: SocialDesafio, q: Quem = Depends(quem)) -> dict:
     if rel != AM.AMIGOS:
         raise HTTPException(400, "Você só pode desafiar amigos.")
     if d.jogo == "trade":
-        corrida = d.corrida if d.corrida in TB.CORRIDAS else NovaSala().corrida
-        s = _sala(OL.criar_sala, q.email, TB.CORRIDAS[corrida]["tf"], _agora(), TB.FORMATO_PADRAO, corrida)
+        corrida = "vivo"                                   # um modo só por enquanto: o desafio entre amigos também é ao vivo (2 min, 30 min)
+        s = _sala(OL.criar_sala, q.email, TB.spec_corrida(corrida)["tf"], _agora(), TB.FORMATO_PADRAO, corrida)
     elif d.jogo == "ticker":
         import battle_online_dados as BOD
         s = _tk_on(BOD.criar_sala, q.email)
