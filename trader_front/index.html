@@ -559,6 +559,7 @@ function onRender(a){
   const nT=performance.now()+a.seg*1000;if(novo||Math.abs(nT-T0)>1500||a.modo!=="analise")T0=nT;   // na análise o relógio local só é corrigido se desviar mais de 1,5 s
   if(a.ok_seq&&a.ok_seq===S.sentSeq&&S.sentSeq>0){S.savedSig=S.sentSig}
   if(a.erro&&a.erro_seq===S.sentSeq){S.erroLocal=a.erro}else if(a.ok_seq===S.sentSeq){S.erroLocal=""}
+  if(S.sentSeq>0){if(a.ok_seq===S.sentSeq&&S.somOk!==a.ok_seq){S.somOk=a.ok_seq;svSom("ordem")}else if(a.erro&&a.erro_seq===S.sentSeq&&S.somErro!==a.erro_seq){S.somErro=a.erro_seq;svSom("nao")}}
   if(S.modo!=='analise'){const n=S.cands.length;S.offAlvo=n+folga()-(W-axisW())/S.cw}
   $("tk").innerHTML=a.corrida?`${esc(a.ticker)}<small>${esc(a.tf_nome)}${a.demo?' · <span class="pill">SIMULADO</span>':""}</small>`
     :`${esc(a.ticker)}${a.demo?'<span class="pill">SIMULADO</span>':""}<small>${esc(a.tf_nome)} · ${mesaOn()?"mesa":"análise"}</small>`;
@@ -828,6 +829,7 @@ function sendAcao(d){
   if(!S||S.modo!=="replay"||!A||A.pausada||!livreEnvio())return false;
   S.seq++;S.sentSeq=S.seq;S.erroLocal="";S.pend={seq:S.seq,ate:performance.now()+5000};
   try{if(typeof navigator!=="undefined"&&navigator.vibrate&&!svMudo())navigator.vibrate(8)}catch(e){}   // vibração curta: o toque foi registrado
+  svSom("tic");
   post({type:"streamlit:setComponentValue",value:{seq:S.seq,evento:"acao",dados:Object.assign({aid:aidNovo()},d)},dataType:"json"});
   setTimeout(()=>{if(S)ui()},5100);ui();return true}
 
@@ -1126,7 +1128,7 @@ function _desenhaMira(){
   c.restore()}
 /* ===== Efeitos de jogo: partículas, ondas de choque, tremor de câmera, vibração e sons sintetizados (nada de arquivo de áudio) ===== */
 let svAC=null;
-function svMudo(){try{if(SVs.mudo!=null)return SVs.mudo;return localStorage.getItem("tb_mudo")==="1"}catch(e){return !!SVs.mudo}}
+function svMudo(){if(A&&A.som===false)return true;try{if(SVs.mudo!=null)return SVs.mudo;return localStorage.getItem("tb_mudo")==="1"}catch(e){return !!SVs.mudo}}
 function svAudio(){try{if(!svAC){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;svAC=new C()}if(svAC.state==="suspended")svAC.resume();return svAC}catch(e){return null}}
 function svTom(f0,f1,dur,tipo,vol,atraso){try{const a=svAudio();if(!a||svMudo())return;const t0=a.currentTime+(atraso||0),o=a.createOscillator(),g=a.createGain();
   o.type=tipo||"sine";o.frequency.setValueAtTime(f0,t0);if(f1)o.frequency.exponentialRampToValueAtTime(f1,t0+dur);
@@ -1137,7 +1139,9 @@ function svSom(k){   // sons curtos e baixos, no clima do jogo: varredura, trava
   else if(k==="memo"){svTom(660,0,0.16,"triangle",0.05);svTom(990,0,0.22,"triangle",0.05,0.12)}
   else if(k==="pronto"){svTom(520,0,0.12,"triangle",0.045);svTom(780,0,0.18,"triangle",0.045,0.09)}
   else if(k==="sim"){[523,659,784,1046].forEach((f,i)=>svTom(f,0,0.2,"triangle",0.06,i*0.07))}
-  else if(k==="nao"){svTom(320,160,0.25,"sawtooth",0.04)}}
+  else if(k==="nao"){svTom(320,160,0.25,"sawtooth",0.04)}
+  else if(k==="tic"){svTom(900,0,0.04,"sine",0.03)}                                   // toque na ordem
+  else if(k==="ordem"){svTom(740,0,0.07,"triangle",0.05);svTom(1110,0,0.16,"triangle",0.05,0.06)}}   // ordem aceita pelo servidor
 function svVibra(p){try{if(typeof navigator!=="undefined"&&navigator.vibrate&&!svMudo())navigator.vibrate(p)}catch(e){}}
 function svTreme(){try{const w=$("cvw");if(!w)return;w.classList.remove("stshake");void w.offsetWidth;w.classList.add("stshake");setTimeout(()=>{try{w.classList.remove("stshake")}catch(e){}},340)}catch(e){}}
 function svEmite(x,y,n,cor,vel,vida,tam){SVs.pt=SVs.pt||[];for(let i=0;i<n&&SVs.pt.length<160;i++){const a=Math.random()*Math.PI*2,v=(0.3+Math.random())*vel;
