@@ -393,9 +393,12 @@ class _HomeTelaState extends State<HomeTela> {
     final m = (_home?['missoes'] as Map?) ?? const {};
     final faltam = math.max(0, ((m['total'] as num?)?.toInt() ?? 0) - ((m['feitas'] as num?)?.toInt() ?? 0));
     final trn = (_home?['torneio'] as Map?) ?? const {};
+    // Quem ainda não ganhou troféu (não jogou online) vê só o essencial: Cenário e Torneio aparecem depois da primeira conquista.
+    final jogosComp = (((_home?['competicao'] as Map?)?['jogos']) as Map?) ?? const {};
+    final veterano = jogosComp.values.any((j) => j is Map && (((j['max'] ?? j['t']) as num?) ?? 0) > 0);
     final itens = <(String, String, String?, VoidCallback)>[
-      ('assets/home/ic_cenario.webp', 'Cenário', null, () => _abrir(CenarioTela(api: widget.api))),
-      ('assets/home/ic_torneio.webp', 'Torneio', trn['aberto'] == true ? (trn['inscrito'] == true ? '✓' : '1') : null, () => _abrir(RankingTela(api: widget.api, unico: 'torneio'))),
+      if (veterano) ('assets/home/ic_cenario.webp', 'Cenário', null, () => _abrir(CenarioTela(api: widget.api))),
+      if (veterano) ('assets/home/ic_torneio.webp', 'Torneio', trn['aberto'] == true ? (trn['inscrito'] == true ? '✓' : '1') : null, () => _abrir(RankingTela(api: widget.api, unico: 'torneio'))),
       ('assets/home/ic_carteira.webp', 'Carteira', null, () => _abrir(CarteiraTela(api: widget.api))),
       ('assets/home/ic_missoes.webp', 'Missões', faltam > 0 ? '$faltam' : null, () => _abrir(MissoesTela(api: widget.api))),
       ('assets/home/ic_loja.webp', 'Loja', null, () => abrirAba(4)),
