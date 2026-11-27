@@ -1320,6 +1320,39 @@ def sala_iniciar(pid: str, q: Quem = Depends(quem)) -> dict:
     return sala_ver(pid, q)
 
 
+def _lado_confronto(email: str, bots: dict) -> dict:
+    """Um lado da tela de confronto: nome, avatar e divisão. O bot aparece como jogador comum (nome de jogador e um avatar inicial sorteado pelo nome,
+    sempre o mesmo para o mesmo bot): a tela não revela quem é bot."""
+    import avatares as AV
+    import perfis as PF
+    import trofeus as TF
+    if email in bots:
+        b = bots[email]
+        nome = str(b.get("nome") or "Jogador")
+        t = int(b.get("trofeus") or 0)
+        iniciais = [a["id"] for a in AV.CATALOGO if (a.get("desbloqueio") or {}).get("tipo") == "inicial"] or [PF.AVATAR_PADRAO]
+        av = _avatar_img(iniciais[sum(ord(c) for c in nome) % len(iniciais)])
+    else:
+        try:
+            pf = PF.sanear(banco.sis_estado_ler(email, "perfil_jogador"))
+            nome = pf["nome"] or pf["usuario"] or "Jogador"
+            av = _avatar_img(pf["avatar"] if pf["avatar"] != PF.FOTO else PF.AVATAR_PADRAO)
+        except Exception:
+            nome, av = "Jogador", _avatar_img(PF.AVATAR_PADRAO)
+        t = int(_trof_doc(email)["trade"]["t"])
+    dv = TF.divisao(t)
+    return {"nome": nome, "avatar_img": av, "trofeus": t, "divisao": {k: dv[k] for k in ("id", "nome", "cor", "nivel")}}
+
+
+@app.get("/trade/salas/{pid}/confronto")
+def sala_confronto(pid: str, q: Quem = Depends(quem)) -> dict:
+    """Quem joga esta partida (para a tela de confronto antes do duelo): você e o adversário, com nome, avatar e divisão. Só para quem está nela."""
+    jogs, bots = _sala(OL.jogadores_da_partida, pid, q.email)
+    if q.email not in jogs:
+        raise HTTPException(403, "Você não está nesta partida.")
+    return {"voce": _lado_confronto(q.email, bots), "adversarios": [_lado_confronto(j, bots) for j in jogs if j != q.email]}
+
+
 @app.get("/trade/salas/{pid}")
 def sala_ver(pid: str, q: Quem = Depends(quem), e: str | None = None, n: int | None = None, u: float | None = None, fk: str | None = None) -> dict:
     """Sala de espera ("sala": código e jogadores), partida ("jogo": o que a mesa desenha, como na partida solo) ou "cancelada".

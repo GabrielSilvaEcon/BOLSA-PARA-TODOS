@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'animacoes.dart';
+import 'compartilhar.dart';
 import 'confete.dart';
 import 'escudo.dart';
 import 'relatorio.dart' show AnaliseDesenhos;
@@ -494,6 +495,17 @@ class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> with Single
           ]),
         ),
           if (r.estado == 'vitoria' && _animar) const Positioned.fill(child: ConfeteLeve()),
+          Positioned(
+            left: 10,
+            top: 8,
+            child: SafeArea(
+              child: Material(
+                color: const Color(0x66000000),
+                shape: const CircleBorder(),
+                child: IconButton(tooltip: 'Compartilhar o resultado', onPressed: () => abrirCompartilhar(context, r), icon: const Icon(Icons.ios_share_rounded, color: Colors.white)),
+              ),
+            ),
+          ),
         ]),
       ),
     );

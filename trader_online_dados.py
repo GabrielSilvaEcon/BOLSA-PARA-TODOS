@@ -513,6 +513,19 @@ def _sincronizar(pid: str, agora: float, row: dict | None = None) -> dict:
     return _mutar(pid, f, agora, row)
 
 
+def jogadores_da_partida(pid: str, email: str) -> tuple[list[str], dict]:
+    """(e-mails dos jogadores, bots) de uma partida já começada, só para quem participa. Leitura direta: não sincroniza nem grava nada
+    (usada na tela de confronto, antes do duelo)."""
+    r = _row(pid)
+    if not r:
+        raise ErroSala("Partida não encontrada.")
+    _participante(r["dados"], email)
+    p = r["dados"].get("p")
+    if not p:
+        raise ErroSala("A partida ainda não começou.")
+    return [j for j in p.get("jogadores") or [] if j], dict(p.get("bots") or {})
+
+
 def ler(pid: str, email: str, agora: float | None = None, dados: dict | None = None) -> dict:
     """Consulta de sincronização (polling): confere a participação, aplica o relógio e devolve SÓ o que este jogador pode ver (via TB.visao).
     `dados`: estado que uma ação acabou de gravar (já com o relógio aplicado): responde dele, sem reler nem regravar nada."""

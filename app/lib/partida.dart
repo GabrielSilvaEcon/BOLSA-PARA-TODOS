@@ -260,7 +260,7 @@ class _PartidaTelaState extends State<PartidaTela> {
     }
     Route<void> partida(String id) => MaterialPageRoute<void>(builder: (_) => PartidaTela(api: widget.api, salaId: id));
     Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
-        builder: (_) => BuscaTela(api: widget.api, rota: '/trade/fila', titulo: 'Trade Battle · Online', abrir: partida, entrar: () => widget.api.post('/trade/fila', {'corrida': corrida}))));
+        builder: (_) => BuscaTela(api: widget.api, rota: '/trade/fila', titulo: 'Trade Battle · Online', confronto: (id) => '/trade/salas/$id/confronto', abrir: partida, entrar: () => widget.api.post('/trade/fila', {'corrida': corrida}))));
   }
 
   Future<void> _abrirRelatorio() async {
