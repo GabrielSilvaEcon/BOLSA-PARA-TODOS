@@ -17,13 +17,17 @@ import trader_battle as TB
 
 FMT = "%Y-%m-%dT%H:%M"
 ANTECEDENCIA_S = 60            # a análise dura pelo menos isto
-FRONTEIRA_S = 300              # o replay começa numa fronteira de 5 min da bolsa
+DURACAO_CANDLE_S = {"5m": 300, "1m": 60}   # o replay começa numa fronteira do candle do gráfico
 MOEDAS = tuple(CV.SIMBOLOS)
 
 
-def proxima_fronteira(agora: float) -> int:
-    """Próximo múltiplo de 5 min que deixa pelo menos ANTECEDENCIA_S de análise."""
-    return int(-(-(agora + ANTECEDENCIA_S) // FRONTEIRA_S) * FRONTEIRA_S)
+FORMATOS = {"60": "vivo", "30": "vivo30"}     # duração da sessão em minutos -> formato do motor (60 min com candles de 5 min · 30 min com candles de 1 min)
+
+
+def proxima_fronteira(agora: float, formato: str = "vivo") -> int:
+    """Próxima fronteira do candle do gráfico (5 min ou 1 min) que deixa pelo menos ANTECEDENCIA_S de análise."""
+    f = DURACAO_CANDLE_S[TB.spec_corrida(formato)["tf"]]
+    return int(-(-(agora + ANTECEDENCIA_S) // f) * f)
 
 
 def _iso(epoch: float) -> str:
@@ -45,17 +49,18 @@ def _limpo(c: dict, e: float = 1.0) -> dict:
     return {"t": c["t"], "o": round(c["o"] * e, 4), "h": round(c["h"] * e, 4), "l": round(c["l"] * e, 4), "c": round(c["c"] * e, 4), "v": c["v"]}
 
 
-def cenario(moeda: str, B: int, agora: float, escala: float | None = None) -> dict:
+def cenario(moeda: str, B: int, agora: float, escala: float | None = None, formato: str = "vivo") -> dict:
     """Cenário de `moeda` com o replay marcado para a fronteira `B` (epoch, s), com o que o mercado já fechou até `agora`. Levanta CV.SemDados.
     `escala` fixa a escala de preço da partida (se faltar, sai do último fechamento da análise: só na criação)."""
-    sp = TB.CORRIDA_VIVO
+    sp = TB.spec_corrida(formato)
+    fr = DURACAO_CANDLE_S[sp["tf"]]
     n_ana, k, n_vel = sp["n_analise"], sp["k"], sp["n_replay"]
     n_passos = n_vel * k
     relogio = lambda: agora                                    # noqa: E731
-    c5 = CV.candles(moeda, "5m", CV.N_MAX, agora=relogio)["candles"]
+    c5 = CV.candles(moeda, sp["tf"], CV.N_MAX, agora=relogio)["candles"]    # candles do gráfico (5 min ou 1 min)
     c1 = CV.candles(moeda, "1m", CV.N_MAX, agora=relogio)["candles"]
     b_iso = _iso(B)
-    limite5 = _iso(B - FRONTEIRA_S)                            # o último candle de 5 min da análise começa em B − 5 min
+    limite5 = _iso(B - fr)                                     # o último candle da análise começa um candle antes de B
     analise = [c for c in c5 if c["fechado"] and c["t"] <= limite5][-n_ana:]
     if len(analise) < n_ana:
         raise CV.SemDados("histórico curto demais")
@@ -74,19 +79,19 @@ def cenario(moeda: str, B: int, agora: float, escala: float | None = None) -> di
     passos = [_limpo(c, e) for c in reais]
     for i in range(len(reais), n_passos):                      # preenchimento do futuro (nunca revelado pelo motor)
         passos.append({"t": _iso(B + 60 * i), "o": ref, "h": ref, "l": ref, "c": ref, "v": 0.0})
-    return {"id": f"VIVO-{moeda}-{B}", "ticker": f"{moeda} {rot}".strip(), "nome": f"{CV.NOMES[moeda]} ao vivo" + (f" (preço {rot})" if rot else ""), "tf": sp["tf"], "corrida": "vivo",
+    return {"id": f"VIVO-{formato}-{moeda}-{B}", "ticker": f"{moeda} {rot}".strip(), "nome": f"{CV.NOMES[moeda]} ao vivo" + (f" (preço {rot})" if rot else ""), "tf": sp["tf"], "corrida": formato,
             "sub": sp["sub"], "demo": False, "escala": e, "fonte": "Binance (dados públicos de mercado, ao vivo)", "n_analise": n_ana, "candles": [_limpo(c, e) for c in analise] + passos,
-            "grupo": [i // k for i in range(n_passos)], "velas_t": [_iso(B + FRONTEIRA_S * g) for g in range(n_vel)], "_vivo_n": len(reais)}
+            "grupo": [i // k for i in range(n_passos)], "velas_t": [_iso(B + fr * g) for g in range(n_vel)], "_vivo_n": len(reais)}
 
 
 def referencia(c: dict, moeda: str, B: int) -> dict:
     """O que vai para o banco da partida: a moeda, a hora do replay e a escala de preço (nenhum candle fica gravado)."""
-    return {"id": c["id"], "demo": False, "semente": 0, "tf": c["tf"], "corrida": "vivo", "vivo": {"moeda": moeda, "B": int(B), "escala": c["escala"]}}
+    return {"id": c["id"], "demo": False, "semente": 0, "tf": c["tf"], "corrida": c["corrida"], "vivo": {"moeda": moeda, "B": int(B), "escala": c["escala"], "formato": c["corrida"]}}
 
 
 def resolver(ref: dict, agora: float | None = None) -> dict:
     v = ref["vivo"]
     try:
-        return cenario(v["moeda"], int(v["B"]), time.time() if agora is None else agora, v.get("escala"))
+        return cenario(v["moeda"], int(v["B"]), time.time() if agora is None else agora, v.get("escala"), v.get("formato") or "vivo")
     except CV.SemDados as e:
         raise TB.ErroTrader(f"Sem dados do mercado agora ({e}). Tente de novo em instantes.")

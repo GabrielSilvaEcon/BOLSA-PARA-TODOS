@@ -111,3 +111,22 @@ def test_nao_encerra_nem_mostra_passo_que_o_mercado_ainda_nao_fechou(cli, mercad
 
 def test_moeda_invalida(cli, mercado):  # noqa: F811
     assert cli.post("/trade/vivo", json={"moeda": "PETR4"}).status_code == 400
+
+
+def test_sessao_de_30_minutos_com_candles_de_1_minuto(cli, mercado):  # noqa: F811
+    r = cli.post("/trade/vivo", json={"moeda": "SOL", "duracao": "30"})
+    assert r.status_code == 200, r.text
+    j = r.json()
+    pid, tela = j["id"], j["tela"]
+    B = TV.proxima_fronteira(T0, "vivo30")
+    assert B % 60 == 0 and 60 <= B - T0 <= 120 and len(tela["candles"]) == 200 and "SOL" in tela["ticker"]
+    cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta"})
+    mercado["t"] = B + 185.0                                   # 3 candles de 1 min fechados depois da fronteira
+    v = ver(cli, pid)
+    assert v["fase"] == "replay" and len(v["tela"]["candles"]) == 203          # 200 + 3 candles inteiros (cada candle é 1 passo)
+    mercado["t"] = B + 1800 + 130.0                            # 30 min depois
+    assert ver(cli, pid)["fase"] == "fim"
+
+
+def test_duracao_invalida(cli, mercado):  # noqa: F811
+    assert cli.post("/trade/vivo", json={"moeda": "BTC", "duracao": "45"}).status_code == 400

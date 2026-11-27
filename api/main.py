@@ -1165,6 +1165,7 @@ def trade_solo_nova(d: NovaPartida, q: Quem = Depends(quem)) -> dict:
 
 class NovaVivo(BaseModel):
     moeda: str = "BTC"
+    duracao: str = "60"                 # minutos da sessão: "60" (candles de 5 min) ou "30" (candles de 1 min)
 
 
 @app.post("/trade/vivo")
@@ -1176,16 +1177,19 @@ def trade_vivo_nova(d: NovaVivo, q: Quem = Depends(quem)) -> dict:
     moeda = d.moeda.upper()
     if moeda not in TV.MOEDAS:
         raise HTTPException(400, "moeda inválida")
+    formato = TV.FORMATOS.get(str(d.duracao))
+    if not formato:
+        raise HTTPException(400, "duração inválida (30 ou 60 minutos)")
     agora = _agora()
-    B = TV.proxima_fronteira(agora)
+    B = TV.proxima_fronteira(agora, formato)
     try:
-        cen = TV.cenario(moeda, B, agora)
+        cen = TV.cenario(moeda, B, agora, formato=formato)
     except CV.SemDados as e:
         raise HTTPException(503, f"Sem dados do mercado agora ({e}). Tente de novo em instantes.")
     try:
         apostas = {q.email: TCA.capital_corrida(q.email, q.conta.get("id"))}
         pid = uuid.uuid4().hex[:10]
-        p = TB.nova_partida(cen, cen["tf"], [q.email], agora, pid=pid, apostas=apostas, corrida="vivo", t_analise_s=B - agora)
+        p = TB.nova_partida(cen, cen["tf"], [q.email], agora, pid=pid, apostas=apostas, corrida=formato, t_analise_s=B - agora)
     except TCA.SemSaldo as e:
         _erro(e, 409)
     except TB.ErroTrader as e:

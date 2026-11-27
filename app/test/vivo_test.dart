@@ -58,7 +58,7 @@ void main() {
       await t.pump();
       expect(find.textContaining('A conferência sai em ~15 min'), findsOneWidget);
       final rol = find.byType(Scrollable).first;
-      for (final txt in ['LER O GRÁFICO AO VIVO', 'Minhas leituras', 'Bitcoin · 5m · Subir', 'Aguardando 5 candles fecharem', '82', 'O preço caiu (-0.42%). Você acertou a direção.', 'Encerrada sem nota']) {
+      for (final txt in ["LER O GRÁFICO AO VIVO", "TRADE AO VIVO · 30 min · candles de 1 min", "TRADE AO VIVO · 60 min · candles de 5 min", 'Minhas leituras', 'Bitcoin · 5m · Subir', 'Aguardando 5 candles fecharem', '82', 'O preço caiu (-0.42%). Você acertou a direção.', 'Encerrada sem nota']) {
         await t.scrollUntilVisible(find.textContaining(txt), 120, scrollable: rol);
         expect(find.textContaining(txt), findsWidgets, reason: txt);
       }

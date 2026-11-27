@@ -39,6 +39,7 @@ TIMEFRAMES = {"15m": {"nome": "15 minutos", "n_analise": 120, "na_aceitos": (120
               "1h": {"nome": "1 hora", "n_analise": 100, "na_aceitos": (100, 50), "n_replay": 16, "passo_min": 60, "max_dias": 70},
               # partida corrida (motor 2 com quantidade livre): 5 minutos e 1 dia só existem nela
               "5m": {"nome": "5 minutos", "n_analise": 360, "na_aceitos": (360,), "n_replay": 84, "passo_min": 5, "max_dias": 20},
+              "1m": {"nome": "1 minuto", "n_analise": 200, "na_aceitos": (200,), "n_replay": 30, "passo_min": 1, "max_dias": 2},     # só existe no modo ao vivo
               "1d": {"nome": "1 dia", "n_analise": 300, "na_aceitos": (300,), "n_replay": 120, "passo_min": 1440, "max_dias": 900}}
 # ---- PARTIDA CORRIDA (nov/2026): sem rodadas. Uma leitura no início, histórico 3x maior e um replay longo em que se opera com quantidade livre
 # (regras em trader_qtd.py). Cada duração usa um tempo gráfico: rápida = 15 minutos, intermediária = 1 hora, longa = 1 dia.
@@ -51,12 +52,14 @@ CORRIDAS = {"rapida": {"tf": "15m", "sub": "5m", "k": 3, "n_analise": 300, "n_re
 ROTULO_CORRIDA = {"rapida": "Rápida", "intermediaria": "Intermediária", "longa": "Longa"}
 # MODO AO VIVO (cripto, Binance): gráfico de 5 min, passos de 1 min reais, 12 candles = 1 hora. Fica FORA de CORRIDAS de propósito (não entra nas listas de duração,
 # nas salas nem no preparo de cenários). O cenário nasce do mercado de agora (trader_vivo.py) e o relógio segue o mercado, não os 4 s por candle.
-CORRIDA_VIVO = {"tf": "5m", "sub": "1m", "k": 5, "n_analise": 200, "n_replay": 12}
+CORRIDA_VIVO = {"tf": "5m", "sub": "1m", "k": 5, "n_analise": 200, "n_replay": 12}          # 60 min · candles de 5 min (12 candles de 5 passos de 1 min)
+CORRIDA_VIVO30 = {"tf": "1m", "sub": "1m", "k": 1, "n_analise": 200, "n_replay": 30}        # 30 min · candles de 1 min (30 candles, 1 passo de 1 min cada)
+CORRIDAS_VIVO = {"vivo": CORRIDA_VIVO, "vivo30": CORRIDA_VIVO30}
 SEG_PASSO_VIVO = 60.0
 
 
 def spec_corrida(nome):
-    return CORRIDAS.get(nome) or (CORRIDA_VIVO if nome == "vivo" else None)
+    return CORRIDAS.get(nome) or CORRIDAS_VIVO.get(nome)
 SEG_POR_CANDLE = 4.0
 JOGADORES_MIN, JOGADORES_MAX = 1, 4          # nesta etapa joga 1; a estrutura já aceita 2 a 4
 DIRECOES = ("alta", "baixa", "lateral")
@@ -274,7 +277,7 @@ def config_corrida(formato: str, n_passos: int | None = None, t_analise_s: float
     sp = spec_corrida(formato)
     if not sp:
         raise ErroTrader("formato de partida inválido")
-    if formato == "vivo":                                  # o relógio é o do mercado: 1 passo por minuto; a análise termina na hora marcada
+    if formato in CORRIDAS_VIVO:                           # o relógio é o do mercado: 1 passo por minuto; a análise termina na hora marcada
         n = int(n_passos or sp["n_replay"] * sp["k"])
         return {"v": 4, "motor": MOTOR_MESA, "formato": formato, "rodadas": 1, "n_replay": n, "n_velas": sp["n_replay"], "t_replay_s": n * SEG_PASSO_VIVO,
                 "qtd": True, "taxa": TQ.TAXA_B3, "pct_capital": TQ.PCT_CAPITAL, "vivo": True, "t_analise_s": float(t_analise_s or 120.0)}
