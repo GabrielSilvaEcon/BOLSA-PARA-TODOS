@@ -22,7 +22,7 @@ import 'ticker_online.dart' show BuscaTela;
 /// cria a partida (`POST /trade/solo`) ou entra na da sala (`/trade/salas/{id}`), consulta o andamento a cada segundo e manda as jogadas
 /// (`/estrategia` e `/acao`). No fim, abre o relatório da partida (o mesmo do app antigo).
 class PartidaTela extends StatefulWidget {
-  const PartidaTela({super.key, required this.api, this.corrida = 'intermediaria', this.salaId, this.inicio});
+  const PartidaTela({super.key, required this.api, this.corrida = 'intermediaria', this.salaId, this.inicio, this.corpoInicio});
   final Api api;
   final String corrida;
 
@@ -31,6 +31,9 @@ class PartidaTela extends StatefulWidget {
 
   /// Rota que cria a partida solo no lugar de /trade/solo (ex.: '/desafio/jogar', o gráfico do Desafio do dia).
   final String? inicio;
+
+  /// Corpo do pedido que cria a partida (ex.: {'moeda': 'BTC'} no modo Ao vivo). Sem ele vai {'corrida': ...}.
+  final Map<String, dynamic>? corpoInicio;
 
   @override
   State<PartidaTela> createState() => _PartidaTelaState();
@@ -83,7 +86,7 @@ class _PartidaTelaState extends State<PartidaTela> {
   Future<void> _iniciar() async {
     try {
       final sala = widget.salaId;
-      final r = sala == null ? await widget.api.post(widget.inicio ?? '/trade/solo', {'corrida': widget.corrida}) : await widget.api.get('/trade/salas/$sala');
+      final r = sala == null ? await widget.api.post(widget.inicio ?? '/trade/solo', widget.corpoInicio ?? {'corrida': widget.corrida}) : await widget.api.get('/trade/salas/$sala');
       if (mounted) setState(() => _pid = sala ?? r['id']?.toString());
       _aplicar(r);
       _relogio = Timer.periodic(const Duration(seconds: 1), (_) => _consultar());
@@ -229,7 +232,7 @@ class _PartidaTelaState extends State<PartidaTela> {
         acao: () {
           Navigator.of(ctx).pop();
           if (solo) {
-            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: widget.corrida)));
+            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => _novaSolo()));
           } else {
             Navigator.of(context).maybePop();
           }
@@ -239,6 +242,11 @@ class _PartidaTelaState extends State<PartidaTela> {
     _resultadoAberto = false;
     if (mounted) _mostrarFimModal();
   }
+
+  /// Outra partida solo igual a esta: no modo Ao vivo repete a mesma moeda; no Desafio do dia e no treino comum, o mesmo de sempre.
+  PartidaTela _novaSolo() => widget.inicio == '/trade/vivo'
+      ? PartidaTela(api: widget.api, inicio: widget.inicio, corpoInicio: widget.corpoInicio)
+      : PartidaTela(api: widget.api, corrida: widget.corrida);
 
   bool _modalFim = false;
   final _inc = EstadoIncremental(); // consulta incremental: só o que mudou vem do servidor
@@ -257,7 +265,7 @@ class _PartidaTelaState extends State<PartidaTela> {
     if (!mounted) return;
     final corrida = solo ? widget.corrida : 'rapida'; // online: só existe a partida de 15 minutos
     if (solo) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => PartidaTela(api: widget.api, corrida: corrida)));
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => _novaSolo()));
       return;
     }
     Route<void> partida(String id) => MaterialPageRoute<void>(builder: (_) => PartidaTela(api: widget.api, salaId: id));
