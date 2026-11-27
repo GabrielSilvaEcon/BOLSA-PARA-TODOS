@@ -475,7 +475,8 @@ class _EscolhaSetupsState extends State<_EscolhaSetups> {
       );
 }
 
-/// Uma carta da grade: raridade, ícone, nome, o que ela é, a direção e a região. Borda na cor do setup; ✓ quando marcada.
+/// Uma carta da grade do "Escolher setup": a carta nova (arte da raridade e desenho do padrão) com a direção e a região embaixo.
+/// Borda e brilho na cor do setup quando marcada ou aberta no detalhe; ✓ quando marcada.
 class _CartaEscolha extends StatelessWidget {
   const _CartaEscolha({required this.setup, required this.marcado, required this.foco, required this.aoTocar});
   final Map<String, dynamic> setup;
@@ -486,34 +487,36 @@ class _CartaEscolha extends StatelessWidget {
   Widget build(BuildContext context) {
     final cor = _hex((setup['cores'] as Map?)?['principal']);
     final dir = '${setup['direcao']}';
-    return GestureDetector(
-      onTap: aoTocar,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cor, width: marcado || foco ? 2.6 : 1.4),
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [cor.withValues(alpha: marcado ? .30 : .16), const Color(0xFF071634)]),
-          boxShadow: marcado ? [BoxShadow(color: cor.withValues(alpha: .55), blurRadius: 14)] : null,
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            if (marcado) Container(width: 22, height: 22, decoration: BoxDecoration(shape: BoxShape.circle, color: cor), child: const Icon(Icons.check_rounded, size: 16, color: Color(0xFF04170E))),
-            const Spacer(),
-            _selo('${rotulosRaridade[setup['raridade']] ?? ''}', cor),
+    return LayoutBuilder(builder: (ctx, c) {
+      final w = c.maxWidth;
+      final raio = BorderRadius.circular(w * 0.06);
+      return GestureDetector(
+        onTap: aoTocar,
+        behavior: HitTestBehavior.opaque,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Stack(children: [
+            DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(borderRadius: raio, border: marcado || foco ? Border.all(color: cor, width: 3) : null),
+              child: DecoratedBox(
+                decoration: BoxDecoration(borderRadius: raio, boxShadow: marcado ? [BoxShadow(color: cor.withValues(alpha: .6), blurRadius: 14)] : null),
+                child: SetupCarta(setup: setup, largura: w),
+              ),
+            ),
+            if (marcado)
+              Positioned(
+                top: w * 0.05,
+                left: w * 0.05,
+                child: Container(width: 24, height: 24, decoration: BoxDecoration(shape: BoxShape.circle, color: cor), child: const Icon(Icons.check_rounded, size: 17, color: Color(0xFF04281A))),
+              ),
           ]),
-          const SizedBox(height: 6),
-          Center(child: Icon(iconeDoSetup('${setup['id']}'), size: 44, color: cor)),
-          const SizedBox(height: 6),
-          Text('${setup['nome']}'.toUpperCase(), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, color: Colors.white)),
-          Text('${setup['subtitulo']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, height: 1.2, color: Color(0xFFB9D0F5))),
           const SizedBox(height: 6),
           _linha(_iconeDirecao(dir), _rotuloDirecao(dir), _corDirecao(dir)),
           const SizedBox(height: 4),
           _linha(Icons.crop_free_rounded, '${setup['regiao']}', const Color(0xFFE6DCA8)),
         ]),
-      ),
-    );
+      );
+    });
   }
 
   Widget _linha(IconData ic, String t, Color c) => Container(

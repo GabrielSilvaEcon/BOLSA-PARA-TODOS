@@ -97,4 +97,48 @@ void main() {
     expect(_tudo(t), isNot(contains('QUANDO FUNCIONA MELHOR')));
     expect(t.takeException(), isNull);
   });
+
+  group('desempenho', () {
+    Future<void> grade(WidgetTester t, {bool verso = false}) => _mostra(
+        t,
+        SingleChildScrollView(child: Wrap(children: [for (final id in ids) CartaSetup(setup: _setup(id), largura: 168, verso: verso), for (final id in ids) CartaSetup(setup: _setup(id, rar: 'epica'), largura: 168, verso: verso)])));
+
+    testWidgets('reconstruir as mesmas cartas não mede o texto de novo (tamanho de letra em memória)', (t) async {
+      await grade(t);
+      final depoisDaPrimeira = TextoAjustado.calculos;
+      await grade(t);                                   // outra árvore com as mesmas cartas
+      await t.pumpWidget(const SizedBox());
+      await grade(t);
+      expect(TextoAjustado.calculos, depoisDaPrimeira, reason: 'a segunda montagem deveria usar a memória');
+    });
+
+    testWidgets('a virada não remonta nem mede nada a cada quadro: só a rotação muda', (t) async {
+      await _mostra(t, CartaGirando(setup: _setup('engolfo_alta'), largura: 300));
+      await t.tap(find.byType(CartaSetup));
+      await t.pump(const Duration(milliseconds: 50));
+      await t.pump(const Duration(milliseconds: 700));               // verso montado pela primeira vez
+      final aposPrimeira = TextoAjustado.calculos;
+      for (var i = 0; i < 4; i++) {
+        await t.tap(find.byType(CartaSetup));
+        await t.pump(const Duration(milliseconds: 50));
+        for (var q = 0; q < 12; q++) {
+          await t.pump(const Duration(milliseconds: 50));          // 12 quadros de animação por virada
+        }
+      }
+      expect(TextoAjustado.calculos, aposPrimeira, reason: 'quadros da animação não devem refazer medições de texto');
+    });
+
+    testWidgets('medida (só informativa, no teste e não no aparelho): montar 14 cartas', (t) async {
+      final sw = Stopwatch()..start();
+      await grade(t);
+      final primeira = sw.elapsedMilliseconds;
+      sw.reset();
+      await t.pumpWidget(const SizedBox());
+      await grade(t);
+      final segunda = sw.elapsedMilliseconds;
+      // ignore: avoid_print
+      print('MEDIDA 14 cartas: 1ª montagem ${primeira} ms, 2ª montagem ${segunda} ms');
+      expect(segunda, lessThanOrEqualTo(primeira + 50));
+    });
+  });
 }

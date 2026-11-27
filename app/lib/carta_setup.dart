@@ -26,15 +26,26 @@ class TextoAjustado extends StatelessWidget {
   final FontWeight peso;
   final bool italico;
 
+  /// Quantas vezes o laço de medição rodou de verdade (os testes conferem que reconstruir a mesma carta não mede de novo).
+  static int calculos = 0;
+  static final Map<String, double> _memoria = {};
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (ctx, c) {
       TextStyle estilo(double f) => TextStyle(fontSize: f, color: cor, fontWeight: peso, fontStyle: italico ? FontStyle.italic : FontStyle.normal, height: 1.12, shadows: const [Shadow(color: Color(0xCC000814), blurRadius: 3)]);
-      var f = max;
-      while (f > min) {
-        final tp = TextPainter(text: TextSpan(style: estilo(f), children: spans), textDirection: TextDirection.ltr, maxLines: maxLines, textAlign: align)..layout(maxWidth: c.maxWidth);
-        if (!tp.didExceedMaxLines && tp.height <= c.maxHeight * 0.94) break;      // folga: a altura medida é um pouco menor que a desenhada
-        f -= 0.5;
+      final chave = '${TextSpan(children: spans).toPlainText()}|${c.maxWidth.round()}|${c.maxHeight.round()}|$max|$min|$maxLines|${align.index}|${peso.index}|${italico ? 1 : 0}|${spans.length}';
+      var f = _memoria[chave];
+      if (f == null) {
+        calculos++;
+        f = max;
+        while (f! > min) {
+          final tp = TextPainter(text: TextSpan(style: estilo(f), children: spans), textDirection: TextDirection.ltr, maxLines: maxLines, textAlign: align)..layout(maxWidth: c.maxWidth);
+          if (!tp.didExceedMaxLines && tp.height <= c.maxHeight * 0.94) break;      // folga: a altura medida é um pouco menor que a desenhada
+          f -= 0.5;
+        }
+        if (_memoria.length > 600) _memoria.clear();
+        _memoria[chave] = f;
       }
       return Align(
         alignment: align == TextAlign.center ? Alignment.center : Alignment.centerLeft,
@@ -158,6 +169,18 @@ class CartaGirando extends StatefulWidget {
 class _CartaGirandoState extends State<CartaGirando> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
   bool _verso = false;
+  // As faces não mudam durante a virada: ficam prontas e só a rotação é refeita a cada quadro (antes, cada quadro remontava a carta toda).
+  late Widget _frente = CartaSetup(setup: widget.setup, largura: widget.largura);
+  late Widget _versoW = Transform(alignment: Alignment.center, transform: Matrix4.identity()..rotateY(pi), child: CartaSetup(setup: widget.setup, largura: widget.largura, verso: true));
+
+  @override
+  void didUpdateWidget(CartaGirando o) {
+    super.didUpdateWidget(o);
+    if (o.setup != widget.setup || o.largura != widget.largura) {
+      _frente = CartaSetup(setup: widget.setup, largura: widget.largura);
+      _versoW = Transform(alignment: Alignment.center, transform: Matrix4.identity()..rotateY(pi), child: CartaSetup(setup: widget.setup, largura: widget.largura, verso: true));
+    }
+  }
 
   @override
   void dispose() {
@@ -176,21 +199,20 @@ class _CartaGirandoState extends State<CartaGirando> with SingleTickerProviderSt
       GestureDetector(
         behavior: HitTestBehavior.opaque,      // a arte e o desenho não recebem toques sozinhos: sem isto, tocar no meio da carta não virava
         onTap: _virar,
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (ctx, _) {
-            final ang = Curves.easeInOut.transform(_c.value) * pi;
-            final mostraVerso = ang > pi / 2;
-            return Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.0012)
-                ..rotateY(ang),
-              child: mostraVerso
-                  ? Transform(alignment: Alignment.center, transform: Matrix4.identity()..rotateY(pi), child: CartaSetup(setup: widget.setup, largura: widget.largura, verso: true))
-                  : CartaSetup(setup: widget.setup, largura: widget.largura),
-            );
-          },
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (ctx, _) {
+              final ang = Curves.easeInOut.transform(_c.value) * pi;
+              return Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.0012)
+                  ..rotateY(ang),
+                child: ang > pi / 2 ? _versoW : _frente,
+              );
+            },
+          ),
         ),
       ),
       const SizedBox(height: 6),
