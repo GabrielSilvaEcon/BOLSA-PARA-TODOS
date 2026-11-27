@@ -26,17 +26,9 @@ class RelatorioTela extends StatefulWidget {
   State<RelatorioTela> createState() => _RelatorioTelaState();
 }
 
-class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 3600))..forward();
-  late final List<Vela> _velas = [for (final c in (widget.tela['candles'] as List? ?? const [])) if (c is Map) Vela.de(c)];
-  late final int _divisor = (_velas.length - ((widget.tela['revelados'] as num?)?.toInt() ?? 0)).clamp(0, _velas.length);
+class _RelatorioTelaState extends State<RelatorioTela> {
   late final Map<String, dynamic> _res = (widget.fim['resultado'] as Map?)?.cast<String, dynamic>() ?? const {};
   late final Map<String, dynamic> _lt = (_res['leitura'] as Map?)?.cast<String, dynamic>() ?? const {};
-  late final List<Map> _itens = ((_lt['itens'] as List?) ?? const []).cast<Map>();
-  late final List<Desenho> _desenhos = [for (final x in _itens) if (_desenho(x) case final d?) d];
-  late final List<bool?> _ok = [for (final x in _itens) if (_desenho(x) != null) x['ok'] as bool?];
-
-  static const _papel = {'suporte': Ferramenta.suporte, 'resistencia': Ferramenta.resistencia, 'rompimento': Ferramenta.rompimento, 'alvo': Ferramenta.alvo};
 
   bool _comemorou = false;
 
@@ -79,27 +71,6 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
     }
   }
 
-  Desenho? _desenho(Map x) {
-    double n(Object? v) => (v as num).toDouble();
-    switch (x['tipo']) {
-      case 'nivel':
-        final f = _papel[x['papel']];
-        return f == null ? null : Desenho.nivel(f, n(x['preco']));
-      case 'tendencia':
-        return Desenho.dois(Ferramenta.tendencia, (x['i1'] as num).toInt(), n(x['p1']), (x['i2'] as num).toInt(), n(x['p2']));
-      case 'zona':
-        return Desenho.dois(x['reacao'] == 'alta' ? Ferramenta.zonaAlta : Ferramenta.zonaBaixa, (x['i1'] as num).toInt(), n(x['p1']),
-            (x['i2'] as num).toInt(), n(x['p2']));
-    }
-    return null;
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
   String _moeda(num v) {
     final s = v.abs().toStringAsFixed(2).split('.');
     final b = StringBuffer();
@@ -134,9 +105,7 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
                 const SizedBox(height: 10),
                 Entrada(ordem: 1, child: _placar(pts, fin, nota, xp)),
                 const SizedBox(height: 10),
-                Entrada(ordem: 2, child: _grafico(rev)),
-                const SizedBox(height: 12),
-                Entrada(ordem: 3, child: _lista()),
+                Entrada(ordem: 2, child: AnaliseDesenhos(fim: widget.fim, tela: widget.tela)),
                 const SizedBox(height: 14),
                 // O relatório completo vem antes: quem sai desta tela sai pelo botão de jogar, que fica por último.
                 Pressionavel(
@@ -344,6 +313,51 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
       ]),
     );
   }
+}
+
+/// Gráfico REAL da partida (andando depois da linha "início", com os desenhos ganhando ✔/✖ um a um) e a lista "Seus desenhos".
+/// Usada no relatório do treino solo e na última página do carrossel do resultado do duelo.
+class AnaliseDesenhos extends StatefulWidget {
+  const AnaliseDesenhos({super.key, required this.fim, required this.tela});
+  final Map<String, dynamic> fim;
+  final Map<String, dynamic> tela;
+
+  @override
+  State<AnaliseDesenhos> createState() => _AnaliseDesenhosState();
+}
+
+class _AnaliseDesenhosState extends State<AnaliseDesenhos> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 3600))..forward();
+  late final List<Vela> _velas = [for (final c in (widget.tela['candles'] as List? ?? const [])) if (c is Map) Vela.de(c)];
+  late final int _divisor = (_velas.length - ((widget.tela['revelados'] as num?)?.toInt() ?? 0)).clamp(0, _velas.length);
+  late final Map<String, dynamic> _res = (widget.fim['resultado'] as Map?)?.cast<String, dynamic>() ?? const {};
+  late final Map<String, dynamic> _lt = (_res['leitura'] as Map?)?.cast<String, dynamic>() ?? const {};
+  late final List<Map> _itens = ((_lt['itens'] as List?) ?? const []).cast<Map>();
+  late final List<Desenho> _desenhos = [for (final x in _itens) if (_desenho(x) case final d?) d];
+  late final List<bool?> _ok = [for (final x in _itens) if (_desenho(x) != null) x['ok'] as bool?];
+
+  static const _papel = {'suporte': Ferramenta.suporte, 'resistencia': Ferramenta.resistencia, 'rompimento': Ferramenta.rompimento, 'alvo': Ferramenta.alvo};
+
+  Desenho? _desenho(Map x) {
+    double n(Object? v) => (v as num).toDouble();
+    switch (x['tipo']) {
+      case 'nivel':
+        final f = _papel[x['papel']];
+        return f == null ? null : Desenho.nivel(f, n(x['preco']));
+      case 'tendencia':
+        return Desenho.dois(Ferramenta.tendencia, (x['i1'] as num).toInt(), n(x['p1']), (x['i2'] as num).toInt(), n(x['p2']));
+      case 'zona':
+        return Desenho.dois(x['reacao'] == 'alta' ? Ferramenta.zonaAlta : Ferramenta.zonaBaixa, (x['i1'] as num).toInt(), n(x['p1']),
+            (x['i2'] as num).toInt(), n(x['p2']));
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   List<String>? get _datas => ((widget.fim['revelado'] as Map?)?['datas'] as List?)?.map((e) => '$e').toList();
 
@@ -441,6 +455,16 @@ class _RelatorioTelaState extends State<RelatorioTela> with SingleTickerProvider
         ),
       ),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rev = (widget.fim['revelado'] as Map?) ?? const {};
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _grafico(rev),
+      const SizedBox(height: 12),
+      _lista(),
+    ]);
   }
 
   Widget _lista() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'animacoes.dart';
 import 'escudo.dart';
+import 'relatorio.dart' show AnaliseDesenhos;
 
 const _ouro = Color(0xFFFFC93C);
 const _azulEmpate = Color(0xFF5CC8FF);
@@ -126,14 +127,30 @@ class ResultadoPartida {
   static String num1(num v, {bool sinal = true}) => '${v > 0 && sinal ? '+' : (v < 0 ? '−' : '')}${v.abs().toStringAsFixed(1).replaceAll('.', ',')}';
 }
 
-/// Tela de resultado de um duelo: VITÓRIA / EMPATE / DERROTA com lucro, pontuação, troféus, adversário, operações e divisão.
-class ResultadoPartidaTela extends StatelessWidget {
-  const ResultadoPartidaTela({super.key, required this.r, required this.continuar, this.analise});
+/// Tela de resultado de um duelo em três páginas que se deslizam: Resultado (VITÓRIA / EMPATE / DERROTA, lucro, pontos, troféus, placar, divisão),
+/// Operações (ativo, rosca, gráfico e sequência) e Análise (o gráfico real com os desenhos ✔/✖). O botão Continuar fica sempre à vista.
+class ResultadoPartidaTela extends StatefulWidget {
+  const ResultadoPartidaTela({super.key, required this.r, required this.continuar, this.fim, this.tela});
   final ResultadoPartida r;
   final VoidCallback continuar;
 
-  /// Abre a análise completa (gráfico real com os desenhos ✔/✖). Nulo = sem botão.
-  final VoidCallback? analise;
+  /// Dados da partida para a página de análise (gráfico com os desenhos). Sem eles, a tela fica com duas páginas.
+  final Map<String, dynamic>? fim, tela;
+
+  @override
+  State<ResultadoPartidaTela> createState() => _ResultadoPartidaTelaState();
+}
+
+class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> {
+  final _pc = PageController();
+  int _pag = 0;
+  ResultadoPartida get r => widget.r;
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
 
   Color get _cor => switch (r.estado) { 'vitoria' => _ouro, 'empate' => _azulEmpate, _ => _vermelho };
 
@@ -213,7 +230,7 @@ class ResultadoPartidaTela extends StatelessWidget {
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: const Color(0x3322C55E), border: Border.all(color: _verde.withValues(alpha: 0.6))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(r.ticker, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
-            if (r.nome.isNotEmpty) Text(r.nome, style: const TextStyle(fontSize: 12.5, color: _lilas)),
+            if (r.nome.isNotEmpty && r.nome.toUpperCase() != r.ticker.toUpperCase()) Text(r.nome, style: const TextStyle(fontSize: 12.5, color: _lilas)),
             if (r.periodo.isNotEmpty) Text(r.periodo, style: const TextStyle(fontSize: 11.5, color: _lilas)),
             const SizedBox(height: 6),
             Row(children: [
@@ -245,6 +262,10 @@ class ResultadoPartidaTela extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(child: _mini('Vendas', '${r.vendas}', _vermelho, icone: Icons.arrow_downward_rounded)),
         ]),
+        const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: Text('A vitória é decidida pelos pontos do duelo, não por quantas operações deram lucro.', style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: _lilas)),
+        ),
         if (r.velas.length > 2) ...[
           const SizedBox(height: 10),
           const Text('A PARTIDA NO GRÁFICO', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: _lilas)),
@@ -303,71 +324,117 @@ class ResultadoPartidaTela extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _pagina(List<Widget> filhos) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 12), children: filhos),
+        ),
+      );
+
+  Widget _paginaResultado(BuildContext context) {
     final trofeus = r.trofeus;
     final delta = (trofeus?['delta'] as num?)?.toInt();
     final topo = switch (r.estado) { 'vitoria' => 'topo_vitoria', 'empate' => 'topo_empate', _ => 'topo_derrota' };
     var ordem = 0;
+    return _pagina([
+      Entrada(
+        ordem: ordem++,
+        child: Stack(children: [
+          Image.asset('assets/resultado/$topo.webp', width: double.infinity, fit: BoxFit.fitWidth),
+          const Positioned(left: 0, right: 0, bottom: 0, height: 36, child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00060B26), Color(0xFF060B26)])))),
+        ]),
+      ),
+      Text(r.subtitulo, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600, color: Colors.white)),
+      const SizedBox(height: 14),
+      Entrada(
+        ordem: ordem++,
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _numero(Icons.emoji_events_rounded, 'LUCRO DA PARTIDA', r.pnl == null ? '—' : ResultadoPartida.moeda(r.pnl!), (r.pnl ?? 0) < 0 ? _vermelho : _verde,
+                nota: r.pct == null ? null : '${ResultadoPartida.num1(r.pct!)}% do capital'),
+            const SizedBox(width: 8),
+            _numero(Icons.star_rounded, 'PONTUAÇÃO', r.pontos == null ? '—' : ResultadoPartida.num1(r.pontos!), const Color(0xFF4FC3FF)),
+            const SizedBox(width: 8),
+            if (delta != null)
+              _numero(Icons.shield_rounded, 'TROFÉUS', '${delta >= 0 ? '+' : ''}$delta', delta >= 0 ? const Color(0xFFF2B84B) : const Color(0xFFFF8FA3))
+            else
+              _numero(Icons.bolt_rounded, 'XP', r.xp == null ? '—' : '+${r.xp}', const Color(0xFFF2B84B), nota: r.xp == 0 ? 'limite do dia' : null),
+          ]),
+        ),
+      ),
+      const SizedBox(height: 12),
+      if (r.placar.length > 1) ...[Entrada(ordem: ordem++, child: _adversarios()), const SizedBox(height: 12)],
+      if (trofeus != null) ...[Entrada(ordem: ordem++, child: _divisao()), const SizedBox(height: 12)],
+      _caixa(
+        borda: _cor,
+        child: Row(children: [
+          Icon(r.estado == 'derrota' ? Icons.trending_down_rounded : Icons.trending_up_rounded, color: _cor),
+          const SizedBox(width: 10),
+          Expanded(child: Text(r.rodape, style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic, color: Colors.white))),
+        ]),
+      ),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final temAnalise = widget.fim != null && widget.tela != null;
+    final nomes = ['Resultado', 'Operações', if (temAnalise) 'Análise'];
     return PopScope(
       canPop: false,
       child: Scaffold(
         backgroundColor: const Color(0xFF060B26),
         body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: ListView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24), children: [
-                Entrada(
-                  ordem: ordem++,
-                  child: Stack(children: [
-                    Image.asset('assets/resultado/$topo.webp', width: double.infinity, fit: BoxFit.fitWidth),
-                    Positioned(left: 0, right: 0, bottom: 0, height: 36, child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [const Color(0x00060B26), const Color(0xFF060B26)])))),
-                  ]),
-                ),
-                Text(r.subtitulo, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600, color: Colors.white)),
-                const SizedBox(height: 14),
-                Entrada(
-                  ordem: ordem++,
-                  child: IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    _numero(Icons.emoji_events_rounded, 'LUCRO DA PARTIDA', r.pnl == null ? '—' : ResultadoPartida.moeda(r.pnl!), (r.pnl ?? 0) < 0 ? _vermelho : _verde,
-                        nota: r.pct == null ? null : '${ResultadoPartida.num1(r.pct!)}% do capital'),
-                    const SizedBox(width: 8),
-                    _numero(Icons.star_rounded, 'PONTUAÇÃO', r.pontos == null ? '—' : ResultadoPartida.num1(r.pontos!), const Color(0xFF4FC3FF)),
-                    const SizedBox(width: 8),
-                    if (delta != null)
-                      _numero(Icons.shield_rounded, 'TROFÉUS', '${delta >= 0 ? '+' : ''}$delta', delta >= 0 ? const Color(0xFFF2B84B) : const Color(0xFFFF8FA3))
-                    else
-                      _numero(Icons.bolt_rounded, 'XP', r.xp == null ? '—' : '+${r.xp}', const Color(0xFFF2B84B), nota: r.xp == 0 ? 'limite do dia' : null),
-                  ])),
-                ),
-                const SizedBox(height: 12),
-                if (r.placar.length > 1) ...[Entrada(ordem: ordem++, child: _adversarios()), const SizedBox(height: 12)],
-                Entrada(ordem: ordem++, child: _operacoes(context)),
-                if (trofeus != null) ...[const SizedBox(height: 12), Entrada(ordem: ordem++, child: _divisao())],
-                const SizedBox(height: 12),
-                _caixa(
-                  borda: _cor,
-                  child: Row(children: [
-                    Icon(r.estado == 'derrota' ? Icons.trending_down_rounded : Icons.trending_up_rounded, color: _cor),
-                    const SizedBox(width: 10),
-                    Expanded(child: Text(r.rodape, style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic, color: Colors.white))),
-                  ]),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 56,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2F7BFF), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
-                    onPressed: continuar,
-                    child: const Text('CONTINUAR  »', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                  ),
-                ),
-                if (analise != null)
-                  Padding(padding: const EdgeInsets.only(top: 6), child: TextButton(onPressed: analise, child: const Text('Ver análise completa (gráfico e desenhos)', style: TextStyle(color: Color(0xFF9BBFFF), fontWeight: FontWeight.w800)))),
-              ]),
+          child: Column(children: [
+            Expanded(
+              child: PageView(
+                controller: _pc,
+                onPageChanged: (i) => setState(() => _pag = i),
+                children: [
+                  _paginaResultado(context),
+                  _pagina([const SizedBox(height: 10), _operacoes(context)]),
+                  if (temAnalise) _pagina([const SizedBox(height: 10), AnaliseDesenhos(fim: widget.fim!, tela: widget.tela!)]),
+                ],
+              ),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Row(children: [
+                      for (final (i, n) in nomes.indexed)
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _pc.animateToPage(i, duration: const Duration(milliseconds: 280), curve: Curves.easeOut),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
+                              child: Column(children: [
+                                Text(n, style: TextStyle(fontSize: 12.5, fontWeight: _pag == i ? FontWeight.w900 : FontWeight.w600, color: _pag == i ? _cor : _lilas)),
+                                const SizedBox(height: 4),
+                                AnimatedContainer(duration: const Duration(milliseconds: 200), height: 4, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: _pag == i ? _cor : Colors.white24)),
+                              ]),
+                            ),
+                          ),
+                        ),
+                    ]),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2F7BFF), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
+                        onPressed: widget.continuar,
+                        child: const Text('CONTINUAR  »', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ]),
         ),
       ),
     );

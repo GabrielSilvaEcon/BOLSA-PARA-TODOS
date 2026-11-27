@@ -38,12 +38,25 @@ final _tr = {
   'dv': {'id': 'bronze', 'nome': 'Bronze', 'cor': '#CD7F32', 'nivel': 0, 'pct': 0.2, 'prox': {'nome': 'Prata', 'min': 200}},
 };
 
-Future<void> _mostra(WidgetTester t, ResultadoPartida r, Size tela) async {
+Future<void> _mostra(WidgetTester t, ResultadoPartida r, Size tela, {bool analise = true, Map<String, dynamic>? fim}) async {
   t.view.physicalSize = tela;
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.reset);
-  await t.pumpWidget(MaterialApp(home: ResultadoPartidaTela(r: r, continuar: () {}, analise: () {})));
+  await t.pumpWidget(MaterialApp(home: ResultadoPartidaTela(r: r, continuar: () {}, fim: analise ? (fim ?? _fim(meu: 50, rival: 30)) : null, tela: analise ? _tela() : null)));
   await t.pump(const Duration(seconds: 2));
+}
+
+Future<void> _ve(WidgetTester t, List<String> textos) async {
+  final rol = find.byType(Scrollable).first;
+  for (final txt in textos) {
+    await t.scrollUntilVisible(find.text(txt), 150, scrollable: rol);
+    expect(find.text(txt), findsWidgets, reason: txt);
+  }
+}
+
+Future<void> _aba(WidgetTester t, String nome) async {
+  await t.tap(find.text(nome));
+  await t.pump(const Duration(milliseconds: 500));
 }
 
 void main() {
@@ -91,32 +104,53 @@ void main() {
 
   for (final tela in const [Size(390, 844), Size(360, 640)]) {
     for (final e in [(50.0, 30.0, 'vitoria'), (40.0, 40.0, 'empate'), (30.0, 50.0, 'derrota')]) {
-      testWidgets('tela ${e.$3} (${tela.width.toInt()}x${tela.height.toInt()}) mostra lucro, pontos, troféus, placar, operações e divisão sem estourar', (t) async {
+      testWidgets('carrossel ${e.$3} (${tela.width.toInt()}x${tela.height.toInt()}): três páginas com tudo e sem estourar', (t) async {
         final r = ResultadoPartida.de(_fim(meu: e.$1, rival: e.$2, trofeus: {..._tr, 'resultado': e.$3}), _tela());
         await _mostra(t, r, tela);
-        final rol = find.byType(Scrollable).first;
-        for (final txt in ['LUCRO DA PARTIDA', '+T\$ 1.250,00', 'PONTUAÇÃO', 'TROFÉUS', '+20', 'PLACAR DO DUELO', 'OPERAÇÕES REALIZADAS', 'PETR4', 'Variação no jogo', 'SEQUÊNCIA DAS OPERAÇÕES', 'SUA DIVISÃO', 'Próxima: Prata (200 troféus)', '40 / 200', 'CONTINUAR  »']) {
-          await t.scrollUntilVisible(find.text(txt), 150, scrollable: rol);
-          expect(find.text(txt), findsWidgets, reason: txt);
-        }
+        await _ve(t, ['LUCRO DA PARTIDA', '+T\$ 1.250,00', 'PONTUAÇÃO', 'TROFÉUS', '+20', 'PLACAR DO DUELO', 'SUA DIVISÃO', 'Próxima: Prata (200 troféus)', '40 / 200']);
+        expect(find.text('CONTINUAR  »'), findsOneWidget);                       // o botão fica sempre à vista, fora das páginas
+        await _aba(t, 'Operações');
+        await _ve(t, ['OPERAÇÕES REALIZADAS', 'PETR4', 'Variação no jogo', 'SEQUÊNCIA DAS OPERAÇÕES', 'A vitória é decidida pelos pontos do duelo, não por quantas operações deram lucro.']);
+        await _aba(t, 'Análise');
+        await _ve(t, ['O gráfico real da partida']);
+        expect(find.text('CONTINUAR  »'), findsOneWidget);
         expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox());
       });
     }
   }
 
+  testWidgets('deslizar para o lado troca de página; sem dados de análise a tela tem duas páginas', (t) async {
+    final r = ResultadoPartida.de(_fim(meu: 50, rival: 30), _tela());
+    await _mostra(t, r, const Size(390, 844), analise: false);
+    expect(find.text('Análise'), findsNothing);
+    await t.fling(find.byType(PageView), const Offset(-300, 0), 1200);
+    await t.pump(const Duration(milliseconds: 600));
+    await _ve(t, ['OPERAÇÕES REALIZADAS']);
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('sem troféus (sala de amigos) mostra XP no lugar e esconde a divisão; "Ver todas" abre o resto', (t) async {
     final r = ResultadoPartida.de(_fim(meu: 50, rival: 30), _tela());
     await _mostra(t, r, const Size(390, 844));
-    final rol = find.byType(Scrollable).first;
-    await t.scrollUntilVisible(find.text('XP'), 150, scrollable: rol);
+    await _ve(t, ['XP']);
     expect(find.text('+40'), findsOneWidget);
     expect(find.text('SUA DIVISÃO'), findsNothing);
-    await t.scrollUntilVisible(find.textContaining('Ver todas as operações'), 150, scrollable: rol);
-    await t.ensureVisible(find.textContaining('Ver todas as operações'));   // scrollUntilVisible só garante que o item foi construído, não que está na tela
+    await _aba(t, 'Operações');
+    await _ve(t, ['SEQUÊNCIA DAS OPERAÇÕES']);
+    final ver = find.textContaining('Ver todas as operações');
+    await t.ensureVisible(ver);                                   // scrollUntilVisible só garante que foi construído, não que está na tela
     await t.pump();
-    await t.tap(find.textContaining('Ver todas as operações'));
+    await t.tap(ver);
     await t.pump();
     expect(find.text('Mostrar menos'), findsOneWidget);
     expect(t.takeException(), isNull);
+  });
+
+  test('o nome do ativo igual ao código não se repete na tela', () {
+    final f = _fim(meu: 5, rival: 1);
+    (f['revelado'] as Map)['nome'] = 'PETR4';
+    final r = ResultadoPartida.de(f, _tela());
+    expect(r.nome.toUpperCase(), r.ticker.toUpperCase());          // o modelo guarda; a tela esconde a segunda linha
   });
 }
