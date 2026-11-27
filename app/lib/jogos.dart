@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'ajuda.dart';
 import 'animacoes.dart';
 import 'api.dart';
-import 'vivo.dart';
 import 'aprender.dart' show FundoCidade;
 import 'eventos.dart';
 import 'historico.dart';
@@ -149,8 +148,6 @@ class _JogosTelaState extends State<JogosTela> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Entrada(ordem: 2, child: _aoVivo()),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(2, 18, 2, 8),
                       child: Row(
@@ -180,30 +177,6 @@ class _JogosTelaState extends State<JogosTela> {
   }
 
   // ---- topo do kit (arte à direita, título com a última palavra em verde, "Ver como funciona" dentro do cartão)
-  /// Faixa do modo Ao vivo (cripto de verdade, lido agora): leva à tela VivoTela.
-  Widget _aoVivo() => Pressionavel(
-        aoTocar: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => VivoTela(api: widget.api))),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(colors: [Color(0xFF3A0F2E), Color(0xFF1A1250)]),
-            border: Border.all(color: const Color(0xFFFF5C7A), width: 1.4),
-          ),
-          child: Row(children: [
-            const Text('🔴', style: TextStyle(fontSize: 26)),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('AO VIVO · Cripto', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
-                Text('Leia o mercado de agora. Ninguém sabe o que vem depois.', style: TextStyle(color: Color(0xFFFFC2CE), fontSize: 12.5)),
-              ]),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white),
-          ]),
-        ),
-      );
-
   Widget _topo() {
     return Container(
       constraints: const BoxConstraints(minHeight: 138),

@@ -3087,8 +3087,8 @@ def social_desafiar(d: SocialDesafio, q: Quem = Depends(quem)) -> dict:
     if rel != AM.AMIGOS:
         raise HTTPException(400, "Você só pode desafiar amigos.")
     if d.jogo == "trade":
-        corrida = d.corrida if d.corrida in TB.CORRIDAS else NovaSala().corrida
-        s = _sala(OL.criar_sala, q.email, TB.CORRIDAS[corrida]["tf"], _agora(), TB.FORMATO_PADRAO, corrida)
+        corrida = "vivo"                                   # um modo só por enquanto: o desafio entre amigos também é ao vivo (2 min, 30 min)
+        s = _sala(OL.criar_sala, q.email, TB.spec_corrida(corrida)["tf"], _agora(), TB.FORMATO_PADRAO, corrida)
     elif d.jogo == "ticker":
         import battle_online_dados as BOD
         s = _tk_on(BOD.criar_sala, q.email)

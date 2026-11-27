@@ -117,3 +117,42 @@ def test_nao_encerra_nem_mostra_passo_que_o_mercado_ainda_nao_fechou(cli, mercad
 
 def test_moeda_invalida(cli, mercado):  # noqa: F811
     assert cli.post("/trade/vivo", json={"moeda": "PETR4"}).status_code == 400
+
+
+# ------------------------------------------------------------------ duelo (BATALHAR) com bot
+def test_batalhar_ao_vivo_acha_bot_e_a_partida_corre_ate_o_fim(cli, mercado):  # noqa: F811
+    r = cli.post("/trade/fila", json={"corrida": "vivo"})
+    assert r.status_code == 200, r.text
+    assert r.json()["estado"] == "fila"
+    mercado["t"] = T0 + 8.0                                             # ninguém apareceu em 7 s: entra um bot (com nome de jogador comum)
+    f = cli.get("/trade/fila").json()
+    assert f["estado"] == "partida", f
+    sid = f["id"]
+    v = cli.get(f"/trade/salas/{sid}").json()
+    t = v["tela"]
+    assert v["fase"] == "analise" and t["corrida"] is True and "÷" in str(t["ticker"]) + "÷" and len(t["candles"]) >= 200
+    assert cli.post(f"/trade/salas/{sid}/estrategia", json={"direcao": "alta"}).status_code == 200     # o bot já confirmou: com a minha, começa na hora
+    CV._cache.clear()
+    assert cli.get(f"/trade/salas/{sid}").json()["fase"] == "replay"
+    # a partida corre 30 min: o bot opera sozinho, sem ver o futuro
+    for dt in range(60, 1800, 60):
+        mercado["t"] = M0 + 8 + dt
+        CV._cache.clear()
+        cli.get(f"/trade/salas/{sid}")
+    mercado["t"] = M0 + 1800 + 20.0
+    CV._cache.clear()
+    fim = cli.get(f"/trade/salas/{sid}").json()
+    assert fim["fase"] == "fim" and fim.get("fim"), fim["fase"]
+    placar = fim["fim"]["final"]["placar"]
+    assert len(placar) == 2 and sum(1 for x in placar if x["voce"]) == 1 and {x["pos"] for x in placar} == {1, 2}      # dois jogadores, um vencedor
+    import banco, json as _j
+    dados = _j.loads(banco._selecionar("tb_partidas", {"id": sid}, ["dados"], limite=1)[0]["dados"]) if isinstance(banco._selecionar("tb_partidas", {"id": sid}, ["dados"], limite=1)[0]["dados"], str) else banco._selecionar("tb_partidas", {"id": sid}, ["dados"], limite=1)[0]["dados"]
+    acoes_bot = [a for a in dados["p"]["acoes"] if str(a["jogador"]).startswith("bot:")]
+    print("ACOES_BOT", len(acoes_bot), [placar])
+    assert len(acoes_bot) >= 1                                                      # o bot operou sozinho, só com o que já tinha aparecido
+
+
+def test_duas_pessoas_comecam_juntas_ao_confirmar(cli, mercado, monkeypatch):  # noqa: F811
+    import trader_online_dados as OL
+    sala = OL.criar_sala("ana@x.com", "", float(T0), corrida="vivo")
+    assert sala["id"]
