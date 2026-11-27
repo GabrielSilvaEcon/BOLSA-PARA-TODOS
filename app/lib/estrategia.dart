@@ -120,6 +120,7 @@ class _EstrategiaViewState extends State<EstrategiaView> {
         'direcao': l == 'aguardar' ? null : l,
         'tipo': l == 'aguardar' ? 'aguardar' : 'continuacao',
         'marcas': marcasDe(_desenhos),
+        'n_candles': _velas.length, // o modo Ao vivo usa: quantos candles o jogador via (o último é o preço de referência)
       });
       _enviada = true;
       widget.aoResponder(r);
