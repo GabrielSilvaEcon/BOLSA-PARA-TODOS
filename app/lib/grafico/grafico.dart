@@ -72,6 +72,10 @@ class GraficoNativo extends StatefulWidget {
 const _eixo = 50.0;
 const _rodape = 16.0;
 
+/// Espaço vazio à direita do último candle (fração da largura do gráfico): é onde os próximos vão nascer. Dá para rolar até ele e desenhar ali
+/// (alvo, tendência, zona). Antes eram só 3 candles de folga e o último candle ficava colado no canto.
+const _folga = 0.28;
+
 class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateMixin {
   double _cw = 0, _off = 0, _w = 0, _h = 0;
   bool _iniciado = false;
@@ -144,19 +148,25 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
   }
 
   double get _pw => max(60, _w - _eixo);
+
+  /// Para os testes: quanto sobra de espaço (px) entre o último candle e o eixo de preços, e a largura útil do gráfico.
+  @visibleForTesting
+  double get margemDireitaPx => _pw - (_x(_n - 1) + _cw / 2);
+  @visibleForTesting
+  double get larguraUtilPx => _pw;
   int get _n => widget.velas.length;
 
   void _zoomInicial() {
     final dv = widget.divisor;
     final vis = dv != null ? min(_n, max(30, _n - max(0, dv - 30))) : min(_n, max(40, (_pw / 7).floor()));
-    _cw = _pw / (vis + 3);
-    _off = max(-3, _n - vis.toDouble());
+    _cw = _pw * (1 - _folga) / (vis + 3);
+    _off = max(-3.0, _n - (vis + 3).toDouble());          // o último candle começa a ~72% da largura, com o espaço do futuro à direita
     _iniciado = true;
   }
 
   void _limita() {
     _cw = _cw.clamp(2.0, 40.0);
-    _off = _off.clamp(-3.0, max(-3.0, _n - _pw / _cw + 3));
+    _off = _off.clamp(-3.0, max(-3.0, _n - _pw / _cw * (1 - _folga)));
   }
 
   (int, int) get _visiveis => (max(0, _off.floor()), min(_n - 1, (_off + _pw / _cw).ceil()));
@@ -185,7 +195,9 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
   }
 
   double _x(num i) => (i - _off) * _cw + _cw / 2;
-  int _candle(double x) => ((x - _cw / 2) / _cw + _off).round().clamp(0, max(0, _n - 1));
+  /// Maior índice onde se pode tocar ou arrastar um desenho: o último candle mais o espaço do futuro (o servidor aceita índices à frente).
+  int get _iMax => _n - 1 + (_pw / _cw * _folga).ceil();
+  int _candle(double x) => ((x - _cw / 2) / _cw + _off).round().clamp(0, max(0, _iMax));
   double _r2(double v) => (v * 100).roundToDouble() / 100;
 
   // ---------------------------------------------------------------- toques
@@ -344,8 +356,8 @@ class _GraficoNativoState extends State<GraficoNativo> with TickerProviderStateM
           if (d.p2 != null) d.p2 = _r2(d.p2! + dp);
           if (d.i1 != null && di.abs() >= 0.5) {
             final s = di.round();
-            d.i1 = (d.i1! + s).clamp(0, _n - 1);
-            if (d.i2 != null) d.i2 = (d.i2! + s).clamp(0, _n - 1);
+            d.i1 = (d.i1! + s).clamp(0, _iMax);
+            if (d.i2 != null) d.i2 = (d.i2! + s).clamp(0, _iMax);
           }
         }
         return;
@@ -437,6 +449,22 @@ class _Pintor extends CustomPainter {
       final y = g._y(p);
       canvas.drawLine(Offset(0, y), Offset(pw, y), grade);
       _texto(canvas, precoTxt(p), Offset(pw + 4, y), 10, const Color(0xFFC8D6EE));
+    }
+
+    // o espaço do futuro: onde os próximos candles vão nascer (na análise, para ajudar a ler e a desenhar; no relatório a partida já acabou)
+    if (!w.somenteLeitura) {
+      final x0 = g._x(g._n - 1) + g._cw / 2;
+      if (x0 < pw) {
+        canvas.drawRect(Rect.fromLTRB(max(0, x0), 0, pw, h), Paint()..color = const Color(0x0AAAC9FF));
+        _tracejadaV(canvas, x0, h, const Color(0x66AAC9FF));
+        if (pw - x0 > 56) _texto(canvas, 'FUTURO', Offset((x0 + pw) / 2, 13), 10, const Color(0x80AAC9FF), centro: true, peso: FontWeight.w800);
+        final yc = g._y(w.velas[g._n - 1].c);          // o preço de agora continua para a frente: de onde o futuro parte
+        for (var x = max(0.0, x0); x < pw; x += 10) {
+          canvas.drawLine(Offset(x, yc), Offset(min(x + 5, pw), yc), Paint()
+            ..color = const Color(0x66FFD66B)
+            ..strokeWidth = 1);
+        }
+      }
     }
 
     final bw = max(1.0, min(g._cw * 0.7, 14.0));
