@@ -1,3 +1,4 @@
+import 'som.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter/services.dart';
@@ -170,6 +171,7 @@ class _ResultadoPartidaTelaState extends State<ResultadoPartidaTela> with Single
 
   /// O toque do resultado: vitória é forte e em dois tempos; empate e derrota são leves (a derrota não é castigo).
   Future<void> _vibrar() async {
+    Som.tocar(r.estado == 'vitoria' ? 'vitoria' : (r.estado == 'empate' ? 'empate' : 'derrota'));
     if (r.estado == 'vitoria') {
       HapticFeedback.heavyImpact();
       await Future<void>.delayed(const Duration(milliseconds: 260));

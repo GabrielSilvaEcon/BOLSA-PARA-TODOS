@@ -1,3 +1,4 @@
+import 'som.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -210,6 +211,20 @@ class _ContaTelaState extends State<ContaTela> {
                     ] else
                       const Padding(padding: EdgeInsets.only(bottom: 10), child: Text('Você entra com o Google: a senha e a verificação são gerenciadas pela sua conta Google.', style: TextStyle(color: _lilas))),
                     OutlinedButton.icon(onPressed: _ocupado ? null : _sairOutros, icon: const Icon(Icons.devices_other_rounded), label: const Text('Desconectar os outros aparelhos')),
+                  ]),
+                  _caixa('Som', Icons.volume_up_rounded, _azul, [
+                    ValueListenableBuilder<bool>(
+                      valueListenable: Som.ligado,
+                      builder: (_, on, __) => Row(children: [
+                        const Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text('Efeitos sonoros', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                            Text('Toques e resultado da partida.', style: TextStyle(color: _lilas, fontSize: 12)),
+                          ]),
+                        ),
+                        Switch(value: on, onChanged: Som.definir),
+                      ]),
+                    ),
                   ]),
                   _caixa('Atividades da conta', Icons.history_rounded, _ouro, [
                     if (_atividades.isEmpty)
