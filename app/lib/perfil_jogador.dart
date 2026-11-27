@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'carta_setup.dart';
+import 'escudo.dart';
 import 'perfil.dart' show imagemAvatar;
 
 const _lilas = Color(0xFFD4E2F7);
@@ -86,6 +88,39 @@ class PerfilJogadorConteudo extends StatelessWidget {
         ),
       );
 
+  /// A vitrine: a divisão de cada jogo (escudo e troféus) e os setups que a pessoa equipou. É o que se mostra para os outros: status e vontade de ter.
+  Widget _vitrine(Map v) {
+    final div = (v['divisao'] as Map?) ?? const {};
+    final sets = ((v['setups'] as List?) ?? const []).whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+    Widget escudo(String jogo, String rotulo) {
+      final d = (div[jogo] as Map?) ?? const {};
+      if (d.isEmpty) return const Expanded(child: SizedBox.shrink());
+      return Expanded(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: Colors.white.withValues(alpha: 0.07), border: Border.all(color: Escudo.corDe(d['cor']).withValues(alpha: 0.8))),
+          child: Column(children: [
+            Escudo.de(d, tamanho: 50),
+            const SizedBox(height: 4),
+            Text(rotulo, style: const TextStyle(fontSize: 11, color: _lilas)),
+            FittedBox(child: Text('${d['nome']} · ${d['trofeus']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: Colors.white))),
+          ]),
+        ),
+      );
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _titulo('🏆 Vitrine'),
+      Row(children: [escudo('trade', 'Trade Battle'), escudo('ticker', 'Ticker Battle')]),
+      const SizedBox(height: 10),
+      if (sets.isEmpty)
+        const Text('Nenhum setup equipado.', textAlign: TextAlign.center, style: TextStyle(color: _lilas))
+      else
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [for (final s in sets) Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: CartaSetup(setup: s, largura: 128))]),
+    ]);
+  }
+
   Widget _partida(Map h) {
     final trade = h['jogo'] == 'trade';
     final r = '${h['r'] ?? ''}';
@@ -161,6 +196,7 @@ class PerfilJogadorConteudo extends StatelessWidget {
             child: const Text('🔒 Este perfil é visível só para amigos. Adicione para ver as conquistas e o desempenho.', textAlign: TextAlign.center, style: TextStyle(color: _lilas)),
           )
         else ...[
+          if (p['vitrine'] is Map && (p['vitrine'] as Map).isNotEmpty) _vitrine(p['vitrine'] as Map),
           if (es != null) ...[
             _titulo('📊 Desempenho'),
             Row(children: [

@@ -2829,6 +2829,28 @@ def social_denunciar(d: SocialDenuncia, q: Quem = Depends(quem)) -> dict:
     return {"ok": True, "msg": "Denúncia enviada. Obrigado por avisar." if ok else "Você já denunciou este perfil hoje."}
 
 
+def _vitrine(email: str) -> dict:
+    """A vitrine do perfil de outro jogador: divisão (e troféus) de cada jogo e os setups que ele equipou. Só sai quando a privacidade dele já mostra os jogos."""
+    try:
+        import setups as SU
+        import setups_dados as SD
+        import trofeus as TF
+        t = _trof_doc(email)
+        div = {}
+        for j in ("trade", "ticker"):
+            d = TF.divisao(int(t[j]["t"]))
+            div[j] = {**{k: d[k] for k in ("id", "nome", "cor", "nivel")}, "trofeus": int(t[j]["t"])}
+        sets = []
+        for sid in SD.equipados(email)[:2]:
+            i = SU.info(sid)
+            if i:
+                sets.append({k: i[k] for k in ("id", "nome", "raridade", "subtitulo", "tipo", "direcao", "cores", "carta")})
+        return {"divisao": div, "setups": sets}
+    except Exception as e:
+        banco.registrar_erro("api.vitrine", e)
+        return {}
+
+
 @app.get("/social/perfil/{h}")
 def social_perfil(h: str, q: Quem = Depends(quem)) -> dict:
     """Perfil de outro jogador, filtrado pela privacidade dele (perfis.publico; amigos veem mais)."""
@@ -2864,6 +2886,8 @@ def social_perfil(h: str, q: Quem = Depends(quem)) -> dict:
         import nivel as NV
         ne = NV.estado(pub["xp"])
         extra = {"xp_pct": ne["pct"], "xp_max": bool(ne["maximo"])}        # barra de XP do perfil (o app não recalcula nível)
+    if pub.get("jogos"):
+        extra["vitrine"] = _vitrine(email)
     return {**{k: v for k, v in pub.items() if k != "foto"}, **extra, "h": h, "rel": alvo["rel"], "avatar_img": _avatar_img(av), "restrito": False}
 
 

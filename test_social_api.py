@@ -91,3 +91,17 @@ def test_nao_desafia_quem_nao_e_amigo_e_bloqueio_esconde(dois):
     assert ana.get("/social/buscar", params={"texto": "bia"}).json()["itens"] == []
     assert bia.get("/social/buscar", params={"texto": "ana"}).json()["itens"] == []
     assert ana.post("/social/pedir", json={"usuario": "ninguem_aqui"}).status_code == 400
+
+
+def test_perfil_do_amigo_traz_a_vitrine_com_divisao_e_setups_equipados(dois):
+    ana, bia = dois
+    ana.post("/social/pedir", json={"usuario": "bia_h"})
+    h_ana = bia.get("/social").json()["recebidos"][0]["h"]
+    bia.post("/social/responder", json={"h": h_ana, "aceitar": True})
+    h_bia = ana.get("/social").json()["amigos"][0]["h"]
+    v = ana.get(f"/social/perfil/{h_bia}").json()["vitrine"]
+    assert v["divisao"]["trade"]["nome"] == "Bronze" and isinstance(v["divisao"]["ticker"]["trofeus"], int) and v["setups"] == []
+    assert bia.post("/setups/equipar", json={"id": "martelo"}).status_code == 200
+    v = ana.get(f"/social/perfil/{h_bia}").json()["vitrine"]
+    assert [x["id"] for x in v["setups"]] == ["martelo"] and v["setups"][0]["carta"]["alvo_curto"] and v["setups"][0]["raridade"] == "comum"
+    assert "email" not in str(v).lower()
