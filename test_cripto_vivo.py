@@ -94,3 +94,30 @@ def test_rota_exige_login_e_devolve_o_grafico(cli, monkeypatch):  # noqa: F811
     monkeypatch.setattr(CV, "_buscar_binance", lambda s, tf, n: (_ for _ in ()).throw(ConnectionError("x")))
     CV._cache.clear()
     assert cli.get("/vivo/candles", params={"moeda": "ETH", "tf": "1m"}).status_code == 503
+
+
+def _linhas_1s(segs, base=100.0):
+    return [[s * 1000, str(base + s % 5), str(base + s % 5 + 1), str(base + s % 5 - 1), str(base + (s + 1) % 5), "1", s * 1000 + 999, "0", 1, "0", "0", "0"] for s in segs]
+
+
+def test_segundos_fechados_sem_buracos_e_sem_inventar_o_futuro():
+    CV._seg.clear()
+    existentes = [s for s in range(1000, 1060) if s not in (1010, 1011)]      # a Binance não entregou 2 segundos no meio
+    buscar = lambda sim, fim_ms, n: _linhas_1s(existentes)                    # noqa: E731
+    r = CV.segundos("BTC", 1000, 1100, buscar, lambda: 1058.5)                 # agora = 1058,5: o segundo 1058 ainda está em formação
+    assert [x["s"] for x in r] == list(range(1000, 1058))                      # 1010 e 1011 foram tapados (repetem o fechamento anterior)
+    assert r[10]["c"] == r[9]["c"] and r[10]["v"] == 0.0 and r[12]["s"] == 1012
+    r2 = CV.segundos("BTC", 1000, 1100, buscar, lambda: 1200.0)                # o relógio andou, mas a Binance parou no 1059: não inventa
+    assert r2[-1]["s"] == 1059
+    CV._seg.clear()
+
+
+def test_segundos_sem_dados_falha_claro():
+    CV._seg.clear()
+    def quebrado(sim, fim_ms, n):
+        raise ConnectionError("fora")
+    with pytest.raises(CV.SemDados):
+        CV.segundos("ETH", 1000, 1100, quebrado, lambda: 2000.0)
+    with pytest.raises(ValueError):
+        CV.segundos("PETR4", 1000, 1100)
+    CV._seg.clear()

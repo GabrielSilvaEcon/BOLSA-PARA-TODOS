@@ -39,7 +39,7 @@ TIMEFRAMES = {"15m": {"nome": "15 minutos", "n_analise": 120, "na_aceitos": (120
               "1h": {"nome": "1 hora", "n_analise": 100, "na_aceitos": (100, 50), "n_replay": 16, "passo_min": 60, "max_dias": 70},
               # partida corrida (motor 2 com quantidade livre): 5 minutos e 1 dia só existem nela
               "5m": {"nome": "5 minutos", "n_analise": 360, "na_aceitos": (360,), "n_replay": 84, "passo_min": 5, "max_dias": 20},
-              "1m": {"nome": "1 minuto", "n_analise": 200, "na_aceitos": (200,), "n_replay": 30, "passo_min": 1, "max_dias": 2},     # só existe no modo ao vivo
+              "2m": {"nome": "2 minutos", "n_analise": 200, "na_aceitos": (200,), "n_replay": 15, "passo_min": 2, "max_dias": 2},     # só existe no modo ao vivo
               "1d": {"nome": "1 dia", "n_analise": 300, "na_aceitos": (300,), "n_replay": 120, "passo_min": 1440, "max_dias": 900}}
 # ---- PARTIDA CORRIDA (nov/2026): sem rodadas. Uma leitura no início, histórico 3x maior e um replay longo em que se opera com quantidade livre
 # (regras em trader_qtd.py). Cada duração usa um tempo gráfico: rápida = 15 minutos, intermediária = 1 hora, longa = 1 dia.
@@ -50,12 +50,13 @@ CORRIDAS = {"rapida": {"tf": "15m", "sub": "5m", "k": 3, "n_analise": 300, "n_re
             "intermediaria": {"tf": "1h", "sub": "5m", "k": 12, "n_analise": 300, "n_replay": 56},  # 56 × 1 h ≈ 8 pregões · 12 passos por candle
             "longa": {"tf": "1d", "sub": "1h", "k": 7, "n_analise": 300, "n_replay": 80}}           # 80 dias ≈ 4 meses · ~7 passos (horas do pregão)
 ROTULO_CORRIDA = {"rapida": "Rápida", "intermediaria": "Intermediária", "longa": "Longa"}
-# MODO AO VIVO (cripto, Binance): gráfico de 5 min, passos de 1 min reais, 12 candles = 1 hora. Fica FORA de CORRIDAS de propósito (não entra nas listas de duração,
-# nas salas nem no preparo de cenários). O cenário nasce do mercado de agora (trader_vivo.py) e o relógio segue o mercado, não os 4 s por candle.
-CORRIDA_VIVO = {"tf": "5m", "sub": "1m", "k": 5, "n_analise": 200, "n_replay": 12}          # 60 min · candles de 5 min (12 candles de 5 passos de 1 min)
-CORRIDA_VIVO30 = {"tf": "1m", "sub": "1m", "k": 1, "n_analise": 200, "n_replay": 30}        # 30 min · candles de 1 min (30 candles, 1 passo de 1 min cada)
-CORRIDAS_VIVO = {"vivo": CORRIDA_VIVO, "vivo30": CORRIDA_VIVO30}
-SEG_PASSO_VIVO = 60.0
+# MODO AO VIVO (cripto, Binance): UM só formato por enquanto. Gráfico de 2 min, 15 candles = 30 min. Cada candle se forma junto com o mercado: o replay é feito de
+# 1800 passos de 1 s reais (120 por candle), um por segundo. Fica FORA de CORRIDAS de propósito (não entra nas listas de duração, nas salas de treino nem no preparo de
+# cenários). O cenário nasce do mercado de agora (trader_vivo.py) e o relógio segue o mercado, não os 4 s por candle.
+CORRIDA_VIVO = {"tf": "2m", "sub": "1s", "k": 120, "n_analise": 200, "n_replay": 15}
+CORRIDAS_VIVO = {"vivo": CORRIDA_VIVO}
+SEG_PASSO_VIVO = 1.0
+T_ESTRATEGIA_VIVO_S = 30.0
 
 
 def spec_corrida(nome):
@@ -270,17 +271,19 @@ def config_mesa(formato: str) -> dict:
     return {"v": 2, "motor": MOTOR_MESA, "formato": formato, "rodadas": FORMATOS[formato], "n_replay": N_REPLAY_MESA, "t_replay_s": float(T_REPLAY_MESA_S)}
 
 
-def config_corrida(formato: str, n_passos: int | None = None, t_analise_s: float | None = None) -> dict:
+def config_corrida(formato: str, n_passos: int | None = None, t_analise_s: float | None = None, t_ancora: float | None = None) -> dict:
     """Partida corrida: UMA rodada longa, quantidade livre (trader_qtd) e capital de 5% do caixa livre da Carteira.
-    `n_replay` conta PASSOS (candles menores reais); `n_velas` = candles do gráfico. O relógio dá SEG_POR_CANDLE a cada candle do gráfico."""
+    `n_replay` conta PASSOS (candles menores reais); `n_velas` = candles do gráfico. O relógio dá SEG_POR_CANDLE a cada candle do gráfico.
+    Ao vivo: os passos são de 1 s do mercado e `t_ancora` é o instante (epoch, s) em que o passo 0 começou; o relógio É o do mercado."""
     import trader_qtd as TQ
     sp = spec_corrida(formato)
     if not sp:
         raise ErroTrader("formato de partida inválido")
-    if formato in CORRIDAS_VIVO:                           # o relógio é o do mercado: 1 passo por minuto; a análise termina na hora marcada
+    if formato in CORRIDAS_VIVO:
         n = int(n_passos or sp["n_replay"] * sp["k"])
         return {"v": 4, "motor": MOTOR_MESA, "formato": formato, "rodadas": 1, "n_replay": n, "n_velas": sp["n_replay"], "t_replay_s": n * SEG_PASSO_VIVO,
-                "qtd": True, "taxa": TQ.TAXA_B3, "pct_capital": TQ.PCT_CAPITAL, "vivo": True, "t_analise_s": float(t_analise_s or 120.0)}
+                "qtd": True, "taxa": TQ.TAXA_B3, "pct_capital": TQ.PCT_CAPITAL, "vivo": True, "t_analise_s": float(t_analise_s or T_ESTRATEGIA_VIVO_S),
+                "t_ancora": float(t_ancora or 0.0)}
     return {"v": 4, "motor": MOTOR_MESA, "formato": formato, "rodadas": 1, "n_replay": int(n_passos or sp["n_replay"]), "n_velas": sp["n_replay"],
             "t_replay_s": float(sp["n_replay"] * SEG_POR_CANDLE), "qtd": True, "taxa": TQ.TAXA_B3, "pct_capital": TQ.PCT_CAPITAL}
 
@@ -333,7 +336,7 @@ def financeiro_rodada(r: dict, aposta: dict | None) -> dict | None:
 
 
 def nova_partida(cenario: dict, tf: str, jogadores: list[str], agora: float, pid: str | None = None, multi: bool = False,
-                 apostas: dict | None = None, formato: str | None = None, corrida: str | None = None, t_analise_s: float | None = None) -> dict:
+                 apostas: dict | None = None, formato: str | None = None, corrida: str | None = None, t_analise_s: float | None = None, t_ancora: float | None = None) -> dict:
     """`formato` (rapida/normal/longa) cria uma partida da MESA (motor 2). Sem ele nasce uma partida no motor antigo (usado só por testes e legado)."""
     if tf not in TIMEFRAMES:
         raise ErroTrader("timeframe inválido")
@@ -348,7 +351,7 @@ def nova_partida(cenario: dict, tf: str, jogadores: list[str], agora: float, pid
     if corrida is not None:
         if cenario.get("corrida") != corrida or (spec_corrida(corrida) or {}).get("tf") != tf:
             raise ErroTrader("o cenário não é desta duração de partida")
-        cfg = config_corrida(corrida, len(cenario["grupo"]), t_analise_s)
+        cfg = config_corrida(corrida, len(cenario["grupo"]), t_analise_s, t_ancora)
         p["cfg"] = cfg
         p["cenarios"] = [cenario["id"]]
         p["acoes"], p["seq_acao"], p["pausas"] = [], 0, []
@@ -447,6 +450,8 @@ def segundos_restantes(p: dict, agora: float) -> int:
     if p["fase"] == "analise":
         return max(0, math.ceil(_t_analise(p) - _decorrido(p, agora)))
     if p["fase"] == "replay":
+        if cfg_de(p).get("vivo"):
+            return max(0, math.ceil(float(cfg_de(p)["t_ancora"]) + cfg_de(p)["t_replay_s"] - agora))     # ao vivo: até o fim do mercado da partida
         return max(0, math.ceil(cfg_de(p)["t_replay_s"] - _decorrido(p, agora)))
     if p["fase"] == "resultado" and p.get("multi"):
         return max(0, math.ceil(T_RESULTADO_S - _decorrido(p, agora)))
@@ -454,17 +459,21 @@ def segundos_restantes(p: dict, agora: float) -> int:
 
 
 def n_revelados(p: dict, agora: float) -> int:
-    """Quantos candles do replay já podem aparecer, pelo relógio do servidor. Só existe na fase do replay (e vale tudo depois)."""
+    """Quantos candles do replay já podem aparecer, pelo relógio do servidor. Só existe na fase do replay (e vale tudo depois).
+    Ao vivo o relógio é o do MERCADO: 1 passo por segundo desde a âncora, também durante a estratégia (o gráfico não para), e nunca além do que a
+    Binance já fechou (`vivo_n`)."""
     cfg = cfg_de(p)
     n = int(cfg["n_replay"])
     if p["fase"] in ("resultado", "fim"):
         return n
+    if cfg.get("vivo"):
+        if p["fase"] not in ("analise", "replay"):
+            return 0
+        por_relogio = max(0, min(n, int((agora - float(cfg["t_ancora"])) / SEG_PASSO_VIVO)))
+        return min(por_relogio, int(p.get("vivo_n") or 0))
     if p["fase"] != "replay":
         return 0
-    por_relogio = min(n, int(_decorrido(p, agora) / (cfg["t_replay_s"] / n)))
-    if cfg.get("vivo"):                                    # ao vivo: nunca mostra um passo que o mercado ainda não fechou (o servidor atualiza `vivo_n` a cada consulta)
-        return min(por_relogio, int(p.get("vivo_n") or 0))
-    return por_relogio
+    return min(n, int(_decorrido(p, agora) / (cfg["t_replay_s"] / n)))
 
 
 # ------------------------------------------------------------------ estratégia
@@ -552,7 +561,7 @@ def salvar_estrategia(p: dict, jog: str, est: dict, marcas: dict | None, preco_r
     else:
         p["estrategias"][k] = {**(validar_leitura(est) if motor_de(p) == MOTOR_MESA else validar_estrategia(est, preco_ref)), "marcas": validar_marcas(marcas), "salva_em": float(agora)}
     p["versao"] += 1
-    if (p.get("multi") or qtd_de(p)) and not cfg_de(p).get("vivo") and all(_chave(p["rodada"], j) in p["estrategias"] for j in p["jogadores"]):
+    if (p.get("multi") or qtd_de(p)) and all(_chave(p["rodada"], j) in p["estrategias"] for j in p["jogadores"]):
         _travar(p)                                         # multiplayer: quando TODOS confirmaram, o replay começa sozinho (sem botão 'pronto')
         p["fase"], p["t_fase"] = "replay", float(agora)
         p["versao"] += 1
@@ -612,7 +621,9 @@ def _avancar_uma(p: dict, agora: float, cenarios_por_id: dict | None) -> None:
             p["versao"] += 1
     if p["fase"] == "replay":
         prazo = _prazo(p, cfg["t_replay_s"])
-        if agora >= prazo and (not cfg.get("vivo") or int(p.get("vivo_n") or 0) >= int(cfg["n_replay"])):    # ao vivo: só fecha com todos os passos reais
+        if cfg.get("vivo"):                                # ao vivo: o fim é fixo (âncora + 30 min) e só fecha com todos os passos reais
+            prazo = float(cfg["t_ancora"]) + cfg["t_replay_s"]
+        if agora >= prazo and (not cfg.get("vivo") or int(p.get("vivo_n") or 0) >= int(cfg["n_replay"])):
             p["fase"], p["t_fase"] = "resultado", prazo
             p["versao"] += 1
             if cenarios_por_id:
@@ -823,7 +834,9 @@ def visao(p: dict, cenario: dict, agora: float, jog: str) -> dict:
     nr = int(cfg["n_replay"])
     cand = cenario["candles"]
     ini = inicio_rodada(cenario, p["rodada"], nr)
-    if p["fase"] == "analise":
+    if p["fase"] == "analise" and cfg.get("vivo"):
+        visiveis = cand[:ini] + velas_replay(cenario, ini, n_revelados(p, agora))      # ao vivo o gráfico rola durante a estratégia
+    elif p["fase"] == "analise":
         visiveis = cand[:ini]
     elif p["fase"] == "replay":
         visiveis = cand[:ini] + velas_replay(cenario, ini, n_revelados(p, agora))
