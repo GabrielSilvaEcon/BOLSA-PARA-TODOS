@@ -28,3 +28,21 @@ de `trader_leitura.avaliar_desenhos`. Ponto neutro do jogo: nota 50 (`qual + (no
 Pontuar o que o desenho supera o ACASO naquele gráfico: para cada desenho, calcular no mesmo replay a taxa de acerto de desenhos do mesmo tipo e distância
 colocados em outros preços; o valor do desenho = acerto − acaso (normalizado). Funciona com qualquer mercado (usa o próprio caminho do preço) e
 elimina a pontuação de graça sem mudar a liberdade de desenhar.
+
+
+## Depois da correção ("acima do acaso", PR de nov/2026)
+Cada nível e cada zona agora vale `0,5 + peso × (acerto − acaso)/2`, onde `acaso` é a taxa de acerto de desenhos do mesmo tipo em outras distâncias
+(0,6×, 0,8×, 1,2× e 1,4× a distância original) no MESMO replay. Mesma simulação (200 cenários por formato):
+
+| Truque, sem ler o gráfico | Antes | Depois |
+|---|---|---|
+| Rompimento 1 ATR, dois lados | 31,6 | 50,0 |
+| Rompimento 2 ATR, dois lados | 50,7 | 49,5 |
+| Resistência acima + suporte abaixo (2 ATR) | 66,1 | 49,8 |
+| 6 níveis variados | 58,7 | 49,8 |
+| 4 tendências planas coladas no preço | 51,5 | 51,5 (sem mudança) |
+| Tudo junto | 53,4 | 50,3 |
+| Oráculo (vê o futuro) | 81,2 | 70,3 |
+
+O chute às cegas cai para ~50 (neutro) e o oráculo continua separado (70). Pendências: a linha de tendência ainda não usa o acaso (rende ~51,5 com
+linhas planas); e a medição de HABILIDADE real (quem lê bem passa de 50?) precisa de cenários reais, não do simulado.

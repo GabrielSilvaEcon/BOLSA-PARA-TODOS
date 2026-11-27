@@ -13,7 +13,9 @@ Cada desenho vira um item com `ok` = True (acertou), False (errou) ou None (o pr
   zona ↑/↓     o preço entrou na área e reagiu na direção apostada: fechou além da borda certa antes de atravessar a borda oposta.
   notas        não são avaliadas (são só anotações).
 
-`nota` (0 a 100) = média dos itens avaliados (acerto = 1, erro = 0, tendência = fração); None se nenhum desenho pôde ser avaliado.
+`nota` (0 a 100) = média dos itens avaliados; None se nenhum desenho pôde ser avaliado. Em níveis e zonas cada item vale pelo quanto supera o ACASO
+naquele gráfico (ver `taxa_acaso`): acertar onde o acaso também acerta quase sempre vale ~50 (neutro); errar onde o acaso quase sempre acerta vale muito
+pouco; acertar onde o acaso raramente acerta vale muito. Assim desenhar às cegas rende ~50 em média, e só leitura de verdade passa disso.
 """
 from __future__ import annotations
 
@@ -45,6 +47,26 @@ def distancia_plena(atr: float, ref: float) -> float:
 def peso_distancia(dist: float, plena: float) -> float:
     """Quanto vale o acerto de um desenho que está a `dist` do preço de partida: 0 em cima do preço, 1 a partir da distância plena."""
     return 0.0 if plena <= 0 else max(0.0, min(1.0, dist / plena))
+
+
+FATORES_ACASO = (0.6, 0.8, 1.2, 1.4)     # distâncias (em fração da distância do desenho ao preço) onde se testa o que o acaso faria no MESMO gráfico
+
+
+def taxa_acaso(avalia, d: float) -> float:
+    """Chance de acerto de um desenho do mesmo tipo em outras distâncias do preço, no mesmo replay (usa o caminho real do preço: vale para qualquer
+    mercado). `avalia(f)` devolve True/False/None para o desenho trazido para `f` × a distância original. Só contam os que o preço alcançou; se nenhum foi
+    alcançado (ou o desenho está em cima do preço, d = 0), assume 50%."""
+    if d <= 0:
+        return 0.5
+    oks = [r for r in (avalia(f) for f in FATORES_ACASO) if r is not None]
+    return sum(1 for r in oks if r) / len(oks) if oks else 0.5
+
+
+def valor_sobre_acaso(ok, acaso: float, peso: float) -> float | None:
+    """0 a 1: 0,5 + peso × (acerto − acaso)/2. Sem peso (colado no preço) ou acertando só o que o acaso acerta, fica neutro (0,5)."""
+    if ok is None:
+        return None
+    return max(0.0, min(1.0, 0.5 + peso * (float(bool(ok)) - acaso) / 2))
 
 
 def _com_peso(texto: str, peso: float) -> str:
@@ -138,8 +160,10 @@ def avaliar_desenhos(marcas: dict | None, n_ini: int, rep: list[dict], ref: floa
         p = float(n["preco"])
         w = peso_distancia(abs(p - ref), plena)
         ok, txt = _nivel(papel, p, rep, ref, tol)
-        itens.append({"tipo": "nivel", "papel": papel, "preco": n["preco"], "ok": ok, "peso": round(w, 3),
-                      "valor": None if ok is None else float(ok) * w, "texto": txt if ok is None else _com_peso(txt, w)})
+        d, lado = abs(p - ref), (1 if p >= ref else -1)
+        acaso = taxa_acaso(lambda f: _nivel(papel, ref + lado * d * f, rep, ref, tol)[0], d)
+        itens.append({"tipo": "nivel", "papel": papel, "preco": n["preco"], "ok": ok, "peso": round(w, 3), "acaso": round(acaso, 3),
+                      "valor": valor_sobre_acaso(ok, acaso, w), "texto": txt if ok is None else _com_peso(txt, w)})
     for t in m.get("tendencias") or []:
         v, txt = _tendencia(t, n_ini, rep, tol)
         # Sem peso de distância: uma linha de tendência nasce encostada no preço (passa pelos fundos ou topos recentes), então o peso a zeraria.
@@ -150,8 +174,10 @@ def avaliar_desenhos(marcas: dict | None, n_ini: int, rep: list[dict], ref: floa
         d = 0.0 if z["p1"] <= ref <= z["p2"] else min(abs(z["p1"] - ref), abs(z["p2"] - ref))     # a borda mais próxima: o caminho até entrar nela
         w = peso_distancia(d, plena)
         ok, txt = _zona(z, rep, tol)
-        itens.append({"tipo": "zona", **{k: z[k] for k in ("i1", "i2", "p1", "p2", "reacao")}, "ok": ok, "peso": round(w, 3),
-                      "valor": None if ok is None else float(ok) * w, "texto": txt if ok is None else _com_peso(txt, w)})
+        lado = 1 if z["p2"] > ref and z["p1"] >= ref else -1
+        acaso = taxa_acaso(lambda f: _zona({**z, "p1": z["p1"] + lado * d * (f - 1), "p2": z["p2"] + lado * d * (f - 1)}, rep, tol)[0], d)
+        itens.append({"tipo": "zona", **{k: z[k] for k in ("i1", "i2", "p1", "p2", "reacao")}, "ok": ok, "peso": round(w, 3), "acaso": round(acaso, 3),
+                      "valor": valor_sobre_acaso(ok, acaso, w), "texto": txt if ok is None else _com_peso(txt, w)})
     contam = [x["valor"] for x in itens if x["valor"] is not None]
     nota = round(100 * sum(contam) / len(contam), 1) if contam else None
     return {"itens": itens, "nota": nota, "avaliados": len(contam), "acertos": sum(1 for x in itens if x["ok"]), "tol": round(tol, 4)}
