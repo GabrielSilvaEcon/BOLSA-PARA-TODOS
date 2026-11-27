@@ -210,9 +210,8 @@ class _PartidaTelaState extends State<PartidaTela> {
         builder: (ctx) => ResultadoPartidaTela(
           r: ResultadoPartida.de(f, tela),
           continuar: () => Navigator.of(ctx).pop(),
-          analise: () => Navigator.of(ctx).push(MaterialPageRoute(
-            builder: (c2) => RelatorioTela(fim: f, tela: tela, aoCompleto: _abrirRelatorio, rotuloAcao: 'Voltar ao resultado', acao: () => Navigator.of(c2).pop()),
-          )),
+          fim: f,
+          tela: tela,
         ),
       ));
       _resultadoAberto = false;
