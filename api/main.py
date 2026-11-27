@@ -2428,6 +2428,18 @@ def _merc_empresa(e: dict) -> dict:
     return {"ticker": e["ticker"], "nome": e["nome"], "setor": e.get("setor"), "logo": _logo_ativo(e["ticker"])}
 
 
+@app.get("/vivo/candles")
+def vivo_candles(moeda: str = "BTC", tf: str = "5m", n: int = 300, q: Quem = Depends(quem)) -> dict:
+    """Gráfico ao vivo de cripto (Binance, dados públicos): o mesmo para todos os jogadores, com cache curto no servidor."""
+    import cripto_vivo as CV
+    try:
+        return CV.candles(moeda, tf, n)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except CV.SemDados as e:
+        raise HTTPException(503, f"{e}. Tente de novo em instantes.")
+
+
 @app.get("/mercado")
 def mercado(q: Quem = Depends(quem)) -> dict:
     """Tela Mercado: Mercado hoje (Ibovespa, dólar, bitcoin e índice do medo), os tipos de ativo e as ações populares."""
