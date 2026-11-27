@@ -18,4 +18,4 @@ googlenewsdecoder
 mercadopago
 streamlit-keyup
 fastapi>=0.115            # servidor do jogo para o app novo (api/main.py)
-uvicorn>=0.30
+uvicorn>=0.54.0
