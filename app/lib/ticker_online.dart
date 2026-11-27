@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import 'animacoes.dart';
 import 'api.dart';
+import 'confronto.dart';
 import 'escudo.dart';
 import 'ticker.dart';
 
@@ -101,7 +102,7 @@ class _OnlineTelaState extends State<OnlineTela> {
 /// Procurando adversário: radar girando enquanto o servidor tenta emparelhar (a cada 2 s). Cancelar tira da fila.
 class BuscaTela extends StatefulWidget {
   /// Por padrão procura duelo do Ticker Battle; o Trade Battle usa a mesma tela com a sua rota e a sua partida (`abrir`).
-  const BuscaTela({super.key, required this.api, this.rota = '/ticker/online/fila', this.titulo = 'Duelo Online', this.abrir, this.alternativa, this.rotuloAlternativa, this.avisoBot = false, this.entrar});
+  const BuscaTela({super.key, required this.api, this.rota = '/ticker/online/fila', this.titulo = 'Duelo Online', this.abrir, this.alternativa, this.rotuloAlternativa, this.avisoBot = false, this.entrar, this.confronto});
   final Api api;
   final String rota;
   final String titulo;
@@ -116,6 +117,9 @@ class BuscaTela extends StatefulWidget {
 
   /// Mantido por compatibilidade: o servidor completa a partida sozinho quando ninguém aparece (o adversário é um jogador da casa).
   final bool avisoBot;
+
+  /// Rota (a partir do id da partida) da tela de confronto: o Trade Battle mostra "VOCÊ × ADVERSÁRIO" antes de abrir a partida. Sem ela, abre direto.
+  final String Function(String id)? confronto;
 
   @override
   State<BuscaTela> createState() => _BuscaTelaState();
@@ -172,11 +176,27 @@ class _BuscaTelaState extends State<BuscaTela> with SingleTickerProviderStateMix
     }
   }
 
-  void _abrirPartida(String id) {
+  bool _abrindo = false;
+
+  Future<void> _abrirPartida(String id) async {
+    if (_abrindo) return;
+    _abrindo = true;
     _saiu = true;
     _t?.cancel();
     HapticFeedback.heavyImpact();
-    Navigator.of(context).pushReplacement(widget.abrir?.call(id) ?? MaterialPageRoute<void>(builder: (_) => PartidaOnlineTela(api: widget.api, pid: id)));
+    final destino = widget.abrir?.call(id) ?? MaterialPageRoute<void>(builder: (_) => PartidaOnlineTela(api: widget.api, pid: id));
+    Map<String, dynamic>? c;
+    if (widget.confronto != null) {
+      try {
+        c = await widget.api.get(widget.confronto!(id)).timeout(const Duration(milliseconds: 2500));      // se demorar, a partida abre direto: o confronto nunca atrasa o jogo
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    if (c == null || ((c['adversarios'] as List?) ?? const []).isEmpty) {
+      Navigator.of(context).pushReplacement(destino);
+      return;
+    }
+    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => ConfrontoTela(dados: c!, aoTerminar: (ctx) => Navigator.of(ctx).pushReplacement(destino))));
   }
 
   Future<void> _consultar() async {

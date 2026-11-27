@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tickerhunters/compartilhar.dart';
 import 'package:tickerhunters/confete.dart';
 import 'package:tickerhunters/resultado_partida.dart';
 
@@ -198,6 +201,50 @@ void main() {
       expect(find.text('40 / 200'), findsOneWidget);
       expect(find.byType(ConfeteLeve), findsNothing);
       await t.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('compartilhar o resultado', () {
+    testWidgets('o botão abre a prévia com lucro, pontos, troféus e divisão, sem nome do adversário nem e-mail', (t) async {
+      final r = ResultadoPartida.de(_fim(meu: 50, rival: 30, trofeus: {..._tr, 'resultado': 'vitoria'}), _tela());
+      await _mostra(t, r, const Size(390, 844));
+      await t.tap(find.byTooltip('Compartilhar o resultado'));
+      await t.pump(const Duration(milliseconds: 500));
+      expect(find.text('Compartilhar o resultado'), findsOneWidget);
+      final card = find.byType(CartaCompartilhar);
+      expect(card, findsOneWidget);
+      for (final txt in ['LUCRO', '+T\$ 1.250,00', 'PONTOS', 'TROFÉUS', '+20', 'Divisão Bronze · TickerHunters']) {
+        expect(find.descendant(of: card, matching: find.text(txt)), findsOneWidget, reason: txt);
+      }
+      final todos = t.widgetList<Text>(find.descendant(of: card, matching: find.byType(Text))).map((e) => e.data ?? '').join('|');
+      expect(todos.contains('Rival'), isFalse);        // o nome do adversário não vai para a imagem
+      expect(todos.contains('@'), isFalse);
+      expect(find.text('Compartilhar'), findsOneWidget);
+    });
+
+    testWidgets('tocar em Compartilhar gera a imagem (PNG) e entrega ao menu de compartilhar', (t) async {
+      final r = ResultadoPartida.de(_fim(meu: 30, rival: 50, trofeus: {..._tr, 'resultado': 'derrota', 'delta': -8}), _tela());
+      await _mostra(t, r, const Size(390, 844));
+      Uint8List? png;
+      String? texto;
+      final original = compartilharPng;
+      compartilharPng = (b, tx) async {
+        png = b;
+        texto = tx;
+      };
+      addTearDown(() => compartilharPng = original);
+      await t.tap(find.byTooltip('Compartilhar o resultado'));
+      await t.pump(const Duration(milliseconds: 500));
+      final botao = t.widget<FilledButton>(find.ancestor(of: find.text('Compartilhar'), matching: find.byType(FilledButton)));
+      await t.runAsync(() async {
+        botao.onPressed!();                              // gerar a imagem usa o motor gráfico de verdade: precisa do relógio real
+        await Future<void>.delayed(const Duration(milliseconds: 1500));
+      });
+      await t.pump(const Duration(milliseconds: 500));
+      expect(png, isNotNull);
+      expect(png!.length, greaterThan(2000));
+      expect(png!.sublist(0, 4), [0x89, 0x50, 0x4E, 0x47], reason: 'é um PNG de verdade');
+      expect(texto, contains('revanche'));             // a derrota convida para a revanche, sem castigo
     });
   });
 }

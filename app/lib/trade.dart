@@ -65,7 +65,7 @@ class _TradeTelaState extends State<TradeTela> {
         builder: (_) => BuscaTela(
             api: widget.api,
             rota: '/trade/fila',
-            titulo: 'Trade Battle · Online',
+            titulo: 'Trade Battle · Online', confronto: (id) => '/trade/salas/$id/confronto',
             abrir: partida,
             entrar: () => widget.api.post('/trade/fila', {'corrida': _corrida}))));
     if (mounted) _carregar();
