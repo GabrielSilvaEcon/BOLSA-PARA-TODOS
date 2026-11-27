@@ -27,12 +27,10 @@ class TradeTela extends StatefulWidget {
 class _TradeTelaState extends State<TradeTela> {
   Map<String, dynamic>? _d;
   Map<String, dynamic>? _setups;
-  /// Um modo só, por enquanto: AO VIVO (cripto de verdade, candles de 2 minutos, 15 candles = 30 minutos, cada candle se formando junto com o mercado).
-  /// A moeda é sorteada pelo servidor; todo mundo joga o mesmo modo, então a busca por adversário junta mais gente (e, sem ninguém, entra um bot).
-  static const _corrida = 'vivo';
-
-  /// Os setups colecionáveis ainda não valem no modo Ao vivo: o painel fica escondido até eles voltarem.
-  static const _mostrarSetups = false;
+  /// Dois modos, com as mesmas funções: REPLAY (gráfico gravado de verdade, 15 minutos, como sempre) e AO VIVO (cripto de agora, candles de 2 minutos,
+  /// 15 candles = 30 minutos, cada candle se formando junto com o mercado; a moeda é sorteada pelo servidor). Cada modo tem a sua fila de adversários
+  /// (e, sem ninguém, entra um bot).
+  String _corrida = 'rapida';
   bool _comoAberto = false;
 
   @override
@@ -89,6 +87,7 @@ class _TradeTelaState extends State<TradeTela> {
           padding: EdgeInsets.zero,
           children: [
             Entrada(ordem: 0, child: _capa(ativa)),
+            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 0), child: _modos(ativa)))),
             if (semGraficos) Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: _aviso()))),
             const SizedBox(height: 10),
             Center(
@@ -97,10 +96,8 @@ class _TradeTelaState extends State<TradeTela> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Column(children: [
-                    if (_mostrarSetups) ...[
-                      Entrada(ordem: 2, child: _painelSetups()),
-                      const SizedBox(height: 10),
-                    ],
+                    Entrada(ordem: 2, child: _painelSetups()),
+                    const SizedBox(height: 10),
                     Entrada(ordem: 4, child: _comoFunciona()),
                     const SizedBox(height: 24),
                   ]),
@@ -114,6 +111,37 @@ class _TradeTelaState extends State<TradeTela> {
   }
 
   static const _fundo = Color(0xFF050E2C);
+
+  /// Escolha do modo da batalha (travada enquanto há uma partida em andamento: BATALHAR volta para ela).
+  Widget _modos(bool ativa) {
+    Widget opcao(String id, String titulo, String sub, Color cor) {
+      final on = _corrida == id;
+      return Expanded(
+        child: Pressionavel(
+          aoTocar: ativa ? null : () => setState(() => _corrida = id),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              color: on ? cor.withOpacity(0.28) : const Color(0x990A2250),
+              border: Border.all(color: on ? cor : const Color(0xFF2F5FA8), width: on ? 2 : 1.2),
+            ),
+            child: Column(children: [
+              Text(titulo, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: on ? 15 : 14)),
+              const SizedBox(height: 2),
+              Text(sub, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFB9D0F5), fontSize: 11.5)),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    return Row(children: [
+      opcao('rapida', 'REPLAY', 'gráfico gravado · 15 min', const Color(0xFF2EE86B)),
+      const SizedBox(width: 10),
+      opcao('vivo', '🔴 AO VIVO', 'cripto de agora · 30 min', const Color(0xFFFF5C7A)),
+    ]);
+  }
 
   // ---- capa: a arte do Trade Battle (logo, touro e arena) com o botão BATALHAR hexagonal dourado sobre a base da arena
   Widget _capa(bool ativa) {

@@ -156,3 +156,78 @@ def test_duas_pessoas_comecam_juntas_ao_confirmar(cli, mercado, monkeypatch):  #
     import trader_online_dados as OL
     sala = OL.criar_sala("ana@x.com", "", float(T0), corrida="vivo")
     assert sala["id"]
+
+
+# ------------------------------------------------------------------ setups ao vivo (sem pausa)
+def test_setup_ao_vivo_abre_a_janela_sem_pausar_o_mercado_e_a_decisao_manda_a_ordem(cli, mercado, monkeypatch):  # noqa: F811
+    import setups_dados as SD
+    import setups as SU
+    monkeypatch.setattr(SD, "equipados", lambda email: ["setup_classico"])
+    chamadas = {"n": 0}
+
+    def detectar(sid, candles, *a):
+        chamadas["n"] += 1
+        return {"direcao": "alta", "motivo": "teste"} if chamadas["n"] == 2 else None
+    monkeypatch.setattr(SU, "detectar", detectar)
+    pid = cli.post("/trade/vivo", json={"moeda": "BTC"}).json()["id"]
+    cli.post(f"/trade/solo/{pid}/estrategia", json={"direcao": "alta"})
+    achou = None
+    for dt in range(1, 700, 2):                                          # 2 min por candle: o 2º candle fecha por volta de M0 + 240 s
+        mercado["t"] = T0 + dt
+        v = ver(cli, pid)
+        ev = (v["tela"].get("setup") or {}).get("evento") if isinstance(v.get("tela"), dict) else None
+        if ev:
+            achou = (dt, v)
+            break
+    assert achou, "o setup nunca ativou"
+    dt, v = achou
+    assert v["tela"]["pausada"] is False                                  # o mercado NÃO parou
+    n_antes = len(v["tela"]["candles"])
+    mercado["t"] = T0 + dt + 6
+    v2 = ver(cli, pid)
+    assert v2["fase"] == "replay" and v2["tela"]["candles"][-1]["c"] != v["tela"]["candles"][-1]["c"] or len(v2["tela"]["candles"]) >= n_antes   # o gráfico seguiu andando
+    r = cli.post(f"/trade/solo/{pid}/setup", json={"acao": "aceitar", "q": 5})
+    assert r.status_code == 200, r.text
+    mercado["t"] = T0 + dt + 9
+    pos = (ver(cli, pid)["tela"].get("mesa") or {}).get("posicao")
+    assert pos and pos["direcao"] == "alta"                               # a decisão virou ordem a mercado, no preço de quando decidiu
+
+
+# ------------------------------------------------------------------ os dois modos convivem
+from test_social_api import dois  # noqa: E402,F401  (fixture: duas contas amigas logadas)
+
+
+def test_desafio_de_amigo_nos_dois_modos(dois, mercado):
+    ana, bia = dois
+    ana.post("/social/pedir", json={"usuario": "bia_h"})
+    h_ana = bia.get("/social").json()["recebidos"][0]["h"]
+    bia.post("/social/responder", json={"h": h_ana, "aceitar": True})
+    h_bia = ana.get("/social").json()["amigos"][0]["h"]
+    # Ao vivo: os dois entram, a partida começa no mercado de agora (duas pessoas, sem bot)
+    d = ana.post("/social/desafiar", json={"h": h_bia, "jogo": "trade", "corrida": "vivo"}).json()
+    assert bia.post("/social/convite/entrar", json={"h": h_ana}).json()["id"] == d["id"]
+    CV._cache.clear()
+    v = ana.get(f"/trade/salas/{d['id']}").json()
+    assert v["estado"] == "jogo"
+    assert v["tela"]["vivo"] is True and v["tela"]["corrida"] is True and len(v["tela"]["candles"]) >= 200
+
+
+def test_desafio_de_amigo_no_replay_continua_como_antes(dois, mercado):
+    ana, bia = dois
+    ana.post("/social/pedir", json={"usuario": "bia_h"})
+    h_ana = bia.get("/social").json()["recebidos"][0]["h"]
+    bia.post("/social/responder", json={"h": h_ana, "aceitar": True})
+    h_bia = ana.get("/social").json()["amigos"][0]["h"]
+    d = ana.post("/social/desafiar", json={"h": h_bia, "jogo": "trade"}).json()              # sem corrida: o replay de sempre
+    assert bia.post("/social/convite/entrar", json={"h": h_ana}).json()["id"] == d["id"]
+    v = ana.get(f"/trade/salas/{d['id']}").json()
+    assert v["estado"] == "jogo" and v["tela"]["vivo"] is False and v["tela"]["corrida"] is True
+
+
+def test_modo_replay_continua_igual_ao_de_antes(cli, mercado, monkeypatch):  # noqa: F811
+    """A fila do Replay ('rapida') segue existindo e separada da do ao vivo: quem procura Replay não é pareado com quem procura Ao vivo."""
+    r1 = cli.post("/trade/fila", json={"corrida": "rapida"})
+    assert r1.status_code == 200 and r1.json()["estado"] == "fila", r1.text
+    import trader_online_dados as OL
+    assert OL.TB.spec_corrida("rapida")["tf"] == "15m" and OL.TB.spec_corrida("vivo")["tf"] == "2m"
+    assert "vivo" not in OL.TB.CORRIDAS and "rapida" in OL.TB.CORRIDAS

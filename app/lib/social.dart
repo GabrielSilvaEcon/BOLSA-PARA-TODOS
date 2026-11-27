@@ -26,6 +26,36 @@ Future<void> _garantirBaralho(NavigatorState nav, Api api, String jogo) async {
   }
 }
 
+/// Pergunta o modo do desafio no Trade Battle: Replay (gráfico gravado, como sempre) ou Ao vivo (cripto de agora). Devolve a `corrida` para o servidor
+/// (null = o replay de sempre) ou `false` se a pessoa desistiu.
+Future<Object?> _escolherModoTrade(BuildContext context) => showModalBottomSheet<Object>(
+      context: context,
+      backgroundColor: const Color(0xFF10274A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Desafiar no Trade Battle', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            const Text('Escolha o modo da batalha:', style: TextStyle(color: Color(0xFFD4E2F7))),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop('replay'),
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52), backgroundColor: const Color(0xFF12A83C)),
+              child: const Text('REPLAY · gráfico gravado, como sempre', style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop('vivo'),
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52), backgroundColor: const Color(0xFFD7305A)),
+              child: const Text('🔴 AO VIVO · cripto de agora, 30 min', style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
+          ]),
+        ),
+      ),
+    );
+
 /// Desafio PvP direto a um amigo, de qualquer tela (ex.: Revanche no fim da partida): abre a espera "VS" e, se ele aceitar,
 /// a partida (Trade Battle na sala, Ticker Battle no duelo online).
 Future<void> desafiarAmigo(BuildContext context, Api api, Map amigo, String jogo, {Object? euImg}) async {
@@ -33,7 +63,14 @@ Future<void> desafiarAmigo(BuildContext context, Api api, Map amigo, String jogo
   final msg = ScaffoldMessenger.maybeOf(context);
   await _garantirBaralho(nav, api, jogo);
   if (!nav.mounted) return;
-  final r = await nav.push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: api, amigo: amigo, jogo: jogo, euImg: euImg)));
+  String? corrida;
+  if (jogo == 'trade') {
+    final modo = await _escolherModoTrade(nav.context);
+    if (modo == null) return;
+    corrida = modo == 'vivo' ? 'vivo' : null;
+  }
+  if (!nav.mounted) return;
+  final r = await nav.push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: api, amigo: amigo, jogo: jogo, euImg: euImg, corrida: corrida)));
   if (r != null && r['estado'] == 'aceito' && r['id'] != null) {
     await nav.push(MaterialPageRoute(builder: (_) => r['jogo'] == 'trade' ? SalaTela(api: api, salaId: '${r['id']}') : PartidaOnlineTela(api: api, pid: '${r['id']}')));
   } else if (r != null && r['msg'] != null) {
@@ -483,7 +520,13 @@ class _SocialTelaState extends State<SocialTela> {
     final nav = Navigator.of(context);
     await _garantirBaralho(nav, widget.api, jogo);
     if (!mounted) return;
-    final r = await nav.push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: widget.api, amigo: a, jogo: jogo, euImg: (_d?['eu'] as Map?)?['avatar_img'])));
+    String? corrida;
+    if (jogo == 'trade') {
+      final modo = await _escolherModoTrade(context);
+      if (modo == null || !mounted) return;
+      corrida = modo == 'vivo' ? 'vivo' : null;
+    }
+    final r = await nav.push<Map>(MaterialPageRoute(builder: (_) => _Desafiando(api: widget.api, amigo: a, jogo: jogo, euImg: (_d?['eu'] as Map?)?['avatar_img'], corrida: corrida)));
     if (!mounted) return;
     if (r != null && r['estado'] == 'aceito') {
       _abrirSala('${r['jogo']}', r['id']);
@@ -712,8 +755,11 @@ class _BuscaState extends State<_Busca> {
 /// Quem desafia espera aqui: os dois avatares frente a frente, o relógio de 3 minutos e o botão Cancelar. Quando o amigo aceita, a tela
 /// fecha e a partida abre direto; se ele recusar ou o tempo acabar, volta com o aviso.
 class _Desafiando extends StatefulWidget {
-  const _Desafiando({required this.api, required this.amigo, required this.jogo, this.euImg});
+  const _Desafiando({required this.api, required this.amigo, required this.jogo, this.euImg, this.corrida});
   final Api api;
+
+  /// Só no Trade Battle: 'vivo' para o modo Ao vivo (null = o replay de sempre).
+  final String? corrida;
   final Object? euImg;
   final Map amigo;
   final String jogo;
@@ -743,7 +789,7 @@ class _DesafiandoState extends State<_Desafiando> with SingleTickerProviderState
 
   Future<void> _comecar() async {
     try {
-      await widget.api.post('/social/desafiar', {'h': widget.amigo['h'], 'jogo': widget.jogo});
+      await widget.api.post('/social/desafiar', {'h': widget.amigo['h'], 'jogo': widget.jogo, if (widget.corrida != null) 'corrida': widget.corrida});
     } catch (e) {
       if (mounted) setState(() => _erro = e.toString());
       return;
