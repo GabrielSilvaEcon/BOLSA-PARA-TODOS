@@ -39,6 +39,7 @@ flutter:
     - assets/aprender/
     - assets/cards/
     - assets/ranking/
+    - assets/resultado/
     - assets/nav/
     - assets/cabecalho/
     - assets/mesa/
