@@ -48,4 +48,31 @@ void main() {
     expect(find.text('📊 Desempenho'), findsNothing);
     expect(t.takeException(), isNull);
   });
+
+  testWidgets('vitrine: divisão de cada jogo e os setups equipados aparecem; sem vitrine (privacidade) a seção some', (t) async {
+    final com = {
+      ...completo,
+      'vitrine': {
+        'divisao': {
+          'trade': {'id': 'bronze', 'nome': 'Bronze', 'cor': '#CD7F32', 'nivel': 0, 'trofeus': 40},
+          'ticker': {'id': 'prata', 'nome': 'Prata', 'cor': '#C0C0C0', 'nivel': 1, 'trofeus': 230},
+        },
+        'setups': [
+          {'id': 'martelo', 'nome': 'Martelo', 'raridade': 'comum', 'subtitulo': 'x', 'tipo': 'candle', 'direcao': 'compra', 'cores': {'principal': '#2EE59D', 'brilho': '#FFD76A'}, 'carta': {}},
+        ],
+      },
+    };
+    await _mostra(t, com, const Size(390, 844));
+    for (final txt in ['🏆 Vitrine', 'Bronze · 40', 'Prata · 230']) {
+      expect(find.text(txt), findsOneWidget, reason: txt);
+    }
+    expect(find.text('Trade Battle'), findsWidgets);      // também aparece no cartão de "Jogos e rankings"
+    expect(find.text('Ticker Battle'), findsWidgets);
+    expect(find.text('MARTELO', findRichText: true), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await _mostra(t, completo, const Size(390, 844));
+    expect(find.text('🏆 Vitrine'), findsNothing);
+    await _mostra(t, {...completo, 'vitrine': {'divisao': <String, dynamic>{}, 'setups': <Map>[]}}, const Size(360, 640));
+    expect(t.takeException(), isNull);
+  });
 }
