@@ -44,7 +44,7 @@ app.add_middleware(CORSMiddleware, allow_origins=ORIGENS, allow_methods=["*"], a
 app.add_middleware(GZipMiddleware, minimum_size=1024)       # respostas comprimidas: a partida manda o gráfico a cada segundo (~5x menos dados no celular)
 
 # ------------------------------------------------------------------ limite de tentativas (em memória, por IP): freia força bruta no login e inundação nas buscas
-LIMITES = {"/auth/entrar": (10, 60.0), "/social/buscar": (40, 60.0), "/mercado/busca": (60, 60.0), "/trade/vivo": (12, 60.0)}     # rota: (pedidos, janela em segundos)
+LIMITES = {"/auth/entrar": (10, 60.0), "/social/buscar": (40, 60.0), "/mercado/busca": (60, 60.0), "/trade/vivo": (12, 60.0), "/saude/vivo": (20, 60.0)}     # rota: (pedidos, janela em segundos)
 _TENTATIVAS: dict[tuple[str, str], list[float]] = {}
 
 
@@ -158,6 +158,36 @@ async def saude() -> dict:
 def saude_banco() -> dict:
     ok, msg = banco.pronto()
     return {"ok": True, "banco": bool(ok)}      # o motivo do erro fica só no log do servidor (não revela detalhes internos)
+
+
+@app.get("/saude/vivo")
+def saude_vivo(moeda: str = "BTC") -> dict:
+    """Diagnóstico do modo Ao vivo, sem login (só contagens de candles de mercado público): o que o servidor está recebendo da Binance agora."""
+    import cripto_vivo as CV
+    import trader_vivo as TV
+    moeda = moeda.upper()
+    if moeda not in CV.SIMBOLOS:
+        raise HTTPException(400, "moeda inválida")
+    agora = _agora()
+    out: dict = {"moeda": moeda, "agora": int(agora)}
+    for tf in ("1m", "5m"):
+        try:
+            v = CV.candles(moeda, tf, CV.N_MAX)["candles"]
+            out[tf] = {"n": len(v), "fechados": sum(1 for c in v if c["fechado"]), "primeiro": v[0]["t"] if v else None, "ultimo": v[-1]["t"] if v else None}
+        except Exception as e:
+            out[tf] = {"erro": f"{type(e).__name__}: {e}"[:200]}
+    try:
+        seg = CV.segundos(moeda, int(agora) - 90, int(agora))
+        out["1s"] = {"n": len(seg), "esperado": 90}
+    except Exception as e:
+        out["1s"] = {"erro": f"{type(e).__name__}: {e}"[:200]}
+    try:
+        M = TV.ancora(agora)
+        c = TV.cenario(moeda, M, agora)
+        out["cenario"] = {"ok": True, "passos_reais": c["_vivo_n"], "ticker": c["ticker"]}
+    except Exception as e:
+        out["cenario"] = {"ok": False, "erro": f"{type(e).__name__}: {e}"[:300]}
+    return out
 
 
 class Entrar(BaseModel):

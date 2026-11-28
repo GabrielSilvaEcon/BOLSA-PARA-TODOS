@@ -255,3 +255,12 @@ def test_historico_impossivel_diz_quantos_achou(mercado, monkeypatch):
     with pytest.raises(CV.SemDados) as e:
         CV.historico("BTC", "1m", "2023-11-14T22:30", 400, agora=lambda: mercado["t"])
     assert "de 400 candles de 1m" in str(e.value)
+
+
+def test_saude_vivo_mostra_o_que_o_servidor_recebe(mercado):
+    from fastapi.testclient import TestClient
+    r = TestClient(API.app).get("/saude/vivo", params={"moeda": "BTC"})        # sem login: só contagens de mercado público
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["1m"]["n"] >= 400 and j["1m"]["fechados"] >= 400 and j["1s"]["n"] > 60 and j["cenario"]["ok"] is True
+    assert TestClient(API.app).get("/saude/vivo", params={"moeda": "PETR4"}).status_code == 400
