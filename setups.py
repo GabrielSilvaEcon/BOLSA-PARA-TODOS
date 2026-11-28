@@ -483,6 +483,11 @@ def _est_limpa(bruto) -> dict:
             linha["soma_pct"] = round(float(e.get("soma_pct") or 0.0), 3)
         except (TypeError, ValueError):
             linha["soma_pct"] = 0.0
+        try:                                                   # lucro em T$ (com as taxas) das entradas que vieram deste setup, e a melhor delas
+            linha["soma_pnl"] = round(float(e.get("soma_pnl") or 0.0), 2)
+            linha["melhor_pnl"] = None if e.get("melhor_pnl") is None else round(float(e["melhor_pnl"]), 2)
+        except (TypeError, ValueError):
+            linha["soma_pnl"], linha["melhor_pnl"] = 0.0, None
         out[sid] = linha
     return out
 
@@ -496,7 +501,7 @@ def registrar_estatistica(doc: dict, pid: str, linhas: list[dict]) -> bool:
         sid = str(ln.get("setup") or "")
         if not sid or not info(sid):
             continue
-        e = doc["est"].setdefault(sid, {**{k: 0 for k in EST_CAMPOS}, "soma_pct": 0.0})
+        e = doc["est"].setdefault(sid, {**{k: 0 for k in EST_CAMPOS}, "soma_pct": 0.0, "soma_pnl": 0.0, "melhor_pnl": None})
         e["ativacoes"] += 1
         estado = ln.get("estado")
         if estado == "aceito":
@@ -506,6 +511,10 @@ def registrar_estatistica(doc: dict, pid: str, linhas: list[dict]) -> bool:
                 e["com_resultado"] += 1
                 e["soma_pct"] = round(e["soma_pct"] + float(pct), 3)
                 e["vitorias"] += 1 if pct > 0 else 0
+                pnl = ln.get("pnl")
+                if isinstance(pnl, (int, float)) and not isinstance(pnl, bool):
+                    e["soma_pnl"] = round(float(e.get("soma_pnl") or 0.0) + float(pnl), 2)
+                    e["melhor_pnl"] = round(float(pnl), 2) if e.get("melhor_pnl") is None else round(max(float(e["melhor_pnl"]), float(pnl)), 2)
         elif estado == "recusado":
             e["recusadas"] += 1
         elif estado == "expirado":
@@ -520,7 +529,9 @@ def estatisticas(doc: dict, setup_id: str) -> dict:
     n = int(e.get("com_resultado") or 0)
     return {**{k: int(e.get(k) or 0) for k in EST_CAMPOS},
             "taxa": round(100 * int(e.get("vitorias") or 0) / n) if n else None,
-            "retorno_medio": round(float(e.get("soma_pct") or 0.0) / n, 2) if n else None}
+            "retorno_medio": round(float(e.get("soma_pct") or 0.0) / n, 2) if n else None,
+            "lucro_total": round(float(e.get("soma_pnl") or 0.0), 2) if n and e.get("melhor_pnl") is not None else None,      # T$; só de partidas depois que o jogo passou a guardar isto
+            "melhor_entrada": e.get("melhor_pnl") if n else None}
 
 
 def _registrar(doc: dict, tipo: str, agora_iso: str, **kw) -> None:

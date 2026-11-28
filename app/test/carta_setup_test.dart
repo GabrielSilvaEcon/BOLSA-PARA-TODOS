@@ -5,7 +5,7 @@ import 'package:tickerhunters/carta_setup.dart';
 Map<String, dynamic> _setup(String id, {String rar = 'rara', String tipo = 'candle', String dir = 'compra', bool equipado = false}) => {
       'id': id, 'nome': 'Engolfo de Alta', 'subtitulo': 'Possível reversão de alta', 'raridade': rar, 'tipo': tipo, 'direcao': dir, 'equipado': equipado,
       'cores': {'principal': '#FF4D6D', 'brilho': '#FFC2CC'}, 'indicadores': ['Corpos dos dois últimos candles', 'Região de suporte marcada por você'], 'resumo': 'Resumo do padrão.',
-      'estatisticas': {'ativacoes': 6, 'entradas': 4, 'recusadas': 1, 'expiradas': 1, 'com_resultado': 3, 'vitorias': 2, 'taxa': 67, 'retorno_medio': 1.25},
+      'estatisticas': {'ativacoes': 6, 'entradas': 4, 'recusadas': 1, 'expiradas': 1, 'com_resultado': 3, 'vitorias': 2, 'taxa': 67, 'retorno_medio': 1.25, 'lucro_total': 1409.75, 'melhor_entrada': -310.5},
       'carta': {
         'gatilho': 'Candle de alta que engole o de baixa, em um suporte marcado por você.', 'stop': 'Abaixo da menor mínima dos dois candles', 'alvo': '2 vezes o risco (2:1)', 'alvo_curto': 'Alvo 2:1',
         'melhor': 'Funciona melhor em suportes com confirmação de volume ou tendência.', 'autor': 'Padrão de candle clássico', 'regiao': 'Suporte', 'saida': 'Stop ou alvo',
@@ -48,25 +48,34 @@ void main() {
     expect(_tudo(t), contains('▼ Venda'));
   });
 
-  testWidgets('verso (300 px): gatilho, stop, alvo, quando funciona melhor, indicador, região, saída e os números do jogador', (t) async {
+  testWidgets('verso (300 px): nome, como funciona, quando ativa, saída e os 6 números do jogador (lucro em T\$)', (t) async {
     await _mostra(t, CartaSetup(setup: _setup('engolfo_alta'), largura: 300, verso: true));
     final txt = _tudo(t);
-    for (final s in ['GATILHO', 'STOP', 'ALVO', 'QUANDO FUNCIONA MELHOR', 'Região: Suporte · Saída: Stop ou alvo', 'Padrão de candle clássico', 'INDICADORES', 'Corpos dos dois últimos candles', 'ATIVAÇÕES', 'ENTRADAS', 'ACERTO · MÉDIA']) {
+    for (final s in ['ENGOLFO DE ALTA', 'Candle de alta que engole o de baixa, em um suporte marcado por você.', 'Ao fechar o candle do padrão · Região: Suporte', 'Stop: Abaixo da menor mínima dos dois candles | Alvo 2:1']) {
       expect(txt, contains(s), reason: s);
     }
-    expect(find.text('6', findRichText: true), findsOneWidget);
-    expect(find.text('4', findRichText: true), findsOneWidget);
-    expect(find.text('67% · +1,3%', findRichText: true), findsOneWidget);          // retorno médio com uma casa, vírgula e sinal
+    expect(find.text('6', findRichText: true), findsOneWidget);                      // ativações
+    expect(find.text('4', findRichText: true), findsOneWidget);                      // entradas
+    expect(find.text('67%', findRichText: true), findsOneWidget);                    // acerto
+    expect(find.text('+T\$ 1.409,75', findRichText: true), findsOneWidget);           // lucro total, com milhar e vírgula
+    expect(find.text('+1,3%', findRichText: true), findsOneWidget);                  // retorno médio com uma casa, vírgula e sinal
+    expect(find.text('−T\$ 310,50', findRichText: true), findsOneWidget);            // melhor entrada (aqui negativa: sinal de menos de verdade)
+    for (final antigo in ['GATILHO', 'QUANDO FUNCIONA MELHOR', 'ACERTO · MÉDIA']) {
+      expect(txt, isNot(contains(antigo)), reason: 'esses textos agora são da arte');
+    }
   });
-
   testWidgets('sem ativações ainda: zeros e traço, sem inventar acerto', (t) async {
-    final s = _setup('martelo')..['estatisticas'] = {'ativacoes': 0, 'entradas': 0, 'taxa': null, 'retorno_medio': null};
+    final s = _setup('martelo')..['estatisticas'] = {'ativacoes': 0, 'entradas': 0, 'taxa': null, 'retorno_medio': null, 'lucro_total': null, 'melhor_entrada': null};
     await _mostra(t, CartaSetup(setup: s, largura: 300, verso: true));
     expect(find.text('0', findRichText: true), findsNWidgets(2));
-    expect(find.text('—', findRichText: true), findsOneWidget);
+    expect(find.text('—', findRichText: true), findsNWidgets(4));                    // acerto, lucro, retorno médio e melhor entrada
     final sem = _setup('martelo')..remove('estatisticas');                          // servidor antigo: sem o campo
     await _mostra(t, CartaSetup(setup: sem, largura: 300, verso: true));
-    expect(find.text('—', findRichText: true), findsOneWidget);
+    expect(find.text('—', findRichText: true), findsNWidgets(4));
+    final antigo = _setup('martelo')..['estatisticas'] = {'ativacoes': 3, 'entradas': 2, 'taxa': 50, 'retorno_medio': 0.5};      // partidas de antes do lucro ser guardado
+    await _mostra(t, CartaSetup(setup: antigo, largura: 300, verso: true));
+    expect(find.text('50%', findRichText: true), findsOneWidget);
+    expect(find.text('—', findRichText: true), findsNWidgets(2));                    // lucro total e melhor entrada: sem dado, sem inventar zero
     expect(t.takeException(), isNull);
   });
 
@@ -99,15 +108,15 @@ void main() {
 
   testWidgets('tocar na carta vira para o verso e de volta', (t) async {
     await _mostra(t, CartaGirando(setup: _setup('engolfo_alta'), largura: 300));
-    expect(_tudo(t), isNot(contains('QUANDO FUNCIONA MELHOR')));
+    expect(_tudo(t), isNot(contains('Ao fechar o candle')));
     await t.tap(find.byType(CartaSetup));
     await t.pump(const Duration(milliseconds: 50));      // o relógio da animação só começa no primeiro quadro depois do toque
     await t.pump(const Duration(milliseconds: 700));
-    expect(_tudo(t), contains('QUANDO FUNCIONA MELHOR'));
+    expect(_tudo(t), contains('Ao fechar o candle'));
     await t.tap(find.byType(CartaSetup));
     await t.pump(const Duration(milliseconds: 50));      // o relógio da animação só começa no primeiro quadro depois do toque
     await t.pump(const Duration(milliseconds: 700));
-    expect(_tudo(t), isNot(contains('QUANDO FUNCIONA MELHOR')));
+    expect(_tudo(t), isNot(contains('Ao fechar o candle')));
     expect(t.takeException(), isNull);
   });
 

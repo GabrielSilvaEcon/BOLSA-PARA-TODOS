@@ -128,35 +128,39 @@ class CartaSetup extends StatelessWidget {
     ];
   }
 
+  /// Verso: o nome e o ícone do setup, 3 textos curtos (como funciona, quando ativa, saída sugerida) e o quadro SEU DESEMPENHO com 6 espaços. A arte já traz a moldura,
+  /// os títulos e os nomes dos espaços (sem nenhum texto que mude de carta): tudo que muda é escrito aqui. Coordenadas medidas na arte de 768 x 1176.
   List<Widget> _verso(double k, Color clara, Widget Function(double, double, double, double, Widget) caixa) {
     if (largura < 200) return const [];
-    TextSpan rot(String t) => TextSpan(text: '$t  ', style: TextStyle(color: clara, fontWeight: FontWeight.w900));
-    TextSpan txt(String t) => TextSpan(text: t);
-    final ind = ((setup['indicadores'] as List?) ?? const []).map((e) => '$e').take(1).join(' · ');
     final est = (setup['estatisticas'] as Map?) ?? const {};
-    int n(String k) => (est[k] as num?)?.toInt() ?? 0;
-    String pct(num v) => '${v > 0 ? '+' : ''}${v.toStringAsFixed(1).replaceAll('.', ',')}%';
-    final taxa = est['taxa'] as num?, ret = est['retorno_medio'] as num?;
-    final acerto = taxa == null ? '—' : '${taxa.toInt()}%${ret == null ? '' : ' · ${pct(ret)}'}';
-    Widget par(double x0, double y0, double x1, double y1, String titulo, String valor, Color cor) => caixa(
-        x0, y0, x1, y1, Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(titulo, style: TextStyle(fontSize: 15 * k, color: clara, fontWeight: FontWeight.w900, letterSpacing: .5)),
-          Expanded(child: TextoAjustado([txt(valor)], max: 26 * k, min: 10 * k, maxLines: 1, cor: cor, peso: FontWeight.w900)),
-        ]));
+    final cores = (setup['cores'] as Map?) ?? const {};
+    int n(String c) => (est[c] as num?)?.toInt() ?? 0;
+    final taxa = est['taxa'] as num?, ret = est['retorno_medio'] as num?, lucro = est['lucro_total'] as num?, melhor = est['melhor_entrada'] as num?;
+    String pct(num v) => '${v > 0 ? '+' : v < 0 ? '−' : ''}${v.abs().toStringAsFixed(1).replaceAll('.', ',')}%';
+    String tc(num v) {
+      final inteiro = v.abs().toStringAsFixed(2).split('.');
+      final milhares = inteiro[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.');
+      return '${v > 0.004 ? '+' : v < -0.004 ? '−' : ''}T\$ $milhares,${inteiro[1]}';
+    }
+
+    Color corDe(num? v) => v == null ? Colors.white : (v > 0 ? _verde : (v < 0 ? _vermelho : Colors.white));
+    Widget valor(double x0, double y0, double x1, double y1, String t, Color cor) => caixa(x0, y0, x1, y1, Center(child: TextoUmaLinha(t, tamanho: 34 * k, cor: cor, peso: FontWeight.w900)));
+    final tipoCandle = '${setup['tipo']}' == 'candle';
+    final quando = '${tipoCandle ? 'Ao fechar o candle do padrão' : 'Ao fechar o candle'} · Região: ${_t('regiao')}';
+    final alvo = _t('alvo_curto').isEmpty ? _t('alvo') : _t('alvo_curto');
+    final saida = 'Stop: ${_t('stop')} | $alvo';
     return [
-      caixa(192, 266, 650, 347, TextoAjustado([rot('GATILHO'), txt(_gatilho)], max: 27 * k, min: 10 * k, maxLines: 3, align: TextAlign.left)),
-      caixa(192, 390, 650, 472, TextoAjustado([rot('STOP'), txt(_t('stop'))], max: 27 * k, min: 10 * k, maxLines: 3, align: TextAlign.left)),
-      caixa(192, 515, 650, 597, TextoAjustado([rot('ALVO'), txt(_t('alvo'))], max: 27 * k, min: 10 * k, maxLines: 3, align: TextAlign.left)),
-      caixa(85, 650, 690, 800, TextoAjustado([
-        TextSpan(text: 'QUANDO FUNCIONA MELHOR\n', style: TextStyle(color: clara, fontWeight: FontWeight.w900)),
-        txt('${_t('melhor')}\n'),
-        TextSpan(text: 'Região: ${_t('regiao')} · Saída: ${_t('saida')}\n', style: TextStyle(color: clara.withValues(alpha: .95), fontWeight: FontWeight.w700)),
-        TextSpan(text: _t('autor'), style: TextStyle(color: clara.withValues(alpha: .85), fontStyle: FontStyle.italic, fontWeight: FontWeight.w600)),
-      ], max: 29 * k, min: 10 * k, maxLines: 6, align: TextAlign.left)),
-      caixa(170, 850, 690, 905, TextoAjustado([rot('INDICADORES'), txt(ind)], max: 24 * k, min: 9 * k, maxLines: 2, align: TextAlign.left)),
-      par(72, 953, 245, 1022, 'ATIVAÇÕES', '${n('ativacoes')}', Colors.white),
-      par(298, 953, 478, 1022, 'ENTRADAS', '${n('entradas')}', Colors.white),
-      par(522, 953, 703, 1022, 'ACERTO · MÉDIA', acerto, (ret ?? 0) < 0 ? _vermelho : (taxa == null ? Colors.white : _verde)),
+      caixa(74, 43, 196, 166, CustomPaint(painter: IlustracaoSetup('${setup['id']}', _hex(cores['principal']), _hex(cores['brilho'], const Color(0xFFFFD76A))))),
+      caixa(244, 55, 596, 108, TextoAjustado([TextSpan(text: '${setup['nome']}'.toUpperCase())], max: 40 * k, min: 14 * k, maxLines: 1, align: TextAlign.left, peso: FontWeight.w900)),
+      caixa(172, 243, 619, 305, TextoAjustado([TextSpan(text: _gatilho)], max: 24 * k, min: 10 * k, maxLines: 2, align: TextAlign.left)),
+      caixa(172, 360, 497, 397, TextoAjustado([TextSpan(text: quando)], max: 24 * k, min: 10 * k, maxLines: 2, align: TextAlign.left)),
+      caixa(172, 453, 619, 499, TextoAjustado([TextSpan(text: saida)], max: 24 * k, min: 10 * k, maxLines: 2, align: TextAlign.left)),
+      valor(83, 653, 374, 705, '${n('ativacoes')}', Colors.white),
+      valor(411, 653, 704, 705, '${n('entradas')}', Colors.white),
+      valor(83, 791, 374, 853, taxa == null ? '—' : '${taxa.toInt()}%', taxa == null ? Colors.white : (taxa >= 50 ? _verde : _vermelho)),
+      valor(411, 791, 704, 853, lucro == null ? '—' : tc(lucro), corDe(lucro)),
+      valor(83, 927, 374, 991, ret == null ? '—' : pct(ret), corDe(ret)),
+      valor(411, 927, 704, 991, melhor == null ? '—' : tc(melhor), corDe(melhor)),
     ];
   }
 }
