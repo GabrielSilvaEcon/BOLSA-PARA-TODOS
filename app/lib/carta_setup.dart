@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'cartas.dart' show coresRaridade, rotulosRaridade;
 
@@ -165,19 +166,92 @@ class CartaSetup extends StatelessWidget {
   }
 }
 
-/// Carta que vira ao toque: da frente para o verso e de volta, com a rotação em 3D.
+/// Detector de "segurar": só dispara depois de [duracao] com o dedo parado em cima, mostrando uma barrinha que enche enquanto isso. Mexer o dedo (rolar a tela)
+/// ou soltar antes cancela. Não atrapalha toques nem a rolagem do que está em volta.
+class SegurarPara extends StatefulWidget {
+  const SegurarPara({super.key, required this.child, required this.aoSegurar, this.ativo = true, this.duracao = const Duration(seconds: 2), this.cor = const Color(0xFFFFD76A)});
+  final Widget child;
+  final VoidCallback aoSegurar;
+  final bool ativo;
+  final Duration duracao;
+  final Color cor;
+
+  @override
+  State<SegurarPara> createState() => _SegurarParaState();
+}
+
+class _SegurarParaState extends State<SegurarPara> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: widget.duracao);
+  Offset? _ini;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addStatusListener((st) {
+      if (st == AnimationStatus.completed) {
+        HapticFeedback.mediumImpact();
+        _ini = null;
+        _c.reset();
+        widget.aoSegurar();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _cancela() {
+    _ini = null;
+    if (_c.value > 0 && _c.status != AnimationStatus.completed) _c.reset();
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (e) {
+          if (!widget.ativo) return;
+          _ini = e.position;
+          _c.forward(from: 0);
+        },
+        onPointerMove: (e) {
+          if (_ini != null && (e.position - _ini!).distance > 22) _cancela();
+        },
+        onPointerUp: (_) => _cancela(),
+        onPointerCancel: (_) => _cancela(),
+        child: Stack(children: [
+          widget.child,
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 6,
+            child: AnimatedBuilder(
+              animation: _c,
+              builder: (_, __) => _c.value == 0
+                  ? const SizedBox.shrink()
+                  : ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: _c.value, minHeight: 5, color: widget.cor, backgroundColor: const Color(0x66000000))),
+            ),
+          ),
+        ]),
+      );
+}
+
+/// Carta que vira para o verso: segure por 2 segundos (a frente tem uma barrinha que enche) e a carta gira mostrando o verso; um toque no verso volta para a frente.
 class CartaGirando extends StatefulWidget {
-  const CartaGirando({super.key, required this.setup, required this.largura});
+  const CartaGirando({super.key, required this.setup, required this.largura, this.inicialVerso = false});
   final Map<String, dynamic> setup;
   final double largura;
+  final bool inicialVerso;
 
   @override
   State<CartaGirando> createState() => _CartaGirandoState();
 }
 
 class _CartaGirandoState extends State<CartaGirando> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
-  bool _verso = false;
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 520), value: widget.inicialVerso ? 1 : 0);
+  late bool _verso = widget.inicialVerso;
   // As faces não mudam durante a virada: ficam prontas e só a rotação é refeita a cada quadro (antes, cada quadro remontava a carta toda).
   late Widget _frente = CartaSetup(setup: widget.setup, largura: widget.largura);
   late Widget _versoW = Transform(alignment: Alignment.center, transform: Matrix4.identity()..rotateY(pi), child: CartaSetup(setup: widget.setup, largura: widget.largura, verso: true));
@@ -200,6 +274,7 @@ class _CartaGirandoState extends State<CartaGirando> with SingleTickerProviderSt
   void _virar() {
     _verso = !_verso;
     _verso ? _c.forward() : _c.reverse();
+    setState(() {});
   }
 
   @override
@@ -207,25 +282,29 @@ class _CartaGirandoState extends State<CartaGirando> with SingleTickerProviderSt
     return Column(mainAxisSize: MainAxisSize.min, children: [
       GestureDetector(
         behavior: HitTestBehavior.opaque,      // a arte e o desenho não recebem toques sozinhos: sem isto, tocar no meio da carta não virava
-        onTap: _virar,
-        child: RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _c,
-            builder: (ctx, _) {
-              final ang = Curves.easeInOut.transform(_c.value) * pi;
-              return Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.0012)
-                  ..rotateY(ang),
-                child: ang > pi / 2 ? _versoW : _frente,
-              );
-            },
+        onTap: _verso ? _virar : null,         // no verso, um toque volta para a frente
+        child: SegurarPara(
+          ativo: !_verso,                      // na frente: segurar 2 s vira para o verso
+          aoSegurar: _virar,
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _c,
+              builder: (ctx, _) {
+                final ang = Curves.easeInOut.transform(_c.value) * pi;
+                return Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0012)
+                    ..rotateY(ang),
+                  child: ang > pi / 2 ? _versoW : _frente,
+                );
+              },
+            ),
           ),
         ),
       ),
       const SizedBox(height: 6),
-      const Text('Toque na carta para virar', style: TextStyle(color: Color(0x99FFFFFF), fontSize: 12)),
+      Text(_verso ? 'Toque na carta para voltar à frente' : 'Segure a carta por 2 segundos para ver o verso', style: const TextStyle(color: Color(0x99FFFFFF), fontSize: 12)),
     ]);
   }
 }
