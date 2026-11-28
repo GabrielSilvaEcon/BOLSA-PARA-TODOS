@@ -72,4 +72,32 @@ void main() {
     expect(find.textContaining('Ativos: 2/2'), findsOneWidget);
     expect(find.textContaining('até 2 setups por partida'), findsWidgets);
   });
+
+  testWidgets('sem o painel de detalhe embaixo: tocar só marca a carta (nada de Stop/Alvo/Condições abaixo)', (t) async {
+    await _abre(t, const Size(390, 800));
+    await t.ensureVisible(find.text('ENGOLFO DE ALTA').first);
+    await t.tap(_carta('ENGOLFO DE ALTA'));
+    await t.pumpAndSettle();
+    expect(find.textContaining('CONDIÇÕES DO SETUP'), findsNothing);
+    expect(find.text('STOP'), findsNothing);
+    expect(find.textContaining('Ativos: 2/2'), findsOneWidget);
+  });
+
+  testWidgets('segurar a carta por 2 segundos abre o verso virado e NÃO marca nem desmarca o setup', (t) async {
+    await _abre(t, const Size(390, 800));
+    expect(find.textContaining('Ativos: 1/2'), findsOneWidget);
+    await t.ensureVisible(find.text('ENGOLFO DE ALTA').first);
+    final g = await t.startGesture(t.getCenter(_carta('ENGOLFO DE ALTA')));
+    await t.pump(const Duration(milliseconds: 50));
+    await t.pump(const Duration(milliseconds: 1000));
+    await t.pump(const Duration(milliseconds: 1100));
+    await g.up();
+    await t.pumpAndSettle();
+    expect(find.textContaining('Toque na carta para voltar à frente'), findsOneWidget);       // a carta abriu virada (o verso)
+    expect(find.textContaining('Ativos: 1/2'), findsOneWidget);                                // o toque ao soltar não marcou a carta
+    await t.tap(find.text('Fechar'));
+    await t.pumpAndSettle();
+    expect(find.textContaining('Toque na carta para voltar à frente'), findsNothing);
+    expect(t.takeException(), isNull);
+  });
 }
