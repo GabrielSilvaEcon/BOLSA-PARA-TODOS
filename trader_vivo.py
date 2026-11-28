@@ -57,7 +57,7 @@ def cenario(moeda: str, M: int, agora: float, escala: float | None = None) -> di
     n_passos = n_vel * k
     relogio = lambda: agora                                    # noqa: E731
     # histórico: candles de 1 min fechados até M, juntados de 2 em 2 de trás para a frente a partir de M
-    c1 = [c for c in CV.candles(moeda, "1m", CV.N_MAX, agora=relogio)["candles"] if c["fechado"] and c["t"] < _iso(M)]
+    c1 = CV.historico(moeda, "1m", _iso(M), n_ana * 2, agora=relogio)
     pares = []
     fim = len(c1)
     while fim - 2 >= 0 and len(pares) < n_ana:

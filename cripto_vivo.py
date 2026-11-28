@@ -29,12 +29,15 @@ _locks: dict[tuple[str, str], threading.Lock] = {}
 _sessao = None
 
 
-def _buscar_binance(simbolo: str, tf: str, n: int) -> list:
+def _buscar_binance(simbolo: str, tf: str, n: int, fim_ms: int | None = None) -> list:
     global _sessao
     import requests
     if _sessao is None:
         _sessao = requests.Session()
-    r = _sessao.get(BASE, params={"symbol": simbolo, "interval": tf, "limit": n}, timeout=TIMEOUT_S)
+    par = {"symbol": simbolo, "interval": tf, "limit": n}
+    if fim_ms is not None:
+        par["endTime"] = fim_ms                                  # só candles que começam antes disso (para buscar o histórico mais antigo)
+    r = _sessao.get(BASE, params=par, timeout=TIMEOUT_S)
     r.raise_for_status()
     return r.json()
 
@@ -170,3 +173,26 @@ def segundos(moeda: str, ini: int, fim: int, buscar=None, agora=time.time) -> li
         saida.append({"s": s, "o": o, "h": h, "l": l, "c": c, "v": v})
         ant = c
     return saida
+
+
+def historico(moeda: str, tf: str, ate_t: str, minimo: int, buscar=None, agora=time.time) -> list[dict]:
+    """Candles FECHADOS de `tf` que começam antes de `ate_t` ("%Y-%m-%dT%H:%M", UTC), pelo menos `minimo` deles. Começa pelo gráfico guardado e, se faltar, busca
+    páginas mais antigas na Binance (1000 por vez, até 3 páginas). Levanta SemDados dizendo quantos achou (ajuda a achar a causa quando a Binance entrega pouco)."""
+    moeda = str(moeda or "").upper()
+    base = [c for c in candles(moeda, tf, N_MAX, buscar, agora)["candles"] if c["fechado"] and c["t"] < ate_t]
+    fonte = buscar or _buscar_binance
+    for _ in range(3):
+        if len(base) >= minimo or not base:
+            break
+        ini_ms = int(datetime.strptime(base[0]["t"], "%Y-%m-%dT%H:%M").replace(tzinfo=timezone.utc).timestamp() * 1000)
+        try:
+            antes = normalizar(fonte(SIMBOLOS[moeda], tf, 1000, ini_ms - 1), tf, agora())
+        except Exception:
+            break
+        antes = [c for c in antes if c["fechado"] and c["t"] < base[0]["t"]]
+        if not antes:
+            break
+        base = antes + base
+    if len(base) < minimo:
+        raise SemDados(f"histórico curto demais: {len(base)} de {minimo} candles de {tf}")
+    return base
