@@ -26,7 +26,7 @@ Future<void> _garantirBaralho(NavigatorState nav, Api api, String jogo) async {
   }
 }
 
-/// Pergunta o modo do desafio no Trade Battle: Replay (gráfico gravado, como sempre) ou Ao vivo (cripto de agora). Devolve a `corrida` para o servidor
+/// Pergunta o modo do desafio no Trade Battle: Partida rápida (replay de gráfico gravado, como sempre) ou Ao vivo (cripto de agora). Devolve a `corrida` para o servidor
 /// (null = o replay de sempre) ou `false` se a pessoa desistiu.
 Future<Object?> _escolherModoTrade(BuildContext context) => showModalBottomSheet<Object>(
       context: context,
@@ -43,7 +43,7 @@ Future<Object?> _escolherModoTrade(BuildContext context) => showModalBottomSheet
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop('replay'),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52), backgroundColor: const Color(0xFF12A83C)),
-              child: const Text('REPLAY · gráfico gravado, como sempre', style: TextStyle(fontWeight: FontWeight.w900)),
+              child: const Text('PARTIDA RÁPIDA · gráfico gravado, ~6 min', style: TextStyle(fontWeight: FontWeight.w900)),
             ),
             const SizedBox(height: 8),
             FilledButton(
