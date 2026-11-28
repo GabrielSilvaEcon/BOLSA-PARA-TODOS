@@ -61,7 +61,7 @@ def args_mesa(v: dict, p: dict, estado: dict, agora: float | None = None) -> dic
     prox = prox_revelacao_s(p, agora) if (rep and agora is not None and TB.cfg_de(p)["t_replay_s"] / TB.cfg_de(p)["n_replay"] >= 0.8) else None   # ritmo rápido: a revelação vem na consulta de 1 s e o gráfico anima em fila
     return {"modo": modo, "fase_key": f"{v['rodada']}-{modo}", "adversarios": v.get("adversarios") or [], "propria": v.get("propria"), "operacao": texto_operacao(v.get("operacao"), v.get("aposta")), "marcas_ant": v.get("marcas_ant") or {},
             "resultado": payload_resultado(v, p) if modo == "resultado" else None, "multi": bool(v.get("multi")), "aposta_txt": (texto_mesa(v["mesa"])["aposta_txt"] if mesa and (v.get("mesa") or {}).get("qtd") else texto_aposta(v.get("aposta"))), "prontos": v.get("prontos"), "seq0": int(estado.get("seq", 0)), "revelados": v["revelados"], "total_replay": v["total_replay"], "prox_ms": None if prox is None else int(prox * 1000),
-            "candles": TB.candles_sem_data(cand), "ticker": v["ticker"], "tf_nome": TB.TIMEFRAMES[v["tf"]]["nome"], "demo": v["demo"], "rodada": v["rodada"], "rodadas": v["rodadas"],
+            "candles": TB.candles_sem_data(cand, bool(TB.cfg_de(p).get("vivo"))), "ticker": v["ticker"], "tf_nome": TB.TIMEFRAMES[v["tf"]]["nome"], "demo": v["demo"], "rodada": v["rodada"], "rodadas": v["rodadas"],
             "seg": v["segundos"], "ref": cand[-1]["c"], "token": p["id"], "sr": sr, "inicial": inicial, "limites": dict(TB.MAX_MARCAS),
             "erro": estado.get("erro", ""), "erro_seq": estado.get("erro_seq", 0), "ok_seq": estado.get("ok_seq", 0),
             "fim": p.get("fase") == "fim", "corrida": TB.qtd_de(p), "vivo": bool(TB.cfg_de(p).get("vivo")), "confirmados": v.get("confirmados"),
