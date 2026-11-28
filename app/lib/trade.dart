@@ -88,6 +88,7 @@ class _TradeTelaState extends State<TradeTela> {
           children: [
             Entrada(ordem: 0, child: _capa(ativa)),
             Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: Padding(padding: const EdgeInsets.fromLTRB(14, 8, 14, 0), child: _modos(ativa)))),
+            if (ativa) Center(child: TextButton(onPressed: _desistir, child: const Text('Desistir da partida em andamento', style: TextStyle(color: Color(0xFFFF8A8A), fontWeight: FontWeight.w800)))),
             if (semGraficos) Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: _aviso()))),
             const SizedBox(height: 10),
             Center(
@@ -111,6 +112,29 @@ class _TradeTelaState extends State<TradeTela> {
   }
 
   static const _fundo = Color(0xFF050E2C);
+
+  /// Sair de uma partida que ficou aberta (não deu para acompanhar, o app fechou...) e voltar a poder procurar outra.
+  Future<void> _desistir() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF10274A),
+        title: const Text('Desistir da partida?', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text('Você sai desta partida e fica livre para procurar outra. Se tinha uma operação aberta, ela não será acompanhada.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Continuar nela')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Desistir')),
+        ],
+      ),
+    );
+    if (ok != true || _d?['ativa'] == null) return;
+    try {
+      await widget.api.post('/trade/salas/${_d!['ativa']}/desistir');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+    if (mounted) _carregar();
+  }
 
   /// Escolha do modo da batalha (travada enquanto há uma partida em andamento: BATALHAR volta para ela).
   Widget _modos(bool ativa) {

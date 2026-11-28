@@ -165,10 +165,40 @@ def _cenario(d: dict, agora: float | None = None) -> dict:
 
 
 # ------------------------------------------------------------------ salas
-def partida_ativa(email: str) -> str | None:
-    """Id da partida não encerrada em que a pessoa está (vale em qualquer aparelho/sessão)."""
+VIVO_FOLGA_S = 120     # ao vivo: passado o fim do mercado da partida + isto, quem sumiu é liberado (a partida não depende de ninguém consultar)
+
+
+def partida_ativa(email: str, agora: float | None = None) -> str | None:
+    """Id da partida não encerrada em que a pessoa está (vale em qualquer aparelho/sessão). Partida AO VIVO que já acabou no mercado libera a pessoa mesmo que
+    ninguém tenha voltado a consultá-la (o fim dela não depende do relógio do app)."""
     r = banco._selecionar("tb_jogadores", {"email": email, "ativo": 1}, ["partida_id"], limite=1)
-    return r[0]["partida_id"] if r else None
+    if not r:
+        return None
+    pid = r[0]["partida_id"]
+    try:
+        p = ((_row(pid) or {}).get("dados") or {}).get("p") or {}
+        cfg = p.get("cfg") or {}
+        agora = time.time() if agora is None else agora
+        if cfg.get("vivo") and agora > float(cfg["t_ancora"]) + float(cfg["t_replay_s"]) + VIVO_FOLGA_S:
+            banco._atualizar_n("tb_jogadores", {"id": f"{pid}|{email}", "ativo": 1}, {"ativo": 0})
+            return None
+    except Exception as e:
+        banco.registrar_erro("trade.partida_ativa_vivo", e)
+    return pid
+
+
+def desistir(pid: str, email: str, agora: float | None = None) -> None:
+    """Sai de uma partida (antes ou depois do início) e libera a pessoa para procurar outra. Antes do início é igual a sair da sala. Depois, a partida segue para
+    quem ficou (o bot ou o adversário); a pessoa só deixa de estar 'ativa' nela."""
+    agora = time.time() if agora is None else agora
+    r = _row(pid)
+    if not r:
+        raise ErroSala("Partida não encontrada.")
+    _participante(r["dados"], email)
+    if not (r["dados"].get("p")):
+        sair(pid, email, agora)
+        return
+    banco._atualizar_n("tb_jogadores", {"id": f"{pid}|{email}", "ativo": 1}, {"ativo": 0})
 
 
 def criar_sala(email: str, tf: str, agora: float | None = None, formato: str = TB.FORMATO_PADRAO, corrida: str | None = None) -> dict:
@@ -186,7 +216,7 @@ def criar_sala(email: str, tf: str, agora: float | None = None, formato: str = T
     elif formato not in TD.formatos_disponiveis(tf):
         raise ErroSala("Ainda não há cenários reais deste timeframe para esse formato. Escolha um formato menor ou outro timeframe.")
     limpar(agora)
-    pid = partida_ativa(email)
+    pid = partida_ativa(email, agora)
     if pid:
         return {"id": pid, "codigo": ((_row(pid) or {}).get("dados") or {}).get("sala", {}).get("codigo", "")}
     _capital(email) if corrida else _aposta(email)
@@ -203,7 +233,7 @@ def criar_sala(email: str, tf: str, agora: float | None = None, formato: str = T
             banco._inserir("tb_jogadores", {"id": f"{novo}|{email}", "partida_id": novo, "email": email, "entrou_em": _iso(agora), "ativo": 1})
         except banco.Duplicado:                                        # corrida: outra aba já criou/entrou em partida
             banco._apagar("tb_partidas", {"id": novo})
-            ja = partida_ativa(email)
+            ja = partida_ativa(email, agora)
             if ja:
                 return {"id": ja, "codigo": ""}
             continue
@@ -225,7 +255,7 @@ def entrar_na_sala(email: str, codigo: str, agora: float | None = None) -> dict:
 
 def _entrar(email: str, pid: str, agora: float, publica: bool = False) -> dict:
     """Entra na sala `pid`. `publica`: entrada pela BUSCA de adversário (só em sala de busca, no máximo 2 jogadores)."""
-    ja = partida_ativa(email)
+    ja = partida_ativa(email, agora)
     if ja == pid:
         return {"id": pid}
     sala = (((_row(pid) or {}).get("dados")) or {}).get("sala") or {}
@@ -318,7 +348,7 @@ def buscar(email: str, corrida: str, agora: float | None = None) -> dict:
     if not TB.spec_corrida(corrida):
         raise ErroSala("Duração de partida inválida.")
     limpar(agora)
-    ja = partida_ativa(email)
+    ja = partida_ativa(email, agora)
     if ja:
         return consultar_busca(email, agora)
     _capital(email)
@@ -339,7 +369,7 @@ def buscar(email: str, corrida: str, agora: float | None = None) -> dict:
 def consultar_busca(email: str, agora: float | None = None) -> dict:
     """Chamado a cada 2 s por quem está procurando: renova a presença e tenta achar uma busca mais antiga. {'estado': 'partida'|'fila'|'fora'|'expirou', 'id'?}"""
     agora = time.time() if agora is None else agora
-    pid = partida_ativa(email)
+    pid = partida_ativa(email, agora)
     if not pid:
         return {"estado": "fora"}
     d = (_row(pid) or {}).get("dados") or {}
@@ -427,7 +457,7 @@ def criar_busca_de_novo(email: str, corrida: str, agora: float) -> str:
 def sair_da_busca(email: str, agora: float | None = None) -> None:
     """Cancelar a busca (a sala de busca só existe enquanto ninguém entrou)."""
     agora = time.time() if agora is None else agora
-    pid = partida_ativa(email)
+    pid = partida_ativa(email, agora)
     if not pid:
         return
     d = (_row(pid) or {}).get("dados") or {}
