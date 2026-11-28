@@ -590,7 +590,7 @@ def trade_central(q: Quem = Depends(quem)) -> dict:
         corridas.append({"id": f, "rotulo": TB.ROTULO_CORRIDA[f], "grafico": TB.TIMEFRAMES[sp["tf"]]["nome"],
                          "minutos": round((TB.T_ANALISE_S + sp["n_replay"] * TB.SEG_POR_CANDLE) / 60), "reais": reais})
     try:
-        ativa = OL.partida_ativa(q.email)
+        ativa = OL.partida_ativa(q.email, _agora())
         if ativa and (((OL._row(ativa) or {}).get("dados") or {}).get("sala") or {}).get("publica") and not ((OL._row(ativa) or {}).get("dados") or {}).get("p"):
             OL.sair_da_busca(q.email)                      # uma busca de adversário que ficou para trás (app fechado) não é uma sala para voltar: cancela
             ativa = None
@@ -1530,6 +1530,13 @@ def sala_setup(pid: str, d: DecisaoSetup, q: Quem = Depends(quem)) -> dict:
 @app.post("/trade/salas/{pid}/sair")
 def sala_sair(pid: str, q: Quem = Depends(quem)) -> dict:
     _sala(OL.sair, pid, q.email, _agora())
+    return {"ok": True}
+
+
+@app.post("/trade/salas/{pid}/desistir")
+def sala_desistir(pid: str, q: Quem = Depends(quem)) -> dict:
+    """Desiste da partida (antes ou depois de começar) e fica livre para procurar outra. A partida segue para quem ficou."""
+    _sala(OL.desistir, pid, q.email, _agora())
     return {"ok": True}
 
 

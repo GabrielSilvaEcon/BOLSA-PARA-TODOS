@@ -264,3 +264,32 @@ def test_saude_vivo_mostra_o_que_o_servidor_recebe(mercado):
     j = r.json()
     assert j["1m"]["n"] >= 400 and j["1m"]["fechados"] >= 400 and j["1s"]["n"] > 60 and j["cenario"]["ok"] is True
     assert TestClient(API.app).get("/saude/vivo", params={"moeda": "PETR4"}).status_code == 400
+
+
+# ------------------------------------------------------------------ não ficar preso numa partida
+def _jogador_ativo(email):
+    import banco
+    return bool(banco._selecionar("tb_jogadores", {"email": email, "ativo": 1}, ["partida_id"], limite=1))
+
+
+def test_desistir_libera_a_pessoa_para_procurar_outra_partida(cli, mercado):  # noqa: F811
+    cli.post("/trade/fila", json={"corrida": "vivo"})
+    mercado["t"] = T0 + 8.0
+    sid = cli.get("/trade/fila").json()["id"]
+    assert cli.get("/trade/central").json()["ativa"] == sid                       # a tela mostra 'voltar para a partida'
+    assert cli.post("/trade/fila", json={"corrida": "vivo"}).json()["id"] == sid       # e procurar de novo cai na mesma
+    assert cli.post(f"/trade/salas/{sid}/desistir").status_code == 200
+    assert cli.get("/trade/central").json()["ativa"] is None
+    nova = cli.post("/trade/fila", json={"corrida": "vivo"}).json()
+    assert nova["estado"] == "fila" and nova["id"] != sid                         # procura outra de verdade
+
+
+def test_partida_ao_vivo_que_acabou_no_mercado_libera_mesmo_sem_ninguem_consultar(cli, mercado):  # noqa: F811
+    cli.post("/trade/fila", json={"corrida": "vivo"})
+    mercado["t"] = T0 + 8.0
+    sid = cli.get("/trade/fila").json()["id"]
+    mercado["t"] = M0 + 1800 + 60.0                                               # acabou, mas ninguém abriu a partida
+    assert cli.get("/trade/central").json()["ativa"] == sid                        # ainda dentro da folga de 2 min
+    mercado["t"] = M0 + 1800 + 200.0
+    assert cli.get("/trade/central").json()["ativa"] is None                       # passou da folga: a pessoa está livre
+    assert not _jogador_ativo("ana@x.com")
