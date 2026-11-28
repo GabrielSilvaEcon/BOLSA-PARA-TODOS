@@ -106,15 +106,29 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('tocar na carta vira para o verso e de volta', (t) async {
+  testWidgets('segurar a carta por 2 segundos vira para o verso; um toque no verso volta; tocar ou segurar pouco não vira', (t) async {
     await _mostra(t, CartaGirando(setup: _setup('engolfo_alta'), largura: 300));
     expect(_tudo(t), isNot(contains('Ao fechar o candle')));
-    await t.tap(find.byType(CartaSetup));
-    await t.pump(const Duration(milliseconds: 50));      // o relógio da animação só começa no primeiro quadro depois do toque
+    expect(_tudo(t), contains('Segure a carta por 2 segundos'));
+    await t.tap(find.byType(CartaSetup));                                      // um toque na frente não faz nada
+    await t.pump(const Duration(milliseconds: 700));
+    expect(_tudo(t), isNot(contains('Ao fechar o candle')));
+    var g = await t.startGesture(t.getCenter(find.byType(CartaSetup)));         // segura só 1 s e solta: não vira
+    await t.pump(const Duration(milliseconds: 1000));
+    await g.up();
+    await t.pump(const Duration(milliseconds: 700));
+    expect(_tudo(t), isNot(contains('Ao fechar o candle')));
+    g = await t.startGesture(t.getCenter(find.byType(CartaSetup)));             // segura 2 s: vira (com animação)
+    await t.pump(const Duration(milliseconds: 50));                             // o relógio da animação só começa no primeiro quadro depois do toque
+    await t.pump(const Duration(milliseconds: 1000));
+    await t.pump(const Duration(milliseconds: 1100));
+    await g.up();
+    await t.pump(const Duration(milliseconds: 100));
     await t.pump(const Duration(milliseconds: 700));
     expect(_tudo(t), contains('Ao fechar o candle'));
-    await t.tap(find.byType(CartaSetup));
-    await t.pump(const Duration(milliseconds: 50));      // o relógio da animação só começa no primeiro quadro depois do toque
+    expect(_tudo(t), contains('Toque na carta para voltar'));
+    await t.tap(find.byType(CartaSetup));                                      // um toque no verso volta para a frente
+    await t.pump(const Duration(milliseconds: 50));
     await t.pump(const Duration(milliseconds: 700));
     expect(_tudo(t), isNot(contains('Ao fechar o candle')));
     expect(t.takeException(), isNull);
