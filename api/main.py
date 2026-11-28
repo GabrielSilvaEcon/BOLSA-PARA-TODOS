@@ -1199,7 +1199,7 @@ class NovaVivo(BaseModel):
 
 @app.post("/trade/vivo")
 def trade_vivo_nova(d: NovaVivo, q: Quem = Depends(quem)) -> dict:
-    """Trade Battle AO VIVO (cripto): gráfico de 2 min, 15 candles = 30 min, cada candle se formando junto com o mercado (passos de 1 s). A estratégia tem 30 s
+    """Trade Battle AO VIVO (cripto): gráfico de 30 s, 60 candles = 30 min, cada candle se formando junto com o mercado (passos de 1 s). A estratégia tem 30 s
     com o gráfico rolando. Depois de criada, usa as mesmas rotas da partida solo (/trade/solo/{pid}...)."""
     import cripto_vivo as CV
     import trader_vivo as TV

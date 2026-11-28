@@ -39,7 +39,7 @@ TIMEFRAMES = {"15m": {"nome": "15 minutos", "n_analise": 120, "na_aceitos": (120
               "1h": {"nome": "1 hora", "n_analise": 100, "na_aceitos": (100, 50), "n_replay": 16, "passo_min": 60, "max_dias": 70},
               # partida corrida (motor 2 com quantidade livre): 5 minutos e 1 dia só existem nela
               "5m": {"nome": "5 minutos", "n_analise": 360, "na_aceitos": (360,), "n_replay": 84, "passo_min": 5, "max_dias": 20},
-              "2m": {"nome": "2 minutos", "n_analise": 200, "na_aceitos": (200,), "n_replay": 15, "passo_min": 2, "max_dias": 2},     # só existe no modo ao vivo
+              "30s": {"nome": "30 segundos", "n_analise": 120, "na_aceitos": (120,), "n_replay": 60, "passo_min": 0.5, "max_dias": 2},     # só existe no modo ao vivo
               "1d": {"nome": "1 dia", "n_analise": 300, "na_aceitos": (300,), "n_replay": 120, "passo_min": 1440, "max_dias": 900}}
 # ---- PARTIDA CORRIDA (nov/2026): sem rodadas. Uma leitura no início, histórico 3x maior e um replay longo em que se opera com quantidade livre
 # (regras em trader_qtd.py). Cada duração usa um tempo gráfico: rápida = 15 minutos, intermediária = 1 hora, longa = 1 dia.
@@ -50,10 +50,10 @@ CORRIDAS = {"rapida": {"tf": "15m", "sub": "5m", "k": 3, "n_analise": 300, "n_re
             "intermediaria": {"tf": "1h", "sub": "5m", "k": 12, "n_analise": 300, "n_replay": 56},  # 56 × 1 h ≈ 8 pregões · 12 passos por candle
             "longa": {"tf": "1d", "sub": "1h", "k": 7, "n_analise": 300, "n_replay": 80}}           # 80 dias ≈ 4 meses · ~7 passos (horas do pregão)
 ROTULO_CORRIDA = {"rapida": "Rápida", "intermediaria": "Intermediária", "longa": "Longa"}
-# MODO AO VIVO (cripto, Binance): UM só formato por enquanto. Gráfico de 2 min, 15 candles = 30 min. Cada candle se forma junto com o mercado: o replay é feito de
-# 1800 passos de 1 s reais (120 por candle), um por segundo. Fica FORA de CORRIDAS de propósito (não entra nas listas de duração, nas salas de treino nem no preparo de
+# MODO AO VIVO (cripto, Binance): UM só formato por enquanto. Gráfico de 30 s, 60 candles = 30 min. Cada candle se forma junto com o mercado: o replay é feito de
+# 1800 passos de 1 s reais (30 por candle), um por segundo. Fica FORA de CORRIDAS de propósito (não entra nas listas de duração, nas salas de treino nem no preparo de
 # cenários). O cenário nasce do mercado de agora (trader_vivo.py) e o relógio segue o mercado, não os 4 s por candle.
-CORRIDA_VIVO = {"tf": "2m", "sub": "1s", "k": 120, "n_analise": 200, "n_replay": 15}
+CORRIDA_VIVO = {"tf": "30s", "sub": "1s", "k": 30, "n_analise": 120, "n_replay": 60}
 CORRIDAS_VIVO = {"vivo": CORRIDA_VIVO}
 SEG_PASSO_VIVO = 1.0
 T_ESTRATEGIA_VIVO_S = 30.0
@@ -146,15 +146,15 @@ def validar_cenario(c: dict) -> tuple[bool, str]:
     return True, ""
 
 
-def candles_sem_data(candles: list[dict]) -> list[dict]:
-    """Candles como vão para a TELA: só o horário (HH:MM) e o dia da partida (1, 2, 3...), nunca a data do calendário, para que ninguém
+def candles_sem_data(candles: list[dict], segundos: bool = False) -> list[dict]:
+    """Candles como vão para a TELA: só o horário (HH:MM, ou HH:MM:SS no ao vivo) e o dia da partida (1, 2, 3...), nunca a data do calendário, para que ninguém
     procure o histórico fora do jogo. A contagem começa no 1º candle da lista (sempre o 1º do cenário), então é estável entre atualizações."""
     out, dia, ant = [], 0, None
     for k in candles:
         t = str(k["t"])
         if t[:10] != ant:
             dia, ant = dia + 1, t[:10]
-        out.append({**k, "t": t[11:16], "d": dia})
+        out.append({**k, "t": t[11:19] if segundos and len(t) >= 19 else t[11:16], "d": dia})      # ao vivo (candles de 30 s) o rótulo leva os segundos
     return out
 
 

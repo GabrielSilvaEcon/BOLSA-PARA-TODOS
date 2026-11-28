@@ -27,8 +27,8 @@ class TradeTela extends StatefulWidget {
 class _TradeTelaState extends State<TradeTela> {
   Map<String, dynamic>? _d;
   Map<String, dynamic>? _setups;
-  /// Dois modos, com as mesmas funções: REPLAY (gráfico gravado de verdade, 15 minutos, como sempre) e AO VIVO (cripto de agora, candles de 2 minutos,
-  /// 15 candles = 30 minutos, cada candle se formando junto com o mercado; a moeda é sorteada pelo servidor). Cada modo tem a sua fila de adversários
+  /// Dois modos, com as mesmas funções: REPLAY (gráfico gravado de verdade, 15 minutos, como sempre) e AO VIVO (cripto de agora, candles de 30 segundos,
+  /// 60 candles = 30 minutos, cada candle se formando junto com o mercado; a moeda é sorteada pelo servidor). Cada modo tem a sua fila de adversários
   /// (e, sem ninguém, entra um bot).
   String _corrida = 'rapida';
   bool _comoAberto = false;

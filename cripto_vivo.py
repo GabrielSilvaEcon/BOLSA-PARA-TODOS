@@ -92,7 +92,7 @@ def _resposta(moeda: str, tf: str, c: dict, n: int, atrasado: bool) -> dict:
 
 
 # ------------------------------------------------------------------ segundos (candles de 1 s): o candle do jogo se forma junto com o mercado
-SEG_MAX = 4000                 # segundos guardados por moeda
+SEG_MAX = 9000                 # segundos guardados por moeda (histórico do gráfico de 30 s + a partida de 30 min)
 SEG_TTL = 1.0                  # no máximo 1 consulta por segundo por moeda (todos os jogadores da moeda dividem)
 _seg: dict[str, dict] = {}     # moeda -> {"t": última consulta, "linhas": {epoch_s: (o, h, l, c, v)}}
 

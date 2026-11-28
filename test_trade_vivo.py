@@ -1,4 +1,4 @@
-"""Trade Battle AO VIVO (cripto, candles de 2 min, 30 min): cenário e partida inteira pela API com uma Binance falsa e relógio controlado. Sem rede."""
+"""Trade Battle AO VIVO (cripto, candles de 30 s, 60 candles = 30 min): cenário e partida inteira pela API com uma Binance falsa e relógio controlado. Sem rede."""
 import json
 import math
 
@@ -11,7 +11,7 @@ import trader_vivo as TV
 from test_api import cli  # noqa: F401  (mesma conta de teste)
 
 T0 = 1_700_000_130          # algum instante: 10 s depois de um minuto fechado... (1_700_000_100 é fronteira de minuto)
-M0 = 1_700_000_100          # âncora esperada para T0
+M0 = 1_700_000_130          # âncora esperada para T0 (fronteira de 30 s: coincide com T0)
 
 
 def pseg(s: int) -> float:
@@ -60,15 +60,18 @@ def ver(c, pid):
 def test_ancora_e_cenario_sem_futuro(mercado):
     assert TV.ancora(T0) == M0
     cen = TV.cenario("BTC", M0, float(T0))
-    assert len(cen["candles"]) == 200 + 1800 and len(cen["grupo"]) == 1800 and len(cen["velas_t"]) == 15 and cen["tf"] == "2m"
-    assert cen["_vivo_n"] == 30                              # segundos M0..T0-1 já fecharam (o corrente ainda está se formando)
+    assert len(cen["candles"]) == 120 + 1800 and len(cen["grupo"]) == 1800 and len(cen["velas_t"]) == 60 and cen["tf"] == "30s"
+    assert cen["_vivo_n"] == 0                               # M0 = T0: nenhum segundo da partida fechou ainda (o corrente se forma)
     e = cen["escala"]
     assert e == pytest.approx(1e-3) and cen["ticker"] == "BTC ÷1.000" and TB.validar_cenario(cen)[0]
-    passo0 = cen["candles"][200]
-    assert passo0["c"] == pytest.approx(pseg(M0) * e, abs=1e-3)                           # o passo é o mercado de verdade
-    assert {c["c"] for c in cen["candles"][200 + 30:]} == {cen["candles"][200 + 29]["c"]}    # o resto é só preenchimento plano
-    h = cen["candles"][199]                                                                 # candle de 2 min do histórico = 2 candles de 1 min juntos
-    assert h["t"] == "2023-11-14T22:13" or h["t"] < "2023-11-14T22:15"
+    ult = cen["candles"][119]                                                                 # último candle do histórico = os 30 s antes de M0, juntos
+    assert ult["t"] == "2023-11-14T22:15:00" and ult["c"] == pytest.approx(pseg(M0 - 1) * e, abs=1e-3) and ult["o"] == pytest.approx(pseg(M0 - 31) * e, abs=1e-3)
+    mercado["t"] = float(T0 + 40)                                                             # 40 s depois: os segundos M0..M0+39 já fecharam
+    CV._cache.clear()
+    cen2 = TV.cenario("BTC", M0, float(T0 + 40))
+    assert cen2["_vivo_n"] == 40
+    assert cen2["candles"][120]["c"] == pytest.approx(pseg(M0) * e, abs=1e-3)               # o passo é o mercado de verdade
+    assert {c["c"] for c in cen2["candles"][120 + 40:]} == {cen2["candles"][120 + 39]["c"]}  # o resto é só preenchimento plano
 
 
 def test_partida_ao_vivo_inteira(cli, mercado):  # noqa: F811
@@ -78,7 +81,7 @@ def test_partida_ao_vivo_inteira(cli, mercado):  # noqa: F811
     pid, tela = j["id"], j["tela"]
     assert j["fase"] == "analise" and tela["corrida"] is True and "BTC" in str(tela["ticker"])
     n0 = len(tela["candles"])
-    assert 200 < n0 <= 201 and 28 <= tela["seg"] + 0 <= 30 + 0 or tela["seg"] <= 30        # 200 do histórico + o candle que já está se formando; 30 s de estratégia
+    assert 120 <= n0 <= 121 and 0 < tela["seg"] <= 30                       # 120 candles de histórico (+ o que já está se formando) e 30 s de estratégia
     c0 = tela["candles"][-1]["c"]
     mercado["t"] = T0 + 8.0                                  # o gráfico ROLA durante a estratégia: o candle em formação mexe
     v = ver(cli, pid)
@@ -132,7 +135,7 @@ def test_batalhar_ao_vivo_acha_bot_e_a_partida_corre_ate_o_fim(cli, mercado):  #
     sid = f["id"]
     v = cli.get(f"/trade/salas/{sid}").json()
     t = v["tela"]
-    assert v["fase"] == "analise" and t["corrida"] is True and "÷" in str(t["ticker"]) + "÷" and len(t["candles"]) >= 200
+    assert v["fase"] == "analise" and t["corrida"] is True and "÷" in str(t["ticker"]) + "÷" and len(t["candles"]) >= 120
     assert cli.post(f"/trade/salas/{sid}/estrategia", json={"direcao": "alta"}).status_code == 200     # o bot já confirmou: com a minha, começa na hora
     CV._cache.clear()
     assert cli.get(f"/trade/salas/{sid}").json()["fase"] == "replay"
@@ -211,7 +214,7 @@ def test_desafio_de_amigo_nos_dois_modos(dois, mercado):
     CV._cache.clear()
     v = ana.get(f"/trade/salas/{d['id']}").json()
     assert v["estado"] == "jogo"
-    assert v["tela"]["vivo"] is True and v["tela"]["corrida"] is True and len(v["tela"]["candles"]) >= 200
+    assert v["tela"]["vivo"] is True and v["tela"]["corrida"] is True and len(v["tela"]["candles"]) >= 120
 
 
 def test_desafio_de_amigo_no_replay_continua_como_antes(dois, mercado):
@@ -231,7 +234,7 @@ def test_modo_replay_continua_igual_ao_de_antes(cli, mercado, monkeypatch):  # n
     r1 = cli.post("/trade/fila", json={"corrida": "rapida"})
     assert r1.status_code == 200 and r1.json()["estado"] == "fila", r1.text
     import trader_online_dados as OL
-    assert OL.TB.spec_corrida("rapida")["tf"] == "15m" and OL.TB.spec_corrida("vivo")["tf"] == "2m"
+    assert OL.TB.spec_corrida("rapida")["tf"] == "15m" and OL.TB.spec_corrida("vivo")["tf"] == "30s"
     assert "vivo" not in OL.TB.CORRIDAS and "rapida" in OL.TB.CORRIDAS
 
 
