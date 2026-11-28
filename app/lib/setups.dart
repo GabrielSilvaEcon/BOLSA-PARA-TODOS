@@ -115,6 +115,26 @@ class _SetupsTelaState extends State<SetupsTela> {
   int get _limite => ((_d?['limite'] as num?) ?? 2).toInt();
   int get _nEquipados => (_d?['equipados'] as List? ?? []).length;
 
+  bool _segurou = false; // depois de segurar 2 s a carta abre o verso; o toque que vem ao soltar não pode também equipar
+
+  /// Toque na carta: ela entra (ou sai) dos setups em uso. No limite, avisa em vez de falhar calado.
+  Future<void> _alternar(Map<String, dynamic> s) async {
+    if (_segurou) {
+      _segurou = false;
+      return;
+    }
+    final equipado = s['equipado'] == true;
+    if (!equipado && _nEquipados >= _limite) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();      // sem isto o aviso ficava na fila atrás do anterior
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Você já está usando $_limite setups. Toque em um deles para tirar e escolha outro.')));
+      return;
+    }
+    await _equipar('${s['id']}', tirar: equipado);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(duration: const Duration(seconds: 2), content: Text(equipado ? '${s['nome']} saiu dos setups em uso.' : '${s['nome']} agora é um setup em uso.')));
+  }
+
   Future<void> _equipar(String id, {bool tirar = false}) async {
     if (_salvando != null) return;
     setState(() => _salvando = id);
@@ -130,7 +150,7 @@ class _SetupsTelaState extends State<SetupsTela> {
     }
   }
 
-  void _detalhe(Map<String, dynamic> s) {
+  void _detalhe(Map<String, dynamic> s, {bool verso = false}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -149,7 +169,7 @@ class _SetupsTelaState extends State<SetupsTela> {
               controller: rolagem,
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
               children: [
-                Center(child: CartaGirando(setup: {...s, 'equipado': equipado}, largura: min(340.0, MediaQuery.of(context).size.width - 56))),
+                Center(child: CartaGirando(setup: {...s, 'equipado': equipado}, largura: min(340.0, MediaQuery.of(context).size.width - 56), inicialVerso: verso)),
                 const SizedBox(height: 12),
                 Text('${s['nome']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20)),
                 Text(rotulosRaridade[s['raridade']] ?? '', textAlign: TextAlign.center, style: TextStyle(color: _corDe(s), fontWeight: FontWeight.w800)),
@@ -216,6 +236,8 @@ class _SetupsTelaState extends State<SetupsTela> {
                             ? 'Por enquanto todos os setups estão liberados: escolha até 2 para serem monitorados em tempo real nas suas partidas X1 e solo (menos no Desafio do dia, que é igual para todos).'
                             : 'As cartas de setup vêm dos baús. Sem a carta, não há setup para usar. Equipe até 2 para serem monitorados em tempo real nas suas partidas X1 e solo (menos no Desafio do dia, que é igual para todos).',
                         style: const TextStyle(color: Colors.white54, fontSize: 12.5)),
+                    const SizedBox(height: 6),
+                    const Text('Toque numa carta para usar (ou tirar) o setup. Segure por 2 segundos para virar a carta e ver o verso e os detalhes.', style: TextStyle(color: Color(0xFFFFD76A), fontSize: 12.5, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 14),
                     if (itens.isEmpty)
                       Container(
@@ -233,7 +255,12 @@ class _SetupsTelaState extends State<SetupsTela> {
                             Entrada(
                               ordem: i,
                               child: Pressionavel(
-                              aoTocar: () => _detalhe(s),
+                              aoTocar: () => _alternar(s),
+                              child: SegurarPara(
+                              aoSegurar: () {
+                                _segurou = true;
+                                _detalhe(s, verso: true);
+                              },
                               child: Column(children: [
                                 Stack(children: [
                                   SetupCarta(setup: s, largura: 168),
@@ -244,11 +271,12 @@ class _SetupsTelaState extends State<SetupsTela> {
                                         child: Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                             decoration: BoxDecoration(color: const Color(0xFF2EE59D), borderRadius: BorderRadius.circular(8)),
-                                            child: const Text('EQUIPADO', style: TextStyle(color: Color(0xFF04281a), fontWeight: FontWeight.w900, fontSize: 10)))),
+                                            child: const Text('EM USO', style: TextStyle(color: Color(0xFF04281a), fontWeight: FontWeight.w900, fontSize: 10)))),
                                 ]),
                                 const SizedBox(height: 6),
                                 Text('${s['nome']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                               ]),
+                              ),
                               ),
                             ),
                         ],

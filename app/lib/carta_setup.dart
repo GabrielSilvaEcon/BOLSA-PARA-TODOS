@@ -205,7 +205,7 @@ class _SegurarParaState extends State<SegurarPara> with SingleTickerProviderStat
 
   void _cancela() {
     _ini = null;
-    if (_c.value > 0 && _c.status != AnimationStatus.completed) _c.reset();
+    if (_c.isAnimating || _c.value > 0) _c.reset();      // também quando o toque foi mais curto que um quadro (value ainda 0, mas o relógio já correndo)
   }
 
   @override
