@@ -19,8 +19,10 @@ def pseg(s: int) -> float:
     return 30_000 + 400 * math.sin(s / 3700.0) + 90 * math.sin(s / 310.0) + (s % 7) * 0.3
 
 
-def kl_1m(agora: float, n: int, atraso: float = 0.0):
+def kl_1m(agora: float, n: int, atraso: float = 0.0, fim_ms=None):
     ate = int((agora - atraso) // 60)
+    if fim_ms is not None:
+        ate = min(ate, int(fim_ms // 60000))
     linhas = []
     for m in range(ate - n + 1, ate + 1):
         ini = m * 60
@@ -41,7 +43,7 @@ def kl_1s(agora: float, fim_ms, n: int, atraso: float = 0.0):
 def mercado(monkeypatch):
     rel = {"t": float(T0), "atraso": 0.0}
     monkeypatch.setattr(API, "_agora", lambda: rel["t"])
-    monkeypatch.setattr(CV, "_buscar_binance", lambda sim, tf, n: kl_1m(rel["t"], n, rel["atraso"]))
+    monkeypatch.setattr(CV, "_buscar_binance", lambda sim, tf, n, fim_ms=None: kl_1m(rel["t"], n, rel["atraso"], fim_ms))
     monkeypatch.setattr(CV, "_buscar_binance_seg", lambda sim, fim_ms, n: kl_1s(rel["t"], fim_ms, n, rel["atraso"]))
     CV._cache.clear()
     CV._seg.clear()
@@ -135,7 +137,7 @@ def test_batalhar_ao_vivo_acha_bot_e_a_partida_corre_ate_o_fim(cli, mercado):  #
     CV._cache.clear()
     assert cli.get(f"/trade/salas/{sid}").json()["fase"] == "replay"
     # a partida corre 30 min: o bot opera sozinho, sem ver o futuro
-    for dt in range(60, 1800, 60):
+    for dt in range(15, 1800, 15):                              # como no jogo: o app consulta o tempo todo e o bot decide a cada 15 s
         mercado["t"] = M0 + 8 + dt
         CV._cache.clear()
         cli.get(f"/trade/salas/{sid}")
@@ -231,3 +233,25 @@ def test_modo_replay_continua_igual_ao_de_antes(cli, mercado, monkeypatch):  # n
     import trader_online_dados as OL
     assert OL.TB.spec_corrida("rapida")["tf"] == "15m" and OL.TB.spec_corrida("vivo")["tf"] == "2m"
     assert "vivo" not in OL.TB.CORRIDAS and "rapida" in OL.TB.CORRIDAS
+
+
+def test_historico_curto_busca_paginas_mais_antigas(mercado, monkeypatch):
+    """Se a Binance entrega pouco histórico na 1ª consulta, o cenário busca páginas mais antigas em vez de falhar."""
+    entregues = []
+
+    def curta(sim, tf, n, fim_ms=None):
+        entregues.append(fim_ms)
+        return kl_1m(mercado["t"], 150 if fim_ms is None else n, 0.0, fim_ms)          # a 1ª página vem com só 150 candles
+    monkeypatch.setattr(CV, "_buscar_binance", curta)
+    CV._cache.clear()
+    h = CV.historico("BTC", "1m", "2023-11-14T22:30", 400, agora=lambda: mercado["t"])
+    assert len(h) >= 400 and entregues[0] is None and any(x is not None for x in entregues)
+    assert [c["t"] for c in h] == sorted({c["t"] for c in h})                          # sem repetidos e em ordem
+
+
+def test_historico_impossivel_diz_quantos_achou(mercado, monkeypatch):
+    monkeypatch.setattr(CV, "_buscar_binance", lambda sim, tf, n, fim_ms=None: kl_1m(mercado["t"], 60, 0.0, fim_ms) if fim_ms is None else [])
+    CV._cache.clear()
+    with pytest.raises(CV.SemDados) as e:
+        CV.historico("BTC", "1m", "2023-11-14T22:30", 400, agora=lambda: mercado["t"])
+    assert "de 400 candles de 1m" in str(e.value)
