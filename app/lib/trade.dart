@@ -27,7 +27,7 @@ class TradeTela extends StatefulWidget {
 class _TradeTelaState extends State<TradeTela> {
   Map<String, dynamic>? _d;
   Map<String, dynamic>? _setups;
-  /// Dois modos, com as mesmas funções: REPLAY (gráfico gravado de verdade, 15 minutos, como sempre) e AO VIVO (cripto de agora, candles de 30 segundos,
+  /// Dois modos, com as mesmas funções: PARTIDA RÁPIDA (replay de gráfico gravado de verdade, uns 6 minutos, como sempre) e AO VIVO (cripto de agora, candles de 30 segundos,
   /// 60 candles = 30 minutos, cada candle se formando junto com o mercado; a moeda é sorteada pelo servidor). Cada modo tem a sua fila de adversários
   /// (e, sem ninguém, entra um bot).
   String _corrida = 'rapida';
@@ -161,7 +161,7 @@ class _TradeTelaState extends State<TradeTela> {
     }
 
     return Row(children: [
-      opcao('rapida', 'REPLAY', 'gráfico gravado · 15 min', const Color(0xFF2EE86B)),
+      opcao('rapida', 'PARTIDA RÁPIDA', 'gráfico gravado · ~6 min', const Color(0xFF2EE86B)),
       const SizedBox(width: 10),
       opcao('vivo', '🔴 AO VIVO', 'cripto de agora · 30 min', const Color(0xFFFF5C7A)),
     ]);
