@@ -308,6 +308,8 @@ def estatistica_do_jogador(p: dict, jog: str, operacoes: list | None) -> list[di
             for k, t in enumerate(operacoes or []):
                 if k not in usadas and t.get("i_entrada") == a.get("n_rev") and t.get("direcao") == x.get("direcao") and isinstance(t.get("ret"), (int, float)):
                     linha["pct"] = round(float(t["ret"]) * 100, 3)
+                    if isinstance(t.get("pnl"), (int, float)):
+                        linha["pnl"] = round(float(t["pnl"]), 2)             # lucro em T$ (com as taxas) desta entrada
                     usadas.add(k)
                     break
         out.append(linha)

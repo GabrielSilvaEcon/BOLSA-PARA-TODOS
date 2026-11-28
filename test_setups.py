@@ -1021,9 +1021,9 @@ def test_estatistica_do_jogador_liga_a_entrada_ao_resultado_e_ignora_o_que_nao_d
     sinal = p["setups"]["sinais"][0]
     assert SV.decidir(p, cen, A, True, None, t + 2)["resultado"] == "aceito"
     a = p["acoes"][-1]
-    ops = [{"i_entrada": a["n_rev"] + 7, "direcao": sinal["direcao"], "ret": 0.5}, {"i_entrada": a["n_rev"], "direcao": sinal["direcao"], "ret": 0.0123}]
+    ops = [{"i_entrada": a["n_rev"] + 7, "direcao": sinal["direcao"], "ret": 0.5, "pnl": 999.0}, {"i_entrada": a["n_rev"], "direcao": sinal["direcao"], "ret": 0.0123, "pnl": 123.456}]
     linhas = SV.estatistica_do_jogador(p, A, ops)
-    assert linhas == [{"setup": sinal["setup"], "estado": "aceito", "pct": 1.23}]       # pega a operação do mesmo candle, não a primeira da lista
+    assert linhas == [{"setup": sinal["setup"], "estado": "aceito", "pct": 1.23, "pnl": 123.46}]       # pega a operação do mesmo candle, não a primeira da lista (e o lucro em T$ dela)
     assert SV.estatistica_do_jogador(p, B, ops) == []                                   # o adversário não tem nada deste sinal
     assert SV.estatistica_do_jogador(p, A, None)[0]["pct"] is None                      # sem operações (ainda aberta?) fica sem resultado
     sinal["estado"] = "ignorado"
@@ -1048,3 +1048,21 @@ def test_hook_do_fim_da_partida_so_grava_com_ativacao_e_uma_vez(jogo, monkeypatc
     for _ in range(5):                                                                 # a tela de fim consulta várias vezes
         API._registrar_estatistica_setups(q, "p1", p, {"operacoes": []})
     assert len(chamadas) == 1 and chamadas[0][1] == "p1" and chamadas[0][2][0]["estado"] == "aceito"
+
+
+def test_estatistica_guarda_lucro_total_e_melhor_entrada_em_tc():
+    import setups as SU
+    doc = SU.colecao_vazia()
+    SU.registrar_estatistica(doc, "p1", [{"setup": "martelo", "estado": "aceito", "pct": 1.5, "pnl": 150.0}, {"setup": "martelo", "estado": "aceito", "pct": -0.5, "pnl": -50.25}])
+    SU.registrar_estatistica(doc, "p2", [{"setup": "martelo", "estado": "aceito", "pct": 3.0, "pnl": 310.0}])
+    m = SU.estatisticas(doc, "martelo")
+    assert m["lucro_total"] == 409.75 and m["melhor_entrada"] == 310.0 and m["com_resultado"] == 3 and m["taxa"] == 67
+    assert SU.normalizar(json.loads(json.dumps(doc)))["est"] == doc["est"]                  # gravar e ler não perde o lucro
+    # sem entrada com resultado (ou de partidas antigas, sem o lucro guardado): nada de inventar zero
+    SU.registrar_estatistica(doc, "p3", [{"setup": "engolfo_alta", "estado": "recusado", "pct": None}])
+    e = SU.estatisticas(doc, "engolfo_alta")
+    assert e["lucro_total"] is None and e["melhor_entrada"] is None
+    antigo = SU.colecao_vazia()
+    antigo["est"] = {"martelo": {"ativacoes": 2, "entradas": 2, "recusadas": 0, "expiradas": 0, "com_resultado": 2, "vitorias": 1, "soma_pct": 1.0}}
+    a = SU.estatisticas(SU.normalizar(antigo), "martelo")
+    assert a["taxa"] == 50 and a["lucro_total"] is None and a["melhor_entrada"] is None     # só o que passou a ser guardado depois aparece
